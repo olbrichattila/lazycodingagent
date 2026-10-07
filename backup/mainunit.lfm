@@ -1,0 +1,142 @@
+object Form1: TForm1
+  Left = 261
+  Height = 600
+  Top = 456
+  Width = 1320
+  Caption = 'LazyCodingAgent — AI Workspace'
+  ClientHeight = 600
+  ClientWidth = 1320
+  Constraints.MinHeight = 600
+  Constraints.MinWidth = 900
+  Menu = MainMenu1
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 577
+    Width = 1320
+    Panels = <>
+  end
+  object pnlMainContainer: TPanel
+    Left = 0
+    Height = 577
+    Top = 0
+    Width = 1320
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 577
+    ClientWidth = 1320
+    TabOrder = 0
+    object pnlNavRailHost: TPanel
+      Left = 0
+      Height = 577
+      Top = 0
+      Width = 56
+      Align = alLeft
+      BevelOuter = bvNone
+      TabOrder = 0
+    end
+    object pnlNavHost: TPanel
+      Left = 56
+      Height = 577
+      Top = 0
+      Width = 250
+      Align = alLeft
+      BevelOuter = bvNone
+      TabOrder = 1
+    end
+    object splNav: TSplitter
+      Left = 306
+      Height = 577
+      Top = 0
+      Width = 5
+      MinSize = 160
+    end
+    object pnlReservedHost: TPanel
+      Left = 1035
+      Height = 577
+      Top = 0
+      Width = 285
+      Align = alRight
+      BevelOuter = bvNone
+      TabOrder = 3
+    end
+    object splReserved: TSplitter
+      Left = 1030
+      Height = 577
+      Top = 0
+      Width = 5
+      Align = alRight
+      MinSize = 180
+      ResizeAnchor = akRight
+    end
+    object pnlChatHost: TPanel
+      Left = 311
+      Height = 577
+      Top = 0
+      Width = 719
+      Align = alClient
+      BevelOuter = bvNone
+      TabOrder = 5
+    end
+  end
+  object MainMenu1: TMainMenu
+    Left = 360
+    Top = 12
+    object mnuFile: TMenuItem
+      Caption = '&File'
+      object mnuFileNew: TMenuItem
+        Caption = '&New Workspace'
+        OnClick = MnuFileNewClick
+      end
+      object mnuFileOpen: TMenuItem
+        Caption = '&Open Project Folder...'
+        OnClick = MnuFileOpenClick
+      end
+      object mnuFileSave: TMenuItem
+        Caption = '&Save Workspace'
+        OnClick = MnuFileSaveClick
+      end
+      object mnuFileSep1: TMenuItem
+        Caption = '-'
+      end
+      object mnuFileExit: TMenuItem
+        Caption = 'E&xit'
+        OnClick = MnuFileExitClick
+      end
+    end
+    object mnuView: TMenuItem
+      Caption = '&View'
+      object mnuViewToggleTheme: TMenuItem
+        Caption = '&Toggle Light / Dark Theme'
+        OnClick = MnuViewToggleThemeClick
+      end
+      object mnuViewResetLayout: TMenuItem
+        Caption = '&Reset Layout'
+        OnClick = MnuViewResetLayoutClick
+      end
+    end
+    object mnuWorkspace: TMenuItem
+      Caption = '&Workspace'
+    end
+    object mnuAgent: TMenuItem
+      Caption = '&Agent'
+    end
+    object mnuWindow: TMenuItem
+      Caption = '&Window'
+      object mnuPanelsVisibility: TMenuItem
+        Caption = '&Panels'
+      end
+    end
+    object mnuHelp: TMenuItem
+      Caption = '&Help'
+      object mnuHelpAbout: TMenuItem
+        Caption = '&About LazyCodingAgent...'
+        OnClick = MnuHelpAboutClick
+      end
+    end
+  end
+end
