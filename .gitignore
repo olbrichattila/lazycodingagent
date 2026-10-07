@@ -1,0 +1,37 @@
+# Lazarus / Free Pascal build output
+*.ppu
+*.o
+*.obj
+*.compiled
+*.or
+*.a
+*.so
+*.dll
+*.dylib
+*.dbg
+*.map
+*.dSYM/
+
+# Project build directories
+/lib/
+/build/
+/bin/
+
+# Generated application binaries
+/lazycodingagent
+/lazycodingagent.exe
+/lazycodingagent.app/
+/lazycodingagent.res
+
+# Lazarus IDE session and local state
+*.lps
+
+# Temporary and backup files
+*.bak
+*.tmp
+*.~*
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
