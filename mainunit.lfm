@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 305
+  Left = 295
   Height = 600
-  Top = 1125
+  Top = 296
   Width = 1320
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 600
@@ -55,8 +55,28 @@ object Form1: TForm1
       Width = 5
       MinSize = 160
     end
-    object pnlReservedHost: TPanel
+    object pnlUtilityHost: TPanel
+      Left = 1040
+      Height = 577
+      Top = 0
+      Width = 280
+      Align = alRight
+      BevelOuter = bvNone
+      TabOrder = 2
+      Visible = False
+    end
+    object splUtility: TSplitter
       Left = 1035
+      Height = 577
+      Top = 0
+      Width = 5
+      Align = alRight
+      MinSize = 160
+      ResizeAnchor = akRight
+      Visible = False
+    end
+    object pnlReservedHost: TPanel
+      Left = 750
       Height = 577
       Top = 0
       Width = 285
@@ -65,7 +85,7 @@ object Form1: TForm1
       TabOrder = 3
     end
     object splReserved: TSplitter
-      Left = 1030
+      Left = 745
       Height = 577
       Top = 0
       Width = 5
@@ -77,7 +97,7 @@ object Form1: TForm1
       Left = 311
       Height = 577
       Top = 0
-      Width = 719
+      Width = 434
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 5

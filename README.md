@@ -45,6 +45,11 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 ### 6. Reserved Context & Instructions Panel
 - Dedicated right-side panel for workspace guidelines, coding rules, and instructions context.
 
+### 7. Detachable Utility / Blank TabPage Panel (Right Corner)
+- Extra right-corner panel hosting a clean `TPageControl` with an initial blank tab sheet (`FTabSheetBlank`).
+- **Invisible by default**: Starts hidden to keep the workspace streamlined and distraction-free.
+- **Toggleable & Detachable**: Can be toggled on/off at any time via `Window > Panels > Utility Panel` or detached to a floating multi-monitor window via `Window > Detach Utility Panel to Window` or panel header icon.
+
 ---
 
 ## Technology Stack

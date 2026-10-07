@@ -7,7 +7,7 @@ interface
 type
   TNavigationItem = (niHome, niProjects, niSessions, niBots);
   TWorkspaceMode = (wmAsk, wmPlan, wmAgent);
-  TPanelId = (piNavigation, piChat, piReserved);
+  TPanelId = (piNavigation, piChat, piReserved, piUtility);
   TThemeKind = (tkDark, tkLight);
 
 function NavigationCaption(AItem: TNavigationItem): string;
@@ -73,6 +73,7 @@ begin
     piNavigation: Result := 'Navigation & Workspace';
     piChat: Result := 'Chat / AI Agent Workspace';
     piReserved: Result := 'Instructions & Context';
+    piUtility: Result := 'Utility Panel';
   end;
 end;
 

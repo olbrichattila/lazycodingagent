@@ -38,6 +38,8 @@ type
     pnlChatHost: TPanel;
     splReserved: TSplitter;
     pnlReservedHost: TPanel;
+    splUtility: TSplitter;
+    pnlUtilityHost: TPanel;
 
     // Published Event Handlers (Form Designer connected)
     procedure FormCreate(Sender: TObject);
@@ -63,6 +65,10 @@ type
 
     FDockReserved: TDockPanel;
     FReservedMemo: TMemo;
+
+    FDockUtility: TDockPanel;
+    FPageControlUtility: TPageControl;
+    FTabSheetBlank: TTabSheet;
 
     procedure InitWorkspaceSubControls;
     procedure PopulateMenusAndCombos;
@@ -162,6 +168,18 @@ begin
   FReservedMemo.Lines.Add('• Detachable windows work across multi-monitors.');
   FReservedMemo.Lines.Add('• Cross-platform Free Pascal / LCL target.');
   FDockReserved.Content := FReservedMemo;
+
+  // 5. Utility / TabPage panel inside Dock Panel (Right corner)
+  FDockUtility := TDockPanel.Create(pnlUtilityHost);
+  FDockUtility.Parent := pnlUtilityHost;
+  FDockUtility.Align := alClient;
+  FDockUtility.Configure(piUtility, PanelCaption(piUtility), @DockPanelAction);
+
+  FPageControlUtility := TPageControl.Create(FDockUtility);
+  FPageControlUtility.Align := alClient;
+  FTabSheetBlank := FPageControlUtility.AddTabSheet;
+  FTabSheetBlank.Caption := 'Blank Tab';
+  FDockUtility.Content := FPageControlUtility;
 end;
 
 procedure TForm1.PopulateMenusAndCombos;
@@ -262,11 +280,28 @@ begin
       splReserved.Visible := True;
     end;
 
-    // 6. Status Bar
+    // 6. Utility / Right Corner TabPage Panel Dock / Float / Visible
+    if not FState.IsPanelVisible(piUtility) then begin
+      pnlUtilityHost.Visible := False;
+      splUtility.Visible := False;
+      if FDockUtility.IsDetached then
+        FDockUtility.FloatingForm.Hide;
+    end else if FState.IsPanelFloating(piUtility) then begin
+      pnlUtilityHost.Visible := False;
+      splUtility.Visible := False;
+      FState.GetPanelBounds(piUtility, L, T, W, H);
+      FDockUtility.DetachToWindow(L, T, W, H);
+    end else begin
+      FDockUtility.AttachToHost(pnlUtilityHost);
+      pnlUtilityHost.Visible := True;
+      splUtility.Visible := True;
+    end;
+
+    // 7. Status Bar
     StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s',
       [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model]);
 
-    // 7. Rebuild Window menu and apply themes
+    // 8. Rebuild Window menu and apply themes
     RebuildWindowMenu;
     ApplyAllThemes;
   finally
@@ -289,9 +324,11 @@ begin
   pnlNavHost.Color := P.Surface;
   pnlChatHost.Color := P.Background;
   pnlReservedHost.Color := P.Surface;
+  pnlUtilityHost.Color := P.Surface;
 
   splNav.Color := P.SplitterColor;
   splReserved.Color := P.SplitterColor;
+  splUtility.Color := P.SplitterColor;
 
   StatusBar1.Color := P.HeaderBg;
   StatusBar1.Font.Color := P.TextMuted;
@@ -317,6 +354,14 @@ begin
   if Assigned(FReservedMemo) then begin
     FReservedMemo.Color := P.Surface;
     FReservedMemo.Font.Color := P.Text;
+  end;
+
+  if Assigned(FDockUtility) then
+    FDockUtility.ApplyTheme(FState.Theme);
+
+  if Assigned(FPageControlUtility) then begin
+    FPageControlUtility.Color := P.Surface;
+    FPageControlUtility.Font.Color := P.Text;
   end;
 end;
 
