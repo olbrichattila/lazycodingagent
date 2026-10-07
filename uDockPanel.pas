@@ -158,6 +158,7 @@ procedure TDockPanel.SetContent(AControl: TWinControl);
 begin
   FContent := AControl;
   if Assigned(FContent) then begin
+    FContent.Align := alNone;
     FContent.Anchors := [akLeft, akTop];
     FContent.Parent := Self;
     UpdateContentLayout;

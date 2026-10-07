@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 295
+  Left = 314
   Height = 600
-  Top = 296
+  Top = 715
   Width = 1320
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 600
@@ -144,6 +144,21 @@ object Form1: TForm1
     end
     object mnuAgent: TMenuItem
       Caption = '&Agent'
+      object mnuAgentClearHistory: TMenuItem
+        Caption = '&Clear Conversation'
+        OnClick = MnuAgentClearHistoryClick
+      end
+      object mnuAgentStop: TMenuItem
+        Caption = '&Stop Active Agent'
+        OnClick = MnuAgentStopClick
+      end
+    end
+    object mnuSettings: TMenuItem
+      Caption = '&Settings'
+      object mnuSettingsOptions: TMenuItem
+        Caption = '&Preferences && API Configuration...'
+        OnClick = MnuSettingsOptionsClick
+      end
     end
     object mnuWindow: TMenuItem
       Caption = '&Window'

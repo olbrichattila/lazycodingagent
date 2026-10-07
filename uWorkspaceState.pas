@@ -5,7 +5,7 @@ unit uWorkspaceState;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, Forms, uAppTypes;
+  Classes, SysUtils, IniFiles, Forms, uAppTypes, uAgentTypes;
 
 type
   TPanelState = record
@@ -20,10 +20,20 @@ type
   TWorkspaceState = class
   private
     FWorkspaceName: string;
+    FWorkspaceRoot: string;
     FNavigation: TNavigationItem;
     FMode: TWorkspaceMode;
     FModel: string;
     FTheme: TThemeKind;
+
+    // LLM & Agent Settings
+    FProvider: TLlmProvider;
+    FApiKey: string;
+    FBaseUrl: string;
+    FTemperature: Double;
+    FMaxTokens: Integer;
+    FMaxSteps: Integer;
+
     FPanels: array[TPanelId] of TPanelState;
     FOnChange: TNotifyEvent;
     procedure Changed;
@@ -42,11 +52,22 @@ type
     function GetPanelBounds(AId: TPanelId; out ALeft, ATop, AWidth, AHeight: Integer): Boolean;
     procedure Load;
     procedure Save;
+
     property WorkspaceName: string read FWorkspaceName write FWorkspaceName;
+    property WorkspaceRoot: string read FWorkspaceRoot write FWorkspaceRoot;
     property Navigation: TNavigationItem read FNavigation;
     property Mode: TWorkspaceMode read FMode;
     property Model: string read FModel;
     property Theme: TThemeKind read FTheme;
+
+    // LLM settings
+    property Provider: TLlmProvider read FProvider write FProvider;
+    property ApiKey: string read FApiKey write FApiKey;
+    property BaseUrl: string read FBaseUrl write FBaseUrl;
+    property Temperature: Double read FTemperature write FTemperature;
+    property MaxTokens: Integer read FMaxTokens write FMaxTokens;
+    property MaxSteps: Integer read FMaxSteps write FMaxSteps;
+
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
@@ -61,10 +82,19 @@ constructor TWorkspaceState.Create;
 begin
   inherited Create;
   FWorkspaceName := 'LazyCodingAgent';
+  FWorkspaceRoot := GetCurrentDir;
   FNavigation := niHome;
   FMode := wmAgent;
-  FModel := 'claude-3-7-sonnet';
+  FModel := 'anthropic/claude-3.7-sonnet';
   FTheme := tkDark;
+
+  FProvider := lpOpenRouter;
+  FApiKey := '';
+  FBaseUrl := 'https://openrouter.ai/api/v1';
+  FTemperature := 0.2;
+  FMaxTokens := 4096;
+  FMaxSteps := 20;
+
   ResetLayout;
 end;
 
@@ -175,6 +205,14 @@ begin
     FMode := TWorkspaceMode(I.ReadInteger('Agent', 'Mode', Ord(FMode)));
     FModel := I.ReadString('Agent', 'Model', FModel);
     FWorkspaceName := I.ReadString('Workspace', 'Name', FWorkspaceName);
+    FWorkspaceRoot := I.ReadString('Workspace', 'Root', FWorkspaceRoot);
+
+    FProvider := TLlmProvider(I.ReadInteger('LLM', 'Provider', Ord(FProvider)));
+    FApiKey := I.ReadString('LLM', 'ApiKey', FApiKey);
+    FBaseUrl := I.ReadString('LLM', 'BaseUrl', FBaseUrl);
+    FTemperature := I.ReadFloat('LLM', 'Temperature', FTemperature);
+    FMaxTokens := I.ReadInteger('LLM', 'MaxTokens', FMaxTokens);
+    FMaxSteps := I.ReadInteger('LLM', 'MaxSteps', FMaxSteps);
 
     for P := Low(TPanelId) to High(TPanelId) do begin
       Sec := 'Panel_' + IntToStr(Ord(P));
@@ -202,6 +240,14 @@ begin
     I.WriteInteger('Agent', 'Mode', Ord(FMode));
     I.WriteString('Agent', 'Model', FModel);
     I.WriteString('Workspace', 'Name', FWorkspaceName);
+    I.WriteString('Workspace', 'Root', FWorkspaceRoot);
+
+    I.WriteInteger('LLM', 'Provider', Ord(FProvider));
+    I.WriteString('LLM', 'ApiKey', FApiKey);
+    I.WriteString('LLM', 'BaseUrl', FBaseUrl);
+    I.WriteFloat('LLM', 'Temperature', FTemperature);
+    I.WriteInteger('LLM', 'MaxTokens', FMaxTokens);
+    I.WriteInteger('LLM', 'MaxSteps', FMaxSteps);
 
     for P := Low(TPanelId) to High(TPanelId) do begin
       Sec := 'Panel_' + IntToStr(Ord(P));

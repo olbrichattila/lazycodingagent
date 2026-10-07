@@ -1,0 +1,240 @@
+object SettingsForm: TSettingsForm
+  Left = 350
+  Height = 440
+  Top = 200
+  Width = 540
+  BorderStyle = bsDialog
+  Caption = 'Settings'
+  ClientHeight = 440
+  ClientWidth = 540
+  OnCreate = FormCreate
+  Position = poScreenCenter
+  LCLVersion = '3.4.0.0'
+  object PageControl1: TPageControl
+    Left = 12
+    Height = 368
+    Top = 12
+    Width = 516
+    ActivePage = tabProvider
+    Align = alClient
+    BorderSpacing.Left = 12
+    BorderSpacing.Top = 12
+    BorderSpacing.Right = 12
+    BorderSpacing.Bottom = 8
+    TabIndex = 0
+    TabOrder = 0
+    object tabProvider: TTabSheet
+      Caption = 'AI Provider & Model'
+      ClientHeight = 338
+      ClientWidth = 508
+      object lblProvider: TLabel
+        Left = 16
+        Height = 15
+        Top = 16
+        Width = 63
+        Caption = 'LLM Provider'
+      end
+      object cboProvider: TComboBox
+        Left = 16
+        Height = 23
+        Top = 36
+        Width = 472
+        ItemHeight = 15
+        ItemIndex = 0
+        Items.Strings = (
+          'OpenRouter'
+          'OpenAI'
+          'Anthropic'
+          'Ollama (Local)'
+          'Custom / OpenAI Compatible'
+        )
+        OnChange = cboProviderChange
+        Style = csDropDownList
+        TabOrder = 0
+        Text = 'OpenRouter'
+      end
+      object lblApiKey: TLabel
+        Left = 16
+        Height = 15
+        Top = 72
+        Width = 100
+        Caption = 'API Key (or Secret)'
+      end
+      object edtApiKey: TEdit
+        Left = 16
+        Height = 23
+        Top = 92
+        Width = 472
+        EchoMode = emPassword
+        PasswordChar = '*'
+        TabOrder = 1
+      end
+      object lblBaseUrl: TLabel
+        Left = 16
+        Height = 15
+        Top = 128
+        Width = 87
+        Caption = 'Base API Endpoint'
+      end
+      object edtBaseUrl: TEdit
+        Left = 16
+        Height = 23
+        Top = 148
+        Width = 472
+        TabOrder = 2
+        Text = 'https://openrouter.ai/api/v1'
+      end
+      object lblModel: TLabel
+        Left = 16
+        Height = 15
+        Top = 184
+        Width = 67
+        Caption = 'Default Model'
+      end
+      object edtModel: TEdit
+        Left = 16
+        Height = 23
+        Top = 204
+        Width = 472
+        TabOrder = 3
+        Text = 'anthropic/claude-3.7-sonnet'
+      end
+      object lblNotice: TLabel
+        Left = 16
+        Height = 30
+        Top = 244
+        Width = 472
+        AutoSize = False
+        Caption = 'Note: Your API credentials are saved locally in the user config file.'
+        Font.Color = clGray
+        WordWrap = True
+      end
+    end
+    object tabAgent: TTabSheet
+      Caption = 'Agent Behavior'
+      ClientHeight = 338
+      ClientWidth = 508
+      object lblTemp: TLabel
+        Left = 16
+        Height = 15
+        Top = 16
+        Width = 102
+        Caption = 'Temperature (0..1)'
+      end
+      object edtTemp: TEdit
+        Left = 16
+        Height = 23
+        Top = 36
+        Width = 200
+        TabOrder = 0
+        Text = '0.2'
+      end
+      object lblMaxTokens: TLabel
+        Left = 16
+        Height = 15
+        Top = 76
+        Width = 99
+        Caption = 'Max Output Tokens'
+      end
+      object edtMaxTokens: TEdit
+        Left = 16
+        Height = 23
+        Top = 96
+        Width = 200
+        TabOrder = 1
+        Text = '4096'
+      end
+      object lblMaxSteps: TLabel
+        Left = 16
+        Height = 15
+        Top = 136
+        Width = 143
+        Caption = 'Max Autonomous Steps/Loop'
+      end
+      object edtMaxSteps: TEdit
+        Left = 16
+        Height = 23
+        Top = 156
+        Width = 200
+        TabOrder = 2
+        Text = '20'
+      end
+    end
+    object tabWorkspace: TTabSheet
+      Caption = 'Workspace'
+      ClientHeight = 338
+      ClientWidth = 508
+      object lblWorkspaceRoot: TLabel
+        Left = 16
+        Height = 15
+        Top = 16
+        Width = 127
+        Caption = 'Workspace Directory Root'
+      end
+      object edtWorkspaceRoot: TEdit
+        Left = 16
+        Height = 23
+        Top = 36
+        Width = 384
+        TabOrder = 0
+      end
+      object btnBrowseWorkspace: TButton
+        Left = 408
+        Height = 23
+        Top = 36
+        Width = 80
+        Caption = 'Browse...'
+        OnClick = btnBrowseWorkspaceClick
+        TabOrder = 1
+      end
+      object lblWorkspaceName: TLabel
+        Left = 16
+        Height = 15
+        Top = 76
+        Width = 91
+        Caption = 'Workspace Name'
+      end
+      object edtWorkspaceName: TEdit
+        Left = 16
+        Height = 23
+        Top = 96
+        Width = 472
+        TabOrder = 2
+        Text = 'LazyCodingAgent'
+      end
+    end
+  end
+  object pnlBottom: TPanel
+    Left = 0
+    Height = 44
+    Top = 396
+    Width = 540
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 44
+    ClientWidth = 540
+    TabOrder = 1
+    object btnOK: TButton
+      Left = 356
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Caption = 'OK'
+      Default = True
+      OnClick = btnOKClick
+      TabOrder = 0
+    end
+    object btnCancel: TButton
+      Left = 444
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Cancel = True
+      Caption = 'Cancel'
+      OnClick = btnCancelClick
+      TabOrder = 1
+    end
+  end
+end
