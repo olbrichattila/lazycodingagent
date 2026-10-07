@@ -113,7 +113,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ## Building & Running
 
-Clone with submodules (required for the integrated terminal):
+Clone with submodules (required for the integrated terminal). Without them, Lazarus shows a broken dependency on **TerminalFramework**:
 
 ```bash
 git clone --recurse-submodules <repo-url>
@@ -121,18 +121,45 @@ git clone --recurse-submodules <repo-url>
 git submodule update --init third_party/TerminalEmulator
 ```
 
+On Windows (PowerShell), the same init step:
+
+```powershell
+git submodule update --init third_party/TerminalEmulator
+```
+
 Register and compile the terminal Lazarus packages once per machine (or after updating the submodule):
+
+**Linux / macOS:**
 
 ```bash
 ./scripts/build-terminal-deps.sh
 ```
 
-Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewLCL** from `third_party/TerminalEmulator/` if the IDE prompts), or build from the command line:
+**Windows:**
+
+```powershell
+.\scripts\build-terminal-deps.ps1
+```
+
+If `lazbuild` is not on `PATH`, set `$env:LAZBUILD` to your `lazbuild.exe` (for example `C:\lazarus\lazbuild.exe`).
+
+Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewLCL** from `third_party/TerminalEmulator/` if the IDE still prompts after the script), or build from the command line:
+
+**Linux / macOS:**
 
 ```bash
 ./scripts/build-terminal-deps.sh
 lazbuild lazycodingagent.lpi
 ```
+
+**Windows:**
+
+```powershell
+.\scripts\build-terminal-deps.ps1
+lazbuild lazycodingagent.lpi
+```
+
+**IDE-only install (any OS):** Package → Open package file → `third_party/TerminalEmulator/TerminalFramework/TerminalFramework.lpk` → Compile → Use → Install; repeat for `ViewLCL/ViewLCL.lpk`; then reopen `lazycodingagent.lpi`.
 
 If the Lazarus IDE hangs when opening this project, quit Lazarus, rename or remove `lazycodingagent.lps` in the project directory (session file; regenerated on save), then open `lazycodingagent.lpi` again.
 
