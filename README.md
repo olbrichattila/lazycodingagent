@@ -14,6 +14,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 ### 2. Modern Dark-First Design & Cohesive Dropdowns
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
+- **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards. Custom tab pages use `AdjustClientRect` on `TLazyTabControl` instead of fighting `alClient` with `SetBounds`. Together this avoids LCL `TControl.ChangeBounds loop detected` warnings on startup, theme toggle, and detachable-panel reparent.
 - **Complete Dark & Light Tab Pages Styling**: All `TPageControl` tab strips, active indicators, and `TTabSheet` pages (including Settings dialog and Utility panel) follow the theme seamlessly with custom owner-drawing and cohesive high-contrast styling across Windows, Linux, and macOS.
 - **TLazyTabControl Custom Component**: Robust custom tab control (`TLazyTabControl` and `TLazyTabPage`) with native LCL client area adjustment (`AdjustClientRect`), component streaming protection (`Loaded`), tab close callbacks, badge notifications, and zero `ChangeBounds` loop cycles.
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
@@ -23,6 +24,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - **Cross-platform role buttons** (`TThemedButton` in `uThemedButton.pas`): accent primary, outlined Cancel (`BorderStrong` / `Border`), and destructive Stop — same painted look on Windows, Linux (GTK), and macOS (Cocoa).
 - **Cross-platform UI**: icon-only nav rail, owner-draw list accent selection, and theme tokens apply on all LCL targets.
 - **Scrollbars / title chrome**: on **Windows**, `ApplyPlatformChrome` uses immersive dark mode and `DarkMode_Explorer` for native scrollbars; on **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
+- **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme.
 - Clean splitters allowing custom width resizing between all panels.
 
 #### Platform verification checklist
@@ -34,6 +36,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 | Primary / Cancel / Stop buttons (`TThemedButton`) | Yes | Yes | Yes |
 | Dark scrollbars matching app surface | Themed via Win32 | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
+| Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |
 
 ### 3. Detachable Multi-Window Architecture
 - Panels are docked to the main window by default and can be detached into independent, floating `TForm` windows.
@@ -45,11 +48,15 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Sleek 56px left navigation rail with logo, icon-only slots, tooltips, and accent active indicator for:
   - **⌂ Home**: Workspace dashboard and overview.
   - **◫ Projects**: Project explorer and file tree.
-  - **💬 Sessions**: Active conversations and chat history.
+  - **💬 Sessions**: Per-workspace chat sessions (active and archived lists, archive/restore/delete actions).
   - **⚡ Bots**: Custom coding agents and prompt setups.
 - Connected content area with contextual actions for the active navigation selection.
 
 ### 5. Primary AI Agent & Chat Workspace
+- **Multiple parallel sessions** per workspace: each session has its own `TAgentEngine` and async run thread. Switch sessions (left **Sessions** nav or chat tab strip) without stopping other sessions. Background runs continue when you switch workspace and return later.
+- **New chat:** primary path is the left rail **Sessions** view → **+ New Chat Session**; shortcut **+** in the chat header (next to session tabs) also creates a session and focuses the center Chat tab.
+- **Session tabs** above the chat panel for quick switching; closing a tab **archives** that session (not a permanent delete). Archiving the last open tab opens a fresh empty session automatically.
+- **Archive** via Sessions panel (**Archive Session** / **Restore Session**), `Delete` on an active session, or `Shift+Delete` to permanently delete an archived session.
 - Clean hero greeting: `What should we build in <project name>?`.
 - Embedded workspace badge and live conversation history stream.
 - Multiline prompt composer with mode dropdown selector:
@@ -59,17 +66,39 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Instant mode and model switching synced with application state and status bar.
 - Model selector dropdown supporting `anthropic/claude-3.7-sonnet`, `Hermes-4-70B`, `Hermes-4-405B` (Nous Research), `openai/gpt-4o`, `deepseek/deepseek-r1`, etc. (OpenRouter slugs where noted).
 
-### 6. Debugging mode and project rules
+### 6. In-app User Guide
+- **Help → User Guide…** (F1) opens a searchable help browser with topics under [`help/`](help/), including how the agent and tools work.
+- After `lazbuild`, the build copies `help/` next to the executable; when developing from the IDE, topics also resolve from the project `help/` folder.
+
+### 7. Debugging mode and project rules
 - **Debugging Mode** (Settings → Agent Behavior): when enabled, full tool JSON results appear in the chat history; when disabled, only tool errors are shown (successful tool calls stay hidden in chat).
 - **Project Rules** (main menu → Workspace → Project Rules…): edit per-workspace Markdown files under `<workspace>/.rules/*.md`. Combined rule text is injected into the agent system prompt for Ask, Plan, and Agent modes.
 
-### 7. Reserved Context & Instructions Panel
+### 8. Reserved Context & Instructions Panel
 - Dedicated right-side panel for workspace guidelines, coding rules, and instructions context.
 
-### 8. Detachable Utility / Blank TabPage Panel (Right Corner)
+### 9. Detachable Utility / Blank TabPage Panel (Right Corner)
 - Extra right-corner panel hosting a clean `TPageControl` with an initial blank tab sheet (`FTabSheetBlank`).
 - **Invisible by default**: Starts hidden to keep the workspace streamlined and distraction-free.
 - **Toggleable & Detachable**: Can be toggled on/off at any time via `Window > Panels > Utility Panel` or detached to a floating multi-monitor window via `Window > Detach Utility Panel to Window` or panel header icon.
+
+### 10. Integrated terminal (bottom panel)
+- **View → Terminal** toggles a full-width bottom dock (above the status bar) with a real PTY shell (`$SHELL` / `/bin/bash` on Unix, `%COMSPEC%` on Windows).
+- **Detachable** like other panels (`Window` menu or header **Detach**); layout persists as `Panel_4` (visible, floating bounds, `DockedHeight` for the bottom strip).
+- Docked height defaults to about **one quarter** of the client area (resizable splitter); floating window size is stored separately from docked height.
+- When you open the panel with an active workspace, the shell starts in the **workspace root** (`pwd` / `cd`); switching workspaces restarts the shell in the new folder if the terminal is already visible.
+- Powered by the [TerminalEmulator](https://github.com/andrewd207/TerminalEmulator) submodule (`third_party/TerminalEmulator`). **Windows** requires Windows 10 1809+ (ConPTY).
+- **Linux PTY:** the embedded terminal needs `forkpty` from **libutil** (Debian/Ubuntu: `bsdutils` / `util-linux`). Build the submodule packages via `./scripts/build-terminal-deps.sh` before compiling the app. If the panel stays blank, check the status bar for a PTY error and verify `$SHELL` or `/bin/bash` exists.
+
+#### Terminal manual test checklist
+
+| Step | Linux / macOS | Windows |
+|------|----------------|---------|
+| View → Terminal shows bottom panel | `pwd` matches workspace | `cd` matches workspace |
+| Resize splitter; restart app | Height restored | Height restored |
+| Detach / dock panel | Works on second monitor | Works on second monitor |
+| Theme toggle | Colors readable | Colors readable |
+| Interactive TUI | `ls` colors; optional `vim`/`nano` | `dir`, `git status` |
 
 ---
 
@@ -84,11 +113,28 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ## Building & Running
 
-Open `lazycodingagent.lpi` in Lazarus or build directly using `lazbuild`:
+Clone with submodules (required for the integrated terminal):
 
 ```bash
+git clone --recurse-submodules <repo-url>
+# or after clone:
+git submodule update --init third_party/TerminalEmulator
+```
+
+Register and compile the terminal Lazarus packages once per machine (or after updating the submodule):
+
+```bash
+./scripts/build-terminal-deps.sh
+```
+
+Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewLCL** from `third_party/TerminalEmulator/` if the IDE prompts), or build from the command line:
+
+```bash
+./scripts/build-terminal-deps.sh
 lazbuild lazycodingagent.lpi
 ```
+
+If the Lazarus IDE hangs when opening this project, quit Lazarus, rename or remove `lazycodingagent.lps` in the project directory (session file; regenerated on save), then open `lazycodingagent.lpi` again.
 
 ### HTTPS for LLM providers (Fetch Models, chat, agent)
 
@@ -97,7 +143,7 @@ All HTTPS traffic goes through [`uLlmClient.pas`](uLlmClient.pas) (Settings **Fe
 | Platform | Transport | Notes |
 |----------|-----------|--------|
 | **Windows** | WinHTTP + Schannel ([`uWindowsHTTP.pas`](uWindowsHTTP.pas)) | No OpenSSL DLLs beside the exe |
-| **Linux / macOS** | `fphttpclient` + `opensslsockets` | System OpenSSL must be installed and visible to FPC (typical Lazarus Linux builds; on macOS often Homebrew `openssl@3` or system libs) |
+| **Linux / macOS** | `fphttpclient` + `opensslsockets` | System OpenSSL must be installed and visible to FPC (typical Lazarus Linux builds; on macOS often Homebrew `openssl@3` or system libs). Socket `IOTimeout` is in **milliseconds**, matching `TLlmClient.TimeoutMs` (default 60s). |
 
 If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macOS, install SSL development libraries for your distro and ensure Lazarus was built with SSL support. The app surfaces a dialog instead of crashing when SSL is unavailable.
 
@@ -109,9 +155,13 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 - `mainunit.pas` / `mainunit.lfm` — Main form designed with Lazarus Form Designer (`TLazyCodingAgentForm`), hosting menus, splitters, status bar, and dock hosts
 - `uAppLogo.pas` — Vector brand drawing routines
 - `uDockPanel.pas` — Custom-drawn dockable panel header with Detach/Dock and Hide controls, plus `TDetachedPanelForm` host for floating multi-monitor windows
+- `uTerminalPanel.pas` — Embedded PTY terminal (`TTerminalPanel` wrapping TerminalEmulator ViewLCL)
+- `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages
 - `uNavigationPanel.pas` — Custom painted navigation rail and content views
 - `uChatPanel.pas` — Composer card, Ask/Plan/Agent mode dropdown selector, model selector, and markdown message stream
 - `uMarkdownView.pas` — Theme-aware markdown → HTML renderer (`TIpHtmlPanel`) with auto-scroll-to-bottom
+- `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
+- `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
 - `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes
 - `uTheme.pas` — Dark/light design tokens, platform chrome helpers (`ApplyPlatformChrome`), ComboBox/list owner-draw, and recursive styling
 - `uThemedButton.pas` — Cross-platform painted primary, cancel (outline), and destructive buttons
@@ -151,6 +201,14 @@ Tool messages returned to the LLM are **JSON strings**. Failures include an `err
 | Agent | Full mutating set | Allowed |
 
 ### Running tool integration tests
+
+### Manual check: parallel chat sessions
+
+1. In workspace A, start an agent run in session 1; switch to session 2 (nav or tab) and start another run — both should finish; session 1 transcript updates when re-selected.
+2. Switch to workspace B while A still has a run; return to A — run completed or still active; messages persisted.
+3. Archive an active session — run stops; session appears under **Archived**; composer disabled until restored.
+4. Close the app with multiple runs — confirm prompt to stop all runs; exit cleanly.
+5. Toggle dark/light theme and resize the chat dock — no `ChangeBounds` loop.
 
 Requires FPC, Lazarus `lazutils` on the unit path, and Python 3:
 

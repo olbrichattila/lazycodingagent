@@ -7,7 +7,7 @@ interface
 type
   TNavigationItem = (niHome, niProjects, niSessions, niBots, niTools, niTasks);
   TWorkspaceMode = (wmAsk, wmPlan, wmAgent);
-  TPanelId = (piNavigation, piChat, piReserved, piUtility);
+  TPanelId = (piNavigation, piChat, piReserved, piUtility, piTerminal);
   TThemeKind = (tkDark, tkLight);
 
 function NavigationCaption(AItem: TNavigationItem): string;
@@ -23,7 +23,7 @@ implementation
 function NavigationCaption(AItem: TNavigationItem): string;
 begin
   case AItem of
-    niHome: Result := 'Home';
+    niHome: Result := 'Workspaces';
     niProjects: Result := 'Projects';
     niSessions: Result := 'Sessions';
     niBots: Result := 'Bots';
@@ -35,7 +35,7 @@ end;
 function NavigationHint(AItem: TNavigationItem): string;
 begin
   case AItem of
-    niHome: Result := 'Home - Dashboard & Overview';
+    niHome: Result := 'Workspaces - Open and switch projects';
     niProjects: Result := 'Projects - Workspace files & tree';
     niSessions: Result := 'Sessions - Conversation history & agents';
     niBots: Result := 'Bots - Custom assistants & prompts';
@@ -81,6 +81,7 @@ begin
     piChat: Result := 'Chat / AI Agent Workspace';
     piReserved: Result := 'Instructions & Context';
     piUtility: Result := 'Utility Panel';
+    piTerminal: Result := 'Terminal';
   end;
 end;
 
@@ -91,6 +92,7 @@ begin
     piChat: Result := '💬';
     piReserved: Result := '📋';
     piUtility: Result := '⚙';
+    piTerminal: Result := '▸';
   end;
 end;
 

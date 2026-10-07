@@ -44,6 +44,7 @@ type
     FModelIds: TStringList;
     FSendBtn: TThemedButton;
     FStopBtn: TThemedButton;
+    FUpdatingLayout: Boolean;
 
     procedure ModeComboChange(Sender: TObject);
     procedure ModelComboChange(Sender: TObject);
@@ -58,6 +59,7 @@ type
     procedure ScrollChatToBottom(Data: PtrInt);
     function ToolMessageBody(const AMsg: TChatMessage): string;
   protected
+    procedure CreateWnd; override;
     procedure Paint; override;
     procedure Resize; override;
   public
@@ -75,6 +77,8 @@ type
     procedure AppendToolMessage(const AMsg: TChatMessage; ADebuggingMode: Boolean);
     procedure AppendText(const AText: string);
     procedure ClearHistory;
+    procedure ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);
+    procedure SetComposerEnabled(AEnabled: Boolean);
     procedure SubmitPrompt(const APrompt: string);
 
     property Mode: TWorkspaceMode read FMode write SetMode;
@@ -150,6 +154,7 @@ begin
   FMode := wmAgent;
   FModel := '';
   FIsRunning := False;
+  FUpdatingLayout := False;
   FModelIds := TStringList.Create;
 
   FHeading := TLabel.Create(Self);
@@ -202,7 +207,7 @@ begin
   FModeCombo.Parent := FComposerFooter;
   FModeCombo.Style := csOwnerDrawFixed;
   FModeCombo.OnDrawItem := @ComboDrawItem;
-  FModeCombo.ItemHeight := 24;
+  FModeCombo.ItemHeight := ThemedComboBoxItemHeight;
   for M := Low(TWorkspaceMode) to High(TWorkspaceMode) do
     FModeCombo.Items.Add(WorkspaceModeCaption(M));
   FModeCombo.ItemIndex := Ord(FMode);
@@ -212,7 +217,7 @@ begin
   FModelCombo.Parent := FComposerFooter;
   FModelCombo.Style := csOwnerDrawFixed;
   FModelCombo.OnDrawItem := @ComboDrawItem;
-  FModelCombo.ItemHeight := 24;
+  FModelCombo.ItemHeight := ThemedComboBoxItemHeight;
   FModelCombo.OnChange := @ModelComboChange;
 
   FStopBtn := TThemedButton.Create(FComposerFooter);
@@ -257,10 +262,20 @@ begin
   UpdateLayout;
 end;
 
+procedure TChatPanel.CreateWnd;
+begin
+  inherited CreateWnd;
+  UpdateLayout;
+end;
+
 procedure TChatPanel.UpdateLayout;
 var
-  W, H, InnerW, CardW, CardH, CardX, CardY, HistoryH, FooterW: Integer;
+  W, H, InnerW, CardW, CardH, CardX, CardY, HistoryH, FooterW, ComboH: Integer;
 begin
+  if not ParentFormHandlesReady(Self) then Exit;
+  if FUpdatingLayout then Exit;
+  FUpdatingLayout := True;
+  try
   W := Width;
   H := Height;
   InnerW := MaxLayoutDim(W - 48, 8);
@@ -285,14 +300,18 @@ begin
     FooterW := MaxLayoutDim(CardW - 28, 8);
     SetBoundsIfChanged(FComposerFooter, 14, CardH - 42, FooterW, 32);
 
-    SetBoundsIfChanged(FModeCombo, 0, 2, 100, 28);
-    SetBoundsIfChanged(FModelCombo, 108, 2, 210, 28);
+    ComboH := EffectiveThemedComboBoxHeight(FModeCombo);
+    SetBoundsIfChanged(FModeCombo, 0, 4, 100, ComboH);
+    SetBoundsIfChanged(FModelCombo, 108, 4, 210, ComboH);
 
     if Assigned(FStopBtn) and FStopBtn.Visible then begin
       SetBoundsIfChanged(FStopBtn, FComposerFooter.Width - 195, 2, 85, 28);
       SetBoundsIfChanged(FSendBtn, FComposerFooter.Width - 105, 2, 105, 28);
     end else
       SetBoundsIfChanged(FSendBtn, FComposerFooter.Width - 110, 2, 110, 28);
+  end;
+  finally
+    FUpdatingLayout := False;
   end;
 end;
 
@@ -322,7 +341,8 @@ procedure TChatPanel.RefreshHistoryView;
 begin
   if Assigned(FChatView) then
     FChatView.SetMarkdown(FHistoryMarkdown);
-  Application.QueueAsyncCall(@ScrollChatToBottom, 0);
+  if ParentFormHandlesReady(Self) then
+    Application.QueueAsyncCall(@ScrollChatToBottom, 0);
 end;
 
 procedure TChatPanel.ScrollChatToBottom(Data: PtrInt);
@@ -380,9 +400,7 @@ begin
 
   FComposerCard.Color := P.Surface;
   FWorkspaceTag.Font.Color := P.Accent;
-  FPromptMemo.Color := P.SurfaceAlt;
-  FPromptMemo.Font.Color := P.Text;
-  FPromptMemo.Font.Name := 'Segoe UI';
+  ConfigureThemedMemo(FPromptMemo, ATheme);
 
   FComposerFooter.Color := P.Surface;
   StyleComboBox(FModeCombo, FTheme);
@@ -396,6 +414,7 @@ begin
   if Assigned(FChatView) then
     FChatView.SetMarkdown(FHistoryMarkdown);
 
+  UpdateLayout;
   Invalidate;
 end;
 
@@ -596,10 +615,32 @@ begin
     FOnModelChange(Self, FModel);
 end;
 
+procedure TChatPanel.SetComposerEnabled(AEnabled: Boolean);
+begin
+  FPromptMemo.Enabled := AEnabled;
+  FModeCombo.Enabled := AEnabled;
+  FModelCombo.Enabled := AEnabled;
+  FSendBtn.Enabled := AEnabled and not FIsRunning;
+end;
+
+procedure TChatPanel.ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);
+var
+  I: Integer;
+begin
+  ClearHistory;
+  for I := 0 to High(AMessages) do begin
+    if AMessages[I].Role = crTool then
+      AppendToolMessage(AMessages[I], ADebuggingMode)
+    else
+      AppendMessage(AMessages[I]);
+  end;
+end;
+
 procedure TChatPanel.SubmitPrompt(const APrompt: string);
 begin
   if Trim(APrompt) = '' then Exit;
   if FIsRunning then Exit;
+  if not FPromptMemo.Enabled then Exit;
   if Assigned(FOnPrompt) then
     FOnPrompt(Self, Trim(APrompt), FMode, FModel);
 end;

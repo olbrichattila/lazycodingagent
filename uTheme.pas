@@ -28,9 +28,17 @@ type
   end;
 
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
+function ParentFormHandlesReady(AControl: TControl): Boolean;
+
+const
+  { Fallback until the widget handle exists; GTK/Qt often normalize to 25. }
+  ThemedComboBoxHeight = 25;
+  ThemedComboBoxItemHeight = 22;
 
 // Helper to configure ComboBox for sleek theme owner-drawing
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
+// Control height after StyleComboBox — use for manual SetBounds (widgetset truth).
+function EffectiveThemedComboBoxHeight(ACombo: TComboBox): Integer;
 // Unified DrawItem handler for styled ComboBoxes (Black style on dark mode, clean on light mode)
 procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
@@ -44,6 +52,9 @@ procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
 
 procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
 procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
+procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
+  const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
+procedure SyncThemedMemoWidget(AMemo: TCustomMemo);
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
@@ -56,6 +67,212 @@ procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: T
 procedure ApplyPlatformChrome(AForm: TForm; ATheme: TThemeKind);
 
 implementation
+
+uses
+  SysUtils
+  {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
+  {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
+  {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
+  ;
+
+function ParentFormHandlesReady(AControl: TControl): Boolean;
+var
+  F: TCustomForm;
+begin
+  if not Assigned(AControl) then
+    Exit(False);
+  F := GetParentForm(AControl);
+  Result := Assigned(F) and F.HandleAllocated;
+end;
+
+function ColorToStyleHex(AColor: TColor): string;
+begin
+  Result := '#' + LowerCase(IntToHex(Red(AColor), 2) + IntToHex(Green(AColor), 2) +
+    IntToHex(Blue(AColor), 2));
+end;
+
+{$IFDEF LCLQt5}
+type
+  { Access StyleSheet on LCL-created TQtMenuBar instances. }
+  TQtMenuBarStyleAccess = class(TQtMenuBar)
+  public
+    procedure ApplyMenuStyleSheet(const ASheet: WideString);
+  end;
+
+var
+  FQt5MenuBarLastHandle: PtrUInt;
+  FQt5MenuBarLastTheme: TThemeKind;
+  FQt5MenuBarThemeSet: Boolean;
+
+procedure TQtMenuBarStyleAccess.ApplyMenuStyleSheet(const ASheet: WideString);
+begin
+  StyleSheet := ASheet;
+end;
+
+procedure ApplyQt5MenuBarTheme(AForm: TForm; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  MenuBar: TQtMenuBar;
+  Sheet: WideString;
+  MenuHandle: PtrUInt;
+begin
+  if not Assigned(AForm) or not AForm.HandleAllocated then Exit;
+  if AForm.Menu = nil then Exit;
+  if not AForm.Menu.HandleAllocated then Exit;
+
+  MenuHandle := PtrUInt(AForm.Menu.Handle);
+  if FQt5MenuBarThemeSet and (FQt5MenuBarLastHandle = MenuHandle) and
+     (FQt5MenuBarLastTheme = ATheme) then
+    Exit;
+
+  MenuBar := TQtMenuBar(Pointer(MenuHandle));
+  P := ThemePalette(ATheme);
+  Sheet := WideString(
+    'QMenuBar { background-color: ' + ColorToStyleHex(P.HeaderBg) +
+    '; color: ' + ColorToStyleHex(P.Text) + '; } ' +
+    'QMenuBar::item { background: transparent; color: ' + ColorToStyleHex(P.Text) + '; } ' +
+    'QMenuBar::item:selected { background-color: ' + ColorToStyleHex(P.AccentActive) + '; }');
+  TQtMenuBarStyleAccess(MenuBar).ApplyMenuStyleSheet(Sheet);
+
+  FQt5MenuBarLastHandle := MenuHandle;
+  FQt5MenuBarLastTheme := ATheme;
+  FQt5MenuBarThemeSet := True;
+end;
+{$ENDIF}
+
+{$IFDEF LCLGtk3}
+var
+  FGtkMenuBarCssProvider: PGtkCssProvider;
+  FGtkMenuBarCssTheme: TThemeKind;
+  FGtkMenuBarCssThemeSet: Boolean;
+
+procedure Gtk3ApplyMenuBarCssToContext(AContext: PGtkStyleContext; const ACss: string);
+var
+  Provider: PGtkCssProvider;
+begin
+  if AContext = nil then Exit;
+  Provider := gtk_css_provider_new();
+  gtk_css_provider_load_from_data(Provider, PChar(ACss), -1, nil);
+  gtk_style_context_add_provider(AContext, PGtkStyleProvider(Provider),
+    GTK_STYLE_PROVIDER_PRIORITY_USER);
+  g_object_unref(Provider);
+end;
+
+procedure ApplyGtk3MenuBarTheme(AForm: TForm; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  Css: string;
+  Screen: PGdkScreen;
+  MenuBar: PGtkWidget;
+  MenuContext: PGtkStyleContext;
+begin
+  if FGtkMenuBarCssThemeSet and (FGtkMenuBarCssTheme = ATheme) then
+    Exit;
+
+  P := ThemePalette(ATheme);
+  Css :=
+    'menubar, .menubar { ' +
+    'background-color: ' + ColorToStyleHex(P.HeaderBg) + '; ' +
+    'color: ' + ColorToStyleHex(P.Text) + '; } ' +
+    'menubar > menuitem { ' +
+    'color: ' + ColorToStyleHex(P.Text) + ' !important; } ' +
+    'menubar > menuitem label { ' +
+    'color: ' + ColorToStyleHex(P.Text) + ' !important; } ' +
+    'menubar > menuitem:hover { ' +
+    'background-color: ' + ColorToStyleHex(P.AccentActive) + '; }';
+
+  Screen := gdk_screen_get_default();
+  if Screen = nil then Exit;
+
+  if FGtkMenuBarCssProvider <> nil then begin
+    gtk_style_context_remove_provider_for_screen(Screen,
+      PGtkStyleProvider(FGtkMenuBarCssProvider));
+    g_object_unref(FGtkMenuBarCssProvider);
+    FGtkMenuBarCssProvider := nil;
+  end;
+
+  FGtkMenuBarCssProvider := gtk_css_provider_new();
+  gtk_css_provider_load_from_data(FGtkMenuBarCssProvider, PChar(Css), -1, nil);
+  gtk_style_context_add_provider_for_screen(Screen,
+    PGtkStyleProvider(FGtkMenuBarCssProvider),
+    GTK_STYLE_PROVIDER_PRIORITY_USER);
+
+  if Assigned(AForm) and Assigned(AForm.Menu) and AForm.Menu.HandleAllocated then begin
+    MenuBar := PGtkWidget(Pointer(AForm.Menu.Handle));
+    if gtk_type_is_a(gtk_widget_get_type(MenuBar), gtk_menu_bar_get_type()) then begin
+      MenuContext := gtk_widget_get_style_context(MenuBar);
+      Gtk3ApplyMenuBarCssToContext(MenuContext, Css);
+    end;
+  end;
+
+  FGtkMenuBarCssTheme := ATheme;
+  FGtkMenuBarCssThemeSet := True;
+end;
+{$ENDIF}
+
+{$IFDEF LCLGtk2}
+procedure TColorToGdkColor(AColor: TColor; out AGdk: TGdkColor);
+begin
+  AGdk.pixel := 0;
+  AGdk.red := Word(Red(AColor) * 257);
+  AGdk.green := Word(Green(AColor) * 257);
+  AGdk.blue := Word(Blue(AColor) * 257);
+end;
+
+procedure Gtk2ApplyMenuBarWidgetColors(AWidget: PGtkWidget; AFg, ABg: TColor);
+var
+  Fg, Bg: TGdkColor;
+  List, Node: PGList;
+  Child: PGtkWidget;
+begin
+  if AWidget = nil then Exit;
+  TColorToGdkColor(AFg, Fg);
+  TColorToGdkColor(ABg, Bg);
+  gtk_widget_modify_fg(AWidget, GTK_STATE_NORMAL, @Fg);
+  gtk_widget_modify_fg(AWidget, GTK_STATE_PRELIGHT, @Fg);
+  gtk_widget_modify_bg(AWidget, GTK_STATE_NORMAL, @Bg);
+
+  if not GTK_IS_CONTAINER(AWidget) then Exit;
+  List := gtk_container_get_children(GTK_CONTAINER(AWidget));
+  Node := List;
+  while Node <> nil do begin
+    Child := PGtkWidget(Node^.data);
+    gtk_widget_modify_fg(Child, GTK_STATE_NORMAL, @Fg);
+    gtk_widget_modify_fg(Child, GTK_STATE_PRELIGHT, @Fg);
+    Node := Node^.next;
+  end;
+  g_list_free(List);
+end;
+
+procedure ApplyGtk2MenuBarTheme(AForm: TForm; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  MenuBar: PGtkWidget;
+begin
+  if not Assigned(AForm) or not AForm.HandleAllocated then Exit;
+  if AForm.Menu = nil then Exit;
+  if not AForm.Menu.HandleAllocated then Exit;
+
+  MenuBar := PGtkWidget(Pointer(AForm.Menu.Handle));
+  if not GTK_IS_MENU_BAR(MenuBar) then Exit;
+
+  P := ThemePalette(ATheme);
+  Gtk2ApplyMenuBarWidgetColors(MenuBar, P.Text, P.HeaderBg);
+end;
+{$ENDIF}
+
+procedure ApplyPlatformMenuChrome(AForm: TForm; ATheme: TThemeKind);
+begin
+{$IFDEF LCLQt5}
+  ApplyQt5MenuBarTheme(AForm, ATheme);
+{$ENDIF}
+{$IFDEF LCLGtk3}
+  ApplyGtk3MenuBarTheme(AForm, ATheme);
+{$ENDIF}
+{$IFDEF LCLGtk2}
+  ApplyGtk2MenuBarTheme(AForm, ATheme);
+{$ENDIF}
+end;
 
 {$IFDEF WINDOWS}
 type
@@ -108,20 +325,51 @@ begin
   end;
 end;
 
+function EffectiveThemedComboBoxHeight(ACombo: TComboBox): Integer;
+begin
+  if not Assigned(ACombo) then
+    Exit(ThemedComboBoxHeight);
+  if ACombo.HandleAllocated then
+    Result := ACombo.Height
+  else
+    Result := ThemedComboBoxHeight;
+end;
+
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
 var
   P: TThemePalette;
+  Changed: Boolean;
 begin
   if not Assigned(ACombo) then Exit;
   P := ThemePalette(ATheme);
+  Changed := False;
 
-  ACombo.ItemHeight := 22;
-  ACombo.Style := csOwnerDrawFixed;
-  ACombo.Color := P.SurfaceAlt;
-  ACombo.Font.Color := P.Text;
-  ACombo.Font.Name := 'Segoe UI';
-  ACombo.Font.Size := 9;
-  ACombo.Invalidate;
+  if ACombo.Style <> csOwnerDrawFixed then begin
+    ACombo.Style := csOwnerDrawFixed;
+    Changed := True;
+  end;
+  if ACombo.ItemHeight <> ThemedComboBoxItemHeight then begin
+    ACombo.ItemHeight := ThemedComboBoxItemHeight;
+    Changed := True;
+  end;
+  if ACombo.Color <> P.SurfaceAlt then begin
+    ACombo.Color := P.SurfaceAlt;
+    Changed := True;
+  end;
+  if ACombo.Font.Color <> P.Text then begin
+    ACombo.Font.Color := P.Text;
+    Changed := True;
+  end;
+  if ACombo.Font.Name <> 'Segoe UI' then begin
+    ACombo.Font.Name := 'Segoe UI';
+    Changed := True;
+  end;
+  if ACombo.Font.Size <> 9 then begin
+    ACombo.Font.Size := 9;
+    Changed := True;
+  end;
+  if Changed then
+    ACombo.Invalidate;
 end;
 
 procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
@@ -314,6 +562,47 @@ begin
   ATree.Invalidate;
 end;
 
+procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
+  const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(AMemo) then Exit;
+  P := ThemePalette(ATheme);
+  if ABackground = clNone then
+    AMemo.Color := P.SurfaceAlt
+  else
+    AMemo.Color := ABackground;
+  AMemo.Font.Color := P.Text;
+  if AFontName <> '' then
+    AMemo.Font.Name := AFontName;
+end;
+
+procedure SyncThemedMemoWidget(AMemo: TCustomMemo);
+begin
+  if not Assigned(AMemo) then Exit;
+  if not AMemo.HandleAllocated then Exit;
+  AMemo.Font.Assign(AMemo.Font);
+  AMemo.Invalidate;
+end;
+
+{$IFDEF LCLQt5}
+procedure ApplyQt5MemoTheme(AMemo: TCustomMemo; ATheme: TThemeKind);
+var
+  QtWidget: TQtWidget;
+  Sheet: WideString;
+begin
+  if not Assigned(AMemo) then Exit;
+  if not AMemo.HandleAllocated then Exit;
+  QtWidget := TQtWidget(Pointer(AMemo.Handle));
+  Sheet := WideString(
+    'QTextEdit { color: ' + ColorToStyleHex(AMemo.Font.Color) +
+    '; background-color: ' + ColorToStyleHex(AMemo.Color) + '; }');
+  QtWidget.StyleSheet := Sheet;
+  SyncThemedMemoWidget(AMemo);
+end;
+{$ENDIF}
+
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 var
@@ -406,12 +695,20 @@ end;
 
 procedure ApplyPlatformScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
 begin
+  if not Assigned(AControl) then Exit;
 {$IFDEF WINDOWS}
   ApplyWin32ScrollableTheme(AControl, ATheme);
+  if AControl is TCustomMemo then
+    SyncThemedMemoWidget(TCustomMemo(AControl));
 {$ELSE}
+  {$IFDEF LCLQt5}
+  if AControl is TCustomMemo then begin
+    ApplyQt5MemoTheme(TCustomMemo(AControl), ATheme);
+    Exit;
+  end;
+  {$ENDIF}
   // GTK/Cocoa: scrollbars follow the OS widget theme; keep client colors via ApplyTheme.
-  if Assigned(AControl) then
-    AControl.Invalidate;
+  AControl.Invalidate;
 {$ENDIF}
 end;
 
@@ -438,6 +735,7 @@ begin
 {$IFDEF WINDOWS}
   ApplyWin32FormChrome(AForm, ATheme);
 {$ELSE}
+  ApplyPlatformMenuChrome(AForm, ATheme);
   // macOS/Linux: title bar and scrollbars use system appearance unless the OS is in dark mode.
   if Assigned(AForm) then
     AForm.Invalidate;

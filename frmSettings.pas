@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, LCLType,
-  uAppTypes, uAgentTypes, uTheme, uThemedButton, uWorkspaceState, uCustomTabControl,
+  uAppTypes, uAgentTypes, uTheme, uThemedButton, uWorkspaceState, uWorkspaceRegistry,
+  uCustomTabControl,
   uLlmClient, frmModelSearch, frmEditSavedModel;
 
 type
@@ -64,6 +65,7 @@ type
     procedure btnCancelClick(Sender: TObject);
   private
     FState: TWorkspaceState;
+    FRegistry: TWorkspaceRegistry;
     FCurrentTheme: TThemeKind;
     FDialogProvider: TLlmProvider;
     FDefaultModelId: string;
@@ -78,7 +80,7 @@ type
     procedure RefreshModelList;
     procedure ModelSearchAdd(Sender: TObject; const AModelId, ADisplayName: string);
   public
-    class function Execute(AState: TWorkspaceState): Boolean;
+    class function Execute(AState: TWorkspaceState; ARegistry: TWorkspaceRegistry = nil): Boolean;
   end;
 
 implementation
@@ -98,13 +100,14 @@ begin
     Result := M.ModelId;
 end;
 
-class function TSettingsForm.Execute(AState: TWorkspaceState): Boolean;
+class function TSettingsForm.Execute(AState: TWorkspaceState; ARegistry: TWorkspaceRegistry): Boolean;
 var
   Dlg: TSettingsForm;
 begin
   Dlg := TSettingsForm.Create(nil);
   try
     Dlg.FState := AState;
+    Dlg.FRegistry := ARegistry;
     Dlg.LoadFromState;
     Dlg.ApplyTheme(AState.Theme);
     Result := (Dlg.ShowModal = mrOk);
@@ -297,6 +300,9 @@ begin
 
   FState.WorkspaceRoot := Trim(edtWorkspaceRoot.Text);
   FState.WorkspaceName := Trim(edtWorkspaceName.Text);
+
+  if Assigned(FRegistry) and FState.HasActiveWorkspace then
+    FRegistry.UpdateWorkspace(FState.ActiveWorkspaceId, FState.WorkspaceName, FState.WorkspaceRoot);
 end;
 
 procedure TSettingsForm.cboProviderChange(Sender: TObject);
@@ -335,8 +341,7 @@ var
   Prov: TLlmProvider;
 begin
   Prov := CurrentDialogProvider;
-  if FState.AddSavedModel(Prov, AModelId, ADisplayName) >= 0 then
-    RefreshModelList;
+  FState.AddSavedModel(Prov, AModelId, ADisplayName);
 end;
 
 procedure TSettingsForm.btnFetchModelsClick(Sender: TObject);
@@ -375,6 +380,7 @@ begin
     end;
 
     TModelSearchForm.ShowModalSearch(Self, FCurrentTheme, ListResult.Models, @ModelSearchAdd);
+    RefreshModelList;
   finally
     Client.Free;
   end;

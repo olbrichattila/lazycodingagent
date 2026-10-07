@@ -192,10 +192,10 @@ end;
 function TAgentToolRegistry.ExecuteTool(const AName, AArgumentsJson: string;
   AMode: TWorkspaceMode): TToolExecutionResult;
 var
-  Data: TJSONData;
   Args: TJSONObject;
   Tool: TAgentTool;
   PrevContext: TAgentToolContext;
+  ParseErr: string;
 begin
   Result.Success := False;
   Result.Output := '';
@@ -205,22 +205,13 @@ begin
   PrevContext := CurrentToolContext;
   SetCurrentToolContext(FContext);
   try
-    try
-      Data := GetJSON(AArgumentsJson);
-    except
-      on E: Exception do
-      begin
-        Result := ToolResultFromJson(ToolError('JSON argument parsing error: ' + E.Message));
-        Exit;
-      end;
+    if not TryParseToolArguments(AName, AArgumentsJson, Args, ParseErr) then
+    begin
+      Result := ToolResultFromJson(ToolError(ParseErr));
+      Exit;
     end;
 
     try
-      if Data is TJSONObject then
-        Args := TJSONObject(Data)
-      else
-        Args := TJSONObject.Create;
-
       Tool := FindTool(AName);
       if not Assigned(Tool) then
       begin
@@ -241,9 +232,7 @@ begin
 
       Result := Tool.Execute(Args);
     finally
-      if not (Data is TJSONObject) then
-        Args.Free;
-      Data.Free;
+      Args.Free;
     end;
   finally
     SetCurrentToolContext(PrevContext);

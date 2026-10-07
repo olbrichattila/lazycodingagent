@@ -15,14 +15,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  object StatusBar1: TStatusBar
-    Left = 0
-    Height = 23
-    Top = 577
-    Width = 1320
-    Align = alBottom
-    Panels = <>
-  end
   object pnlMainContainer: TPanel
     Left = 0
     Height = 577
@@ -109,6 +101,34 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       TabOrder = 5
     end
   end
+  object splTerminal: TSplitter
+    Left = 0
+    Height = 5
+    Top = 572
+    Width = 1320
+    Align = alBottom
+    MinSize = 120
+    ResizeAnchor = akBottom
+    Visible = False
+    OnMoved = SplTerminalMoved
+  end
+  object pnlTerminalHost: TPanel
+    Left = 0
+    Height = 220
+    Top = 352
+    Width = 1320
+    Align = alBottom
+    BevelOuter = bvNone
+    Visible = False
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 577
+    Width = 1320
+    Align = alBottom
+    Panels = <>
+  end
   object MainMenu1: TMainMenu
     Left = 360
     Top = 12
@@ -125,6 +145,11 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object mnuFileSave: TMenuItem
         Caption = '&Save Workspace'
         OnClick = MnuFileSaveClick
+      end
+      object mnuFileSaveFile: TMenuItem
+        Caption = 'Save &File'
+        ShortCut = 16467
+        OnClick = MnuFileSaveFileClick
       end
       object mnuFileSep1: TMenuItem
         Caption = '-'
@@ -143,6 +168,21 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object mnuViewResetLayout: TMenuItem
         Caption = '&Reset Layout'
         OnClick = MnuViewResetLayoutClick
+      end
+      object mnuViewTerminal: TMenuItem
+        AutoCheck = True
+        Caption = '&Terminal'
+        OnClick = MnuViewTerminalClick
+      end
+      object mnuViewSyntaxSep: TMenuItem
+        Caption = '-'
+      end
+      object mnuViewSyntaxSchemes: TMenuItem
+        Caption = 'Syntax Highlighting &Schemes...'
+        OnClick = MnuViewSyntaxSchemesClick
+      end
+      object mnuViewActiveSchemes: TMenuItem
+        Caption = 'Active Syntax &Scheme'
       end
     end
     object mnuWorkspace: TMenuItem
@@ -183,6 +223,11 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object mnuHelp: TMenuItem
       Caption = '&Help'
+      object mnuHelpUserGuide: TMenuItem
+        Caption = '&User Guide...'
+        ShortCut = 112
+        OnClick = MnuHelpUserGuideClick
+      end
       object mnuHelpAbout: TMenuItem
         Caption = '&About LazyCodingAgent...'
         OnClick = MnuHelpAboutClick

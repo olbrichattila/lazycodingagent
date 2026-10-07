@@ -15,6 +15,8 @@ type
     Top: Integer;
     Width: Integer;
     Height: Integer;
+    { Docked strip height (terminal bottom panel); 0 = use default at runtime. }
+    DockedHeight: Integer;
   end;
 
   TSavedModel = record
@@ -31,6 +33,7 @@ type
   private
     FWorkspaceName: string;
     FWorkspaceRoot: string;
+    FActiveWorkspaceId: string;
     FNavigation: TNavigationItem;
     FMode: TWorkspaceMode;
     FModel: string;
@@ -68,6 +71,8 @@ type
     function IsPanelFloating(AId: TPanelId): Boolean;
     procedure SetPanelBounds(AId: TPanelId; ALeft, ATop, AWidth, AHeight: Integer);
     function GetPanelBounds(AId: TPanelId; out ALeft, ATop, AWidth, AHeight: Integer): Boolean;
+    procedure SetPanelDockedHeight(AId: TPanelId; AHeight: Integer);
+    function GetPanelDockedHeight(AId: TPanelId): Integer;
     procedure Load;
     procedure Save;
 
@@ -85,6 +90,8 @@ type
 
     property WorkspaceName: string read FWorkspaceName write FWorkspaceName;
     property WorkspaceRoot: string read FWorkspaceRoot write FWorkspaceRoot;
+    property ActiveWorkspaceId: string read FActiveWorkspaceId write FActiveWorkspaceId;
+    function HasActiveWorkspace: Boolean;
     property Navigation: TNavigationItem read FNavigation;
     property Mode: TWorkspaceMode read FMode;
     property Model: string read FModel;
@@ -126,11 +133,18 @@ begin
   end;
 end;
 
+function TWorkspaceState.HasActiveWorkspace: Boolean;
+begin
+  Result := (Trim(FActiveWorkspaceId) <> '') and
+    (Trim(FWorkspaceRoot) <> '') and DirectoryExists(FWorkspaceRoot);
+end;
+
 constructor TWorkspaceState.Create;
 begin
   inherited Create;
-  FWorkspaceName := 'LazyCodingAgent';
-  FWorkspaceRoot := GetCurrentDir;
+  FWorkspaceName := '';
+  FWorkspaceRoot := '';
+  FActiveWorkspaceId := '';
   FNavigation := niHome;
   FMode := wmAgent;
   FModel := 'anthropic/claude-3.7-sonnet';
@@ -335,7 +349,13 @@ begin
     FPanels[P].Left := 100 + Ord(P) * 50;
     FPanels[P].Top := 100 + Ord(P) * 50;
     FPanels[P].Width := 500;
-    FPanels[P].Height := 600;
+    if P = piTerminal then begin
+      FPanels[P].Height := 0;
+      FPanels[P].DockedHeight := 0;
+    end else
+      FPanels[P].Height := 600;
+    if P <> piTerminal then
+      FPanels[P].DockedHeight := 0;
   end;
   Changed;
 end;
@@ -415,6 +435,19 @@ begin
   Result := True;
 end;
 
+procedure TWorkspaceState.SetPanelDockedHeight(AId: TPanelId; AHeight: Integer);
+begin
+  if FPanels[AId].DockedHeight <> AHeight then begin
+    FPanels[AId].DockedHeight := AHeight;
+    Changed;
+  end;
+end;
+
+function TWorkspaceState.GetPanelDockedHeight(AId: TPanelId): Integer;
+begin
+  Result := FPanels[AId].DockedHeight;
+end;
+
 procedure TWorkspaceState.Load;
 var
   I: TIniFile;
@@ -437,6 +470,7 @@ begin
     FModel := I.ReadString('Agent', 'Model', FModel);
     FWorkspaceName := I.ReadString('Workspace', 'Name', FWorkspaceName);
     FWorkspaceRoot := I.ReadString('Workspace', 'Root', FWorkspaceRoot);
+    FActiveWorkspaceId := I.ReadString('Workspace', 'ActiveId', FActiveWorkspaceId);
 
     ConfigVersion := I.ReadInteger('LLM', 'ConfigVersion', 1);
     ProvOrd := I.ReadInteger('LLM', 'Provider', Ord(FProvider));
@@ -502,7 +536,13 @@ begin
       FPanels[P].Top := I.ReadInteger(Sec, 'Top', FPanels[P].Top);
       FPanels[P].Width := I.ReadInteger(Sec, 'Width', FPanels[P].Width);
       FPanels[P].Height := I.ReadInteger(Sec, 'Height', FPanels[P].Height);
+      FPanels[P].DockedHeight := I.ReadInteger(Sec, 'DockedHeight', FPanels[P].DockedHeight);
     end;
+
+    { One-time migration: docked height was briefly stored in Height (not float size). }
+    if (FPanels[piTerminal].DockedHeight = 0) and (FPanels[piTerminal].Height >= 120) and
+       (FPanels[piTerminal].Height <= 500) then
+      FPanels[piTerminal].DockedHeight := FPanels[piTerminal].Height;
   finally
     I.Free;
   end;
@@ -525,6 +565,7 @@ begin
     I.WriteString('Agent', 'Model', FModel);
     I.WriteString('Workspace', 'Name', FWorkspaceName);
     I.WriteString('Workspace', 'Root', FWorkspaceRoot);
+    I.WriteString('Workspace', 'ActiveId', FActiveWorkspaceId);
 
     I.WriteInteger('LLM', 'ConfigVersion', LLM_CONFIG_VERSION);
     I.WriteInteger('LLM', 'Provider', Ord(FProvider));
@@ -557,6 +598,7 @@ begin
       I.WriteInteger(Sec, 'Top', FPanels[P].Top);
       I.WriteInteger(Sec, 'Width', FPanels[P].Width);
       I.WriteInteger(Sec, 'Height', FPanels[P].Height);
+      I.WriteInteger(Sec, 'DockedHeight', FPanels[P].DockedHeight);
     end;
   finally
     I.Free;

@@ -65,6 +65,7 @@ type
     TokensUsed: Integer;
     VisualSummary: string; // Summary banner for tool outputs in UI
   end;
+  TChatMessageArray = array of TChatMessage;
 
   { Task / Checklist Item }
   TTaskItem = record

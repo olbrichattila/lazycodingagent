@@ -75,6 +75,11 @@ procedure SetCurrentToolContext(AContext: TAgentToolContext);
 
 function SafeToolText(const S: RawByteString; MaxBytes: Integer = MaxInt): UTF8String;
 function ToolError(const AMessage: string): string;
+function JsonToolArgumentsWellFormed(const S: string): Boolean;
+function TryGetJSONObject(const S: string; out Obj: TJSONObject): Boolean;
+function ToolArgumentsJsonIsValid(const AArgumentsJson: string): Boolean;
+function TryParseToolArguments(const AName, AArgumentsJson: string;
+  out Args: TJSONObject; out ErrMsg: string): Boolean;
 function ToolResultFromJson(const AJson: string): TToolExecutionResult;
 function WorkspaceModeToCaption(AMode: TWorkspaceMode): string;
 function ToolCancelled: Boolean;
@@ -171,9 +176,269 @@ begin
   end;
 end;
 
+function JsonIsWhitespace(C: Char): Boolean; inline;
+begin
+  Result := C in [#9, #10, #13, ' '];
+end;
+
+procedure JsonSkipWhitespace(const S: string; var I: Integer);
+begin
+  while (I <= Length(S)) and JsonIsWhitespace(S[I]) do
+    Inc(I);
+end;
+
+function JsonParseString(const S: string; var I: Integer): Boolean;
+var
+  C: Char;
+begin
+  if (I > Length(S)) or (S[I] <> '"') then Exit(False);
+  Inc(I);
+  while I <= Length(S) do
+  begin
+    C := S[I];
+    if C = '"' then
+    begin
+      Inc(I);
+      Exit(True);
+    end;
+    if C = '\' then
+    begin
+      Inc(I);
+      if I > Length(S) then Exit(False);
+      if S[I] = 'u' then
+      begin
+        if I + 4 > Length(S) then Exit(False);
+        Inc(I, 5);
+        Continue;
+      end;
+      Inc(I);
+      Continue;
+    end;
+    if C in [#10, #13] then Exit(False);
+    Inc(I);
+  end;
+  Result := False;
+end;
+
+function JsonParseLiteral(const S: string; var I: Integer; const Lit: string): Boolean;
+var
+  J: Integer;
+begin
+  for J := 1 to Length(Lit) do
+  begin
+    if (I > Length(S)) or (S[I] <> Lit[J]) then Exit(False);
+    Inc(I);
+  end;
+  Result := True;
+end;
+
+function JsonParseNumber(const S: string; var I: Integer): Boolean;
+var
+  C: Char;
+  SawDigit: Boolean;
+begin
+  SawDigit := False;
+  if (I <= Length(S)) and (S[I] = '-') then Inc(I);
+  while I <= Length(S) do
+  begin
+    C := S[I];
+    if C in ['0'..'9'] then
+    begin
+      SawDigit := True;
+      Inc(I);
+      Continue;
+    end;
+    Break;
+  end;
+  if (I <= Length(S)) and (S[I] = '.') then
+  begin
+    Inc(I);
+    while (I <= Length(S)) and (S[I] in ['0'..'9']) do
+    begin
+      SawDigit := True;
+      Inc(I);
+    end;
+  end;
+  if (I <= Length(S)) and (S[I] in ['e', 'E']) then
+  begin
+    Inc(I);
+    if (I <= Length(S)) and (S[I] in ['+', '-']) then Inc(I);
+    while (I <= Length(S)) and (S[I] in ['0'..'9']) do
+    begin
+      SawDigit := True;
+      Inc(I);
+    end;
+  end;
+  Result := SawDigit;
+end;
+
+function JsonParseValue(const S: string; var I: Integer): Boolean; forward;
+
+function JsonParseArray(const S: string; var I: Integer): Boolean;
+begin
+  if (I > Length(S)) or (S[I] <> '[') then Exit(False);
+  Inc(I);
+  JsonSkipWhitespace(S, I);
+  if (I <= Length(S)) and (S[I] = ']') then
+  begin
+    Inc(I);
+    Exit(True);
+  end;
+  while I <= Length(S) do
+  begin
+    if not JsonParseValue(S, I) then Exit(False);
+    JsonSkipWhitespace(S, I);
+    if I > Length(S) then Exit(False);
+    if S[I] = ']' then
+    begin
+      Inc(I);
+      Exit(True);
+    end;
+    if S[I] <> ',' then Exit(False);
+    Inc(I);
+    JsonSkipWhitespace(S, I);
+  end;
+  Result := False;
+end;
+
+function JsonParseObject(const S: string; var I: Integer): Boolean;
+begin
+  if (I > Length(S)) or (S[I] <> '{') then Exit(False);
+  Inc(I);
+  JsonSkipWhitespace(S, I);
+  if (I <= Length(S)) and (S[I] = '}') then
+  begin
+    Inc(I);
+    Exit(True);
+  end;
+  while I <= Length(S) do
+  begin
+    if not JsonParseString(S, I) then Exit(False);
+    JsonSkipWhitespace(S, I);
+    if (I > Length(S)) or (S[I] <> ':') then Exit(False);
+    Inc(I);
+    JsonSkipWhitespace(S, I);
+    if not JsonParseValue(S, I) then Exit(False);
+    JsonSkipWhitespace(S, I);
+    if I > Length(S) then Exit(False);
+    if S[I] = '}' then
+    begin
+      Inc(I);
+      Exit(True);
+    end;
+    if S[I] <> ',' then Exit(False);
+    Inc(I);
+    JsonSkipWhitespace(S, I);
+  end;
+  Result := False;
+end;
+
+function JsonParseValue(const S: string; var I: Integer): Boolean;
+begin
+  JsonSkipWhitespace(S, I);
+  if I > Length(S) then Exit(False);
+  case S[I] of
+    '"': Exit(JsonParseString(S, I));
+    '{': Exit(JsonParseObject(S, I));
+    '[': Exit(JsonParseArray(S, I));
+    't': Exit(JsonParseLiteral(S, I, 'true'));
+    'f': Exit(JsonParseLiteral(S, I, 'false'));
+    'n': Exit(JsonParseLiteral(S, I, 'null'));
+    '-', '0'..'9': Exit(JsonParseNumber(S, I));
+  else
+    Exit(False);
+  end;
+end;
+
+function JsonToolArgumentsWellFormed(const S: string): Boolean;
+var
+  T: string;
+  I: Integer;
+begin
+  T := Trim(S);
+  if T = '' then Exit(True);
+  I := 1;
+  if not JsonParseObject(T, I) then Exit(False);
+  JsonSkipWhitespace(T, I);
+  Result := I > Length(T);
+end;
+
+function TryGetJSONObject(const S: string; out Obj: TJSONObject): Boolean;
+var
+  Parser: TJSONParser;
+  Data: TJSONData;
+  T: string;
+begin
+  Result := False;
+  Obj := nil;
+  T := Trim(S);
+  if T = '' then
+  begin
+    Obj := TJSONObject.Create;
+    Exit(True);
+  end;
+  if not JsonToolArgumentsWellFormed(T) then
+    Exit;
+  Parser := TJSONParser.Create(T);
+  try
+    try
+      Data := Parser.Parse;
+      if Data is TJSONObject then
+      begin
+        Obj := TJSONObject(Data);
+        Result := True;
+      end
+      else
+        Data.Free;
+    except
+      Result := False;
+    end;
+  finally
+    Parser.Free;
+  end;
+end;
+
+function ToolArgumentsJsonIsValid(const AArgumentsJson: string): Boolean;
+begin
+  Result := JsonToolArgumentsWellFormed(AArgumentsJson);
+end;
+
+function TryParseToolArguments(const AName, AArgumentsJson: string;
+  out Args: TJSONObject; out ErrMsg: string): Boolean;
+var
+  Prefix: string;
+begin
+  Args := nil;
+  ErrMsg := '';
+  if not JsonToolArgumentsWellFormed(AArgumentsJson) then
+  begin
+    Prefix := string(SafeToolText(AArgumentsJson, 120));
+    if Length(Trim(AArgumentsJson)) > Length(Prefix) then
+      Prefix := Prefix + '…';
+    ErrMsg := Format('JSON argument parsing error for tool %s (%d bytes): %s',
+      [AName, Length(AArgumentsJson), Prefix]);
+    if Trim(Prefix) = '' then
+      ErrMsg := Format('JSON argument parsing error for tool %s (empty or invalid JSON)',
+        [AName]);
+    Exit(False);
+  end;
+  if not TryGetJSONObject(AArgumentsJson, Args) then
+  begin
+    Prefix := string(SafeToolText(AArgumentsJson, 120));
+    if Length(Trim(AArgumentsJson)) > Length(Prefix) then
+      Prefix := Prefix + '…';
+    ErrMsg := Format('JSON argument parsing error for tool %s (%d bytes): %s',
+      [AName, Length(AArgumentsJson), Prefix]);
+    if Trim(Prefix) = '' then
+      ErrMsg := Format('JSON argument parsing error for tool %s (empty or invalid JSON)',
+        [AName]);
+    Exit(False);
+  end;
+  Result := True;
+end;
+
 function ToolResultFromJson(const AJson: string): TToolExecutionResult;
 var
-  D: TJSONData;
   O: TJSONObject;
 begin
   Result.Output := AJson;
@@ -181,29 +446,21 @@ begin
   Result.Summary := 'OK';
   if Trim(AJson) = '' then Exit;
   if AJson[1] <> '{' then Exit;
+  if not TryGetJSONObject(AJson, O) then Exit;
   try
-    D := GetJSON(AJson);
-    try
-      if D is TJSONObject then
-      begin
-        O := TJSONObject(D);
-        if O.Find('error') <> nil then
-        begin
-          Result.Success := False;
-          Result.Summary := O.Get('error', 'Error');
-          if O.Find('error_kind') <> nil then
-            Result.Summary := O.Get('error_kind', '') + ': ' + Result.Summary;
-        end
-        else if O.Find('status') <> nil then
-          Result.Summary := O.Get('status', 'success')
-        else
-          Result.Summary := 'OK';
-      end;
-    finally
-      D.Free;
-    end;
-  except
-    Result.Success := True;
+    if O.Find('error') <> nil then
+    begin
+      Result.Success := False;
+      Result.Summary := O.Get('error', 'Error');
+      if O.Find('error_kind') <> nil then
+        Result.Summary := O.Get('error_kind', '') + ': ' + Result.Summary;
+    end
+    else if O.Find('status') <> nil then
+      Result.Summary := O.Get('status', 'success')
+    else
+      Result.Summary := 'OK';
+  finally
+    O.Free;
   end;
 end;
 

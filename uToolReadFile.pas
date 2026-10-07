@@ -64,19 +64,30 @@ begin
     Exit;
   end;
 
+  if (Offset < 1) or (Limit < 1) or (Limit > 2000) then
+  begin
+    Result := ToolResultFromJson(ToolError('offset must be positive and limit must be 1..2000'));
+    Exit;
+  end;
+
   try
     ResolvedPath := ResolveProjectPath(FilePath);
     if not FileExists(ResolvedPath) then
-      raise Exception.Create('File not found: ' + ResolvedPath);
+    begin
+      Result := ToolResultFromJson(ToolError('File not found: ' + ResolvedPath));
+      Exit;
+    end;
 
     Lines := TStringList.Create;
     try
       Lines.Text := ReadTextBytes(ResolvedPath);
-      if (Offset < 1) or (Limit < 1) or (Limit > 2000) then
-        raise Exception.Create('offset must be positive and limit must be 1..2000');
       StartIdx := Offset - 1;
       if (StartIdx >= Lines.Count) and ((Lines.Count > 0) or (Offset <> 1)) then
-        raise Exception.CreateFmt('Offset line out of range; total_lines: %d', [Lines.Count]);
+      begin
+        Result := ToolResultFromJson(ToolError(Format(
+          'Offset line out of range; total_lines: %d', [Lines.Count])));
+        Exit;
+      end;
       EndIdx := StartIdx + Limit;
       if EndIdx > Lines.Count then EndIdx := Lines.Count;
 

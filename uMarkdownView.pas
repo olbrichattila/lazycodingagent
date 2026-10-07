@@ -5,7 +5,7 @@ unit uMarkdownView;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, LCLIntf, IpHtml, uAppTypes, uTheme;
+  Classes, SysUtils, Controls, Forms, Graphics, LCLIntf, IpHtml, uAppTypes, uTheme;
 
 type
   TMarkdownView = class(TIpHtmlPanel)
@@ -15,11 +15,17 @@ type
     FBodyBgCss: string;
     FCodeBgCss: string;
     FLinkCss: string;
+    FMarkdownContent: string;
+    FMarkdownDirty: Boolean;
+    procedure FlushMarkdown;
     procedure HandleHotClick(Sender: TObject);
     class function EscapeHTML(const S: string): string; static;
     class function SafeURL(const S: string): Boolean; static;
     class function RenderInline(const S, ALinkCss: string): string; static;
     function RenderHTML(const AMarkdown: string): string;
+  protected
+    procedure CreateWnd; override;
+    procedure Loaded; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -47,10 +53,20 @@ begin
   Result := Format('#%.2x%.2x%.2x', [R, G, B]);
 end;
 
+procedure TMarkdownView.FlushMarkdown;
+begin
+  if not FMarkdownDirty then Exit;
+  if not ParentFormHandlesReady(Self) then Exit;
+  FMarkdownDirty := False;
+  SetHtmlFromStr(RenderHTML(FMarkdownContent));
+end;
+
 constructor TMarkdownView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FTheme := tkDark;
+  FMarkdownContent := '';
+  FMarkdownDirty := False;
   DefaultTypeFace := 'Segoe UI';
   FixedTypeface := 'Consolas';
   MarginWidth := 10;
@@ -327,20 +343,34 @@ begin
   end;
 end;
 
+procedure TMarkdownView.CreateWnd;
+begin
+  inherited CreateWnd;
+  FlushMarkdown;
+end;
+
+procedure TMarkdownView.Loaded;
+begin
+  inherited Loaded;
+  FlushMarkdown;
+end;
+
 procedure TMarkdownView.SetMarkdown(const AMarkdown: string);
 begin
-  SetHtmlFromStr(RenderHTML(AMarkdown));
+  FMarkdownContent := AMarkdown;
+  FMarkdownDirty := True;
+  FlushMarkdown;
 end;
 
 procedure TMarkdownView.ScrollToBottom;
 var
   ScrollPanel: TIpHtmlInternalPanel;
 begin
+  if not ParentFormHandlesReady(Self) then Exit;
   if MasterFrame = nil then Exit;
   ScrollPanel := TIpHtmlFrameAccess(MasterFrame).GetScrollPanel;
   if ScrollPanel = nil then Exit;
 
-  ScrollPanel.Repaint;
   ScrollPanel.VScroll.Position := High(Integer);
 end;
 

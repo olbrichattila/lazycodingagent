@@ -58,13 +58,14 @@ class procedure TModelSearchForm.ShowModalSearch(AOwner: TComponent; ATheme: TTh
   const AModels: array of TLlmModelInfo; AOnAdd: TModelAddEvent);
 var
   Dlg: TModelSearchForm;
+  I: Integer;
 begin
   Dlg := TModelSearchForm.Create(AOwner);
   try
     Dlg.FTheme := ATheme;
     SetLength(Dlg.FAllModels, Length(AModels));
-    if Length(AModels) > 0 then
-      Move(AModels[0], Dlg.FAllModels[0], Length(AModels) * SizeOf(TLlmModelInfo));
+    for I := 0 to High(AModels) do
+      Dlg.FAllModels[I] := AModels[I];
     Dlg.FOnAdd := AOnAdd;
     Dlg.ApplyTheme(ATheme);
     Dlg.RebuildFilteredList;

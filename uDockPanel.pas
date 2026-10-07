@@ -208,7 +208,8 @@ begin
   if Assigned(FContent) then begin
     FContent.Parent := Self;
     FContent.Align := alClient;
-    ReAlign;
+    if ParentFormHandlesReady(Self) then
+      ReAlign;
   end;
 end;
 

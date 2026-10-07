@@ -1,0 +1,33 @@
+---
+description: Lazarus LCL layout — avoid ChangeBounds loops (Align vs SetBounds, combos, tabs, detach)
+alwaysApply: true
+---
+
+# LCL layout and ChangeBounds stability
+
+## What triggers loops
+
+`TControl.ChangeBounds loop detected` means two layout owners fought in one cascade: manual `SetBounds`, LCL `Align`/`ReAlign`, and/or native control preferred size (especially `TComboBox`).
+
+## Do not
+
+- Mix **`Align` (especially `alClient`)** with manual **`SetBounds`** on the **same** control.
+- Set **`TComboBox.Height`** in theme helpers (`StyleComboBox`) while another place (`UpdateLayout`, `.lfm`) sets a different height.
+- Use ad-hoc combo heights (23, 24, 28) in panels; use **`uTheme`** constants or `EffectiveThemedComboBoxHeight`.
+- Run layout from `Resize` without a **re-entrancy guard** (`FUpdatingLayout` / `FInLayout`) when the handler calls `SetBounds` on children.
+- Manual `SetBounds(0, HeaderH, …)` on tab pages; use **`AdjustClientRect`** on the parent ([`uCustomTabControl.pas`](uCustomTabControl.pas)).
+
+## Do
+
+- **One geometry owner** per control: either LCL alignment **or** explicit manual layout, not both.
+- Custom tab headers: override **`AdjustClientRect`**, active page **`Align := alClient`**, defer page layout until **`Loaded`** when streaming `.lfm`.
+- Themed combos: **`StyleComboBox`** for colors/style/`ItemHeight` only; **caller** sets bounds using **`EffectiveThemedComboBoxHeight`** from `uTheme` (not ad-hoc pixel heights).
+- Designer forms: stream **compatible** `Height`/`ItemHeight` on `TComboBox` in `.lfm` matching runtime theme metrics (`ThemedComboBoxHeight`, `ThemedComboBoxItemHeight`).
+- After **reparent** (detach/attach in [`uDockPanel.pas`](uDockPanel.pas)): expect resize + theme; ensure `ApplyTheme` and layout order do not re-fight combo height.
+- Verify: detach panel, resize, theme toggle — no ChangeBounds dialog.
+
+## References
+
+- [`uChatPanel.pas`](uChatPanel.pas) — `FUpdatingLayout`, footer combos
+- [`uCustomTabControl.pas`](uCustomTabControl.pas) — `AdjustClientRect`, `FInLayout`
+- [`uTheme.pas`](uTheme.pas) — combo metrics and `StyleComboBox`

@@ -30,10 +30,10 @@ object SettingsForm: TSettingsForm
       end
       object cboProvider: TComboBox
         Left = 16
-        Height = 23
+        Height = 25
         Top = 36
         Width = 504
-        ItemHeight = 15
+        ItemHeight = 22
         ItemIndex = 0
         Items.Strings = (
           'OpenRouter'

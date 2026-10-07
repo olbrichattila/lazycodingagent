@@ -49,6 +49,8 @@ type
     property Width;
   end;
 
+  TTabCloseAllowEvent = function(Sender: TObject): Boolean of object;
+
   { TLazyTabControl }
   TLazyTabControl = class(TCustomControl)
   private
@@ -60,6 +62,7 @@ type
     FHoverCloseIndex: Integer;
     FOnChange: TNotifyEvent;
     FOnTabClose: TNotifyEvent;
+    FOnTabCloseAllow: TTabCloseAllowEvent;
     FInLayout: Boolean;
     function GetPageCount: Integer;
     function GetPage(AIndex: Integer): TLazyTabPage;
@@ -72,8 +75,10 @@ type
     procedure InternalRegisterPage(APage: TLazyTabPage);
     procedure InternalUnregisterPage(APage: TLazyTabPage);
     function SkipPageLayoutUpdates: Boolean;
+    function LayoutPagesAllowed: Boolean;
     procedure UpdatePagesLayout;
   protected
+    procedure CreateWnd; override;
     procedure AdjustClientRect(var Rect: TRect); override;
     procedure Loaded; override;
     procedure Paint; override;
@@ -96,6 +101,7 @@ type
     property Theme: TThemeKind read FTheme write ApplyTheme;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnTabClose: TNotifyEvent read FOnTabClose write FOnTabClose;
+    property OnTabCloseAllow: TTabCloseAllowEvent read FOnTabCloseAllow write FOnTabCloseAllow;
   published
     property Align;
     property Anchors;
@@ -226,6 +232,23 @@ begin
   end;
 end;
 
+function TLazyTabControl.LayoutPagesAllowed: Boolean;
+var
+  Root: TComponent;
+begin
+  if SkipPageLayoutUpdates then
+    Exit(False);
+  if csLoading in ComponentState then
+    Exit(False);
+  Root := Owner;
+  while Assigned(Root) do begin
+    if csLoading in Root.ComponentState then
+      Exit(False);
+    Root := Root.Owner;
+  end;
+  Result := ParentFormHandlesReady(Self);
+end;
+
 function TLazyTabControl.GetPageCount: Integer;
 begin
   if not Assigned(FPages) then
@@ -256,7 +279,7 @@ begin
     FPages.Add(APage);
     if FActivePageIndex < 0 then
       FActivePageIndex := 0;
-    if SkipPageLayoutUpdates or (csLoading in ComponentState) then
+    if not LayoutPagesAllowed then
       Exit;
     UpdatePagesLayout;
     Invalidate;
@@ -273,7 +296,7 @@ begin
     FPages.Delete(Idx);
     if FActivePageIndex >= FPages.Count then
       FActivePageIndex := FPages.Count - 1;
-    if SkipPageLayoutUpdates or (csLoading in ComponentState) then
+    if not LayoutPagesAllowed then
       Exit;
     UpdatePagesLayout;
     Invalidate;
@@ -287,7 +310,7 @@ begin
   Result.Parent := Self;
   if FActivePageIndex < 0 then
     SetActivePageIndex(0)
-  else
+  else if LayoutPagesAllowed then
     UpdatePagesLayout;
   Invalidate;
 end;
@@ -324,7 +347,8 @@ begin
   if (AIndex >= 0) and (AIndex < FPages.Count) then begin
     if FActivePageIndex <> AIndex then begin
       FActivePageIndex := AIndex;
-      UpdatePagesLayout;
+      if LayoutPagesAllowed then
+        UpdatePagesLayout;
       Invalidate;
       if Assigned(FOnChange) then
         FOnChange(Self);
@@ -368,6 +392,7 @@ var
   I: Integer;
   P: TLazyTabPage;
 begin
+  if not LayoutPagesAllowed then Exit;
   if FInLayout then Exit;
   FInLayout := True;
   try
@@ -387,6 +412,12 @@ begin
   end;
 end;
 
+procedure TLazyTabControl.CreateWnd;
+begin
+  inherited CreateWnd;
+  UpdatePagesLayout;
+end;
+
 procedure TLazyTabControl.AdjustClientRect(var Rect: TRect);
 begin
   inherited AdjustClientRect(Rect);
@@ -396,7 +427,8 @@ end;
 procedure TLazyTabControl.Loaded;
 begin
   inherited Loaded;
-  UpdatePagesLayout;
+  if LayoutPagesAllowed then
+    UpdatePagesLayout;
   Invalidate;
 end;
 
@@ -564,7 +596,8 @@ begin
           if PageObj.CanClose then begin
             CloseR := GetCloseButtonRect(TabR);
             if PtInRect(CloseR, Point(X, Y)) then begin
-              // Close clicked
+              if Assigned(FOnTabCloseAllow) and not FOnTabCloseAllow(PageObj) then
+                Exit;
               if Assigned(FOnTabClose) then
                 FOnTabClose(PageObj);
               RemovePage(PageObj);

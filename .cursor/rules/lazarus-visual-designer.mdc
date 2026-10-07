@@ -14,6 +14,7 @@ alwaysApply: true
 
 ## Layout conventions
 
+- See [`lazarus-lcl-layout.mdc`](lazarus-lcl-layout.mdc) for **ChangeBounds** / dual-layout rules (`Align` vs `SetBounds`, combos, tabs, detach).
 - Prefer `Align`, `Anchors`, and `BevelOuter = bvNone` on panels.
 - Place **host `TPanel`s** on the main form in the designer; create complex custom controls at runtime **inside** those hosts (e.g. `InitWorkspaceSubControls` in mainunit).
 - **Exceptions (code-built only):** dock/chat/nav internals (`TDockPanel`, `TChatPanel`, …), dynamic `TDetachedPanelForm` in [uDockPanel.pas](uDockPanel.pas).

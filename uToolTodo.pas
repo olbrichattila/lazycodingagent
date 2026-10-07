@@ -34,7 +34,7 @@ end;
 function TToolTodo.GetDefinition: TToolDef;
 begin
   Result.Name := 'todo';
-  Result.Description := 'Read or replace chat-local tasks; use stable IDs and pending, in_progress or completed status.';
+  Result.Description := 'Read or replace chat-local tasks. replace: pass items array of objects with id, text, and status (pending, in_progress, completed). Example: {"action":"replace","items":[{"id":"1","text":"Inspect files","status":"pending"}]}';
   SetLength(Result.Params, 2);
   Result.Params[0].Name := 'action';
   Result.Params[0].ParamType := 'string';
@@ -42,65 +42,139 @@ begin
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'items';
   Result.Params[1].ParamType := 'array';
-  Result.Params[1].Description := 'Task list for replace.';
+  Result.Params[1].Description := 'Full task list for replace; each object needs id, text, status.';
   Result.Params[1].Required := False;
+end;
+
+function JsonFieldString(AObj: TJSONObject; const ANames: array of string): string;
+var
+  I: Integer;
+  D: TJSONData;
+begin
+  Result := '';
+  if AObj = nil then Exit;
+  for I := Low(ANames) to High(ANames) do begin
+    D := AObj.Find(ANames[I]);
+    if D = nil then Continue;
+    if D is TJSONString then
+      Exit(TJSONString(D).AsString)
+    else
+      Exit(D.AsJSON);
+  end;
+end;
+
+function NormalizeTaskStatus(const S: string): string;
+var
+  L: string;
+begin
+  L := LowerCase(Trim(S));
+  if L = '' then Exit('');
+  if (L = 'pending') or (L = 'todo') or (L = 'open') then Exit('pending');
+  if (L = 'in_progress') or (L = 'in progress') or (L = 'in-progress') or (L = 'doing') or (L = 'active') then
+    Exit('in_progress');
+  if (L = 'completed') or (L = 'complete') or (L = 'done') or (L = 'closed') then Exit('completed');
+  Result := Trim(S);
+end;
+
+function ResolveItemsArray(Args: TJSONObject): TJSONArray;
+begin
+  Result := Args.Find('items') as TJSONArray;
+  if Result = nil then
+    Result := Args.Find('tasks') as TJSONArray;
+end;
+
+function NormalizeReplaceItems(const Items: TJSONArray; out AError: string): TJSONArray;
+var
+  I: Integer;
+  Src, Norm: TJSONObject;
+  ID, Text, Status: string;
+  IDs: TStringList;
+  OutArr: TJSONArray;
+begin
+  AError := '';
+  OutArr := TJSONArray.Create;
+  IDs := TStringList.Create;
+  try
+    for I := 0 to Items.Count - 1 do begin
+      if not (Items[I] is TJSONObject) then begin
+        AError := 'Task must be an object';
+        Exit(nil);
+      end;
+      Src := TJSONObject(Items[I]);
+      ID := Trim(JsonFieldString(Src, ['id', 'task_id']));
+      Text := Trim(JsonFieldString(Src, ['text', 'content', 'description', 'title']));
+      Status := NormalizeTaskStatus(JsonFieldString(Src, ['status', 'state']));
+      if (ID = '') and (Text <> '') then
+        ID := IntToStr(I + 1);
+      if (ID = '') or (Text = '') then begin
+        AError := 'Task requires id, text, and status';
+        Exit(nil);
+      end;
+      if Status = '' then begin
+        AError := 'Task requires id, text, and status';
+        Exit(nil);
+      end;
+      if IDs.IndexOf(ID) >= 0 then begin
+        AError := 'Task IDs must be nonempty and unique; text is required';
+        Exit(nil);
+      end;
+      if not ((Status = 'pending') or (Status = 'in_progress') or (Status = 'completed')) then begin
+        AError := 'Invalid task status';
+        Exit(nil);
+      end;
+      IDs.Add(ID);
+      Norm := TJSONObject.Create;
+      Norm.Add('id', ID);
+      Norm.Add('text', Text);
+      Norm.Add('status', Status);
+      OutArr.Add(Norm);
+    end;
+    Result := OutArr;
+    OutArr := nil;
+  finally
+    IDs.Free;
+    if OutArr <> nil then
+      OutArr.Free;
+  end;
 end;
 
 function TToolTodo.Execute(const Args: TJSONObject): TToolExecutionResult;
 var
-  Action, ID, Status, Json: string;
-  Items, CopyItems: TJSONArray;
-  Item: TJSONObject;
-  IDs: TStringList;
-  I: Integer;
+  Action, Json: string;
+  Items, Normalized: TJSONArray;
   O: TJSONObject;
   Session: TAgentToolSession;
+  Err: string;
 begin
   Session := FContext.Session;
   Action := Args.Get('action', 'read');
 
-  try
-    if Action = 'replace' then
-    begin
-      Items := Args.Find('items') as TJSONArray;
-      if Items = nil then raise Exception.Create('replace requires items');
-      if Items.Count > 100 then raise Exception.Create('At most 100 tasks are supported');
-      IDs := TStringList.Create;
-      try
-        for I := 0 to Items.Count - 1 do
-        begin
-          if not (Items[I] is TJSONObject) then raise Exception.Create('Task must be an object');
-          Item := TJSONObject(Items[I]);
-          if (Item.Find('id') = nil) or (Item.Find('text') = nil) or (Item.Find('status') = nil) then
-            raise Exception.Create('Task requires id, text, and status');
-          ID := Item.Get('id', '');
-          Status := Item.Get('status', '');
-          if (Trim(ID) = '') or (Trim(Item.Get('text', '')) = '') or (IDs.IndexOf(ID) >= 0) then
-            raise Exception.Create('Task IDs must be nonempty and unique; text is required');
-          if not ((Status = 'pending') or (Status = 'in_progress') or (Status = 'completed')) then
-            raise Exception.Create('Invalid task status');
-          IDs.Add(ID);
-        end;
-        CopyItems := Items.Clone as TJSONArray;
-        Session.Tasks.Free;
-        Session.Tasks := CopyItems;
-      finally
-        IDs.Free;
-      end;
-    end
-    else if Action <> 'read' then
-      raise Exception.Create('action must be read or replace');
-
-    O := TJSONObject.Create;
+  if Action = 'replace' then begin
+    Items := ResolveItemsArray(Args);
+    if Items = nil then
+      Exit(ToolResultFromJson(ToolError('replace requires items')));
+    if Items.Count > 100 then
+      Exit(ToolResultFromJson(ToolError('At most 100 tasks are supported')));
+    Normalized := NormalizeReplaceItems(Items, Err);
+    if Normalized = nil then
+      Exit(ToolResultFromJson(ToolError(Err)));
     try
-      O.Add('items', Session.Tasks.Clone);
-      Json := O.AsJSON;
+      Session.Tasks.Free;
+      Session.Tasks := Normalized;
+      Normalized := nil;
     finally
-      O.Free;
+      if Normalized <> nil then
+        Normalized.Free;
     end;
-  except
-    on E: Exception do
-      Json := ToolError(E.Message);
+  end else if Action <> 'read' then
+    Exit(ToolResultFromJson(ToolError('action must be read or replace')));
+
+  O := TJSONObject.Create;
+  try
+    O.Add('items', Session.Tasks.Clone);
+    Json := O.AsJSON;
+  finally
+    O.Free;
   end;
   Result := ToolResultFromJson(Json);
 end;

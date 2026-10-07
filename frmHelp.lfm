@@ -1,0 +1,102 @@
+object HelpForm: THelpForm
+  Left = 200
+  Height = 600
+  Top = 120
+  Width = 900
+  BorderStyle = bsSizeable
+  Caption = 'User Guide'
+  ClientHeight = 560
+  ClientWidth = 884
+  Font.Name = 'Segoe UI'
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  OnCreate = FormCreate
+  OnShow = FormShow
+  object pnlTop: TPanel
+    Left = 0
+    Height = 56
+    Top = 0
+    Width = 884
+    Align = alTop
+    BevelOuter = bvNone
+    ClientHeight = 56
+    ClientWidth = 884
+    TabOrder = 0
+    object lblSearch: TLabel
+      Left = 12
+      Height = 15
+      Top = 8
+      Width = 78
+      Caption = 'Search topics'
+    end
+    object edtSearch: TEdit
+      Left = 12
+      Height = 23
+      Top = 28
+      Width = 860
+      Anchors = [akTop, akLeft, akRight]
+      OnChange = edtSearchChange
+      TabOrder = 0
+    end
+  end
+  object splMain: TSplitter
+    Left = 260
+    Height = 456
+    Top = 56
+    Width = 5
+  end
+  object pnlTopics: TPanel
+    Left = 0
+    Height = 456
+    Top = 56
+    Width = 260
+    Align = alLeft
+    BevelOuter = bvNone
+    ClientHeight = 456
+    ClientWidth = 260
+    TabOrder = 1
+    object lstTopics: TListBox
+      Left = 0
+      Height = 456
+      Top = 0
+      Width = 260
+      Align = alClient
+      ItemHeight = 22
+      OnClick = lstTopicsClick
+      OnDrawItem = lstTopicsDrawItem
+      TabOrder = 0
+    end
+  end
+  object pnlPreviewHost: TPanel
+    Left = 265
+    Height = 456
+    Top = 56
+    Width = 619
+    Align = alClient
+    BevelOuter = bvNone
+    ClientHeight = 456
+    ClientWidth = 619
+    TabOrder = 2
+  end
+  object pnlBottom: TPanel
+    Left = 0
+    Height = 48
+    Top = 512
+    Width = 884
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 48
+    ClientWidth = 884
+    TabOrder = 3
+    object btnClose: TThemedButton
+      Left = 788
+      Height = 28
+      Top = 10
+      Width = 88
+      Anchors = [akTop, akRight]
+      Caption = 'Close'
+      OnClick = btnCloseClick
+      TabOrder = 0
+    end
+  end
+end

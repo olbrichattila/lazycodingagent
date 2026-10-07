@@ -1,0 +1,38 @@
+[
+  {
+    "id": "getting-started",
+    "title": "Getting started",
+    "file": "getting-started.md",
+    "keywords": ["workspace", "project", "open", "settings", "api key", "model"]
+  },
+  {
+    "id": "workspace-layout",
+    "title": "Workspace layout and panels",
+    "file": "workspace-layout.md",
+    "keywords": ["navigation", "dock", "detach", "terminal", "utility", "splitter", "theme"]
+  },
+  {
+    "id": "chat-and-modes",
+    "title": "Chat, sessions, and modes",
+    "file": "chat-and-modes.md",
+    "keywords": ["session", "archive", "ask", "plan", "agent", "model", "debugging"]
+  },
+  {
+    "id": "project-rules",
+    "title": "Project rules",
+    "file": "project-rules.md",
+    "keywords": ["rules", ".rules", "prompt", "guidelines"]
+  },
+  {
+    "id": "how-the-agent-works",
+    "title": "How the agent works",
+    "file": "how-the-agent-works.md",
+    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational"]
+  },
+  {
+    "id": "tools-reference",
+    "title": "Agent tools reference",
+    "file": "tools-reference.md",
+    "keywords": ["read_file", "write_file", "shell", "patch", "grep", "git", "todo", "plan"]
+  }
+]

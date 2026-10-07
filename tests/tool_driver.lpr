@@ -119,6 +119,19 @@ begin
               Messages.Free;
             end;
           end
+          else if Name = '_json_wellformed' then
+          begin
+            if A.Find('args') = nil then Args := '{}'
+            else if A.Types['args'] = jtString then Args := A.Get('args', '{}')
+            else Args := A.Find('args').AsJSON;
+            OutObj := TJSONObject.Create;
+            try
+              OutObj.Add('wellformed', JsonToolArgumentsWellFormed(Args));
+              WriteLn(OutObj.AsJSON);
+            finally
+              OutObj.Free;
+            end;
+          end
           else if Name = '_declarations' then
           begin
             D := TJSONArray.Create;

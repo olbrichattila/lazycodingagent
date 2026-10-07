@@ -73,24 +73,72 @@ type
 
 implementation
 
-{$IFNDEF MSWINDOWS}
 uses
-  fphttpclient, opensslsockets;
-{$ENDIF}
-{$IFDEF MSWINDOWS}
-uses
-  uWindowsHTTP;
-{$ENDIF}
+  uAgentToolBase
+  {$IFNDEF MSWINDOWS}
+  , fphttpclient, opensslsockets
+  {$ENDIF}
+  {$IFDEF MSWINDOWS}
+  , uWindowsHTTP
+  {$ENDIF}
+  ;
+
+function ExtractFunctionArgumentsJson(AFuncObj: TJSONObject): string;
+var
+  Node: TJSONData;
+begin
+  Result := '{}';
+  if not Assigned(AFuncObj) then Exit;
+  Node := AFuncObj.Find('arguments');
+  if Node = nil then Exit;
+  case Node.JSONType of
+    jtString: Result := Node.AsString;
+    jtObject, jtArray: Result := Node.AsJSON;
+  else
+    Result := '{}';
+  end;
+end;
+
+function SanitizeToolArgumentsForPayload(const AArgumentsJson: string): string;
+begin
+  if ToolArgumentsJsonIsValid(AArgumentsJson) then
+    Result := AArgumentsJson
+  else
+    Result := '{"_parse_error":"invalid stored tool arguments"}';
+end;
+
+function HttpFailureMessage(AStatusCode: Integer; const AStatusText: string): string;
+begin
+  if AStatusCode = 0 then
+    Result := 'No HTTP response (timed out or connection closed before headers).'
+  else if Trim(AStatusText) = '' then
+    Result := Format('HTTP Error %d', [AStatusCode])
+  else
+    Result := Format('HTTP Error %d: %s', [AStatusCode, AStatusText]);
+end;
 
 function HttpConnectionErrorMessage(const E: Exception): string;
 begin
   if E is EInOutError then
     Result := 'HTTPS requires OpenSSL. Install system libssl (Linux/macOS) or Lazarus SSL support. ' + E.Message
+  {$IFNDEF MSWINDOWS}
+  else if E is EHTTPClient then
+    Result := 'HTTP Error: ' + E.Message
+  {$ENDIF}
   else
     Result := 'Connection Exception: ' + E.Message;
 end;
 
 {$IFNDEF MSWINDOWS}
+procedure ConfigureHttpClientTimeouts(AClient: TFPHTTPClient; ATimeoutMs: Integer);
+begin
+  AClient.IOTimeout := ATimeoutMs;
+  if ATimeoutMs < 30000 then
+    AClient.ConnectTimeout := ATimeoutMs
+  else
+    AClient.ConnectTimeout := 30000;
+end;
+
 procedure ApplyHeadersToHttpClient(AClient: TFPHTTPClient; AHeaders: TStrings);
 var
   I, P: Integer;
@@ -165,7 +213,7 @@ begin
           ToolCallObj.Add('type', 'function');
           FuncObj := TJSONObject.Create;
           FuncObj.Add('name', Msg.ToolCalls[J].Name);
-          FuncObj.Add('arguments', Msg.ToolCalls[J].ArgumentsJson);
+          FuncObj.Add('arguments', SanitizeToolArgumentsForPayload(Msg.ToolCalls[J].ArgumentsJson));
           ToolCallObj.Add('function', FuncObj);
           ToolCallsArray.Add(ToolCallObj);
         end;
@@ -273,7 +321,7 @@ begin
                 if ToolCallObj.IndexOfName('function') >= 0 then begin
                   FuncObj := ToolCallObj.Objects['function'];
                   Result.ToolCalls[I].Name := FuncObj.Get('name', '');
-                  Result.ToolCalls[I].ArgumentsJson := FuncObj.Get('arguments', '{}');
+                  Result.ToolCalls[I].ArgumentsJson := ExtractFunctionArgumentsJson(FuncObj);
                 end;
               end;
             end;
@@ -305,6 +353,8 @@ begin
   Result := TStringList.Create;
   if AIncludeJsonContentType then
     Result.Add('Content-Type: application/json');
+  Result.Add('Accept: application/json');
+  Result.Add('User-Agent: LazyCodingAgent/1.0');
   if Trim(FApiKey) <> '' then begin
     if FProvider = lpAnthropic then begin
       Result.Add('x-api-key: ' + Trim(FApiKey));
@@ -431,19 +481,21 @@ begin
       Result := (StatusCode >= 200) and (StatusCode < 300);
       if not Result then begin
         if Trim(AResponse) = '' then
-          AResponse := Format('HTTP Error %d', [StatusCode]);
+          AResponse := HttpFailureMessage(StatusCode, '');
       end;
       {$ELSE}
       Client := TFPHTTPClient.Create(nil);
       try
         ApplyHeadersToHttpClient(Client, Headers);
-        Client.IOTimeout := FTimeoutMs div 1000;
+        ConfigureHttpClientTimeouts(Client, FTimeoutMs);
+        Client.AllowRedirect := True;
+        Client.MaxRedirects := 5;
         Client.Get(AUrl, RespStream);
         AResponse := RespStream.DataString;
         Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
         if not Result then begin
           if Trim(AResponse) = '' then
-            AResponse := Format('HTTP Error %d: %s', [Client.ResponseStatusCode, Client.ResponseStatusText]);
+            AResponse := HttpFailureMessage(Client.ResponseStatusCode, Client.ResponseStatusText);
         end;
       finally
         Client.Free;
@@ -486,21 +538,23 @@ begin
       Result := (StatusCode >= 200) and (StatusCode < 300);
       if not Result then begin
         if Trim(AResponse) = '' then
-          AResponse := Format('HTTP Error %d', [StatusCode]);
+          AResponse := HttpFailureMessage(StatusCode, '');
       end;
       {$ELSE}
       Client := TFPHTTPClient.Create(nil);
       ReqStream := TStringStream.Create(APayload, TEncoding.UTF8);
       try
         ApplyHeadersToHttpClient(Client, Headers);
-        Client.IOTimeout := FTimeoutMs div 1000;
+        ConfigureHttpClientTimeouts(Client, FTimeoutMs);
+        Client.AllowRedirect := True;
+        Client.MaxRedirects := 5;
         Client.RequestBody := ReqStream;
         Client.Post(AUrl, RespStream);
         AResponse := RespStream.DataString;
         Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
         if not Result then begin
           if Trim(AResponse) = '' then
-            AResponse := Format('HTTP Error %d: %s', [Client.ResponseStatusCode, Client.ResponseStatusText]);
+            AResponse := HttpFailureMessage(Client.ResponseStatusCode, Client.ResponseStatusText);
         end;
       finally
         ReqStream.Free;
@@ -527,10 +581,15 @@ begin
   if SendHttpGet(Url, RespStr) then
     Result := ParseModelsResponse(RespStr)
   else begin
-    Result := ParseModelsResponse(RespStr);
-    if not Result.Success then begin
-      if Result.ErrorMessage = '' then
+    RespStr := Trim(RespStr);
+    if (RespStr <> '') and ((RespStr[1] = '{') or (RespStr[1] = '[')) then begin
+      Result := ParseModelsResponse(RespStr);
+      if (not Result.Success) and (Result.ErrorMessage = '') then
         Result.ErrorMessage := RespStr;
+    end else begin
+      Result.Success := False;
+      SetLength(Result.Models, 0);
+      Result.ErrorMessage := RespStr;
     end;
     Result.Success := False;
   end;
@@ -566,9 +625,15 @@ begin
     Result := ParseOpenAiResponse(RespStr);
   end else begin
     // Try to parse error JSON if available
-    Result := ParseOpenAiResponse(RespStr);
-    if Result.ErrorMessage = '' then
+    RespStr := Trim(RespStr);
+    if (RespStr <> '') and ((RespStr[1] = '{') or (RespStr[1] = '[')) then begin
+      Result := ParseOpenAiResponse(RespStr);
+      if Result.ErrorMessage = '' then
+        Result.ErrorMessage := RespStr;
+    end else begin
+      FillChar(Result, SizeOf(Result), 0);
       Result.ErrorMessage := RespStr;
+    end;
     Result.Success := False;
   end;
 end;
