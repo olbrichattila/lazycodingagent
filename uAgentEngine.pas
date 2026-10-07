@@ -5,7 +5,7 @@ unit uAgentEngine;
 interface
 
 uses
-  Classes, SysUtils, uAppTypes, uAgentTypes, uLlmClient, uAgentTools;
+  Classes, SysUtils, uAppTypes, uAgentTypes, uLlmClient, uAgentTools, uAgentRules;
 
 type
   { Event types for UI notification }
@@ -32,6 +32,7 @@ type
 
     procedure SetState(ANewState: TAgentState);
     procedure AppendMessage(const AMsg: TChatMessage);
+    procedure ApplySystemPrompt(AMode: TWorkspaceMode);
     function BuildSystemPrompt(AMode: TWorkspaceMode): string;
   public
     constructor Create(const AWorkspaceRoot: string);
@@ -40,6 +41,8 @@ type
     procedure ClearConversation;
     procedure StartRun(const AUserPrompt: string; AMode: TWorkspaceMode; const AModel: string);
     procedure RequestCancel;
+    function ExecuteToolDirect(const AName, AArgumentsJson: string;
+      AMode: TWorkspaceMode): TToolExecutionResult;
 
     function GetMessageCount: Integer;
     function GetMessage(AIndex: Integer): TChatMessage;
@@ -66,6 +69,8 @@ begin
 
   FClient := TLlmClient.Create;
   FContext := TAgentToolContext.Create(AWorkspaceRoot);
+  FContext.SetCancelFlag(@FCancelRequested);
+  FContext.SetCancelDeadline(0);
   FTools := TAgentToolRegistry.Create(FContext);
   SetLength(FMessages, 0);
 end;
@@ -102,36 +107,99 @@ begin
 end;
 
 function TAgentEngine.BuildSystemPrompt(AMode: TWorkspaceMode): string;
+var
+  RulesText, ToolsInfo, WorkingDir: string;
 begin
-  Result := 'You are LazyCodingAgent, an autonomous AI software engineer and coding assistant working inside the user''s Free Pascal / Lazarus project.' + LineEnding;
-  Result := Result + 'Current workspace root: ' + FContext.WorkspaceRoot + LineEnding + LineEnding;
+  WorkingDir := FContext.WorkspaceRoot;
+  ToolsInfo := FTools.ToolGuidance(AMode);
 
   case AMode of
-    wmAsk:
-      begin
-        Result := Result + 'MODE: ASK (Q&A)' + LineEnding;
-        Result := Result + 'Help the user by explaining code, answering architecture or language questions, and providing code examples. Do not modify workspace files unless explicitly requested.' + LineEnding;
-      end;
     wmPlan:
-      begin
-        Result := Result + 'MODE: PLAN (Architecture & Specs)' + LineEnding;
-        Result := Result + 'Formulate architectural plans, step-by-step checklists, and design docs. Use the `todo` tool to track tasks and keep items organized.' + LineEnding;
-      end;
+      Result :=
+        'You are an expert software architect planning development in the current project.' + LineEnding +
+        'Active Mode: Plan' + LineEnding +
+        'Current Project Directory: ' + WorkingDir + LineEnding + LineEnding +
+        ToolsInfo +
+        'Instructions:' + LineEnding +
+        '- This agent is working on a project. For project tasks, always inspect the actual files and use list_directory/glob/search_code/read_file before making claims.' + LineEnding +
+        '- Use inspection tools, cached diagnostics, and task tracking.' + LineEnding +
+        '- Only create .md files inside ' + IncludeTrailingPathDelimiter(WorkingDir) + '.plan' + DirectorySeparator + ', using create_plan_file. Do not modify other project files. Shell commands and compiler builds are unavailable.' + LineEnding +
+        '- Produce a structured, actionable Markdown plan and save it with create_plan_file. The tool chooses a timestamped filename under .plan/.' + LineEnding +
+        '- If clarification is needed, ask questions in chat without saving a plan. Otherwise, mark any completed plan returned in chat with <proposed_plan> and </proposed_plan> on separate lines, so the app can save and preview it if necessary.' + LineEnding +
+        '- Do not implement the plan.';
+
     wmAgent:
-      begin
-        Result := Result + 'MODE: AGENT (Autopilot Execution)' + LineEnding;
-        Result := Result + 'You have full access to workspace tools: read_file, write_file, list_directory, search_code, run_process, diagnostics, todo.' + LineEnding;
-        Result := Result + '1. Always inspect files first before making assumptions.' + LineEnding;
-        Result := Result + '2. Execute code edits systematically and test with diagnostics.' + LineEnding;
-        Result := Result + '3. Always provide a clear, concise summary of changes made when finished.' + LineEnding;
-      end;
+      Result :=
+        'You are LazyCodingAgent, an autonomous coding agent working on the current project, integrated into Free Lazarus IDE / Free Pascal.' + LineEnding +
+        'Active Mode: Agent' + LineEnding +
+        'Current Project Directory: ' + WorkingDir + LineEnding + LineEnding +
+        ToolsInfo + LineEnding +
+        'Instructions:' + LineEnding +
+        '- For project tasks, always inspect the actual files with list_directory/glob/search_code/read_file before making claims or changes; do not guess at file contents.' + LineEnding +
+        '- Implement the user request fully using the available project tools.' + LineEnding +
+        '- If apply_patch reports a context mismatch, reread the affected file and retry with exact current lines; never guess or use fuzzy context.' + LineEnding +
+        '- The apply_patch patch argument contains only a raw unified diff: --- a/file.pas, +++ b/file.pas, @@ -1 +1 @@, -old, +new on separate lines. Do not include prose, Markdown fences, or *** Begin Patch markers.' + LineEnding +
+        '- If apply_patch returns hunk_count_mismatch or incomplete_hunk, recount the @@ old/new line counts: every hunk line must start with space, -, or +; blank lines are invalid.' + LineEnding +
+        {$IFDEF UNIX}
+        '- For shell, use /bin/sh syntax (&&, ;, $?, etc.).' + LineEnding +
+        {$ELSE}
+        '- For shell, use cmd.exe syntax (&, >, exit /b, etc.).' + LineEnding +
+        {$ENDIF}
+        '- When diagnostics cannot start the resolved toolchain, explain the missing dependency/PATH requirement. When a build fails, use its preserved stdout/stderr and parsed messages to diagnose the failure.' + LineEnding +
+        '- Output clean, robust Free Pascal code compatible with the Lazarus Component Library (LCL).' + LineEnding +
+        '- Work systematically step by step until the user task is fully resolved.' + LineEnding +
+        '- Finish with a short summary of what was accomplished and any checks actually performed. State unfinished work or failures clearly.';
+
+    else
+      Result :=
+        'You are an expert software assistant working in the current project.' + LineEnding +
+        'Active Mode: Ask' + LineEnding +
+        'Current Project Directory: ' + WorkingDir + LineEnding + LineEnding +
+        ToolsInfo + LineEnding +
+        'Instructions:' + LineEnding +
+        '- For project questions, always inspect the actual files with list_directory/glob/search_code/read_file before answering.' + LineEnding +
+        '- This is Ask mode: use inspection tools, cached diagnostics, and task tracking. Do not write or create files, call write tools, or propose file-write actions.' + LineEnding +
+        '- Answer questions directly and accurately using what you learned from the project.';
   end;
+
+  Result := Result + LineEnding + LineEnding +
+    'Tool results are JSON objects. Read error and error_kind fields to recover from failures.';
+
+  RulesText := TAgentRules.ReadAll(FContext.WorkspaceRoot);
+  if RulesText <> '' then
+    Result := Result + LineEnding + LineEnding +
+      'Project Rules (from .rules/*.md):' + LineEnding + RulesText;
+end;
+
+procedure TAgentEngine.ApplySystemPrompt(AMode: TWorkspaceMode);
+var
+  SysMsg: TChatMessage;
+  I: Integer;
+begin
+  SysMsg := StringToChatRole('system');
+  SysMsg.Content := BuildSystemPrompt(AMode);
+  if (Length(FMessages) > 0) and (FMessages[0].Role = crSystem) then
+    FMessages[0] := SysMsg
+  else if Length(FMessages) = 0 then
+    FMessages := [SysMsg]
+  else begin
+    SetLength(FMessages, Length(FMessages) + 1);
+    for I := High(FMessages) downto 1 do
+      FMessages[I] := FMessages[I - 1];
+    FMessages[0] := SysMsg;
+  end;
+end;
+
+function TAgentEngine.ExecuteToolDirect(const AName, AArgumentsJson: string;
+  AMode: TWorkspaceMode): TToolExecutionResult;
+begin
+  Result := FTools.ExecuteTool(AName, AArgumentsJson, AMode);
 end;
 
 procedure TAgentEngine.ClearConversation;
 begin
   SetLength(FMessages, 0);
-  FContext.ClearTasks;
+  FContext.ClearSession;
   SetState(asIdle);
 end;
 
@@ -156,7 +224,7 @@ procedure TAgentEngine.StartRun(
   const AModel: string
 );
 var
-  SysMsg, UserMsg, AssistantMsg, ToolMsg: TChatMessage;
+  UserMsg, AssistantMsg, ToolMsg: TChatMessage;
   ToolDefs: array of TToolDef;
   Resp: TLlmResponse;
   StepCount, I: Integer;
@@ -169,12 +237,7 @@ begin
   if Trim(AModel) <> '' then
     FClient.Model := AModel;
 
-  // Add system message if starting fresh
-  if Length(FMessages) = 0 then begin
-    SysMsg := StringToChatRole('system');
-    SysMsg.Content := BuildSystemPrompt(AMode);
-    AppendMessage(SysMsg);
-  end;
+  ApplySystemPrompt(AMode);
 
   // Append user message
   UserMsg := StringToChatRole('user');
@@ -182,13 +245,8 @@ begin
   AppendMessage(UserMsg);
 
   StepCount := 0;
-  if AMode = wmAgent then
-    ToolDefs := FTools.GetToolDefinitions
-  else if AMode = wmPlan then begin
-    // Plan mode provides todo, read_file, search_code, list_directory
-    ToolDefs := FTools.GetToolDefinitions;
-  end else
-    SetLength(ToolDefs, 0);
+  FContext.Mode := AMode;
+  ToolDefs := FTools.GetToolDefinitions(AMode);
 
   while (StepCount < FMaxSteps) and not FCancelRequested do begin
     Inc(StepCount);
@@ -233,7 +291,7 @@ begin
       if Assigned(FOnToolCall) then
         FOnToolCall(Self, Resp.ToolCalls[I].Name, Resp.ToolCalls[I].ArgumentsJson);
 
-      ToolResult := FTools.ExecuteTool(Resp.ToolCalls[I].Name, Resp.ToolCalls[I].ArgumentsJson);
+      ToolResult := FTools.ExecuteTool(Resp.ToolCalls[I].Name, Resp.ToolCalls[I].ArgumentsJson, AMode);
 
       if Assigned(FOnToolResult) then
         FOnToolResult(Self, Resp.ToolCalls[I].Name, ToolResult);

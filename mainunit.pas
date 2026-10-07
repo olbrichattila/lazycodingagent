@@ -7,11 +7,12 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   ComCtrls, Menus, uAppTypes, uAgentTypes, uAgentTools, uTheme, uWorkspaceState, uDockPanel,
-  uNavigationPanel, uChatPanel, uAppLogo, uAgentEngine, frmSettings;
+  uNavigationPanel, uChatPanel, uAppLogo, uAgentEngine, uCustomTabControl, frmSettings,
+  frmWorkspaceRules, uUtilityPlanTab, fpjson, jsonparser;
 
 type
-  { TForm1 }
-  TForm1 = class(TForm)
+  { TLazyCodingAgentForm }
+  TLazyCodingAgentForm = class(TForm)
     MainMenu1: TMainMenu;
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
@@ -25,6 +26,8 @@ type
     mnuWindow: TMenuItem;
     mnuPanelsVisibility: TMenuItem;
     mnuWorkspace: TMenuItem;
+    mnuWorkspaceSepRules: TMenuItem;
+    mnuWorkspaceProjectRules: TMenuItem;
     mnuAgent: TMenuItem;
     mnuAgentClearHistory: TMenuItem;
     mnuAgentStop: TMenuItem;
@@ -47,6 +50,8 @@ type
 
     // Published Event Handlers (Form Designer connected)
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormDestroy(Sender: TObject);
     procedure MnuViewToggleThemeClick(Sender: TObject);
     procedure MnuViewResetLayoutClick(Sender: TObject);
@@ -57,11 +62,13 @@ type
     procedure MnuAgentClearHistoryClick(Sender: TObject);
     procedure MnuAgentStopClick(Sender: TObject);
     procedure MnuSettingsOptionsClick(Sender: TObject);
+    procedure MnuWorkspaceProjectRulesClick(Sender: TObject);
     procedure MnuHelpAboutClick(Sender: TObject);
   private
     FState: TWorkspaceState;
     FAgent: TAgentEngine;
     FUpdatingState: Boolean;
+    FPendingInitialDockLayout: Boolean;
 
     // Sub-components hosted inside visually designed panels
     FNavRail: TNavRailControl;
@@ -75,13 +82,24 @@ type
     FReservedMemo: TMemo;
 
     FDockUtility: TDockPanel;
-    FPageControlUtility: TPageControl;
-    FTabSheetBlank: TTabSheet;
+    FPageControlUtility: TLazyTabControl;
+    FTabSheetBlank: TLazyTabPage;
+    FCurrentRunMode: TWorkspaceMode;
+    FPlanSavedThisRun: Boolean;
+
+    function ParsePlanToolSuccess(const AResult: TToolExecutionResult;
+      out APath, AContent: string): Boolean;
+    procedure OpenPlanInUtilityTab(const APath, AContent: string);
+    procedure TrySaveProposedPlanFromChat;
+    procedure PlanBuildRequested(Sender: TObject; const APlanPath, APlanContent: string);
+    procedure ApplyUtilityPlanTabThemes;
 
     procedure InitWorkspaceSubControls;
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
+    procedure ApplyDockPanelsLayout;
     procedure ApplyAllThemes;
+    procedure ApplyPlatformChromeThemes;
     procedure RebuildWindowMenu;
 
     procedure NavRailSelect(Sender: TObject);
@@ -102,21 +120,22 @@ type
     procedure MenuTogglePanel(Sender: TObject);
     procedure MenuDetachPanel(Sender: TObject);
     procedure MenuAttachPanel(Sender: TObject);
+    procedure FinalizeDockPanelForClose(ADock: TDockPanel; AId: TPanelId);
   public
     property State: TWorkspaceState read FState;
     property Agent: TAgentEngine read FAgent;
   end;
 
 var
-  Form1: TForm1;
+  LazyCodingAgentForm: TLazyCodingAgentForm;
 
 implementation
 
 {$R *.lfm}
 
-{ TForm1 }
+{ TLazyCodingAgentForm }
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
   Caption := 'LazyCodingAgent — AI Workspace';
   FUpdatingState := False;
@@ -140,13 +159,44 @@ begin
   FAgent.Client.MaxTokens := FState.MaxTokens;
   FAgent.MaxSteps := FState.MaxSteps;
 
+  mnuWorkspaceSepRules.Tag := -1;
+  mnuWorkspaceProjectRules.Tag := -1;
+
   InitWorkspaceSubControls;
   PopulateMenusAndCombos;
 
+  FPendingInitialDockLayout := True;
   StateChanged(Self);
 end;
 
-procedure TForm1.FormDestroy(Sender: TObject);
+procedure TLazyCodingAgentForm.FormShow(Sender: TObject);
+begin
+  if FPendingInitialDockLayout then begin
+    FPendingInitialDockLayout := False;
+    ApplyDockPanelsLayout;
+  end;
+  ApplyPlatformChromeThemes;
+end;
+
+procedure TLazyCodingAgentForm.FinalizeDockPanelForClose(ADock: TDockPanel; AId: TPanelId);
+begin
+  if not Assigned(ADock) or not Assigned(ADock.FloatingForm) then Exit;
+  with ADock.FloatingForm do
+    FState.SetPanelBounds(AId, Left, Top, Width, Height);
+  ADock.PrepareForApplicationClose;
+end;
+
+procedure TLazyCodingAgentForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  CanClose := True;
+  if not Assigned(FState) then Exit;
+  FinalizeDockPanelForClose(FDockNav, piNavigation);
+  FinalizeDockPanelForClose(FDockChat, piChat);
+  FinalizeDockPanelForClose(FDockReserved, piReserved);
+  FinalizeDockPanelForClose(FDockUtility, piUtility);
+end;
+
+procedure TLazyCodingAgentForm.FormDestroy(Sender: TObject);
 begin
   if Assigned(FAgent) then
     FreeAndNil(FAgent);
@@ -157,7 +207,7 @@ begin
   end;
 end;
 
-procedure TForm1.InitWorkspaceSubControls;
+procedure TLazyCodingAgentForm.InitWorkspaceSubControls;
 begin
   // 1. Navigation Rail hosted inside pnlNavRailHost
   FNavRail := TNavRailControl.Create(pnlNavRailHost);
@@ -212,34 +262,102 @@ begin
   FDockUtility.Align := alClient;
   FDockUtility.Configure(piUtility, PanelCaption(piUtility), @DockPanelAction);
 
-  FPageControlUtility := TPageControl.Create(FDockUtility);
-  FTabSheetBlank := FPageControlUtility.AddTabSheet;
-  FTabSheetBlank.Caption := 'Workspace Scratchpad';
+  FPageControlUtility := TLazyTabControl.Create(FDockUtility);
+  FTabSheetBlank := FPageControlUtility.AddPage('Workspace Scratchpad');
+  FTabSheetBlank.CanClose := False;
   FDockUtility.Content := FPageControlUtility;
+  FCurrentRunMode := wmAgent;
+  FPlanSavedThisRun := False;
 end;
 
-procedure TForm1.PopulateMenusAndCombos;
+procedure TLazyCodingAgentForm.PopulateMenusAndCombos;
 var
   Nav: TNavigationItem;
   SubItem: TMenuItem;
+  I: Integer;
 begin
-  // Populate Workspace Menu
-  mnuWorkspace.Clear;
-  for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
+  // Remove dynamic navigation entries; keep designer-defined items (separator, rules).
+  I := 0;
+  while I < mnuWorkspace.Count do begin
+    if (mnuWorkspace.Items[I].Tag >= Ord(Low(TNavigationItem))) and
+       (mnuWorkspace.Items[I].Tag <= Ord(High(TNavigationItem))) then
+      mnuWorkspace.Delete(I)
+    else
+      Inc(I);
+  end;
+
+  for Nav := High(TNavigationItem) downto Low(TNavigationItem) do begin
     SubItem := TMenuItem.Create(mnuWorkspace);
     SubItem.Caption := NavigationCaption(Nav);
     SubItem.Hint := NavigationHint(Nav);
     SubItem.Tag := Ord(Nav);
     SubItem.OnClick := @MenuSelectNav;
-    mnuWorkspace.Add(SubItem);
+    mnuWorkspace.Insert(0, SubItem);
   end;
 
   RebuildWindowMenu;
 end;
 
-procedure TForm1.StateChanged(Sender: TObject);
+procedure TLazyCodingAgentForm.ApplyDockPanelsLayout;
 var
   L, T, W, H: Integer;
+begin
+  // Navigation Dock Panel
+  pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and not FState.IsPanelFloating(piNavigation);
+  splNav.Visible := pnlNavHost.Visible;
+  if FState.IsPanelFloating(piNavigation) then begin
+    if FState.GetPanelBounds(piNavigation, L, T, W, H) then
+      FDockNav.DetachToWindow(L, T, W, H);
+  end else begin
+    if FDockNav.IsDetached then
+      FDockNav.AttachToHost(pnlNavHost);
+    if not FState.IsPanelVisible(piNavigation) and Assigned(FDockNav.FloatingForm) then
+      FDockNav.FloatingForm.Hide;
+  end;
+
+  // Chat Dock Panel
+  pnlChatHost.Visible := FState.IsPanelVisible(piChat) and not FState.IsPanelFloating(piChat);
+  if FState.IsPanelFloating(piChat) then begin
+    if FState.GetPanelBounds(piChat, L, T, W, H) then
+      FDockChat.DetachToWindow(L, T, W, H);
+  end else begin
+    if FDockChat.IsDetached then
+      FDockChat.AttachToHost(pnlChatHost);
+    if not FState.IsPanelVisible(piChat) and Assigned(FDockChat.FloatingForm) then
+      FDockChat.FloatingForm.Hide;
+  end;
+
+  // Reserved Dock Panel
+  pnlReservedHost.Visible := FState.IsPanelVisible(piReserved) and not FState.IsPanelFloating(piReserved);
+  splReserved.Visible := pnlReservedHost.Visible;
+  if FState.IsPanelFloating(piReserved) then begin
+    if FState.GetPanelBounds(piReserved, L, T, W, H) then
+      FDockReserved.DetachToWindow(L, T, W, H);
+  end else begin
+    if FDockReserved.IsDetached then
+      FDockReserved.AttachToHost(pnlReservedHost);
+    if not FState.IsPanelVisible(piReserved) and Assigned(FDockReserved.FloatingForm) then
+      FDockReserved.FloatingForm.Hide;
+  end;
+
+  // Utility Dock Panel
+  pnlUtilityHost.Visible := FState.IsPanelVisible(piUtility) and not FState.IsPanelFloating(piUtility);
+  splUtility.Visible := pnlUtilityHost.Visible;
+  if FState.IsPanelFloating(piUtility) then begin
+    if FState.GetPanelBounds(piUtility, L, T, W, H) then
+      FDockUtility.DetachToWindow(L, T, W, H);
+  end else begin
+    if FDockUtility.IsDetached then
+      FDockUtility.AttachToHost(pnlUtilityHost);
+    if not FState.IsPanelVisible(piUtility) and Assigned(FDockUtility.FloatingForm) then
+      FDockUtility.FloatingForm.Hide;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.StateChanged(Sender: TObject);
+var
+  I, N: Integer;
+  Models: array of TSavedModel;
 begin
   if FUpdatingState then Exit;
   FUpdatingState := True;
@@ -256,75 +374,28 @@ begin
       FAgent.Context.WorkspaceRoot := FState.WorkspaceRoot;
     end;
 
-    // 1. Navigation View Selection
     if Assigned(FNavRail) then
       FNavRail.SetSelected(FState.Navigation);
     if Assigned(FNavContent) then
       FNavContent.SetSelected(FState.Navigation, FState.WorkspaceName, FState.WorkspaceRoot);
 
-    // 2. Chat Mode and Model
     if Assigned(FChatContent) then begin
+      N := FState.SavedModelCount(FState.Provider);
+      SetLength(Models, N);
+      for I := 0 to N - 1 do
+        Models[I] := FState.GetSavedModel(FState.Provider, I);
+      FChatContent.SetAvailableModels(Models);
       FChatContent.SetWorkspace(FState.WorkspaceName);
       FChatContent.SetMode(FState.Mode);
       FChatContent.SetModel(FState.Model);
     end;
 
-    // 3. Navigation Dock Panel
-    pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and not FState.IsPanelFloating(piNavigation);
-    splNav.Visible := pnlNavHost.Visible;
-    if FState.IsPanelFloating(piNavigation) then begin
-      if FState.GetPanelBounds(piNavigation, L, T, W, H) then
-        FDockNav.DetachToWindow(L, T, W, H);
-    end else begin
-      if FDockNav.IsDetached then
-        FDockNav.AttachToHost(pnlNavHost);
-      if not FState.IsPanelVisible(piNavigation) and Assigned(FDockNav.FloatingForm) then
-        FDockNav.FloatingForm.Hide;
-    end;
+    if not FPendingInitialDockLayout then
+      ApplyDockPanelsLayout;
 
-    // 4. Chat Dock Panel
-    pnlChatHost.Visible := FState.IsPanelVisible(piChat) and not FState.IsPanelFloating(piChat);
-    if FState.IsPanelFloating(piChat) then begin
-      if FState.GetPanelBounds(piChat, L, T, W, H) then
-        FDockChat.DetachToWindow(L, T, W, H);
-    end else begin
-      if FDockChat.IsDetached then
-        FDockChat.AttachToHost(pnlChatHost);
-      if not FState.IsPanelVisible(piChat) and Assigned(FDockChat.FloatingForm) then
-        FDockChat.FloatingForm.Hide;
-    end;
-
-    // 5. Reserved Dock Panel
-    pnlReservedHost.Visible := FState.IsPanelVisible(piReserved) and not FState.IsPanelFloating(piReserved);
-    splReserved.Visible := pnlReservedHost.Visible;
-    if FState.IsPanelFloating(piReserved) then begin
-      if FState.GetPanelBounds(piReserved, L, T, W, H) then
-        FDockReserved.DetachToWindow(L, T, W, H);
-    end else begin
-      if FDockReserved.IsDetached then
-        FDockReserved.AttachToHost(pnlReservedHost);
-      if not FState.IsPanelVisible(piReserved) and Assigned(FDockReserved.FloatingForm) then
-        FDockReserved.FloatingForm.Hide;
-    end;
-
-    // 6. Utility Dock Panel
-    pnlUtilityHost.Visible := FState.IsPanelVisible(piUtility) and not FState.IsPanelFloating(piUtility);
-    splUtility.Visible := pnlUtilityHost.Visible;
-    if FState.IsPanelFloating(piUtility) then begin
-      if FState.GetPanelBounds(piUtility, L, T, W, H) then
-        FDockUtility.DetachToWindow(L, T, W, H);
-    end else begin
-      if FDockUtility.IsDetached then
-        FDockUtility.AttachToHost(pnlUtilityHost);
-      if not FState.IsPanelVisible(piUtility) and Assigned(FDockUtility.FloatingForm) then
-        FDockUtility.FloatingForm.Hide;
-    end;
-
-    // Apply Themes
     ApplyAllThemes;
     RebuildWindowMenu;
 
-    // Status bar summary
     StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s  |  Status: %s',
       [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model, AgentStateToString(FAgent.State)]);
   finally
@@ -332,7 +403,7 @@ begin
   end;
 end;
 
-procedure TForm1.ApplyAllThemes;
+procedure TLazyCodingAgentForm.ApplyAllThemes;
 var
   P: TThemePalette;
 begin
@@ -342,7 +413,7 @@ begin
   Font.Color := P.Text;
   pnlMainContainer.Color := P.Background;
 
-  pnlNavRailHost.Color := P.Surface;
+  pnlNavRailHost.Color := P.RailBg;
   pnlNavHost.Color := P.Surface;
   pnlChatHost.Color := P.Background;
   pnlReservedHost.Color := P.Surface;
@@ -371,14 +442,26 @@ begin
 
   if Assigned(FDockUtility) then FDockUtility.ApplyTheme(FState.Theme);
   if Assigned(FPageControlUtility) then begin
-    FPageControlUtility.Color := P.Surface;
-    FPageControlUtility.Font.Color := P.Text;
+    FPageControlUtility.ApplyTheme(FState.Theme);
+    ApplyUtilityPlanTabThemes;
   end;
 
+  ApplyPlatformChromeThemes;
   Invalidate;
 end;
 
-procedure TForm1.RebuildWindowMenu;
+procedure TLazyCodingAgentForm.ApplyPlatformChromeThemes;
+begin
+  ApplyPlatformChrome(Self, FState.Theme);
+  if Assigned(FReservedMemo) then
+    ApplyPlatformScrollableTheme(FReservedMemo, FState.Theme);
+  if Assigned(FNavContent) then
+    FNavContent.ApplyPlatformChrome(FState.Theme);
+  if Assigned(FChatContent) then
+    FChatContent.ApplyPlatformChrome(FState.Theme);
+end;
+
+procedure TLazyCodingAgentForm.RebuildWindowMenu;
 var
   P: TPanelId;
   Item, SubItem: TMenuItem;
@@ -417,12 +500,12 @@ begin
   end;
 end;
 
-procedure TForm1.NavRailSelect(Sender: TObject);
+procedure TLazyCodingAgentForm.NavRailSelect(Sender: TObject);
 begin
   FState.SetNavigation(FNavRail.Selected);
 end;
 
-procedure TForm1.DockPanelAction(Sender: TObject; AId: TPanelId; AAction: TDockPanelAction);
+procedure TLazyCodingAgentForm.DockPanelAction(Sender: TObject; AId: TPanelId; AAction: TDockPanelAction);
 begin
   case AAction of
     dpaHide:
@@ -442,8 +525,10 @@ begin
   end;
 end;
 
-procedure TForm1.ChatPrompt(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string);
+procedure TLazyCodingAgentForm.ChatPrompt(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string);
 begin
+  FCurrentRunMode := AMode;
+  FPlanSavedThisRun := False;
   FChatContent.SetRunning(True);
   try
     FAgent.StartRun(APrompt, AMode, AModel);
@@ -452,65 +537,195 @@ begin
   end;
 end;
 
-procedure TForm1.ChatModeChange(Sender: TObject; AMode: TWorkspaceMode);
+procedure TLazyCodingAgentForm.ChatModeChange(Sender: TObject; AMode: TWorkspaceMode);
 begin
   FState.SetMode(AMode);
 end;
 
-procedure TForm1.ChatModelChange(Sender: TObject; const AModel: string);
+procedure TLazyCodingAgentForm.ChatModelChange(Sender: TObject; const AModel: string);
 begin
   FState.SetModel(AModel);
 end;
 
-procedure TForm1.ChatCancel(Sender: TObject);
+procedure TLazyCodingAgentForm.ChatCancel(Sender: TObject);
 begin
   if Assigned(FAgent) then
     FAgent.RequestCancel;
 end;
 
-procedure TForm1.AgentStateChange(Sender: TObject; AOldState, ANewState: TAgentState);
+procedure TLazyCodingAgentForm.AgentStateChange(Sender: TObject; AOldState, ANewState: TAgentState);
 begin
   StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s  |  Status: %s',
     [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model, AgentStateToString(ANewState)]);
+  if (ANewState = asFinished) and (FCurrentRunMode = wmPlan) and not FPlanSavedThisRun then
+    TrySaveProposedPlanFromChat;
   Application.ProcessMessages;
 end;
 
-procedure TForm1.AgentMessageAdded(Sender: TObject; const AMsg: TChatMessage);
+procedure TLazyCodingAgentForm.AgentMessageAdded(Sender: TObject; const AMsg: TChatMessage);
 begin
-  if Assigned(FChatContent) then
-    FChatContent.AppendMessage(AMsg);
+  if Assigned(FChatContent) then begin
+    if AMsg.Role = crTool then
+      FChatContent.AppendToolMessage(AMsg, FState.DebuggingMode)
+    else
+      FChatContent.AppendMessage(AMsg);
+  end;
   if Assigned(FNavContent) and (AMsg.Role = crTool) then
     FNavContent.AppendLog(Format('Tool Result: %s', [AMsg.VisualSummary]));
   Application.ProcessMessages;
 end;
 
-procedure TForm1.AgentToolCall(Sender: TObject; const AToolName, AArgs: string);
+procedure TLazyCodingAgentForm.AgentToolCall(Sender: TObject; const AToolName, AArgs: string);
 begin
   if Assigned(FNavContent) then
     FNavContent.AppendLog(Format('Tool Invoked: %s(%s)', [AToolName, AArgs]));
   Application.ProcessMessages;
 end;
 
-procedure TForm1.AgentToolResult(Sender: TObject; const AToolName: string; const AResult: TToolExecutionResult);
+procedure TLazyCodingAgentForm.AgentToolResult(Sender: TObject; const AToolName: string; const AResult: TToolExecutionResult);
+var
+  PlanPath, PlanContent: string;
 begin
   if Assigned(FNavContent) then
     FNavContent.AppendLog(Format('Tool Finished: %s => %s', [AToolName, AResult.Summary]));
+  if SameText(AToolName, 'create_plan_file') then begin
+    if ParsePlanToolSuccess(AResult, PlanPath, PlanContent) and (FCurrentRunMode = wmPlan) then begin
+      FPlanSavedThisRun := True;
+      OpenPlanInUtilityTab(PlanPath, PlanContent);
+    end;
+  end;
   Application.ProcessMessages;
 end;
 
-procedure TForm1.MenuSelectNav(Sender: TObject);
+function TLazyCodingAgentForm.ParsePlanToolSuccess(const AResult: TToolExecutionResult;
+  out APath, AContent: string): Boolean;
+var
+  Data: TJSONData;
+  Obj: TJSONObject;
+begin
+  Result := False;
+  APath := '';
+  AContent := '';
+  if not AResult.Success then Exit;
+  try
+    Data := GetJSON(AResult.Output);
+    try
+      if Data is TJSONObject then begin
+        Obj := TJSONObject(Data);
+        if SameText(Obj.Get('status', ''), 'success') then begin
+          APath := Obj.Get('path', '');
+          AContent := Obj.Get('content', '');
+          Result := (APath <> '') and (AContent <> '');
+        end;
+      end;
+    finally
+      Data.Free;
+    end;
+  except
+    Result := False;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.OpenPlanInUtilityTab(const APath, AContent: string);
+var
+  Page: TLazyTabPage;
+  Tab: TUtilityPlanTab;
+  Cap: string;
+begin
+  if not Assigned(FPageControlUtility) then Exit;
+  FState.SetPanelVisible(piUtility, True);
+  ApplyDockPanelsLayout;
+
+  Cap := ExtractFileName(APath);
+  if Cap = '' then
+    Cap := 'Plan';
+  Page := FPageControlUtility.AddPage(Cap);
+  Page.CanClose := True;
+  Tab := TUtilityPlanTab.Create(Page);
+  Tab.Parent := Page;
+  Tab.Align := alClient;
+  Tab.OnBuild := @PlanBuildRequested;
+  Tab.LoadPlan(APath, AContent);
+  Tab.ApplyTheme(FState.Theme);
+  FPageControlUtility.ActivePage := Page;
+end;
+
+procedure TLazyCodingAgentForm.TrySaveProposedPlanFromChat;
+var
+  I, PlanStart, PlanEnd: Integer;
+  Msg: TChatMessage;
+  PlanContent, PlanPath: string;
+  Args: TJSONObject;
+  Res: TToolExecutionResult;
+begin
+  if FPlanSavedThisRun then Exit;
+  for I := FAgent.GetMessageCount - 1 downto 0 do begin
+    Msg := FAgent.GetMessage(I);
+    if Msg.Role <> crAssistant then Continue;
+    PlanStart := Pos('<proposed_plan>', Msg.Content);
+    PlanEnd := Pos('</proposed_plan>', Msg.Content);
+    if (PlanStart <= 0) or (PlanEnd <= PlanStart) then Exit;
+    PlanContent := Trim(Copy(Msg.Content, PlanStart + Length('<proposed_plan>'),
+      PlanEnd - PlanStart - Length('<proposed_plan>')));
+    if PlanContent = '' then Exit;
+    Args := TJSONObject.Create;
+    try
+      Args.Add('content', PlanContent);
+      Res := FAgent.ExecuteToolDirect('create_plan_file', Args.AsJSON, wmPlan);
+    finally
+      Args.Free;
+    end;
+    if ParsePlanToolSuccess(Res, PlanPath, PlanContent) then begin
+      FPlanSavedThisRun := True;
+      OpenPlanInUtilityTab(PlanPath, PlanContent);
+    end;
+    Exit;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.PlanBuildRequested(Sender: TObject; const APlanPath, APlanContent: string);
+var
+  Prompt: string;
+begin
+  if not Assigned(FChatContent) then Exit;
+  if FChatContent.IsRunning then Exit;
+  FState.SetMode(wmAgent);
+  FChatContent.SetMode(wmAgent);
+  Prompt := 'Implement the plan saved at ' + APlanPath +
+    '. First inspect the project files, then carry out the plan completely.' +
+    LineEnding + LineEnding + APlanContent;
+  FChatContent.SubmitPrompt(Prompt);
+end;
+
+procedure TLazyCodingAgentForm.ApplyUtilityPlanTabThemes;
+var
+  I: Integer;
+  Page: TLazyTabPage;
+  Tab: TUtilityPlanTab;
+begin
+  if not Assigned(FPageControlUtility) then Exit;
+  for I := 0 to FPageControlUtility.PageCount - 1 do begin
+    Page := FPageControlUtility.Pages[I];
+    if (Page.ControlCount > 0) and (Page.Controls[0] is TUtilityPlanTab) then begin
+      Tab := TUtilityPlanTab(Page.Controls[0]);
+      Tab.ApplyTheme(FState.Theme);
+    end;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.MenuSelectNav(Sender: TObject);
 begin
   if Sender is TMenuItem then
     FState.SetNavigation(TNavigationItem(TMenuItem(Sender).Tag));
 end;
 
-procedure TForm1.MenuSelectMode(Sender: TObject);
+procedure TLazyCodingAgentForm.MenuSelectMode(Sender: TObject);
 begin
   if Sender is TMenuItem then
     FState.SetMode(TWorkspaceMode(TMenuItem(Sender).Tag));
 end;
 
-procedure TForm1.MenuTogglePanel(Sender: TObject);
+procedure TLazyCodingAgentForm.MenuTogglePanel(Sender: TObject);
 var
   P: TPanelId;
 begin
@@ -520,19 +735,19 @@ begin
   end;
 end;
 
-procedure TForm1.MenuDetachPanel(Sender: TObject);
+procedure TLazyCodingAgentForm.MenuDetachPanel(Sender: TObject);
 begin
   if Sender is TMenuItem then
     DockPanelAction(Self, TPanelId(TMenuItem(Sender).Tag), dpaDetach);
 end;
 
-procedure TForm1.MenuAttachPanel(Sender: TObject);
+procedure TLazyCodingAgentForm.MenuAttachPanel(Sender: TObject);
 begin
   if Sender is TMenuItem then
     DockPanelAction(Self, TPanelId(TMenuItem(Sender).Tag), dpaAttach);
 end;
 
-procedure TForm1.MnuViewToggleThemeClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuViewToggleThemeClick(Sender: TObject);
 begin
   if FState.Theme = tkDark then
     FState.SetTheme(tkLight)
@@ -540,12 +755,12 @@ begin
     FState.SetTheme(tkDark);
 end;
 
-procedure TForm1.MnuViewResetLayoutClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuViewResetLayoutClick(Sender: TObject);
 begin
   FState.ResetLayout;
 end;
 
-procedure TForm1.MnuFileNewClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuFileNewClick(Sender: TObject);
 var
   WName: string;
 begin
@@ -556,7 +771,7 @@ begin
   end;
 end;
 
-procedure TForm1.MnuFileOpenClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuFileOpenClick(Sender: TObject);
 var
   Dir: string;
 begin
@@ -568,18 +783,18 @@ begin
   end;
 end;
 
-procedure TForm1.MnuFileSaveClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuFileSaveClick(Sender: TObject);
 begin
   FState.Save;
   ShowMessage('Workspace configuration saved.');
 end;
 
-procedure TForm1.MnuFileExitClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuFileExitClick(Sender: TObject);
 begin
   Close;
 end;
 
-procedure TForm1.MnuAgentClearHistoryClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuAgentClearHistoryClick(Sender: TObject);
 begin
   if Assigned(FAgent) then
     FAgent.ClearConversation;
@@ -587,19 +802,28 @@ begin
     FChatContent.ClearHistory;
 end;
 
-procedure TForm1.MnuAgentStopClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuAgentStopClick(Sender: TObject);
 begin
   if Assigned(FAgent) then
     FAgent.RequestCancel;
 end;
 
-procedure TForm1.MnuSettingsOptionsClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuSettingsOptionsClick(Sender: TObject);
 begin
   if TSettingsForm.Execute(FState) then
     StateChanged(Self);
 end;
 
-procedure TForm1.MnuHelpAboutClick(Sender: TObject);
+procedure TLazyCodingAgentForm.MnuWorkspaceProjectRulesClick(Sender: TObject);
+begin
+  if Trim(FState.WorkspaceRoot) = '' then begin
+    ShowMessage('Set a workspace project folder first (Settings or File → Open Project Folder).');
+    Exit;
+  end;
+  TWorkspaceRulesForm.Execute(Self, FState.Theme, FState.WorkspaceRoot);
+end;
+
+procedure TLazyCodingAgentForm.MnuHelpAboutClick(Sender: TObject);
 begin
   ShowMessage('LazyCodingAgent v1.0'#13#10 +
               'Standalone Desktop AI Coding Assistant'#13#10 +

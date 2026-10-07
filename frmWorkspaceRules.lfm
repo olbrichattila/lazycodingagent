@@ -1,0 +1,94 @@
+object WorkspaceRulesForm: TWorkspaceRulesForm
+  Left = 300
+  Height = 480
+  Top = 180
+  Width = 560
+  BorderStyle = bsDialog
+  Caption = 'Project Rules'
+  ClientHeight = 440
+  ClientWidth = 544
+  Font.Name = 'Segoe UI'
+  Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
+  object lblRules: TLabel
+    Left = 16
+    Height = 30
+    Top = 12
+    Width = 512
+    Anchors = [akTop, akLeft, akRight]
+    AutoSize = False
+    Caption = 'Project Rules (.rules/) — apply to Ask, Plan, and Agent requests in this workspace.'
+    WordWrap = True
+  end
+  object lstRules: TListBox
+    Left = 16
+    Height = 296
+    Top = 48
+    Width = 512
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    ItemHeight = 0
+    TabOrder = 0
+    OnDblClick = lstRulesDblClick
+  end
+  object pnlActions: TPanel
+    Left = 16
+    Height = 36
+    Top = 352
+    Width = 512
+    Anchors = [akLeft, akRight, akBottom]
+    BevelOuter = bvNone
+    ClientHeight = 36
+    ClientWidth = 512
+    TabOrder = 1
+    object btnAddRule: TThemedButton
+      Left = 0
+      Height = 28
+      Top = 4
+      Width = 90
+      Caption = '+ Add'
+      OnClick = btnAddRuleClick
+      TabOrder = 0
+    end
+    object btnEditRule: TThemedButton
+      Left = 96
+      Height = 28
+      Top = 4
+      Width = 90
+      Caption = 'Edit'
+      Enabled = False
+      OnClick = btnEditRuleClick
+      TabOrder = 1
+    end
+    object btnDeleteRule: TThemedButton
+      Left = 192
+      Height = 28
+      Top = 4
+      Width = 90
+      Caption = 'Delete'
+      Enabled = False
+      OnClick = btnDeleteRuleClick
+      TabOrder = 2
+    end
+  end
+  object pnlBottom: TPanel
+    Left = 0
+    Height = 44
+    Top = 396
+    Width = 544
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 44
+    ClientWidth = 544
+    TabOrder = 2
+    object btnClose: TThemedButton
+      Left = 448
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Caption = 'Close'
+      OnClick = btnCloseClick
+      TabOrder = 0
+    end
+  end
+end

@@ -8,8 +8,8 @@ uses
   Classes, SysUtils, mainunit;
 
 type
-  // Backward compatibility alias for Form1's class
-  TMainWorkspace = TForm1;
+  // Backward compatibility alias for the main form class
+  TMainWorkspace = TLazyCodingAgentForm;
 
 implementation
 

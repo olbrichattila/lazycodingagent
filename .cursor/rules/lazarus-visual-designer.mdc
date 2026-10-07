@@ -1,0 +1,31 @@
+---
+description: Lazarus LCL forms — Visual Form Designer first, theme at runtime
+alwaysApply: true
+---
+
+# Lazarus Visual Form Designer (preferred)
+
+## Forms and resources
+
+- Use **paired `.pas` + `.lfm`** with `{$R *.lfm}` and normal `TForm.Create(Application)` (or `Create(AOwner)` for modal dialogs).
+- Do **not** use `CreateNew` + manual `BuildForm` for user-facing dialogs; those cannot be edited in the Lazarus Form Designer.
+- Declare **published** components and event handlers on the form class. Wire `OnCreate`, `OnClick`, and similar in `.lfm` when the designer supports it.
+- Reference: [mainunit.pas](mainunit.pas) / [mainunit.lfm](mainunit.lfm), [frmSettings.pas](frmSettings.pas) / [frmSettings.lfm](frmSettings.lfm), [frmModelSearch.pas](frmModelSearch.pas), [frmEditSavedModel.pas](frmEditSavedModel.pas).
+
+## Layout conventions
+
+- Prefer `Align`, `Anchors`, and `BevelOuter = bvNone` on panels.
+- Place **host `TPanel`s** on the main form in the designer; create complex custom controls at runtime **inside** those hosts (e.g. `InitWorkspaceSubControls` in mainunit).
+- **Exceptions (code-built only):** dock/chat/nav internals (`TDockPanel`, `TChatPanel`, …), dynamic `TDetachedPanelForm` in [uDockPanel.pas](uDockPanel.pas).
+
+## Theming (dark and light)
+
+- Do **not** hardcode theme colors or fonts in `.lfm` (e.g. `clGray`, fixed `Color`). Use designer-neutral defaults; runtime applies [uTheme.pas](uTheme.pas).
+- On show and on theme toggle: `ApplyAllThemes` / `ApplyTheme`, `ThemePalette`, `ApplyControlTheme`, `TThemedButton.ApplyTheme`, `TLazyTabControl.ApplyTheme`, `ConfigureThemedListBox`, `StyleComboBox` + `StyleComboBoxDrawItem`, `ApplyPlatformChrome`.
+- Custom palette components: `TLazyTabControl`, `TLazyTabPage` ([uCustomTabControl.pas](uCustomTabControl.pas)), `TThemedButton` ([uThemedButton.pas](uThemedButton.pas)) — place on forms in the designer like Settings.
+
+## When adding UI
+
+1. Add or extend layout in the **Form Designer** (`.lfm`).
+2. Keep business logic in `.pas`; call theme helpers from `FormCreate` / `ApplyTheme`, not from fixed LFM colors.
+3. After changes, verify **dark and light** via `View > Toggle Light / Dark Theme` on the main form and reopen dialogs.

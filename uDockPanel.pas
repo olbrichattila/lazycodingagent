@@ -29,10 +29,11 @@ type
     function GetDetachBtnRect: TRect;
     function GetHideBtnRect: TRect;
     procedure SetContent(AControl: TWinControl);
-    procedure UpdateContentLayout;
+    procedure ReleaseFloatingForm;
   protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure AdjustClientRect(var Rect: TRect); override;
     procedure Paint; override;
-    procedure Resize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseLeave; override;
@@ -43,6 +44,7 @@ type
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure DetachToWindow(ALeft, ATop, AWidth, AHeight: Integer);
     procedure AttachToHost(AParent: TWinControl);
+    procedure PrepareForApplicationClose;
     function IsDetached: Boolean;
     property PanelId: TPanelId read FPanelId;
     property Content: TWinControl read FContent write SetContent;
@@ -54,6 +56,8 @@ type
   TDetachedPanelForm = class(TForm)
   private
     FOwnerPanel: TDockPanel;
+    function IsApplicationShutdown: Boolean;
+    procedure FormCloseQueryHandler(Sender: TObject; var CanClose: Boolean);
   protected
     procedure DoClose(var CloseAction: TCloseAction); override;
   public
@@ -69,7 +73,7 @@ constructor TDetachedPanelForm.CreateForPanel(AOwnerPanel: TDockPanel; ALeft, AT
 var
   P: TThemePalette;
 begin
-  inherited CreateNew(Application);
+  inherited CreateNew(AOwnerPanel);
   FOwnerPanel := AOwnerPanel;
   Caption := AOwnerPanel.FPanelTitle + ' [Detached Window]';
   Position := poDesigned;
@@ -85,10 +89,36 @@ begin
   Color := P.Background;
   Font.Color := P.Text;
   Font.Name := 'Segoe UI';
+  OnCloseQuery := @FormCloseQueryHandler;
+end;
+
+function TDetachedPanelForm.IsApplicationShutdown: Boolean;
+var
+  Root: TComponent;
+begin
+  Result := Application.Terminated;
+  if Result or not Assigned(FOwnerPanel) then Exit;
+  Result := csDestroying in FOwnerPanel.ComponentState;
+  if Result then Exit;
+  Root := FOwnerPanel;
+  while Assigned(Root) and not (Root is TForm) do
+    Root := Root.Owner;
+  if Assigned(Root) then
+    Result := csDestroying in Root.ComponentState;
+end;
+
+procedure TDetachedPanelForm.FormCloseQueryHandler(Sender: TObject; var CanClose: Boolean);
+begin
+  if IsApplicationShutdown then
+    CanClose := True;
 end;
 
 procedure TDetachedPanelForm.DoClose(var CloseAction: TCloseAction);
 begin
+  if IsApplicationShutdown then begin
+    CloseAction := caFree;
+    Exit;
+  end;
   CloseAction := caHide;
   if Assigned(FOwnerPanel) and Assigned(FOwnerPanel.FOnDockAction) then
     FOwnerPanel.FOnDockAction(FOwnerPanel, FOwnerPanel.PanelId, dpaAttach);
@@ -110,11 +140,33 @@ end;
 
 destructor TDockPanel.Destroy;
 begin
-  if Assigned(FFloatingForm) then begin
-    FFloatingForm.FOwnerPanel := nil;
-    FreeAndNil(FFloatingForm);
-  end;
+  ReleaseFloatingForm;
   inherited Destroy;
+end;
+
+procedure TDockPanel.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FFloatingForm) then
+    FFloatingForm := nil;
+end;
+
+procedure TDockPanel.ReleaseFloatingForm;
+begin
+  if not Assigned(FFloatingForm) then Exit;
+  FFloatingForm.FOwnerPanel := nil;
+  if Assigned(FContent) and (FContent.Parent = FFloatingForm) then begin
+    if csDestroying in ComponentState then
+      FContent.Parent := nil
+    else
+      FContent.Parent := Self;
+  end;
+  FreeAndNil(FFloatingForm);
+end;
+
+procedure TDockPanel.PrepareForApplicationClose;
+begin
+  ReleaseFloatingForm;
 end;
 
 procedure TDockPanel.Configure(AId: TPanelId; const ATitle: string; AActionHandler: TDockPanelEvent);
@@ -141,34 +193,23 @@ begin
   Invalidate;
 end;
 
-procedure TDockPanel.UpdateContentLayout;
-var
-  CW, CH: Integer;
+procedure TDockPanel.AdjustClientRect(var Rect: TRect);
 begin
-  if Assigned(FContent) and (FContent.Parent = Self) then begin
-    CW := Width - 2;
-    CH := Height - FHeaderHeight - 2;
-    if CW < 10 then CW := 10;
-    if CH < 10 then CH := 10;
-    FContent.SetBounds(1, FHeaderHeight + 1, CW, CH);
-  end;
+  inherited AdjustClientRect(Rect);
+  Inc(Rect.Left, 1);
+  Inc(Rect.Top, FHeaderHeight + 1);
+  Dec(Rect.Right, 1);
+  Dec(Rect.Bottom, 1);
 end;
 
 procedure TDockPanel.SetContent(AControl: TWinControl);
 begin
   FContent := AControl;
   if Assigned(FContent) then begin
-    FContent.Align := alNone;
-    FContent.Anchors := [akLeft, akTop];
     FContent.Parent := Self;
-    UpdateContentLayout;
+    FContent.Align := alClient;
+    ReAlign;
   end;
-end;
-
-procedure TDockPanel.Resize;
-begin
-  inherited Resize;
-  UpdateContentLayout;
 end;
 
 function TDockPanel.GetHideBtnRect: TRect;
@@ -210,16 +251,19 @@ begin
   Canvas.Pen.Color := P.Border;
   Canvas.Line(1, FHeaderHeight, Width - 1, FHeaderHeight);
 
-  // Accent pill on left of header
-  Canvas.Brush.Color := P.Accent;
-  Canvas.FillRect(Rect(6, 8, 10, FHeaderHeight - 8));
+  Canvas.Font.Name := 'Segoe UI Symbol';
+  Canvas.Font.Size := 11;
+  Canvas.Font.Style := [];
+  Canvas.Font.Color := P.Accent;
+  Canvas.Brush.Style := bsClear;
+  Canvas.TextOut(8, 9, PanelIconSymbol(FPanelId));
 
-  // Title text
   Canvas.Font.Name := 'Segoe UI';
   Canvas.Font.Size := 9;
   Canvas.Font.Style := [fsBold];
-  Canvas.Font.Color := P.Text;
-  Canvas.TextOut(16, 8, FPanelTitle);
+  Canvas.Font.Color := P.Accent;
+  Canvas.TextOut(26, 9, FPanelTitle);
+  Canvas.Brush.Style := bsSolid;
 
   // Detach / Dock button
   DetachR := GetDetachBtnRect;
@@ -331,10 +375,9 @@ begin
   Visible := True;
 
   if Assigned(FContent) then begin
-    FContent.Align := alNone;
-    FContent.Anchors := [akLeft, akTop];
     FContent.Parent := Self;
-    UpdateContentLayout;
+    FContent.Align := alClient;
+    ReAlign;
   end;
   Invalidate;
 end;

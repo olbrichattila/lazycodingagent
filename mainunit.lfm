@@ -1,4 +1,4 @@
-object Form1: TForm1
+object LazyCodingAgentForm: TLazyCodingAgentForm
   Left = 314
   Height = 600
   Top = 715
@@ -11,13 +11,16 @@ object Form1: TForm1
   Menu = MainMenu1
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
+  OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnShow = FormShow
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
     Top = 577
     Width = 1320
+    Align = alBottom
     Panels = <>
   end
   object pnlMainContainer: TPanel
@@ -53,6 +56,7 @@ object Form1: TForm1
       Height = 577
       Top = 0
       Width = 5
+      Align = alLeft
       MinSize = 160
     end
     object pnlUtilityHost: TPanel
@@ -83,6 +87,7 @@ object Form1: TForm1
       Align = alRight
       BevelOuter = bvNone
       TabOrder = 3
+      Visible = False
     end
     object splReserved: TSplitter
       Left = 745
@@ -92,6 +97,7 @@ object Form1: TForm1
       Align = alRight
       MinSize = 180
       ResizeAnchor = akRight
+      Visible = False
     end
     object pnlChatHost: TPanel
       Left = 311
@@ -141,6 +147,15 @@ object Form1: TForm1
     end
     object mnuWorkspace: TMenuItem
       Caption = '&Workspace'
+      object mnuWorkspaceSepRules: TMenuItem
+        Caption = '-'
+        Tag = -1
+      end
+      object mnuWorkspaceProjectRules: TMenuItem
+        Caption = 'Project &Rules...'
+        Tag = -1
+        OnClick = MnuWorkspaceProjectRulesClick
+      end
     end
     object mnuAgent: TMenuItem
       Caption = '&Agent'

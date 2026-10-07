@@ -35,7 +35,39 @@ procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
 procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
+procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
+procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
+
+procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
+procedure StyleCancelButton(ABtn: TButton; ATheme: TThemeKind);
+procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
+
+procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
+procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
+procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+
+procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
+procedure ApplyWin32ScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
+procedure ApplyWin32FormChrome(AForm: TForm; ATheme: TThemeKind);
+
+procedure ApplyPlatformScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
+procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
+procedure ApplyPlatformChrome(AForm: TForm; ATheme: TThemeKind);
+
 implementation
+
+{$IFDEF WINDOWS}
+type
+  TWinHwnd = PtrUInt;
+
+procedure SetWindowTheme(hwnd: TWinHwnd; pszSubAppName, pszSubIdList: PWideChar); stdcall;
+  external 'uxtheme' name 'SetWindowTheme';
+
+function DwmSetWindowAttribute(hwnd: TWinHwnd; dwAttribute: LongWord;
+  pvAttribute: Pointer; cbAttribute: LongWord): LongInt; stdcall;
+  external 'dwmapi' name 'DwmSetWindowAttribute';
+{$ENDIF}
 
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
 begin
@@ -49,7 +81,7 @@ begin
     Result.Border         := RGBToColor(52, 53, 65);      // #343541
     Result.BorderStrong   := RGBToColor(70, 72, 88);      // #464858
     Result.Text           := RGBToColor(240, 243, 248);   // #F0F3F8
-    Result.TextMuted      := RGBToColor(140, 147, 163);   // #8C93A3
+    Result.TextMuted      := RGBToColor(160, 168, 185);   // #A0A8B9
     Result.Accent         := RGBToColor(59, 130, 246);    // #3B82F6
     Result.AccentHover    := RGBToColor(96, 165, 250);    // #60A5FA
     Result.AccentActive   := RGBToColor(40, 60, 95);      // #283C5F
@@ -83,8 +115,8 @@ begin
   if not Assigned(ACombo) then Exit;
   P := ThemePalette(ATheme);
 
-  ACombo.Style := csOwnerDrawFixed;
   ACombo.ItemHeight := 22;
+  ACombo.Style := csOwnerDrawFixed;
   ACombo.Color := P.SurfaceAlt;
   ACombo.Font.Color := P.Text;
   ACombo.Font.Name := 'Segoe UI';
@@ -128,6 +160,288 @@ begin
     TextTop := ARect.Top + ((ARect.Bottom - ARect.Top - Combo.Canvas.TextHeight(TextStr)) div 2);
     Combo.Canvas.TextRect(ARect, ARect.Left + 6, TextTop, TextStr);
   end;
+end;
+
+procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  I: Integer;
+begin
+  if not Assigned(APageControl) then Exit;
+  P := ThemePalette(ATheme);
+
+  APageControl.Color := P.Background;
+  APageControl.Font.Color := P.Text;
+  APageControl.Font.Name := 'Segoe UI';
+  APageControl.Font.Size := 9;
+
+  for I := 0 to APageControl.PageCount - 1 do begin
+    APageControl.Pages[I].Color := P.Surface;
+    APageControl.Pages[I].Font.Color := P.Text;
+    APageControl.Pages[I].Font.Name := 'Segoe UI';
+    APageControl.Pages[I].Font.Size := 9;
+  end;
+
+  APageControl.Invalidate;
+end;
+
+procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  I: Integer;
+  WinCtrl: TWinControl;
+begin
+  if not Assigned(AControl) then Exit;
+  P := ThemePalette(ATheme);
+
+  if AControl is TCustomEdit then begin
+    TCustomEdit(AControl).Color := P.SurfaceAlt;
+    TCustomEdit(AControl).Font.Color := P.Text;
+  end else if AControl is TLabel then begin
+    TLabel(AControl).Font.Color := P.Text;
+  end else if AControl is TPageControl then begin
+    StylePageControl(TPageControl(AControl), ATheme);
+  end;
+
+  if AControl is TWinControl then begin
+    WinCtrl := TWinControl(AControl);
+    for I := 0 to WinCtrl.ControlCount - 1 do
+      ApplyControlTheme(WinCtrl.Controls[I], ATheme);
+  end;
+end;
+
+{$IFDEF WINDOWS}
+procedure ApplyWin32UnthemedButton(ABtn: TButton);
+begin
+  if Assigned(ABtn) and ABtn.HandleAllocated then
+    SetWindowTheme(ABtn.Handle, '', '');
+end;
+{$ELSE}
+procedure ApplyWin32UnthemedButton(ABtn: TButton);
+begin
+end;
+{$ENDIF}
+
+procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(ABtn) then Exit;
+  P := ThemePalette(ATheme);
+  ABtn.Font.Name := 'Segoe UI';
+  ABtn.Font.Size := 9;
+  ABtn.Font.Style := [fsBold];
+  ABtn.Font.Color := P.AccentText;
+  ABtn.Color := P.Accent;
+  ApplyWin32UnthemedButton(ABtn);
+  ABtn.Invalidate;
+end;
+
+procedure StyleCancelButton(ABtn: TButton; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(ABtn) then Exit;
+  P := ThemePalette(ATheme);
+  ABtn.Font.Name := 'Segoe UI';
+  ABtn.Font.Size := 9;
+  ABtn.Font.Style := [];
+  if ATheme = tkDark then begin
+    ABtn.Color := P.SurfaceAlt;
+    ABtn.Font.Color := P.TextMuted;
+  end else begin
+    ABtn.Color := P.Surface;
+    ABtn.Font.Color := P.TextMuted;
+  end;
+  ApplyWin32UnthemedButton(ABtn);
+  ABtn.Invalidate;
+end;
+
+procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
+begin
+  if not Assigned(ABtn) then Exit;
+  ABtn.Font.Name := 'Segoe UI';
+  ABtn.Font.Size := 9;
+  ABtn.Font.Style := [fsBold];
+  if ATheme = tkDark then begin
+    ABtn.Color := RGBToColor(72, 32, 36);
+    ABtn.Font.Color := RGBToColor(248, 113, 113);
+  end else begin
+    ABtn.Color := RGBToColor(254, 226, 226);
+    ABtn.Font.Color := RGBToColor(185, 28, 28);
+  end;
+  ApplyWin32UnthemedButton(ABtn);
+  ABtn.Invalidate;
+end;
+
+procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(AList) then Exit;
+  P := ThemePalette(ATheme);
+  AList.ItemHeight := 22;
+  AList.Style := lbOwnerDrawFixed;
+  AList.BorderStyle := bsNone;
+  AList.MultiSelect := False;
+  AList.ExtendedSelect := False;
+  AList.Color := P.SurfaceAlt;
+  AList.Font.Name := 'Segoe UI';
+  AList.Font.Size := 9;
+  AList.Font.Color := P.Text;
+  AList.Invalidate;
+end;
+
+procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(ATree) then Exit;
+  P := ThemePalette(ATheme);
+  ATree.BorderStyle := bsNone;
+  ATree.Color := P.SurfaceAlt;
+  ATree.BackgroundColor := P.SurfaceAlt;
+  ATree.Font.Name := 'Segoe UI';
+  ATree.Font.Size := 9;
+  ATree.Font.Color := P.Text;
+  ATree.HideSelection := True;
+  ATree.Options := ATree.Options - [tvoThemedDraw];
+  ATree.TreeLineColor := P.Border;
+  ATree.ExpandSignColor := P.TextMuted;
+  ATree.SelectionColor := P.AccentActive;
+  ATree.SelectionFontColor := P.Text;
+  ATree.SelectionFontColorUsed := True;
+  ATree.Invalidate;
+end;
+
+procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+var
+  LBox: TListBox;
+  P: TThemePalette;
+  TextStr: string;
+  TextColor: TColor;
+  TextTop: Integer;
+begin
+  if not (Control is TListBox) then Exit;
+  LBox := TListBox(Control);
+  P := ThemePalette(ATheme);
+
+  LBox.Canvas.Brush.Style := bsSolid;
+  LBox.Canvas.Brush.Color := LBox.Color;
+  LBox.Canvas.Pen.Color := LBox.Color;
+  LBox.Canvas.FillRect(ARect);
+
+  if (Index < 0) or (Index >= LBox.Items.Count) then Exit;
+
+  TextStr := LBox.Items[Index];
+  LBox.Canvas.Font.Name := 'Segoe UI';
+  LBox.Canvas.Font.Size := 9;
+  LBox.Canvas.Font.Style := [];
+
+  if (odSelected in State) or (odFocused in State) then
+    TextColor := P.Accent
+  else
+    TextColor := P.Text;
+  LBox.Canvas.Font.Color := TextColor;
+
+  TextTop := ARect.Top + ((ARect.Bottom - ARect.Top - LBox.Canvas.TextHeight(TextStr)) div 2);
+  LBox.Canvas.TextRect(ARect, ARect.Left + 8, TextTop, TextStr);
+end;
+
+procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
+{$IFDEF WINDOWS}
+var
+  ThemeId: PWideChar;
+{$ENDIF}
+begin
+  if not Assigned(AControl) then Exit;
+  if not AControl.HandleAllocated then Exit;
+{$IFDEF WINDOWS}
+  if AControl is TTreeView then begin
+    // App palette sets Font.Color / BackgroundColor; Explorer subthemes paint system (black) text.
+    SetWindowTheme(AControl.Handle, '', '');
+  end else if (AControl is TMemo) or (AControl is TListBox) or
+     (AControl is TComboBox) or (AControl is TEdit) then begin
+    if not ((AControl is TListBox) and
+       (TListBox(AControl).Style in [lbOwnerDrawFixed, lbOwnerDrawVariable])) then begin
+      if ATheme = tkDark then
+        ThemeId := 'DarkMode_Explorer'
+      else
+        ThemeId := 'Explorer';
+      SetWindowTheme(AControl.Handle, ThemeId, nil);
+    end;
+  end;
+{$ENDIF}
+  AControl.Invalidate;
+end;
+
+procedure ApplyWin32ScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
+var
+  I: Integer;
+  Child: TControl;
+begin
+  if not Assigned(AControl) then Exit;
+  ApplyWin32ScrollableTheme(AControl, ATheme);
+  for I := 0 to AControl.ControlCount - 1 do begin
+    Child := AControl.Controls[I];
+    if Child is TWinControl then
+      ApplyWin32ScrollableThemeRecursive(TWinControl(Child), ATheme);
+  end;
+end;
+
+procedure ApplyWin32FormChrome(AForm: TForm; ATheme: TThemeKind);
+{$IFDEF WINDOWS}
+var
+  UseDark: LongBool;
+{$ENDIF}
+begin
+  if not Assigned(AForm) then Exit;
+  if not AForm.HandleAllocated then Exit;
+{$IFDEF WINDOWS}
+  UseDark := ATheme = tkDark;
+  DwmSetWindowAttribute(AForm.Handle, 20, @UseDark, SizeOf(UseDark));
+{$ENDIF}
+end;
+
+procedure ApplyPlatformScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
+begin
+{$IFDEF WINDOWS}
+  ApplyWin32ScrollableTheme(AControl, ATheme);
+{$ELSE}
+  // GTK/Cocoa: scrollbars follow the OS widget theme; keep client colors via ApplyTheme.
+  if Assigned(AControl) then
+    AControl.Invalidate;
+{$ENDIF}
+end;
+
+procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
+var
+  I: Integer;
+  Child: TControl;
+begin
+  if not Assigned(AControl) then Exit;
+{$IFDEF WINDOWS}
+  ApplyWin32ScrollableThemeRecursive(AControl, ATheme);
+{$ELSE}
+  ApplyPlatformScrollableTheme(AControl, ATheme);
+  for I := 0 to AControl.ControlCount - 1 do begin
+    Child := AControl.Controls[I];
+    if Child is TWinControl then
+      ApplyPlatformScrollableThemeRecursive(TWinControl(Child), ATheme);
+  end;
+{$ENDIF}
+end;
+
+procedure ApplyPlatformChrome(AForm: TForm; ATheme: TThemeKind);
+begin
+{$IFDEF WINDOWS}
+  ApplyWin32FormChrome(AForm, ATheme);
+{$ELSE}
+  // macOS/Linux: title bar and scrollbars use system appearance unless the OS is in dark mode.
+  if Assigned(AForm) then
+    AForm.Invalidate;
+{$ENDIF}
 end;
 
 end.

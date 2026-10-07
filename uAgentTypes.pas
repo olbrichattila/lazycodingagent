@@ -27,6 +27,7 @@ type
     lpOpenAI,
     lpAnthropic,
     lpOllama,
+    lpNousResearch,
     lpCustom
   );
 
@@ -117,6 +118,7 @@ begin
     lpOpenAI: Result := 'OpenAI';
     lpAnthropic: Result := 'Anthropic';
     lpOllama: Result := 'Ollama';
+    lpNousResearch: Result := 'Nous Research';
     lpCustom: Result := 'Custom / OpenAI Compatible';
   end;
 end;
@@ -127,6 +129,7 @@ begin
   else if SameText(S, 'OpenAI') then Result := lpOpenAI
   else if SameText(S, 'Anthropic') then Result := lpAnthropic
   else if SameText(S, 'Ollama') then Result := lpOllama
+  else if SameText(S, 'Nous Research') or SameText(S, 'Nous') then Result := lpNousResearch
   else Result := lpCustom;
 end;
 

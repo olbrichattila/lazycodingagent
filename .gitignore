@@ -31,6 +31,8 @@
 *.tmp
 *.~*
 *~
+/backup/*
+!/backup/README.txt
 
 # Operating system files
 .DS_Store

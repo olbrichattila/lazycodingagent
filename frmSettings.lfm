@@ -1,32 +1,26 @@
 object SettingsForm: TSettingsForm
   Left = 350
-  Height = 440
-  Top = 200
-  Width = 540
+  Height = 520
+  Top = 160
+  Width = 560
   BorderStyle = bsDialog
   Caption = 'Settings'
-  ClientHeight = 440
-  ClientWidth = 540
+  ClientHeight = 520
+  ClientWidth = 560
   OnCreate = FormCreate
   Position = poScreenCenter
   LCLVersion = '3.4.0.0'
-  object PageControl1: TPageControl
-    Left = 12
-    Height = 368
-    Top = 12
-    Width = 516
-    ActivePage = tabProvider
+  object PageControl1: TLazyTabControl
     Align = alClient
     BorderSpacing.Left = 12
     BorderSpacing.Top = 12
     BorderSpacing.Right = 12
     BorderSpacing.Bottom = 8
-    TabIndex = 0
     TabOrder = 0
-    object tabProvider: TTabSheet
+    object tabProvider: TLazyTabPage
       Caption = 'AI Provider & Model'
-      ClientHeight = 338
-      ClientWidth = 508
+      ClientHeight = 414
+      ClientWidth = 536
       object lblProvider: TLabel
         Left = 16
         Height = 15
@@ -38,7 +32,7 @@ object SettingsForm: TSettingsForm
         Left = 16
         Height = 23
         Top = 36
-        Width = 472
+        Width = 504
         ItemHeight = 15
         ItemIndex = 0
         Items.Strings = (
@@ -46,6 +40,7 @@ object SettingsForm: TSettingsForm
           'OpenAI'
           'Anthropic'
           'Ollama (Local)'
+          'Nous Research'
           'Custom / OpenAI Compatible'
         )
         OnChange = cboProviderChange
@@ -64,7 +59,7 @@ object SettingsForm: TSettingsForm
         Left = 16
         Height = 23
         Top = 92
-        Width = 472
+        Width = 504
         EchoMode = emPassword
         PasswordChar = '*'
         TabOrder = 1
@@ -80,40 +75,68 @@ object SettingsForm: TSettingsForm
         Left = 16
         Height = 23
         Top = 148
-        Width = 472
+        Width = 504
         TabOrder = 2
         Text = 'https://openrouter.ai/api/v1'
       end
-      object lblModel: TLabel
+      object lblModels: TLabel
         Left = 16
         Height = 15
         Top = 184
-        Width = 67
-        Caption = 'Default Model'
+        Width = 196
+        Caption = 'Saved models (default = selection)'
       end
-      object edtModel: TEdit
+      object lstModels: TListBox
         Left = 16
-        Height = 23
+        Height = 120
         Top = 204
-        Width = 472
+        Width = 504
+        ItemHeight = 22
+        OnDrawItem = lstModelsDrawItem
+        OnClick = lstModelsClick
         TabOrder = 3
-        Text = 'anthropic/claude-3.7-sonnet'
+      end
+      object btnFetchModels: TThemedButton
+        Left = 16
+        Height = 28
+        Top = 336
+        Width = 120
+        Caption = 'Fetch Models...'
+        OnClick = btnFetchModelsClick
+        TabOrder = 4
+      end
+      object btnEditModel: TThemedButton
+        Left = 144
+        Height = 28
+        Top = 336
+        Width = 88
+        Caption = 'Edit...'
+        OnClick = btnEditModelClick
+        TabOrder = 5
+      end
+      object btnDeleteModel: TThemedButton
+        Left = 240
+        Height = 28
+        Top = 336
+        Width = 88
+        Caption = 'Delete'
+        OnClick = btnDeleteModelClick
+        TabOrder = 6
       end
       object lblNotice: TLabel
         Left = 16
         Height = 30
-        Top = 244
-        Width = 472
+        Top = 372
+        Width = 504
         AutoSize = False
         Caption = 'Note: Your API credentials are saved locally in the user config file.'
-        Font.Color = clGray
         WordWrap = True
       end
     end
-    object tabAgent: TTabSheet
+    object tabAgent: TLazyTabPage
       Caption = 'Agent Behavior'
-      ClientHeight = 338
-      ClientWidth = 508
+      ClientHeight = 414
+      ClientWidth = 536
       object lblTemp: TLabel
         Left = 16
         Height = 15
@@ -159,11 +182,28 @@ object SettingsForm: TSettingsForm
         TabOrder = 2
         Text = '20'
       end
+      object chkDebuggingMode: TCheckBox
+        Left = 16
+        Height = 19
+        Top = 196
+        Width = 140
+        Caption = 'Debugging Mode'
+        TabOrder = 3
+      end
+      object lblDebuggingHint: TLabel
+        Left = 16
+        Height = 30
+        Top = 220
+        Width = 504
+        AutoSize = False
+        Caption = 'When enabled, full tool results appear in the chat history. When disabled, only tool errors are shown.'
+        WordWrap = True
+      end
     end
-    object tabWorkspace: TTabSheet
+    object tabWorkspace: TLazyTabPage
       Caption = 'Workspace'
-      ClientHeight = 338
-      ClientWidth = 508
+      ClientHeight = 414
+      ClientWidth = 536
       object lblWorkspaceRoot: TLabel
         Left = 16
         Height = 15
@@ -175,11 +215,11 @@ object SettingsForm: TSettingsForm
         Left = 16
         Height = 23
         Top = 36
-        Width = 384
+        Width = 416
         TabOrder = 0
       end
-      object btnBrowseWorkspace: TButton
-        Left = 408
+      object btnBrowseWorkspace: TThemedButton
+        Left = 440
         Height = 23
         Top = 36
         Width = 80
@@ -198,7 +238,7 @@ object SettingsForm: TSettingsForm
         Left = 16
         Height = 23
         Top = 96
-        Width = 472
+        Width = 504
         TabOrder = 2
         Text = 'LazyCodingAgent'
       end
@@ -207,31 +247,29 @@ object SettingsForm: TSettingsForm
   object pnlBottom: TPanel
     Left = 0
     Height = 44
-    Top = 396
-    Width = 540
+    Top = 476
+    Width = 560
     Align = alBottom
     BevelOuter = bvNone
     ClientHeight = 44
-    ClientWidth = 540
+    ClientWidth = 560
     TabOrder = 1
-    object btnOK: TButton
-      Left = 356
+    object btnOK: TThemedButton
+      Left = 376
       Height = 28
       Top = 8
       Width = 80
       Anchors = [akTop, akRight]
       Caption = 'OK'
-      Default = True
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TButton
-      Left = 444
+    object btnCancel: TThemedButton
+      Left = 464
       Height = 28
       Top = 8
       Width = 80
       Anchors = [akTop, akRight]
-      Cancel = True
       Caption = 'Cancel'
       OnClick = btnCancelClick
       TabOrder = 1

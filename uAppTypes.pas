@@ -16,6 +16,7 @@ function NavigationIconSymbol(AItem: TNavigationItem): string;
 function WorkspaceModeCaption(AMode: TWorkspaceMode): string;
 function WorkspaceModeDesc(AMode: TWorkspaceMode): string;
 function PanelCaption(AId: TPanelId): string;
+function PanelIconSymbol(AId: TPanelId): string;
 
 implementation
 
@@ -48,10 +49,10 @@ begin
   case AItem of
     niHome: Result := '⌂';
     niProjects: Result := '◫';
-    niSessions: Result := '💬';
-    niBots: Result := '⚡';
-    niTools: Result := '⚙';
-    niTasks: Result := '📋';
+    niSessions: Result := '✉';
+    niBots: Result := '✦';
+    niTools: Result := '◈';
+    niTasks: Result := '☰';
   end;
 end;
 
@@ -80,6 +81,16 @@ begin
     piChat: Result := 'Chat / AI Agent Workspace';
     piReserved: Result := 'Instructions & Context';
     piUtility: Result := 'Utility Panel';
+  end;
+end;
+
+function PanelIconSymbol(AId: TPanelId): string;
+begin
+  case AId of
+    piNavigation: Result := '◫';
+    piChat: Result := '💬';
+    piReserved: Result := '📋';
+    piUtility: Result := '⚙';
   end;
 end;
 

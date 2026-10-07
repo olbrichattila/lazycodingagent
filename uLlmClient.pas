@@ -5,7 +5,7 @@ unit uLlmClient;
 interface
 
 uses
-  Classes, SysUtils, fphttpclient, opensslsockets, fpjson, jsonparser, uAgentTypes;
+  Classes, SysUtils, fpjson, jsonparser, uAgentTypes;
 
 type
   { Completion Response struct }
@@ -23,6 +23,17 @@ type
   { Callback types for async LLM interactions }
   TLlmChunkCallback = procedure(Sender: TObject; const AChunk: string) of object;
 
+  TLlmModelInfo = record
+    Id: string;
+    DisplayName: string;
+  end;
+
+  TLlmModelListResult = record
+    Success: Boolean;
+    ErrorMessage: string;
+    Models: array of TLlmModelInfo;
+  end;
+
   { TLlmClient - Handles REST API communication with OpenAI, OpenRouter, Anthropic, Ollama }
   TLlmClient = class
   private
@@ -35,7 +46,11 @@ type
     FTimeoutMs: Integer;
     function BuildOpenAiPayload(const AMessages: array of TChatMessage; const ATools: array of TToolDef): string;
     function ParseOpenAiResponse(const AJsonStr: string): TLlmResponse;
+    function ParseModelsResponse(const AJsonStr: string): TLlmModelListResult;
+    function BuildRequestHeaders(AIncludeJsonContentType: Boolean): TStringList;
+    function ModelsListUrl: string;
     function SendHttpPost(const AUrl, APayload: string; out AResponse: string): Boolean;
+    function SendHttpGet(const AUrl: string; out AResponse: string): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -44,6 +59,8 @@ type
       const AMessages: array of TChatMessage;
       const ATools: array of TToolDef
     ): TLlmResponse;
+
+    function ListModels: TLlmModelListResult;
 
     property Provider: TLlmProvider read FProvider write FProvider;
     property ApiKey: string read FApiKey write FApiKey;
@@ -55,6 +72,41 @@ type
   end;
 
 implementation
+
+{$IFNDEF MSWINDOWS}
+uses
+  fphttpclient, opensslsockets;
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+uses
+  uWindowsHTTP;
+{$ENDIF}
+
+function HttpConnectionErrorMessage(const E: Exception): string;
+begin
+  if E is EInOutError then
+    Result := 'HTTPS requires OpenSSL. Install system libssl (Linux/macOS) or Lazarus SSL support. ' + E.Message
+  else
+    Result := 'Connection Exception: ' + E.Message;
+end;
+
+{$IFNDEF MSWINDOWS}
+procedure ApplyHeadersToHttpClient(AClient: TFPHTTPClient; AHeaders: TStrings);
+var
+  I, P: Integer;
+  Line, N, V: string;
+begin
+  for I := 0 to AHeaders.Count - 1 do begin
+    Line := AHeaders[I];
+    P := Pos(':', Line);
+    if P > 0 then begin
+      N := Trim(Copy(Line, 1, P - 1));
+      V := Trim(Copy(Line, P + 1, MaxInt));
+      AClient.AddHeader(N, V);
+    end;
+  end;
+end;
+{$ENDIF}
 
 constructor TLlmClient.Create;
 begin
@@ -248,53 +300,239 @@ begin
   end;
 end;
 
-function TLlmClient.SendHttpPost(const AUrl, APayload: string; out AResponse: string): Boolean;
+function TLlmClient.BuildRequestHeaders(AIncludeJsonContentType: Boolean): TStringList;
+begin
+  Result := TStringList.Create;
+  if AIncludeJsonContentType then
+    Result.Add('Content-Type: application/json');
+  if Trim(FApiKey) <> '' then begin
+    if FProvider = lpAnthropic then begin
+      Result.Add('x-api-key: ' + Trim(FApiKey));
+      Result.Add('anthropic-version: 2023-06-01');
+    end else
+      Result.Add('Authorization: Bearer ' + Trim(FApiKey));
+  end;
+  if FProvider = lpOpenRouter then begin
+    Result.Add('HTTP-Referer: https://github.com/lazycodingagent');
+    Result.Add('X-Title: LazyCodingAgent');
+  end;
+end;
+
+function TLlmClient.ModelsListUrl: string;
 var
+  Url: string;
+begin
+  Url := Trim(FBaseUrl);
+  if Url = '' then begin
+    case FProvider of
+      lpOpenRouter: Url := 'https://openrouter.ai/api/v1';
+      lpOpenAI: Url := 'https://api.openai.com/v1';
+      lpAnthropic: Url := 'https://api.anthropic.com/v1';
+      lpOllama: Url := 'http://localhost:11434/v1';
+      lpNousResearch: Url := 'https://inference-api.nousresearch.com/v1';
+      else Url := 'https://openrouter.ai/api/v1';
+    end;
+  end;
+  if (Length(Url) >= 7) and SameText(Copy(Url, Length(Url) - 6, 7), '/models') then
+    Result := Url
+  else if Url[Length(Url)] = '/' then
+    Result := Url + 'models'
+  else
+    Result := Url + '/models';
+end;
+
+function TLlmClient.ParseModelsResponse(const AJsonStr: string): TLlmModelListResult;
+var
+  Data: TJSONData;
+  RootObj, ItemObj: TJSONObject;
+  DataArray: TJSONArray;
+  I, N: Integer;
+  Id, Name: string;
+begin
+  Result.Success := False;
+  Result.ErrorMessage := '';
+  SetLength(Result.Models, 0);
+
+  try
+    Data := GetJSON(AJsonStr);
+    try
+      if not (Data is TJSONObject) then begin
+        Result.ErrorMessage := 'Invalid JSON response from models endpoint.';
+        Exit;
+      end;
+
+      RootObj := TJSONObject(Data);
+
+      if RootObj.IndexOfName('error') >= 0 then begin
+        if RootObj.Types['error'] = jtObject then
+          Result.ErrorMessage := RootObj.Objects['error'].Get('message', 'Unknown API Error')
+        else
+          Result.ErrorMessage := RootObj.Get('error', 'Unknown API Error');
+        Exit;
+      end;
+
+      if RootObj.IndexOfName('data') >= 0 then
+        DataArray := RootObj.Arrays['data']
+      else if RootObj.IndexOfName('models') >= 0 then
+        DataArray := RootObj.Arrays['models']
+      else begin
+        Result.ErrorMessage := 'Models list not found in response.';
+        Exit;
+      end;
+
+      N := DataArray.Count;
+      SetLength(Result.Models, N);
+      for I := 0 to N - 1 do begin
+        if not (DataArray.Items[I] is TJSONObject) then Continue;
+        ItemObj := TJSONObject(DataArray.Items[I]);
+        Id := ItemObj.Get('id', '');
+        if Id = '' then
+          Id := ItemObj.Get('name', '');
+        Name := ItemObj.Get('display_name', '');
+        if Name = '' then
+          Name := ItemObj.Get('name', '');
+        if (Name = '') or SameText(Name, Id) then
+          Name := Id;
+        Result.Models[I].Id := Id;
+        Result.Models[I].DisplayName := Name;
+      end;
+
+      Result.Success := True;
+    finally
+      Data.Free;
+    end;
+  except
+    on E: Exception do begin
+      Result.ErrorMessage := 'JSON Parse Error: ' + E.Message;
+      Result.Success := False;
+    end;
+  end;
+end;
+
+function TLlmClient.SendHttpGet(const AUrl: string; out AResponse: string): Boolean;
+var
+  {$IFNDEF MSWINDOWS}
   Client: TFPHTTPClient;
-  ReqStream, RespStream: TStringStream;
+  {$ENDIF}
+  Headers: TStringList;
+  RespStream: TStringStream;
+  StatusCode: Integer;
 begin
   Result := False;
   AResponse := '';
-
-  Client := TFPHTTPClient.Create(nil);
-  ReqStream := TStringStream.Create(APayload, TEncoding.UTF8);
+  Headers := BuildRequestHeaders(False);
   RespStream := TStringStream.Create('', TEncoding.UTF8);
   try
     try
-      Client.AddHeader('Content-Type', 'application/json');
-      if Trim(FApiKey) <> '' then begin
-        if FProvider = lpAnthropic then
-          Client.AddHeader('x-api-key', FApiKey)
-        else
-          Client.AddHeader('Authorization', 'Bearer ' + Trim(FApiKey));
-      end;
-
-      // OpenRouter specifics
-      if FProvider = lpOpenRouter then begin
-        Client.AddHeader('HTTP-Referer', 'https://github.com/lazycodingagent');
-        Client.AddHeader('X-Title', 'LazyCodingAgent');
-      end;
-
-      Client.IOTimeout := FTimeoutMs div 1000;
-      Client.RequestBody := ReqStream;
-      Client.Post(AUrl, RespStream);
-
+      {$IFDEF MSWINDOWS}
+      StatusCode := 0;
+      WindowsHTTPRequest('GET', AUrl, Headers, '', RespStream, StatusCode);
       AResponse := RespStream.DataString;
-      Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
+      Result := (StatusCode >= 200) and (StatusCode < 300);
       if not Result then begin
         if Trim(AResponse) = '' then
-          AResponse := Format('HTTP Error %d: %s', [Client.ResponseStatusCode, Client.ResponseStatusText]);
+          AResponse := Format('HTTP Error %d', [StatusCode]);
       end;
+      {$ELSE}
+      Client := TFPHTTPClient.Create(nil);
+      try
+        ApplyHeadersToHttpClient(Client, Headers);
+        Client.IOTimeout := FTimeoutMs div 1000;
+        Client.Get(AUrl, RespStream);
+        AResponse := RespStream.DataString;
+        Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
+        if not Result then begin
+          if Trim(AResponse) = '' then
+            AResponse := Format('HTTP Error %d: %s', [Client.ResponseStatusCode, Client.ResponseStatusText]);
+        end;
+      finally
+        Client.Free;
+      end;
+      {$ENDIF}
     except
       on E: Exception do begin
-        AResponse := 'Connection Exception: ' + E.Message;
+        AResponse := HttpConnectionErrorMessage(E);
         Result := False;
       end;
     end;
   finally
     RespStream.Free;
-    ReqStream.Free;
-    Client.Free;
+    Headers.Free;
+  end;
+end;
+
+function TLlmClient.SendHttpPost(const AUrl, APayload: string; out AResponse: string): Boolean;
+var
+  {$IFNDEF MSWINDOWS}
+  Client: TFPHTTPClient;
+  ReqStream: TStringStream;
+  {$ENDIF}
+  Headers: TStringList;
+  RespStream: TStringStream;
+  StatusCode: Integer;
+  Body: RawByteString;
+begin
+  Result := False;
+  AResponse := '';
+  Headers := BuildRequestHeaders(True);
+  RespStream := TStringStream.Create('', TEncoding.UTF8);
+  Body := RawByteString(APayload);
+  try
+    try
+      {$IFDEF MSWINDOWS}
+      StatusCode := 0;
+      WindowsHTTPRequest('POST', AUrl, Headers, Body, RespStream, StatusCode);
+      AResponse := RespStream.DataString;
+      Result := (StatusCode >= 200) and (StatusCode < 300);
+      if not Result then begin
+        if Trim(AResponse) = '' then
+          AResponse := Format('HTTP Error %d', [StatusCode]);
+      end;
+      {$ELSE}
+      Client := TFPHTTPClient.Create(nil);
+      ReqStream := TStringStream.Create(APayload, TEncoding.UTF8);
+      try
+        ApplyHeadersToHttpClient(Client, Headers);
+        Client.IOTimeout := FTimeoutMs div 1000;
+        Client.RequestBody := ReqStream;
+        Client.Post(AUrl, RespStream);
+        AResponse := RespStream.DataString;
+        Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
+        if not Result then begin
+          if Trim(AResponse) = '' then
+            AResponse := Format('HTTP Error %d: %s', [Client.ResponseStatusCode, Client.ResponseStatusText]);
+        end;
+      finally
+        ReqStream.Free;
+        Client.Free;
+      end;
+      {$ENDIF}
+    except
+      on E: Exception do begin
+        AResponse := HttpConnectionErrorMessage(E);
+        Result := False;
+      end;
+    end;
+  finally
+    RespStream.Free;
+    Headers.Free;
+  end;
+end;
+
+function TLlmClient.ListModels: TLlmModelListResult;
+var
+  Url, RespStr: string;
+begin
+  Url := ModelsListUrl;
+  if SendHttpGet(Url, RespStr) then
+    Result := ParseModelsResponse(RespStr)
+  else begin
+    Result := ParseModelsResponse(RespStr);
+    if not Result.Success then begin
+      if Result.ErrorMessage = '' then
+        Result.ErrorMessage := RespStr;
+    end;
+    Result.Success := False;
   end;
 end;
 
@@ -311,6 +549,7 @@ begin
       lpOpenRouter: Url := 'https://openrouter.ai/api/v1/chat/completions';
       lpOpenAI: Url := 'https://api.openai.com/v1/chat/completions';
       lpOllama: Url := 'http://localhost:11434/v1/chat/completions';
+      lpNousResearch: Url := 'https://inference-api.nousresearch.com/v1/chat/completions';
       else Url := 'https://openrouter.ai/api/v1/chat/completions';
     end;
   end else begin

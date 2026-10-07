@@ -1,0 +1,58 @@
+object EditRuleForm: TEditRuleForm
+  Left = 320
+  Height = 400
+  Top = 200
+  Width = 520
+  BorderStyle = bsSizeable
+  Caption = 'Edit Rule'
+  ClientHeight = 360
+  ClientWidth = 504
+  Font.Name = 'Segoe UI'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  LCLVersion = '4.8.0.0'
+  object memoRule: TMemo
+    Left = 0
+    Height = 316
+    Top = 0
+    Width = 504
+    Align = alClient
+    BorderSpacing.Left = 8
+    BorderSpacing.Top = 8
+    BorderSpacing.Right = 8
+    ScrollBars = ssAutoBoth
+    TabOrder = 0
+    WordWrap = True
+  end
+  object pnlBottom: TPanel
+    Left = 0
+    Height = 44
+    Top = 316
+    Width = 504
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 44
+    ClientWidth = 504
+    TabOrder = 1
+    object btnOK: TThemedButton
+      Left = 320
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Caption = 'Save'
+      OnClick = btnOKClick
+      TabOrder = 0
+    end
+    object btnCancel: TThemedButton
+      Left = 408
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Caption = 'Cancel'
+      OnClick = btnCancelClick
+      TabOrder = 1
+    end
+  end
+end
