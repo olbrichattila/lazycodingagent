@@ -126,7 +126,7 @@ def run(driver):
                     assert requests, result
                     readonly = {'read_file','list_directory','glob','search_code','diagnostics','git','todo'}
                     expected = readonly if mode == 'Ask' else readonly | {'create_plan_file'}
-                    if mode == 'Agent': expected |= {'write_file','apply_patch','shell'}
+                    if mode == 'Agent': expected |= {'write_file','apply_patch','edit_file','shell'}
                     for request in requests:
                         prompt = request['messages'][0]['content'].replace('\r\n', '\n')
                         assert f'Active Mode: {mode}\n' in prompt

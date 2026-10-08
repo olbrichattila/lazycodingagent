@@ -23,6 +23,8 @@ type
     Success: Boolean;
     Output: string;
     Summary: string;
+    WasException: Boolean;
+    ExceptionClass: string;
   end;
 
   TAgentToolContext = class
@@ -444,6 +446,8 @@ begin
   Result.Output := AJson;
   Result.Success := True;
   Result.Summary := 'OK';
+  Result.WasException := False;
+  Result.ExceptionClass := '';
   if Trim(AJson) = '' then Exit;
   if AJson[1] <> '{' then Exit;
   if not TryGetJSONObject(AJson, O) then Exit;

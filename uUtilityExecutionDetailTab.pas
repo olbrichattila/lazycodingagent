@@ -5,7 +5,8 @@ unit uUtilityExecutionDetailTab;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, uAppTypes, uTheme, uAgentExecutionLog;
+  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, uAppTypes, uTheme, uAgentExecutionLog,
+  uAgentToolErrorLog;
 
 type
   { Read-only inspector for a single execution log entry }
@@ -17,6 +18,7 @@ type
     constructor Create(AOwner: TComponent); override;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ShowEntry(AEntry: TExecutionLogEntry);
+    procedure ShowToolError(AEntry: TToolErrorLogEntry);
     procedure ClearDetail;
   end;
 
@@ -48,6 +50,15 @@ begin
 end;
 
 procedure TUtilityExecutionDetailTab.ShowEntry(AEntry: TExecutionLogEntry);
+begin
+  if not Assigned(AEntry) then begin
+    ClearDetail;
+    Exit;
+  end;
+  FMemo.Lines.Text := AEntry.BuildInspectorText;
+end;
+
+procedure TUtilityExecutionDetailTab.ShowToolError(AEntry: TToolErrorLogEntry);
 begin
   if not Assigned(AEntry) then begin
     ClearDetail;

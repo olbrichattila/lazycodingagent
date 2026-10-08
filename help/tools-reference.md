@@ -11,7 +11,7 @@ Aliases: `search_code` also answers to `grep`; `shell` to `terminal` / `run_proc
 | Read/search/list/glob/git/diagnostics read | Yes | Yes | Yes |
 | todo (session task list) | Yes | Yes | Yes |
 | create_plan_file | No | Yes | Yes |
-| write_file, apply_patch, shell | No | No | Yes |
+| write_file, apply_patch, edit_file, shell | No | No | Yes |
 
 ## Tools
 
@@ -47,7 +47,19 @@ Search file contents (literal or regex, optional path glob). Alias: `grep`.
 
 ### apply_patch
 
-Apply a **unified diff** after validation (create, modify, delete files).
+Apply a **unified diff** after validation (create, modify, delete files). On success, the JSON may include a `warnings` array when the tool corrected minor format issues (for example wrong `@@` line counts).
+
+**Modes:** Agent only.
+
+#### Patch format pitfalls
+
+- One-line change: `@@ -N,1 +N,1 @@` then exactly one `-` line and one `+` line (`N` is the 1-based line number from `read_file`).
+- The number after the comma in `@@ -start,count` is how many old-side hunk lines follow (` ` context and `-` removals), not “lines start through end.”
+- Failures return `error_kind` such as `context_mismatch`, `invalid_hunk`, `incomplete_hunk`, or `hunk_count_mismatch`; many errors include a `hint` field.
+
+### edit_file
+
+Replace **exactly one** occurrence of `old_text` with `new_text` in a file (strict byte match). Use for a single substitution when a unified diff is awkward.
 
 **Modes:** Agent only.
 
@@ -80,10 +92,6 @@ Read or replace a **session-local** task list (pending / in_progress / completed
 Save plan markdown under `<workspace>/.plan/plan-*.md`.
 
 **Modes:** Plan, Agent.
-
-## Internal tools
-
-**edit_file** (single search-and-replace in a file) exists in the registry but is **not advertised** to the model; patches and writes are the supported edit paths.
 
 ## Educational note
 

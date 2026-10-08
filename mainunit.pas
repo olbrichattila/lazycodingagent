@@ -10,7 +10,8 @@ uses
   uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uDockPanel, uNavigationPanel, uChatPanel,
   uTerminalPanel,
   uAppLogo, uAgentEngine, uCustomTabControl, uThemedButton, frmSettings, frmNewWorkspace, frmWorkspaceRules,
-  uUtilityPlanTab, uUtilityExecutionDetailTab, uAgentExecutionLog, uFileEditorTab,
+  uUtilityPlanTab, uUtilityExecutionDetailTab, uAgentExecutionLog, uAgentToolErrorLog,
+  uFileEditorTab,
   uFileMarkdownTab, uSyntaxSchemeRegistry, frmSyntaxSchemes,
   frmOpenMarkdown, frmHelp, fpjson, jsonparser;
 
@@ -219,9 +220,13 @@ type
     procedure HubToolResult(Sender: TObject; const ASessionId: string; const AToolName,
       AArgsJson: string; const AResult: TToolExecutionResult);
     procedure HubExecutionLogAdded(Sender: TObject; const ASessionId: string; AEntryIndex: Integer);
+    procedure HubToolErrorAdded(Sender: TObject; const ASessionId: string; AEntryIndex: Integer);
     procedure NavLogEntrySelected(Sender: TObject; AIndex: Integer);
+    procedure NavToolErrorEntrySelected(Sender: TObject; AIndex: Integer);
     procedure NavClearExecutionLog(Sender: TObject);
+    procedure NavClearToolErrorLog(Sender: TObject);
     procedure BindExecutionLogToNav(const ASessionId: string);
+    procedure BindToolErrorLogToNav(const ASessionId: string);
     procedure RefreshNavTaskList;
     procedure NavTasksRefresh(Sender: TObject);
     procedure SyncHubClientSettings(AHub: TChatSessionHub);
@@ -277,6 +282,7 @@ begin
   Hub.OnToolCall := @HubToolCall;
   Hub.OnToolResult := @HubToolResult;
   Hub.OnExecutionLogAdded := @HubExecutionLogAdded;
+  Hub.OnToolErrorAdded := @HubToolErrorAdded;
   SyncHubClientSettings(Hub);
   FActiveHub := Hub;
 end;
@@ -324,6 +330,7 @@ begin
   end;
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
+  BindToolErrorLogToNav(ASessionId);
   RefreshNavTaskList;
   if Assigned(FUtilityExecDetail) then
     FUtilityExecDetail.ClearDetail;
@@ -343,6 +350,22 @@ begin
     end;
   end;
   FNavContent.BindExecutionLog(Log);
+end;
+
+procedure TLazyCodingAgentForm.BindToolErrorLogToNav(const ASessionId: string);
+var
+  Log: TAgentToolErrorLog;
+begin
+  if not Assigned(FNavContent) then Exit;
+  Log := nil;
+  if (ASessionId <> '') and FState.HasActiveWorkspace then begin
+    EnsureActiveHub;
+    if Assigned(FActiveHub) then begin
+      FActiveHub.GetOrCreateEngine(ASessionId);
+      Log := FActiveHub.ToolErrorLogFor(ASessionId);
+    end;
+  end;
+  FNavContent.BindToolErrorLog(Log);
 end;
 
 procedure TLazyCodingAgentForm.SelectSession(const ASessionId: string);
@@ -686,6 +709,8 @@ begin
   FNavContent.OnFileOpen := @NavFileOpen;
   FNavContent.OnLogEntrySelected := @NavLogEntrySelected;
   FNavContent.OnClearExecutionLog := @NavClearExecutionLog;
+  FNavContent.OnToolErrorEntrySelected := @NavToolErrorEntrySelected;
+  FNavContent.OnClearToolErrorLog := @NavClearToolErrorLog;
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
 
   // 4. Instructions / Reserved panel inside Dock Panel
@@ -1304,6 +1329,46 @@ begin
     Log.Clear;
   if Assigned(FNavContent) then
     FNavContent.RefreshExecutionLogList;
+  if Assigned(FUtilityExecDetail) then
+    FUtilityExecDetail.ClearDetail;
+end;
+
+procedure TLazyCodingAgentForm.HubToolErrorAdded(Sender: TObject; const ASessionId: string;
+  AEntryIndex: Integer);
+begin
+  if not SameText(ASessionId, FCurrentSessionId) then Exit;
+  if Assigned(FNavContent) then
+    FNavContent.AppendToolErrorLogEntry(AEntryIndex);
+end;
+
+procedure TLazyCodingAgentForm.NavToolErrorEntrySelected(Sender: TObject; AIndex: Integer);
+var
+  Log: TAgentToolErrorLog;
+  Entry: TToolErrorLogEntry;
+begin
+  if not Assigned(FUtilityExecDetail) then Exit;
+  Log := nil;
+  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+    Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
+  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
+  Entry := Log.Entry(AIndex);
+  FUtilityExecDetail.ShowToolError(Entry);
+  FState.SetPanelVisible(piUtility, True);
+  ApplyDockPanelsLayout;
+  if Assigned(FPageControlUtility) and Assigned(FUtilityExecDetailPage) then
+    FPageControlUtility.ActivePage := FUtilityExecDetailPage;
+end;
+
+procedure TLazyCodingAgentForm.NavClearToolErrorLog(Sender: TObject);
+var
+  Log: TAgentToolErrorLog;
+begin
+  if not Assigned(FActiveHub) or (FCurrentSessionId = '') then Exit;
+  Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
+  if Assigned(Log) then
+    Log.Clear;
+  if Assigned(FNavContent) then
+    FNavContent.RefreshToolErrorLogList;
   if Assigned(FUtilityExecDetail) then
     FUtilityExecDetail.ClearDetail;
 end;

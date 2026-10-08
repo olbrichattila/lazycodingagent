@@ -25,9 +25,10 @@ uses
 type
   EPatchError = class(Exception)
   public
-    ErrorKind, ErrorPath: string;
+    ErrorKind, ErrorPath, Hint: string;
     ErrorLine: Integer;
-    constructor Create(const AKind, AMessage, APath: string; ALine: Integer = 0);
+    constructor Create(const AKind, AMessage, APath: string; ALine: Integer = 0;
+      const AHint: string = '');
   end;
   TStagedEdit = class
     Path, TempPath: string;
@@ -120,12 +121,14 @@ begin
   Result := S;
 end;
 
-constructor EPatchError.Create(const AKind, AMessage, APath: string; ALine: Integer);
+constructor EPatchError.Create(const AKind, AMessage, APath: string; ALine: Integer;
+  const AHint: string);
 begin
   inherited Create(AMessage);
   ErrorKind := AKind;
   ErrorPath := APath;
   ErrorLine := ALine;
+  Hint := AHint;
 end;
 
 function PatchErrorJSON(const E: EPatchError): string;
@@ -137,13 +140,20 @@ begin
     O.Add('error_kind', E.ErrorKind);
     if E.ErrorPath <> '' then O.Add('path', E.ErrorPath);
     if E.ErrorLine > 0 then O.Add('line', E.ErrorLine);
+    if E.Hint <> '' then O.Add('hint', E.Hint);
     Result := O.AsJSON;
   finally O.Free; end;
 end;
 
-procedure PatchRaise(const AKind, AMessage, APath: string; ALine: Integer = 0);
+procedure PatchRaise(const AKind, AMessage, APath: string; ALine: Integer = 0;
+  const AHint: string = '');
 begin
-  raise EPatchError.Create(AKind, AMessage, APath, ALine);
+  raise EPatchError.Create(AKind, AMessage, APath, ALine, AHint);
+end;
+
+function IsHunkBodyBoundary(const ALine: string): Boolean;
+begin
+  Result := (Copy(ALine, 1, 2) = '@@') or (Copy(ALine, 1, 4) = '--- ');
 end;
 
 function PatchErrorKindForMessage(const AMessage: string): string;
@@ -176,8 +186,8 @@ begin
   {$ENDIF}
 end;
 
-function Commit(Edits: TList): string;
-var I: Integer; E: TStagedEdit; O: TJSONObject; Changed: TJSONArray;
+function Commit(Edits: TList; APatchWarnings: TStrings = nil): string;
+var I, J: Integer; E: TStagedEdit; O: TJSONObject; Changed, WarnArr: TJSONArray;
   Warning, W: string;
 begin
   Warning := '';
@@ -220,6 +230,13 @@ begin
         if W <> '' then Warning := Warning + W + LineEnding;
       end;
       O.Add('status', 'success');
+      if (APatchWarnings <> nil) and (APatchWarnings.Count > 0) then
+      begin
+        WarnArr := TJSONArray.Create;
+        for J := 0 to APatchWarnings.Count - 1 do
+          WarnArr.Add(APatchWarnings[J]);
+        O.Add('warnings', WarnArr);
+      end;
     except on Ex: Exception do
       begin
         O.Add('error', Ex.Message);
@@ -235,10 +252,11 @@ end;
 function ExecuteApplyPatchJson(A: TJSONObject): string;
 var
   Patch: TStringList; Edits: TList;
-  Lines, Endings, Output, OutEndings: TStringList;
+  Lines, Endings, Output, OutEndings, PatchWarnings: TStringList;
   R: TRegExpr; E: TStagedEdit;
-  I, J, Cursor, OldStart, OldCount, NewStart, NewCount, SeenOld, SeenNew, MarkerIndex, HunkCount: Integer;
-  OldPath, NewPath, Text, EOL, BOM: string; MarkerOld: Boolean;
+  I, J, Cursor, OldStart, OldCount, NewStart, NewCount, HeaderOldCount, HeaderNewCount;
+  SeenOld, SeenNew, MarkerIndex, HunkCount: Integer;
+  OldPath, NewPath, Text, EOL, BOM, RelPath: string; MarkerOld, BrokeAtBoundary: Boolean;
   PatchEx: EPatchError;
   procedure AppendOriginal(UntilIndex: Integer);
   begin
@@ -254,12 +272,28 @@ var
     if (Cursor >= Lines.Count) or (Lines[Cursor] <> Value) then
       raise EPatchError.Create('context_mismatch', 'Patch context mismatch in ' +
         E.Path + ' near line ' + IntToStr(Cursor + 1) +
-        '; reread the current file and retry with exact context', E.Path, Cursor + 1);
+        '; reread the current file and retry with exact context', E.Path, Cursor + 1,
+        'Copy every - and space line exactly from read_file (entities, quotes, trailing spaces).');
+  end;
+  procedure ApplyHunkLine(const AText: string);
+  var LineText: string;
+  begin
+    LineText := AText;
+    if LineText = '' then LineText := ' ';
+    if LineText[1] <> ' ' then
+      PatchRaise('invalid_hunk', 'Invalid hunk line', E.Path, 0,
+        'Each hunk line must start with space, -, or +; blank lines count as context.');
+    CheckOld(Copy(LineText, 2, MaxInt));
+    Output.Add(Lines[Cursor]); OutEndings.Add(Endings[Cursor]);
+    Inc(Cursor); Inc(SeenOld); Inc(SeenNew);
+    MarkerIndex := Output.Count - 1; MarkerOld := True;
   end;
 begin
   Patch := TStringList.Create; Edits := TList.Create;
   Lines := TStringList.Create; Endings := TStringList.Create;
-  Output := TStringList.Create; OutEndings := TStringList.Create; R := TRegExpr.Create;
+  Output := TStringList.Create; OutEndings := TStringList.Create;
+  PatchWarnings := TStringList.Create;
+  R := TRegExpr.Create;
   try
     try
       Patch.Text := NormalizePatch(A.Get('patch', ''));
@@ -308,25 +342,33 @@ begin
         first observed line ending. }
       EOL := #10;
       for J := 0 to Endings.Count-1 do if Endings[J] <> '' then begin EOL := Endings[J]; Break; end;
+      RelPath := ExtractFileName(E.Path);
       while (I < Patch.Count) and (Copy(Patch[I], 1, 2) = '@@') do
       begin
         if ToolCancelled then raise Exception.Create('Tool cancelled');
         if not R.Exec(Patch[I]) then PatchRaise('invalid_hunk', 'Invalid hunk header', E.Path, 0);
         OldStart := StrToInt(R.Match[1]); NewStart := StrToInt(R.Match[4]);
-        OldCount := 1; NewCount := 1;
-        if R.Match[3] <> '' then OldCount := StrToInt(R.Match[3]);
-        if R.Match[6] <> '' then NewCount := StrToInt(R.Match[6]);
-        if OldCount > 0 then Dec(OldStart);
-        if NewCount > 0 then Dec(NewStart);
+        HeaderOldCount := 1; HeaderNewCount := 1;
+        if R.Match[3] <> '' then HeaderOldCount := StrToInt(R.Match[3]);
+        if R.Match[6] <> '' then HeaderNewCount := StrToInt(R.Match[6]);
+        if HeaderOldCount > 0 then Dec(OldStart);
+        if HeaderNewCount > 0 then Dec(NewStart);
         if (OldStart < Cursor) or (OldStart > Lines.Count) then
           PatchRaise('invalid_hunk', 'Overlapping or invalid hunk', E.Path, OldStart + 1);
         AppendOriginal(OldStart);
         if NewStart <> Output.Count then
-          PatchRaise('invalid_hunk', 'Invalid new hunk position', E.Path, NewStart + 1);
-        Inc(I); Inc(HunkCount); SeenOld := 0; SeenNew := 0; MarkerIndex := -1; MarkerOld := False;
+          PatchWarnings.Add('hunk at ' + RelPath + ': ignored +start ' + IntToStr(NewStart + 1) +
+            ' (expected ' + IntToStr(Output.Count + 1) + ')');
+        Inc(I); Inc(HunkCount); SeenOld := 0; SeenNew := 0; MarkerIndex := -1;
+        MarkerOld := False; BrokeAtBoundary := False;
         while I < Patch.Count do
         begin
           Text := Patch[I];
+          if IsHunkBodyBoundary(Text) then
+          begin
+            BrokeAtBoundary := True;
+            Break;
+          end;
           if Text = '\ No newline at end of file' then
           begin
             if MarkerOld and ((Cursor = 0) or (Endings[Cursor-1] <> '')) then
@@ -334,22 +376,61 @@ begin
             if MarkerIndex >= 0 then OutEndings[MarkerIndex] := '';
             MarkerIndex := -1; MarkerOld := False; Inc(I); Continue;
           end;
-          if (SeenOld = OldCount) and (SeenNew = NewCount) then Break;
-          if Text = '' then PatchRaise('invalid_hunk', 'Hunk lines require a prefix', E.Path, 0);
-          case Text[1] of
-            ' ': begin CheckOld(Copy(Text, 2, MaxInt)); Output.Add(Lines[Cursor]); OutEndings.Add(Endings[Cursor]); Inc(Cursor); Inc(SeenOld); Inc(SeenNew); MarkerIndex := Output.Count-1; MarkerOld := True; end;
-            '-': begin CheckOld(Copy(Text, 2, MaxInt)); Inc(Cursor); Inc(SeenOld); MarkerIndex := -1; MarkerOld := True; end;
-            '+': begin Output.Add(Copy(Text, 2, MaxInt)); OutEndings.Add(EOL); Inc(SeenNew); MarkerIndex := Output.Count-1; MarkerOld := False; end;
-            else PatchRaise('invalid_hunk', 'Invalid hunk line', E.Path, 0);
+          if (SeenOld = HeaderOldCount) and (SeenNew = HeaderNewCount) then Break;
+          if Text = '' then
+          begin
+            ApplyHunkLine('');
+            if (SeenOld > HeaderOldCount) or (SeenNew > HeaderNewCount) then
+              PatchRaise('hunk_count_mismatch',
+                'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+            Inc(I);
+            Continue;
           end;
-          if (SeenOld > OldCount) or (SeenNew > NewCount) then
+          case Text[1] of
+            ' ': begin ApplyHunkLine(Text); end;
+            '-': begin
+              if SeenOld >= HeaderOldCount then
+                PatchRaise('hunk_count_mismatch',
+                  'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+              CheckOld(Copy(Text, 2, MaxInt)); Inc(Cursor); Inc(SeenOld);
+              MarkerIndex := -1; MarkerOld := True;
+            end;
+            '+': begin
+              if SeenNew >= HeaderNewCount then
+                PatchRaise('hunk_count_mismatch',
+                  'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+              Output.Add(Copy(Text, 2, MaxInt)); OutEndings.Add(EOL); Inc(SeenNew);
+              MarkerIndex := Output.Count - 1; MarkerOld := False;
+            end;
+            else
+              PatchRaise('invalid_hunk', 'Invalid hunk line', E.Path, 0,
+                'Each hunk line must start with space, -, or +.');
+          end;
+          if (SeenOld > HeaderOldCount) or (SeenNew > HeaderNewCount) then
             PatchRaise('hunk_count_mismatch',
               'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
           Inc(I);
         end;
-        if (SeenOld <> OldCount) or (SeenNew <> NewCount) then
-          PatchRaise('incomplete_hunk',
-            'Incomplete hunk; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+        if (SeenOld <> HeaderOldCount) or (SeenNew <> HeaderNewCount) then
+        begin
+          if BrokeAtBoundary then
+          begin
+            if (SeenOld = 0) and (SeenNew = 0) then
+              PatchRaise('incomplete_hunk',
+                'Incomplete hunk; expected ' + IntToStr(HeaderOldCount) + ' old and ' +
+                IntToStr(HeaderNewCount) + ' new lines, got none', E.Path, 0,
+                'Add - and + lines or use @@ -N,1 +N,1 @@ for one-line changes.');
+            PatchWarnings.Add('hunk at ' + RelPath + ': adjusted @@ counts from ' +
+              IntToStr(HeaderOldCount) + '/' + IntToStr(HeaderNewCount) + ' to ' +
+              IntToStr(SeenOld) + '/' + IntToStr(SeenNew));
+          end
+          else
+            PatchRaise('incomplete_hunk',
+              'Incomplete hunk; expected ' + IntToStr(HeaderOldCount) + '/' +
+              IntToStr(HeaderNewCount) + ' old/new lines, got ' + IntToStr(SeenOld) + '/' +
+              IntToStr(SeenNew), E.Path, 0,
+              'Recount space, -, and + lines in the hunk or start the next hunk with @@.');
+        end;
       end;
       if HunkCount = 0 then PatchRaise('empty_patch', 'Patch file has no hunks', E.Path, 0);
       AppendOriginal(Lines.Count); E.Content := BOM;
@@ -363,7 +444,7 @@ begin
         PatchRaise('patch_apply', 'Deletion patch must remove all lines', E.Path, 0);
     end;
     if Edits.Count = 0 then PatchRaise('empty_patch', 'Patch is empty', '', 0);
-      Result := Commit(Edits);
+      Result := Commit(Edits, PatchWarnings);
     except
       on Ex: EPatchError do Result := PatchErrorJSON(Ex);
       on Ex: Exception do
@@ -374,7 +455,8 @@ begin
     end;
   finally
     for J := 0 to Edits.Count-1 do TObject(Edits[J]).Free;
-    Patch.Free; Edits.Free; Lines.Free; Endings.Free; Output.Free; OutEndings.Free; R.Free;
+    Patch.Free; Edits.Free; Lines.Free; Endings.Free; Output.Free; OutEndings.Free;
+    PatchWarnings.Free; R.Free;
   end;
 end;
 
@@ -420,7 +502,7 @@ begin
   SetLength(Result.Params, 1);
   Result.Params[0].Name := 'patch';
   Result.Params[0].ParamType := 'string';
-  Result.Params[0].Description := 'Raw unified diff with ---/+++ headers and @@ hunks only.';
+  Result.Params[0].Description := 'Raw unified diff: --- a/path, +++ b/path, @@ -N,1 +N,1 @@, then one -old and +new line per change.';
   Result.Params[0].Required := True;
 end;
 

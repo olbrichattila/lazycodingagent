@@ -37,7 +37,12 @@ end;
 procedure TAgentRunThread.Execute;
 begin
   try
-    FEngine.ExecuteRun(FUserPrompt, FMode, FModel);
+    try
+      FEngine.ExecuteRun(FUserPrompt, FMode, FModel);
+    except
+      on E: Exception do
+        FEngine.ReportRunException(E);
+    end;
   finally
     FEngine.RunThreadFinished;
   end;

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
   ComCtrls, LCLType, uAppTypes, uTheme, uThemedButton, uAppLogo, uCodingAgentPresets,
-  uAgentExecutionLog;
+  uAgentExecutionLog, uAgentToolErrorLog;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -19,6 +19,7 @@ type
   TNavFileOpenEvent = procedure(Sender: TObject; const AFilePath: string) of object;
   TNavLogEntrySelectedEvent = procedure(Sender: TObject; AIndex: Integer) of object;
   TNavExecutionLogClearEvent = procedure(Sender: TObject) of object;
+  TNavToolErrorLogClearEvent = procedure(Sender: TObject) of object;
 
 type
   { TNavRailControl - Left sleek icon bar }
@@ -59,7 +60,9 @@ type
     FFileList: TListBox;
     FTreeView: TTreeView;
     FLogList: TListBox;
+    FErrorLogList: TListBox;
     FExecutionLog: TAgentExecutionLog;
+    FToolErrorLog: TAgentToolErrorLog;
     FActionBtn: TThemedButton;
     FSecondaryActionBtn: TThemedButton;
     FWorkspaceIds: TStringList;
@@ -81,11 +84,14 @@ type
     FOnFileOpen: TNavFileOpenEvent;
     FOnLogEntrySelected: TNavLogEntrySelectedEvent;
     FOnClearExecutionLog: TNavExecutionLogClearEvent;
+    FOnClearToolErrorLog: TNavToolErrorLogClearEvent;
+    FOnToolErrorEntrySelected: TNavLogEntrySelectedEvent;
     FOnTasksRefresh: TNotifyEvent;
 
     procedure ActionBtnClick(Sender: TObject);
     procedure FillTaskListBox;
     procedure LogListClick(Sender: TObject);
+    procedure ErrorLogListClick(Sender: TObject);
     procedure SecondaryActionBtnClick(Sender: TObject);
     procedure UpdateSessionSecondaryAction;
     procedure FileListClick(Sender: TObject);
@@ -113,6 +119,9 @@ type
     procedure BindExecutionLog(ALog: TAgentExecutionLog);
     procedure RefreshExecutionLogList;
     procedure AppendExecutionLogEntry(AIndex: Integer);
+    procedure BindToolErrorLog(ALog: TAgentToolErrorLog);
+    procedure RefreshToolErrorLogList;
+    procedure AppendToolErrorLogEntry(AIndex: Integer);
     procedure UpdateSessionTasks(const ACaptions: TStrings);
     destructor Destroy; override;
 
@@ -129,6 +138,10 @@ type
       write FOnLogEntrySelected;
     property OnClearExecutionLog: TNavExecutionLogClearEvent read FOnClearExecutionLog
       write FOnClearExecutionLog;
+    property OnClearToolErrorLog: TNavToolErrorLogClearEvent read FOnClearToolErrorLog
+      write FOnClearToolErrorLog;
+    property OnToolErrorEntrySelected: TNavLogEntrySelectedEvent read FOnToolErrorEntrySelected
+      write FOnToolErrorEntrySelected;
     property OnTasksRefresh: TNotifyEvent read FOnTasksRefresh write FOnTasksRefresh;
   end;
 
@@ -379,6 +392,14 @@ begin
   ConfigureThemedListBox(FLogList, FTheme);
   FExecutionLog := nil;
 
+  FErrorLogList := TListBox.Create(Self);
+  FErrorLogList.Parent := Self;
+  FErrorLogList.Visible := False;
+  FErrorLogList.OnClick := @ErrorLogListClick;
+  FErrorLogList.OnDrawItem := @FileListDrawItem;
+  ConfigureThemedListBox(FErrorLogList, FTheme);
+  FToolErrorLog := nil;
+
   FActionBtn := TThemedButton.Create(Self);
   FActionBtn.Parent := Self;
   FActionBtn.Height := 28;
@@ -581,6 +602,7 @@ begin
   SetBoundsIfChanged(FFileList, 12, 60, W, ListH);
   SetBoundsIfChanged(FTreeView, 12, 60, W, ListH);
   SetBoundsIfChanged(FLogList, 12, 60, W, ListH);
+  SetBoundsIfChanged(FErrorLogList, 12, 60, W, ListH);
 
   if H > 80 then begin
     if (FSelected = niSessions) and FSecondaryActionBtn.Visible then begin
@@ -620,6 +642,7 @@ begin
   ConfigureThemedTreeView(FTreeView, FTheme);
 
   ConfigureThemedListBox(FLogList, FTheme);
+  ConfigureThemedListBox(FErrorLogList, FTheme);
 
   if Assigned(FActionBtn) then
     FActionBtn.ApplyTheme(FTheme);
@@ -634,6 +657,7 @@ begin
   ApplyPlatformScrollableTheme(FFileList, ATheme);
   ApplyPlatformScrollableTheme(FTreeView, ATheme);
   ApplyPlatformScrollableTheme(FLogList, ATheme);
+  ApplyPlatformScrollableTheme(FErrorLogList, ATheme);
 end;
 
 procedure TNavContentControl.SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -680,6 +704,42 @@ begin
   if not Assigned(FOnLogEntrySelected) then Exit;
   if FLogList.ItemIndex < 0 then Exit;
   FOnLogEntrySelected(Self, FLogList.ItemIndex);
+end;
+
+procedure TNavContentControl.ErrorLogListClick(Sender: TObject);
+begin
+  if not Assigned(FOnToolErrorEntrySelected) then Exit;
+  if FErrorLogList.ItemIndex < 0 then Exit;
+  FOnToolErrorEntrySelected(Self, FErrorLogList.ItemIndex);
+end;
+
+procedure TNavContentControl.BindToolErrorLog(ALog: TAgentToolErrorLog);
+begin
+  FToolErrorLog := ALog;
+  RefreshToolErrorLogList;
+end;
+
+procedure TNavContentControl.RefreshToolErrorLogList;
+var
+  I: Integer;
+begin
+  if not Assigned(FErrorLogList) then Exit;
+  FErrorLogList.Items.Clear;
+  if not Assigned(FToolErrorLog) then Exit;
+  for I := 0 to FToolErrorLog.Count - 1 do
+    FErrorLogList.Items.Add(FToolErrorLog.Entry(I).Caption);
+end;
+
+procedure TNavContentControl.AppendToolErrorLogEntry(AIndex: Integer);
+begin
+  if not Assigned(FToolErrorLog) or not Assigned(FErrorLogList) then Exit;
+  if (AIndex < 0) or (AIndex >= FToolErrorLog.Count) then Exit;
+  if FErrorLogList.Items.Count <> FToolErrorLog.Count then
+    RefreshToolErrorLogList
+  else
+    FErrorLogList.Items[AIndex] := FToolErrorLog.Entry(AIndex).Caption;
+  if AIndex < FErrorLogList.Items.Count then
+    FErrorLogList.ItemIndex := AIndex;
 end;
 
 procedure TNavContentControl.FreeFileTreeNodePaths;
@@ -789,6 +849,9 @@ begin
           FOnTasksRefresh(Self);
         FillTaskListBox;
       end;
+    niToolErrors:
+      if Assigned(FOnClearToolErrorLog) then
+        FOnClearToolErrorLog(Self);
   end;
 end;
 
@@ -827,6 +890,7 @@ begin
   FFileList.Visible := False;
   FTreeView.Visible := False;
   FLogList.Visible := False;
+  FErrorLogList.Visible := False;
   if FSelected <> niSessions then
     FSecondaryActionBtn.Visible := False;
 
@@ -888,8 +952,19 @@ begin
         FLogList.Visible := True;
         FTitleLabel.Caption := 'Tool Execution & Logs';
         FSubLabel.Caption := 'Click an entry to inspect full prompt / tool I/O';
+        FSubLabel.Hint := '';
         FActionBtn.Caption := '🗑 Clear Tool Logs';
         RefreshExecutionLogList;
+      end;
+    niToolErrors:
+      begin
+        FErrorLogList.Visible := True;
+        FTitleLabel.Caption := 'Tool Errors';
+        FSubLabel.Caption := TruncateLogCaption(ToolErrorLogFilePath, 72);
+        FSubLabel.Hint := ToolErrorLogFilePath;
+        FSubLabel.ShowHint := True;
+        FActionBtn.Caption := '🗑 Clear Session Errors';
+        RefreshToolErrorLogList;
       end;
     niTasks:
       begin

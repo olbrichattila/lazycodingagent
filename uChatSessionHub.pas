@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, uAppTypes, uAgentTypes, uAgentTools, uAgentEngine, uChatSessionStore,
-  uAgentExecutionLog;
+  uAgentExecutionLog, uAgentToolErrorLog;
 
 type
   THubStateChangeEvent = procedure(Sender: TObject; const ASessionId: string;
@@ -19,13 +19,16 @@ type
     const AToolName, AArgsJson: string; const AResult: TToolExecutionResult) of object;
   THubExecutionLogEvent = procedure(Sender: TObject; const ASessionId: string;
     AEntryIndex: Integer) of object;
+  THubToolErrorLogEvent = procedure(Sender: TObject; const ASessionId: string;
+    AEntryIndex: Integer) of object;
 
   TSessionRuntime = class
   public
     SessionId: string;
     Engine: TAgentEngine;
     ExecutionLog: TAgentExecutionLog;
-    constructor Create(const ASessionId, AWorkspaceRoot: string);
+    ToolErrorLog: TAgentToolErrorLog;
+    constructor Create(const ASessionId, AWorkspaceId, AWorkspaceRoot: string);
     destructor Destroy; override;
   end;
 
@@ -40,6 +43,7 @@ type
     FOnToolCall: THubToolCallEvent;
     FOnToolResult: THubToolResultEvent;
     FOnExecutionLogAdded: THubExecutionLogEvent;
+    FOnToolErrorAdded: THubToolErrorLogEvent;
     function IndexOfRuntime(const ASessionId: string): Integer;
     function IndexOfEngine(AEngine: TAgentEngine): Integer;
     procedure WireEngine(ARuntime: TSessionRuntime);
@@ -49,6 +53,7 @@ type
     procedure EngineToolResult(Sender: TObject; const AToolName, AArgsJson: string;
       const AResult: TToolExecutionResult);
     procedure EngineExecutionLogAdded(Sender: TObject; AEntryIndex: Integer);
+    procedure EngineToolErrorAdded(Sender: TObject; AEntryIndex: Integer);
   public
     constructor Create(const AWorkspaceId, AWorkspaceRoot: string);
     destructor Destroy; override;
@@ -59,6 +64,7 @@ type
 
     function EngineFor(const ASessionId: string): TAgentEngine;
     function ExecutionLogFor(const ASessionId: string): TAgentExecutionLog;
+    function ToolErrorLogFor(const ASessionId: string): TAgentToolErrorLog;
     function GetOrCreateEngine(const ASessionId: string): TAgentEngine;
     function HasEngine(const ASessionId: string): Boolean;
     function IsSessionRunning(const ASessionId: string): Boolean;
@@ -79,6 +85,8 @@ type
     property OnToolResult: THubToolResultEvent read FOnToolResult write FOnToolResult;
     property OnExecutionLogAdded: THubExecutionLogEvent read FOnExecutionLogAdded
       write FOnExecutionLogAdded;
+    property OnToolErrorAdded: THubToolErrorLogEvent read FOnToolErrorAdded
+      write FOnToolErrorAdded;
   end;
 
   TChatSessionHubManager = class
@@ -101,20 +109,24 @@ implementation
 
 { TSessionRuntime }
 
-constructor TSessionRuntime.Create(const ASessionId, AWorkspaceRoot: string);
+constructor TSessionRuntime.Create(const ASessionId, AWorkspaceId, AWorkspaceRoot: string);
 begin
   inherited Create;
   SessionId := ASessionId;
   ExecutionLog := TAgentExecutionLog.Create;
+  ToolErrorLog := TAgentToolErrorLog.Create(ASessionId, AWorkspaceId, AWorkspaceRoot);
   Engine := TAgentEngine.Create(AWorkspaceRoot);
   Engine.ExecutionLog := ExecutionLog;
+  Engine.ToolErrorLog := ToolErrorLog;
 end;
 
 destructor TSessionRuntime.Destroy;
 begin
   Engine.ExecutionLog := nil;
+  Engine.ToolErrorLog := nil;
   Engine.Free;
   ExecutionLog.Free;
+  ToolErrorLog.Free;
   inherited Destroy;
 end;
 
@@ -163,6 +175,7 @@ begin
   ARuntime.Engine.OnToolCall := @EngineToolCall;
   ARuntime.Engine.OnToolResult := @EngineToolResult;
   ARuntime.Engine.OnExecutionLogAdded := @EngineExecutionLogAdded;
+  ARuntime.Engine.OnToolErrorAdded := @EngineToolErrorAdded;
 end;
 
 procedure TChatSessionHub.EngineStateChange(Sender: TObject; AOldState, ANewState: TAgentState);
@@ -222,6 +235,16 @@ begin
     FOnExecutionLogAdded(Self, FRuntimes[Idx].SessionId, AEntryIndex);
 end;
 
+procedure TChatSessionHub.EngineToolErrorAdded(Sender: TObject; AEntryIndex: Integer);
+var
+  Idx: Integer;
+begin
+  Idx := IndexOfEngine(TAgentEngine(Sender));
+  if Idx < 0 then Exit;
+  if Assigned(FOnToolErrorAdded) then
+    FOnToolErrorAdded(Self, FRuntimes[Idx].SessionId, AEntryIndex);
+end;
+
 function TChatSessionHub.ExecutionLogFor(const ASessionId: string): TAgentExecutionLog;
 var
   Idx: Integer;
@@ -231,6 +254,17 @@ begin
     Result := nil
   else
     Result := FRuntimes[Idx].ExecutionLog;
+end;
+
+function TChatSessionHub.ToolErrorLogFor(const ASessionId: string): TAgentToolErrorLog;
+var
+  Idx: Integer;
+begin
+  Idx := IndexOfRuntime(ASessionId);
+  if Idx < 0 then
+    Result := nil
+  else
+    Result := FRuntimes[Idx].ToolErrorLog;
 end;
 
 procedure TChatSessionHub.SetWorkspaceRoot(const ARoot: string);
@@ -282,7 +316,7 @@ begin
   if Idx >= 0 then
     Exit(FRuntimes[Idx].Engine);
 
-  Rt := TSessionRuntime.Create(ASessionId, FWorkspaceRoot);
+  Rt := TSessionRuntime.Create(ASessionId, FWorkspaceId, FWorkspaceRoot);
   WireEngine(Rt);
   SetLength(FRuntimes, Length(FRuntimes) + 1);
   FRuntimes[High(FRuntimes)] := Rt;

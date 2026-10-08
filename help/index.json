@@ -9,7 +9,7 @@
     "id": "workspace-layout",
     "title": "Workspace layout and panels",
     "file": "workspace-layout.md",
-    "keywords": ["navigation", "dock", "detach", "terminal", "utility", "splitter", "theme"]
+    "keywords": ["navigation", "dock", "detach", "terminal", "utility", "splitter", "theme", "tool error", "tool-errors.log"]
   },
   {
     "id": "chat-and-modes",
@@ -27,12 +27,12 @@
     "id": "how-the-agent-works",
     "title": "How the agent works",
     "file": "how-the-agent-works.md",
-    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational"]
+    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger"]
   },
   {
     "id": "tools-reference",
     "title": "Agent tools reference",
     "file": "tools-reference.md",
-    "keywords": ["read_file", "write_file", "shell", "patch", "grep", "git", "todo", "plan"]
+    "keywords": ["read_file", "write_file", "edit_file", "apply_patch", "shell", "patch", "hunk", "grep", "git", "todo", "plan"]
   }
 ]

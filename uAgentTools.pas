@@ -200,6 +200,8 @@ begin
   Result.Success := False;
   Result.Output := '';
   Result.Summary := '';
+  Result.WasException := False;
+  Result.ExceptionClass := '';
 
   FContext.Mode := AMode;
   PrevContext := CurrentToolContext;
@@ -230,7 +232,16 @@ begin
         Exit;
       end;
 
-      Result := Tool.Execute(Args);
+      try
+        Result := Tool.Execute(Args);
+      except
+        on E: Exception do
+        begin
+          Result := ToolResultFromJson(ToolError('Tool execution failed: ' + E.Message));
+          Result.WasException := True;
+          Result.ExceptionClass := E.ClassName;
+        end;
+      end;
     finally
       Args.Free;
     end;

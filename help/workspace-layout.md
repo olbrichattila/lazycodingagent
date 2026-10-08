@@ -10,8 +10,15 @@ The narrow left **activity bar** switches views:
 - **Projects** — file tree for the workspace.
 - **Sessions** — chat session list (active and archived).
 - **Bots** — agent presets and prompt setups.
+- **Tools & Logs** — per-step tool execution log for the active session (click a row to open detail in the utility panel).
+- **Tasks & Plans** — session task list from the todo tool.
+- **Tool Errors** — failed tool calls for the active session (click a row for full arguments and output). The subtitle shows the on-disk log path; hover for the full path.
 
 Icons are tooltipped; the active item is highlighted.
+
+### Tool error log file
+
+Failures are also appended to `tool-errors.log` under the same user config folder as chat sessions (`lazycodingagent` beside session storage). The path is resolved at runtime on **Windows, Linux, and macOS** (see the Tool Errors panel subtitle). The file is JSONL (one JSON object per line). Clearing the panel only clears the in-memory list for the current session; delete the file manually if you want to reset the on-disk history.
 
 ## Chat and center area
 

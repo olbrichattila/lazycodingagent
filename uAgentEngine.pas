@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs, uAppTypes, uAgentTypes, uLlmClient, uAgentTools, uAgentRules,
-  uAgentExecutionLog;
+  uAgentExecutionLog, uAgentToolErrorLog;
 
 type
   { Event types for UI notification }
@@ -16,6 +16,7 @@ type
   TAgentToolResultEvent = procedure(Sender: TObject; const AToolName, AArgsJson: string;
     const AResult: TToolExecutionResult) of object;
   TAgentExecutionLogEvent = procedure(Sender: TObject; AEntryIndex: Integer) of object;
+  TAgentToolErrorLogEvent = procedure(Sender: TObject; AEntryIndex: Integer) of object;
 
   { TAgentEngine - Coordinates conversation, autonomous ReAct loops, and tool execution }
   TAgentEngine = class
@@ -39,7 +40,9 @@ type
     FOnToolCall: TAgentToolCallEvent;
     FOnToolResult: TAgentToolResultEvent;
     FOnExecutionLogAdded: TAgentExecutionLogEvent;
+    FOnToolErrorAdded: TAgentToolErrorLogEvent;
     FExecutionLog: TAgentExecutionLog;
+    FToolErrorLog: TAgentToolErrorLog;
 
     FSyncOldState: TAgentState;
     FSyncNewState: TAgentState;
@@ -48,6 +51,8 @@ type
     FSyncToolArgs: string;
     FSyncToolResult: TToolExecutionResult;
     FSyncLogEntryIndex: Integer;
+    FSyncToolErrorIndex: Integer;
+    FSyncRunFailureMessage: string;
 
     FRunSnapProvider: TLlmProvider;
     FRunSnapApiKey: string;
@@ -69,7 +74,11 @@ type
     procedure SyncToolCall;
     procedure SyncToolResult;
     procedure SyncExecutionLogAdded;
+    procedure SyncToolErrorAdded;
+    procedure SyncRunFailure;
     procedure NotifyExecutionLogAdded(AEntryIndex: Integer);
+    procedure NotifyToolErrorAdded(AEntryIndex: Integer);
+    procedure NotifyRunFailure(const AMessage: string);
     procedure WaitForRunComplete;
   public
     constructor Create(const AWorkspaceRoot: string);
@@ -103,7 +112,11 @@ type
     property OnToolResult: TAgentToolResultEvent read FOnToolResult write FOnToolResult;
     property OnExecutionLogAdded: TAgentExecutionLogEvent read FOnExecutionLogAdded
       write FOnExecutionLogAdded;
+    property OnToolErrorAdded: TAgentToolErrorLogEvent read FOnToolErrorAdded
+      write FOnToolErrorAdded;
     property ExecutionLog: TAgentExecutionLog read FExecutionLog write FExecutionLog;
+    property ToolErrorLog: TAgentToolErrorLog read FToolErrorLog write FToolErrorLog;
+    procedure ReportRunException(const E: Exception);
   end;
 
 implementation
@@ -239,6 +252,55 @@ begin
     FOnExecutionLogAdded(Self, AEntryIndex);
 end;
 
+procedure TAgentEngine.SyncToolErrorAdded;
+begin
+  if FDestroying then Exit;
+  if Assigned(FOnToolErrorAdded) then
+    FOnToolErrorAdded(Self, FSyncToolErrorIndex);
+end;
+
+procedure TAgentEngine.NotifyToolErrorAdded(AEntryIndex: Integer);
+begin
+  if FInWorkerRun then begin
+    FSyncToolErrorIndex := AEntryIndex;
+    TThread.Queue(nil, @SyncToolErrorAdded);
+  end else if Assigned(FOnToolErrorAdded) then
+    FOnToolErrorAdded(Self, AEntryIndex);
+end;
+
+procedure TAgentEngine.SyncRunFailure;
+var
+  Msg: TChatMessage;
+begin
+  if FDestroying then Exit;
+  Msg := StringToChatRole('assistant');
+  Msg.Content := FSyncRunFailureMessage;
+  AppendMessage(Msg);
+  SetState(asError);
+end;
+
+procedure TAgentEngine.NotifyRunFailure(const AMessage: string);
+begin
+  FSyncRunFailureMessage := AMessage;
+  if FInWorkerRun then
+    TThread.Queue(nil, @SyncRunFailure)
+  else
+    SyncRunFailure;
+end;
+
+procedure TAgentEngine.ReportRunException(const E: Exception);
+var
+  Msg, Sid: string;
+begin
+  Msg := 'Agent run failed: ' + E.Message;
+  if Assigned(FToolErrorLog) then
+    NotifyToolErrorAdded(FToolErrorLog.Add('_agent_run', '', '', Msg, E.ClassName, True))
+  else
+    AppendToolErrorLogFile('', FContext.WorkspaceRoot, '', '_agent_run', '', '',
+      Msg, E.ClassName, True, Now);
+  NotifyRunFailure('❌ ' + Msg);
+end;
+
 procedure TAgentEngine.SetState(ANewState: TAgentState);
 var
   Old: TAgentState;
@@ -312,8 +374,9 @@ begin
         '- For project tasks, always inspect the actual files with list_directory/glob/search_code/read_file before making claims or changes; do not guess at file contents.' + LineEnding +
         '- Implement the user request fully using the available project tools.' + LineEnding +
         '- If apply_patch reports a context mismatch, reread the affected file and retry with exact current lines; never guess or use fuzzy context.' + LineEnding +
-        '- The apply_patch patch argument contains only a raw unified diff: --- a/file.pas, +++ b/file.pas, @@ -1 +1 @@, -old, +new on separate lines. Do not include prose, Markdown fences, or *** Begin Patch markers.' + LineEnding +
-        '- If apply_patch returns hunk_count_mismatch or incomplete_hunk, recount the @@ old/new line counts: every hunk line must start with space, -, or +; blank lines are invalid.' + LineEnding +
+        '- The apply_patch patch argument contains only a raw unified diff: --- a/file.pas, +++ b/file.pas, @@ -N,1 +N,1 @@, then one -old and +new line per single-line change (N = 1-based line from read_file). Do not include prose, Markdown fences, or *** Begin Patch markers.' + LineEnding +
+        '- In @@ -start,count +start,count @@, count is the number of hunk body lines on that side (space, -, or +), not a line range. Prefer write_file for new or tiny whole files; edit_file for one exact old_text/new_text replace; apply_patch for multi-line or multi-file edits.' + LineEnding +
+        '- If apply_patch returns hunk_count_mismatch or incomplete_hunk, recount the @@ old/new line counts; every hunk line must start with space, -, or +.' + LineEnding +
         {$IFDEF UNIX}
         '- For shell, use /bin/sh syntax (&&, ;, $?, etc.).' + LineEnding +
         {$ELSE}
@@ -628,6 +691,11 @@ begin
           NotifyExecutionLogAdded(FExecutionLog.AddTool(Resp.ToolCalls[I].Name,
             Resp.ToolCalls[I].ArgumentsJson, ToolResult.Output, ToolResult.Summary,
             ToolResult.Success));
+
+        if (not ToolResult.Success) and Assigned(FToolErrorLog) then
+          NotifyToolErrorAdded(FToolErrorLog.Add(Resp.ToolCalls[I].Name,
+            Resp.ToolCalls[I].ArgumentsJson, ToolResult.Output, ToolResult.Summary,
+            ToolResult.ExceptionClass, ToolResult.WasException));
 
         ToolMsg := StringToChatRole('tool');
         ToolMsg.ToolCallId := Resp.ToolCalls[I].Id;

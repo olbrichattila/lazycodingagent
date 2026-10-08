@@ -30,6 +30,15 @@
       <Item>
         <PackageName Value="TurboPowerIPro"/>
       </Item>
+      <Item>
+        <PackageName Value="SynEdit"/>
+      </Item>
+      <Item>
+        <PackageName Value="TerminalFramework"/>
+      </Item>
+      <Item>
+        <PackageName Value="ViewLCL"/>
+      </Item>
     </RequiredPackages>
     <Units>
       <Unit>
@@ -144,11 +153,34 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uAgentRunThread.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="frmSettings.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="SettingsForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmNewWorkspace.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="NewWorkspaceForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uWorkspaceRegistry.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uChatSessionStore.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uChatSessionHub.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="frmModelSearch.pas"/>
@@ -203,6 +235,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uTerminalPanel.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uNavigationPanel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -221,6 +257,67 @@
       <Unit>
         <Filename Value="uCustomTabControl.pas"/>
         <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uUtilityPlanTab.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uAgentExecutionLog.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uAgentToolErrorLog.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uUtilityExecutionDetailTab.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uSyntaxScheme.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uSyntaxSchemeRegistry.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uSynGenericClike.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uFileEditorTab.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmSyntaxSchemes.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SyntaxSchemesForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmOpenMarkdown.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="OpenMarkdownForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uFileMarkdownTab.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uHelpContent.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmHelp.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="HelpForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
       </Unit>
     </Units>
   </ProjectOptions>
@@ -244,6 +341,28 @@
         </Win32>
       </Options>
     </Linking>
+    <CustomCommands>
+      <Enabled Value="True"/>
+      <Compile>
+        <Commands Count="3">
+          <Item0>
+            <Description Value="Copy help topics to output directory"/>
+            <Command Value="&quot;$ProjDir/scripts/copy-help.sh&quot; &quot;$ProjDir&quot; &quot;$TargetDir&quot;"/>
+            <Version Value="Linux"/>
+          </Item0>
+          <Item1>
+            <Description Value="Copy help topics to output directory"/>
+            <Command Value="&quot;$ProjDir/scripts/copy-help.sh&quot; &quot;$ProjDir&quot; &quot;$TargetDir&quot;"/>
+            <Version Value="Darwin"/>
+          </Item1>
+          <Item2>
+            <Description Value="Copy help topics to output directory"/>
+            <Command Value="xcopy /E /I /Y &quot;$ProjDir\help&quot; &quot;$TargetDir\help\&quot;"/>
+            <Version Value="Windows"/>
+          </Item2>
+        </Commands>
+      </Compile>
+    </CustomCommands>
   </CompilerOptions>
   <Debugging>
     <Exceptions>

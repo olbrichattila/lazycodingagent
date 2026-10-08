@@ -204,7 +204,7 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 - `uAgentTools.pas` — Tool factory and registry (`TAgentToolRegistry`) aggregating modular tool classes
 - `uToolReadFile.pas` — `read_file` (16 MiB cap, UTF-8/binary checks)
 - `uToolWriteFile.pas` — `write_file`
-- `uToolApplyPatch.pas` / `uToolEditFile.pas` — `apply_patch` unified diff and hidden `edit_file`
+- `uToolApplyPatch.pas` / `uToolEditFile.pas` — `apply_patch` unified diff and `edit_file` search-replace
 - `uToolListDirectory.pas` / `uToolGlob.pas` — directory listing and glob (500 entry cap)
 - `uToolSearchCode.pas` — `search_code` / alias `grep` (regex, 500 match cap)
 - `uToolRunProcess.pas` — `shell` (aliases `terminal`, `run_process`); Windows uses `cmd.exe /C`, Unix uses `/bin/sh -c`
@@ -217,9 +217,9 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 
 ### Agent tools (JSON contract)
 
-Advertised tools: `read_file`, `write_file`, `list_directory`, `glob`, `search_code`, `apply_patch`, `shell`, `diagnostics`, `git`, `todo`, `create_plan_file`.
+Advertised tools: `read_file`, `write_file`, `list_directory`, `glob`, `search_code`, `apply_patch`, `edit_file`, `shell`, `diagnostics`, `git`, `todo`, `create_plan_file`.
 
-Tool messages returned to the LLM are **JSON strings**. Failures include an `error` field; patch failures often add `error_kind` (`context_mismatch`, `format`, `hunk_count_mismatch`, `incomplete_hunk`, `invalid_hunk`, `empty_patch`, `patch_apply`), plus optional `path`, `line`, and `partial` when a multi-file patch stops mid-batch.
+Tool messages returned to the LLM are **JSON strings**. Failures include an `error` field; patch failures often add `error_kind` (`context_mismatch`, `format`, `hunk_count_mismatch`, `incomplete_hunk`, `invalid_hunk`, `empty_patch`, `patch_apply`), plus optional `path`, `line`, `hint`, and `partial` when a multi-file patch stops mid-batch. Successful `apply_patch` may include `warnings` when minor hunk headers were auto-corrected.
 
 | Mode | Write / shell / patch | Plan files |
 |------|------------------------|------------|

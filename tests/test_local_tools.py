@@ -36,7 +36,7 @@ def run(driver):
         def patch(text):
             return ok('apply_patch', {'patch':text})
         try:
-            canonical = {'read_file','write_file','list_directory','glob','search_code','apply_patch','shell','diagnostics','git','todo','create_plan_file'}
+            canonical = {'read_file','write_file','list_directory','glob','search_code','apply_patch','edit_file','shell','diagnostics','git','todo','create_plan_file'}
             declarations = call('_declarations')
             assert {d['function']['name'] for d in declarations} == canonical
             readonly = {'read_file','list_directory','glob','search_code','diagnostics','git','todo'}
@@ -181,6 +181,40 @@ def run(driver):
             assert hunk_skew['error_kind'] == 'hunk_count_mismatch', hunk_skew
             incomplete = error('apply_patch', {'patch': '--- a/root.pas\n+++ b/root.pas\n@@ -1,2 +1,1 @@\n createuser\n-onlynew\n'})
             assert incomplete['error_kind'] == 'incomplete_hunk', incomplete
+            assert 'hint' in incomplete, incomplete
+            index_html = '\n'.join([
+                'pad1', 'pad2', 'pad3', 'pad4', 'pad5',
+                '<meta name="description" content="Maya Chen">',
+                'pad7',
+                '<title>Maya Chen</title>',
+                'pad9',
+                '<header>Maya Chen</header>',
+                'pad11',
+                '<section>Hi Maya</section>',
+            ]) + '\n'
+            ok('write_file', {'path': 'index.html', 'content': index_html})
+            wrong_count = patch(
+                '--- a/index.html\n+++ b/index.html\n'
+                '@@ -6,3 +6,3 @@\n'
+                '-<meta name="description" content="Maya Chen">\n'
+                '+<meta name="description" content="Attila Olbrich">\n'
+                '@@ -8,1 +8,1 @@\n'
+                '-<title>Maya Chen</title>\n'
+                '+<title>Attila Olbrich</title>\n'
+                '@@ -10,1 +10,1 @@\n'
+                '-<header>Maya Chen</header>\n'
+                '+<header>Attila Olbrich</header>\n'
+                '@@ -12,1 +12,1 @@\n'
+                '-<section>Hi Maya</section>\n'
+                '+<section>Hi Attila</section>\n'
+            )
+            assert wrong_count.get('status') == 'success', wrong_count
+            assert any('adjusted @@ counts' in w for w in wrong_count.get('warnings', [])), wrong_count
+            updated = (root / 'index.html').read_text()
+            assert 'Attila Olbrich' in updated and 'Maya Chen' not in updated
+            stale_hint = error('apply_patch', {'patch': '--- a/index.html\n+++ b/index.html\n@@ -6,1 +6,1 @@\n-wrong\n+new\n'})
+            assert stale_hint['error_kind'] == 'context_mismatch', stale_hint
+            assert stale_hint.get('hint'), stale_hint
             # Detect changes without Git, including hidden files and deletion.
             (root/'pre-existing').write_text('already changed')
             (root/'remove-me').write_text('old')

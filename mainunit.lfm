@@ -1,7 +1,7 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 314
+  Left = 1917
   Height = 600
-  Top = 715
+  Top = -30
   Width = 1320
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 600
@@ -10,24 +10,24 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   Constraints.MinWidth = 900
   Menu = MainMenu1
   Position = poScreenCenter
-  LCLVersion = '4.8.0.0'
+  LCLVersion = '4.4.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
   object pnlMainContainer: TPanel
     Left = 0
-    Height = 577
+    Height = 351
     Top = 0
     Width = 1320
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 577
+    ClientHeight = 351
     ClientWidth = 1320
     TabOrder = 0
     object pnlNavRailHost: TPanel
       Left = 0
-      Height = 577
+      Height = 351
       Top = 0
       Width = 56
       Align = alLeft
@@ -36,7 +36,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object pnlNavHost: TPanel
       Left = 56
-      Height = 577
+      Height = 351
       Top = 0
       Width = 250
       Align = alLeft
@@ -45,15 +45,14 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object splNav: TSplitter
       Left = 306
-      Height = 577
+      Height = 351
       Top = 0
       Width = 5
-      Align = alLeft
       MinSize = 160
     end
     object pnlUtilityHost: TPanel
       Left = 1040
-      Height = 577
+      Height = 351
       Top = 0
       Width = 280
       Align = alRight
@@ -63,7 +62,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object splUtility: TSplitter
       Left = 1035
-      Height = 577
+      Height = 351
       Top = 0
       Width = 5
       Align = alRight
@@ -73,7 +72,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object pnlReservedHost: TPanel
       Left = 750
-      Height = 577
+      Height = 351
       Top = 0
       Width = 285
       Align = alRight
@@ -83,7 +82,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object splReserved: TSplitter
       Left = 745
-      Height = 577
+      Height = 351
       Top = 0
       Width = 5
       Align = alRight
@@ -93,7 +92,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object pnlChatHost: TPanel
       Left = 311
-      Height = 577
+      Height = 351
       Top = 0
       Width = 434
       Align = alClient
@@ -102,9 +101,10 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
   end
   object splTerminal: TSplitter
+    Cursor = crVSplit
     Left = 0
     Height = 5
-    Top = 572
+    Top = 571
     Width = 1320
     Align = alBottom
     MinSize = 120
@@ -115,18 +115,18 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   object pnlTerminalHost: TPanel
     Left = 0
     Height = 220
-    Top = 352
+    Top = 351
     Width = 1320
     Align = alBottom
     BevelOuter = bvNone
+    TabOrder = 2
     Visible = False
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 23
-    Top = 577
+    Height = 24
+    Top = 576
     Width = 1320
-    Align = alBottom
     Panels = <>
   end
   object MainMenu1: TMainMenu
@@ -188,12 +188,12 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     object mnuWorkspace: TMenuItem
       Caption = '&Workspace'
       object mnuWorkspaceSepRules: TMenuItem
-        Caption = '-'
         Tag = -1
+        Caption = '-'
       end
       object mnuWorkspaceProjectRules: TMenuItem
-        Caption = 'Project &Rules...'
         Tag = -1
+        Caption = 'Project &Rules...'
         OnClick = MnuWorkspaceProjectRulesClick
       end
     end

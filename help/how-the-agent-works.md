@@ -18,8 +18,10 @@ After you send a message, the engine roughly does:
 1. Build or refresh the **system prompt** (mode, workspace path, tool list, project rules).
 2. Append your message to the conversation.
 3. Call the **LLM** with the full message list and tool definitions.
-4. If the model returns **tool calls**, run each tool locally and append **tool result** messages.
+4. If the model returns **tool calls**, run each tool locally and append **tool result** messages (including JSON with an `error` field when a tool fails).
 5. Repeat step 3–4 until the model answers **without** tool calls, you **cancel**, or a **step limit** is reached (default 20 steps).
+
+Unexpected tool exceptions are caught at the tool boundary, converted to the same error JSON shape, and returned to the model so the loop can continue instead of stopping under the debugger.
 
 This pattern is often called **ReAct**: the model reasons in natural language, then acts via tools, then reasons again on the results.
 
@@ -50,7 +52,8 @@ Plan and Ask still use read/search/git tools to understand the tree.
 
 - **Assistant messages** — model text and (in debugging mode) tool payloads.
 - **State** — idle, thinking, executing tool, finished, or error.
-- **Execution log** (when enabled in your build) — deeper request context for learning and debugging.
+- **Execution log** (navigation **Tools & Logs**) — deeper request context for learning and debugging.
+- **Tool Errors** — failed tools for the session, plus a shared `tool-errors.log` file under your user config folder.
 
 ## Safety and sandboxing
 

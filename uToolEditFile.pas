@@ -22,7 +22,7 @@ begin
   inherited Create(AContext);
   AllowedModes := [wmAgent];
   MutatesFiles := True;
-  Advertised := False;
+  Advertised := True;
 end;
 
 function TToolEditFile.GetDefinition: TToolDef;
