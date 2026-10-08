@@ -190,6 +190,7 @@ type
     procedure MenuSelectSyntaxScheme(Sender: TObject);
     procedure NavFileOpen(Sender: TObject; const AFilePath: string);
 
+    procedure ApplyInitialWindowSize;
     procedure InitWorkspaceSubControls;
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
@@ -502,8 +503,39 @@ begin
   CreateAndSelectNewSession;
 end;
 
+procedure TLazyCodingAgentForm.ApplyInitialWindowSize;
+var
+  R: TRect;
+  W, H, MaxW, MaxH: Integer;
+const
+  IDEAL_W = 1440;
+  IDEAL_H = 900;
+  MAX_PCT = 92;
+begin
+  R := Screen.PrimaryMonitor.WorkareaRect;
+  MaxW := (R.Width * MAX_PCT) div 100;
+  MaxH := (R.Height * MAX_PCT) div 100;
+  W := IDEAL_W;
+  if W > MaxW then
+    W := MaxW;
+  H := IDEAL_H;
+  if H > MaxH then
+    H := MaxH;
+  if W < Constraints.MinWidth then
+    W := Constraints.MinWidth;
+  if H < Constraints.MinHeight then
+    H := Constraints.MinHeight;
+  if W > R.Width then
+    W := R.Width;
+  if H > R.Height then
+    H := R.Height;
+  Width := W;
+  Height := H;
+end;
+
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
+  ApplyInitialWindowSize;
   Caption := 'LazyCodingAgent — AI Workspace';
   FUpdatingState := False;
   FTerminalStartQueued := False;
