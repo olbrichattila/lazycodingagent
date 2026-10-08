@@ -78,7 +78,6 @@ begin
   FView.FontName := 'DejaVu Sans Mono';
   FView.FontSize := 10;
   FView.OnShellExit := @ShellExited;
-  FView.AttachController(FController);
 end;
 
 function TTerminalPanel.TryStartShell: Boolean;
@@ -104,7 +103,7 @@ begin
   if not Assigned(FView) then
     Exit;
 
-  FView.EnsureRendered;
+  FView.DetachController;
   SetLength(ShellArgs, 0);
   {$IFDEF WINDOWS}
   ShellPath := GetEnvironmentVariable('COMSPEC');
@@ -133,6 +132,8 @@ begin
       SetCurrentDir(FWorkingDir);
     if FController.StartShell(ShellPath, ShellArgs) and
        Assigned(FController.Backend) and FController.Backend.IsRunning then begin
+      FView.AttachController(FController);
+      FView.EnsureRendered;
       FController.Pump;
       FShellRunning := True;
       HideStatus;
@@ -217,7 +218,9 @@ end;
 
 procedure TTerminalPanel.Stop;
 begin
-  if Assigned(FController) then
+  if Assigned(FView) then
+    FView.DetachController
+  else if Assigned(FController) then
     FController.Stop;
   FShellRunning := False;
 end;
