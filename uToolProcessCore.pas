@@ -8,13 +8,14 @@ uses
   Classes, SysUtils, fpjson, uAgentToolBase;
 
 function RunToolProcess(const Executable: string; Args: TStrings; const Cwd: string;
-  TimeoutMS: Integer = 120000; TrackChanges: Boolean = False): TJSONObject;
+  TimeoutMS: Integer = 120000; TrackChanges: Boolean = False;
+  StripGitEnv: Boolean = False): TJSONObject;
 
 implementation
 
 uses
-  Math, Process, Pipes, sha1, uAgentToolPaths,
-  {$IFDEF UNIX}BaseUnix, Unix{$ELSE}Windows{$ENDIF};
+  Math, Process, Pipes, uAgentToolPaths,
+  {$IFDEF UNIX}BaseUnix, Unix, ctypes{$ELSE}Windows{$ENDIF};
 
 const
   OutputLimit = 1024 * 1024;
@@ -25,7 +26,8 @@ type
   private
     FHandle: THandle;
   public
-    constructor Create(AProcessHandle: THandle);
+    constructor Create;
+    function AssignProcess(AProcessHandle: THandle): Boolean;
     destructor Destroy; override;
   end;
   {$ENDIF}
@@ -77,7 +79,7 @@ function WinAssignProcessToJobObject(hJob, hProcess: THandle): LongBool; stdcall
 function WinCloseHandle(hObject: THandle): LongBool; stdcall;
   external 'kernel32.dll' name 'CloseHandle';
 
-constructor TWindowsJobObject.Create(AProcessHandle: THandle);
+constructor TWindowsJobObject.Create;
 var
   Info: TJobObjectExtendedLimitInformation;
 begin
@@ -87,11 +89,16 @@ begin
   FillChar(Info, SizeOf(Info), 0);
   Info.BasicLimitInformation.LimitFlags := JobObjectLimitKillOnJobClose;
   if not WinSetInformationJobObject(FHandle, JobObjectExtendedLimitInformation,
-    @Info, SizeOf(Info)) or not WinAssignProcessToJobObject(FHandle, AProcessHandle) then
+    @Info, SizeOf(Info)) then
   begin
     WinCloseHandle(FHandle);
     FHandle := 0;
   end;
+end;
+
+function TWindowsJobObject.AssignProcess(AProcessHandle: THandle): Boolean;
+begin
+  Result := (FHandle <> 0) and WinAssignProcessToJobObject(FHandle, AProcessHandle);
 end;
 
 destructor TWindowsJobObject.Destroy;
@@ -104,6 +111,47 @@ end;
 procedure TProcessGroup.AfterFork(Sender: TObject);
 begin
   {$IFDEF UNIX}fpSetSid;{$ENDIF}
+end;
+
+function IsGitOverrideEnv(const Line: string): Boolean;
+var
+  Key: string;
+  P: Integer;
+begin
+  P := Pos('=', Line);
+  if P <= 1 then Exit(False);
+  Key := UpperCase(Copy(Line, 1, P - 1));
+  Result := (Key = 'GIT_DIR') or (Key = 'GIT_WORK_TREE') or (Key = 'GIT_INDEX_FILE') or
+    (Key = 'GIT_OBJECT_DIRECTORY') or (Key = 'GIT_ALTERNATE_OBJECT_DIRECTORIES');
+end;
+
+function LoadInheritedEnvironment: TStringList;
+var
+  {$IFDEF UNIX}
+  I: Integer;
+  {$ELSE}
+  Block, Cur: PWideChar;
+  Entry: string;
+  {$ENDIF}
+begin
+  Result := TStringList.Create;
+  {$IFDEF UNIX}
+  for I := 0 to GetEnvironmentVariableCount - 1 do
+    Result.Add(GetEnvironmentString(I));
+  {$ELSE}
+  Block := GetEnvironmentStringsW;
+  if Block <> nil then
+  begin
+    Cur := Block;
+    while Cur^ <> #0 do
+    begin
+      Entry := Cur;
+      Result.Add(Entry);
+      Cur := Cur + Length(Entry) + 1;
+    end;
+    FreeEnvironmentStringsW(Block);
+  end;
+  {$ENDIF}
 end;
 
 procedure StopTree(P: TProcess);
@@ -131,7 +179,7 @@ begin
 end;
 
 function RunToolProcess(const Executable: string; Args: TStrings; const Cwd: string;
-  TimeoutMS: Integer; TrackChanges: Boolean): TJSONObject;
+  TimeoutMS: Integer; TrackChanges: Boolean; StripGitEnv: Boolean): TJSONObject;
 var
   P: TProcess;
   Group: TProcessGroup;
@@ -140,22 +188,44 @@ var
   CleanOut, CleanErr: string;
   OutTruncated, ErrTruncated, TimedOut, Cancelled, Stopped: Boolean;
   Started, StopAt: QWord;
-  BeforeFiles, AfterFiles: TStringList;
+  BeforeFiles, AfterFiles, SanitizedEnv: TStringList;
   TrackingWarning, Root: string;
   Changed: TJSONArray;
+  EnvI: Integer;
+
+  function FileFingerprint(const Path: string): string;
+  var
+    {$IFDEF UNIX}Info: Stat;{$ENDIF}
+    R: TSearchRec;
+  begin
+    {$IFDEF UNIX}
+    if (fpLStat(Path, Info) <> 0) or not FPS_ISREG(Info.st_mode) then
+      raise Exception.Create('Cannot track nonregular file: ' + Path);
+    Result := IntToStr(Info.st_size) + ':' + IntToStr(Info.st_mtime);
+    {$IFDEF LINUX}
+    Result := Result + ':' + IntToStr(Info.st_mtime_nsec);
+    {$ENDIF}
+    Result := Result + ':' + IntToStr(Info.st_ctime) + ':' + IntToStr(Info.st_ino);
+    {$ELSE}
+    if FindFirst(Path, faAnyFile, R) <> 0 then
+      raise Exception.Create('Cannot track file: ' + Path);
+    try
+      if (R.Attr and faDirectory) <> 0 then
+        raise Exception.Create('Cannot track nonregular file: ' + Path);
+      Result := IntToStr(R.Size) + ':' + IntToStr(R.Time);
+    finally
+      FindClose(R);
+    end;
+    {$ENDIF}
+  end;
 
   procedure Snapshot(Files: TStringList);
 
     procedure Walk(const Dir: string; Depth: Integer);
     var
       R: TSearchRec;
-      Path: string;
-      Stream: TFileStream;
-      Context: TSHA1Context;
-      Digest: TSHA1Digest;
-      Buffer: array[0..65535] of Byte;
-      N, Code: Integer;
-      {$IFDEF UNIX}Info: Stat;{$ENDIF}
+      Path, FP: string;
+      Code: Integer;
     begin
       if Depth > 64 then raise Exception.Create('Directory nesting exceeds 64 levels');
       Code := FindFirst(IncludeTrailingPathDelimiter(Dir) + '*', faAnyFile, R);
@@ -178,21 +248,12 @@ var
           end
           else
           begin
-            {$IFDEF UNIX}
-            if (fpLStat(Path, Info) <> 0) or not FPS_ISREG(Info.st_mode) then
-              raise Exception.Create('Cannot track nonregular file: ' + Path);
-            {$ENDIF}
-            Stream := TFileStream.Create(Path, fmOpenRead or fmShareDenyNone);
             try
-              SHA1Init(Context);
-              repeat
-                N := Stream.Read(Buffer, SizeOf(Buffer));
-                if N > 0 then SHA1Update(Context, Buffer, N);
-              until N = 0;
-              SHA1Final(Context, Digest);
-              Files.Add(Path + #0 + SHA1Print(Digest));
-            finally
-              Stream.Free;
+              FP := FileFingerprint(Path);
+              Files.Add(Path + #0 + FP);
+            except
+              on E: Exception do
+                TrackingWarning := 'Changed-file list may be incomplete: ' + E.Message;
             end;
           end;
         until FindNext(R) <> 0;
@@ -208,23 +269,52 @@ var
       on E: Exception do
         TrackingWarning := 'Changed-file list may be incomplete: ' + E.Message;
     end;
+    Files.Sort;
   end;
 
   procedure AddChanges;
   var
-    I, J: Integer;
+    BI, AI: Integer;
+    BeforeName, AfterName: string;
   begin
     Snapshot(AfterFiles);
     Changed := TJSONArray.Create;
-    for I := 0 to BeforeFiles.Count - 1 do
+    BI := 0;
+    AI := 0;
+    while (BI < BeforeFiles.Count) or (AI < AfterFiles.Count) do
     begin
-      J := AfterFiles.IndexOfName(BeforeFiles.Names[I]);
-      if ((J < 0) and FileExists(BeforeFiles.Names[I])) then Continue;
-      if (J < 0) or (BeforeFiles.ValueFromIndex[I] <> AfterFiles.ValueFromIndex[J]) then
-        Changed.Add(BeforeFiles.Names[I]);
+      if BI >= BeforeFiles.Count then
+      begin
+        Changed.Add(AfterFiles.Names[AI]);
+        Inc(AI);
+        Continue;
+      end;
+      if AI >= AfterFiles.Count then
+      begin
+        Changed.Add(BeforeFiles.Names[BI]);
+        Inc(BI);
+        Continue;
+      end;
+      BeforeName := BeforeFiles.Names[BI];
+      AfterName := AfterFiles.Names[AI];
+      if BeforeName = AfterName then
+      begin
+        if BeforeFiles.ValueFromIndex[BI] <> AfterFiles.ValueFromIndex[AI] then
+          Changed.Add(BeforeName);
+        Inc(BI);
+        Inc(AI);
+      end
+      else if BeforeName < AfterName then
+      begin
+        Changed.Add(BeforeName);
+        Inc(BI);
+      end
+      else
+      begin
+        Changed.Add(AfterName);
+        Inc(AI);
+      end;
     end;
-    for I := 0 to AfterFiles.Count - 1 do
-      if BeforeFiles.IndexOfName(AfterFiles.Names[I]) < 0 then Changed.Add(AfterFiles.Names[I]);
     Result.Add('changed_paths', Changed);
     if TrackingWarning <> '' then Result.Add('tracking_warning', TrackingWarning);
   end;
@@ -273,11 +363,31 @@ begin
     P.Executable := Executable;
     P.Parameters.Assign(Args);
     P.CurrentDirectory := Cwd;
+    if StripGitEnv then
+    begin
+      SanitizedEnv := LoadInheritedEnvironment;
+      try
+        for EnvI := SanitizedEnv.Count - 1 downto 0 do
+          if IsGitOverrideEnv(SanitizedEnv[EnvI]) then
+            SanitizedEnv.Delete(EnvI);
+        P.Environment.Assign(SanitizedEnv);
+      finally
+        SanitizedEnv.Free;
+      end;
+    end;
     P.Options := [poUsePipes, poNoConsole, poNewProcessGroup];
+    {$IFDEF WINDOWS}
+    P.Options := P.Options + [poRunSuspended];
+    Job := TWindowsJobObject.Create;
+    {$ENDIF}
     {$IFDEF UNIX}P.OnForkEvent := @Group.AfterFork;{$ENDIF}
     P.Execute;
+    {$IFDEF WINDOWS}
+    if Assigned(Job) and not Job.AssignProcess(P.ProcessHandle) then
+      TrackingWarning := Trim(TrackingWarning + ' Process job assignment failed.');
+    P.Resume;
+    {$ENDIF}
     P.CloseInput;
-    {$IFDEF WINDOWS}Job := TWindowsJobObject.Create(P.ProcessHandle);{$ENDIF}
     Started := GetTickCount64;
     repeat
       Drain(P.Output, OutText, OutTruncated);
@@ -294,7 +404,8 @@ begin
       if Stopped and (GetTickCount64 - StopAt > 2000) then Break;
       Sleep(5);
     until False;
-    {$IFDEF UNIX}fpKill(-P.ProcessID, SIGKILL);{$ENDIF}
+    if Stopped and P.Running then
+      StopTree(P);
     P.WaitOnExit;
     CleanOut := SafeToolText(OutText);
     CleanErr := SafeToolText(ErrText);

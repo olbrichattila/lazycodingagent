@@ -114,7 +114,7 @@ begin
             raise Exception.Create('paths must contain strings');
           ProcArgs.Add(ResolveProjectPath(Paths.Strings[I]));
         end;
-      O := RunToolProcess('git', ProcArgs, CurrentToolContext.WorkspaceRoot);
+      O := RunToolProcess('git', ProcArgs, CurrentToolContext.WorkspaceRoot, 120000, False, True);
       try
         if O.Get('exit_code', 0) <> 0 then
           O.Add('error', 'Git inspection failed: ' + O.Get('stderr', ''));

@@ -78,7 +78,7 @@ end;
 
 function TToolDiagnostics.Execute(const Args: TJSONObject): TToolExecutionResult;
 var
-  Action, Target, Command, Text, Json, RunnerLabel: string;
+  Action, Target, Command, Text, Json, RunnerLabel, BuildCwd: string;
   O, D: TJSONObject;
   Messages: TJSONArray;
   Session: TAgentToolSession;
@@ -139,8 +139,11 @@ begin
       RunnerLabel := Inv.RunnerLabel;
     end;
 
+    BuildCwd := FContext.WorkspaceRoot;
+    if Inv.WorkingDirectory <> '' then
+      BuildCwd := Inv.WorkingDirectory;
     try
-      O := RunBuildInvocation(Inv, FContext.WorkspaceRoot, Args.Get('timeout_ms', 120000));
+      O := RunBuildInvocation(Inv, BuildCwd, Args.Get('timeout_ms', 120000));
     except
       on E: Exception do
         raise Exception.Create('Cannot start build tool "' + RunnerLabel +
@@ -151,7 +154,9 @@ begin
       if Inv.ResolvedTarget <> '' then
         O.Add('target', Inv.ResolvedTarget)
       else if Target <> '' then
-        O.Add('target', Target);
+        O.Add('target', Target)
+      else if Inv.ShellCommand <> '' then
+        O.Add('target', Inv.ShellCommand);
       O.Add('runner', RunnerLabel);
       O.Add('compiler', RunnerLabel);
       O.Add('timestamp', FormatDateTime('yyyy-mm-dd"T"hh:nn:ss"Z"', LocalTimeToUniversal(Now)));

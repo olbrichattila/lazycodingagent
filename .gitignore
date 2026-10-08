@@ -29,6 +29,7 @@
 *.lps
 
 # Temporary and backup files
+tmp*/
 *.bak
 *.tmp
 *.~*

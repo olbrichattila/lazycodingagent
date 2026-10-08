@@ -5,7 +5,7 @@ unit uAgentToolBase;
 interface
 
 uses
-  Classes, SysUtils, Math, fpjson, jsonparser, LazFileUtils, uAppTypes, uAgentTypes;
+  Classes, SysUtils, fpjson, jsonparser, uAppTypes, uAgentTypes;
 
 type
   TWorkspaceModeSet = set of TWorkspaceMode;
@@ -114,7 +114,10 @@ function SafeToolText(const S: RawByteString; MaxBytes: Integer): UTF8String;
 var
   I, J, N, W, B, SecondMin, SecondMax: Integer;
 begin
-  SetLength(Result, Min(Int64(Length(S)) * 3, Int64(MaxBytes)));
+  if Int64(Length(S)) * 3 < Int64(MaxBytes) then
+    SetLength(Result, Length(S) * 3)
+  else
+    SetLength(Result, MaxBytes);
   I := 1;
   W := 0;
   while I <= Length(S) do

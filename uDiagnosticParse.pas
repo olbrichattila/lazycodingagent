@@ -37,9 +37,9 @@ begin
   General := TRegExpr.Create;
   try
     Lines.Text := Text;
-    FpcRe.Expression := '^(.+)\(([0-9]+),([0-9]+)\)\s*(Fatal|Error|Warning|Note|Hint):\s*(.*)$';
+    FpcRe.Expression := '^([^(]+)\(([0-9]+),([0-9]+)\)\s*:?\s*(Fatal|Error|Warning|Note|Hint):\s*(.*)$';
     GccRe.Expression := '^(.+?):([0-9]+):([0-9]+):\s*(fatal error|error|warning|note):\s*(.*)$';
-    MsvcRe.Expression := '^(.+)\(([0-9]+),([0-9]+)\)\s*:\s*(fatal error|error|warning)\s+(.*)$';
+    MsvcRe.Expression := '^([^(]+)\(([0-9]+),([0-9]+)\)\s*:\s*(fatal error|error|warning)\s+(.*)$';
     General.Expression := '^(Fatal|Error|Warning|Note|Hint):\s*(.*)$';
     for I := 0 to Lines.Count - 1 do
     begin

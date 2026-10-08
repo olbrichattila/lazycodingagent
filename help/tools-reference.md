@@ -35,13 +35,13 @@ List immediate children of a directory (sorted, capped entry count).
 
 ### glob
 
-Find paths matching a wildcard pattern (`*`, `?`, `**`).
+Find paths matching a wildcard pattern (`*`, `?`, `**`). Use `/` in patterns. On Windows and macOS, matching is case-insensitive; on Linux it is case-sensitive.
 
 **Modes:** Ask, Plan, Agent.
 
 ### search_code
 
-Search file contents (literal or regex, optional path glob). Alias: `grep`.
+Search file contents (literal or regex, optional path glob). Skips files larger than 16 MiB and extremely long lines. Alias: `grep`.
 
 **Modes:** Ask, Plan, Agent.
 
@@ -71,7 +71,7 @@ Run a shell command in the project directory with timeout limits (Unix: `/bin/sh
 
 ### diagnostics
 
-Read cached compiler/linter output; in Agent mode can run a build/check and refresh the cache.
+Read cached compiler/linter output; in Agent mode can run a build/check and refresh the cache. Auto-detected builds (`Cargo.toml`, `package.json`, `Makefile`, and similar) run with the working directory set to the directory that contains the manifest, not always the workspace root.
 
 **Modes:** Ask, Plan, Agent (build side effects in Agent).
 

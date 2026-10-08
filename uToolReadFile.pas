@@ -50,7 +50,7 @@ function TToolReadFile.Execute(const Args: TJSONObject): TToolExecutionResult;
 var
   FilePath, ResolvedPath, FormattedText: string;
   Offset, Limit, StartIdx, EndIdx, I: Integer;
-  Lines: TStringList;
+  Lines, FormattedLines: TStringList;
   OutJSON: TJSONObject;
   Json: string;
 begin
@@ -91,9 +91,14 @@ begin
       EndIdx := StartIdx + Limit;
       if EndIdx > Lines.Count then EndIdx := Lines.Count;
 
-      FormattedText := '';
-      for I := StartIdx to EndIdx - 1 do
-        FormattedText := FormattedText + IntToStr(I + 1) + '|' + Lines[I] + LineEnding;
+      FormattedLines := TStringList.Create;
+      try
+        for I := StartIdx to EndIdx - 1 do
+          FormattedLines.Add(IntToStr(I + 1) + '|' + Lines[I]);
+        FormattedText := FormattedLines.Text;
+      finally
+        FormattedLines.Free;
+      end;
 
       OutJSON := TJSONObject.Create;
       try

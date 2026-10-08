@@ -22,6 +22,65 @@ implementation
 
 uses
   uAgentToolPaths, RegExpr, {$IFDEF UNIX}BaseUnix{$ELSE}Windows{$ENDIF};
+
+function CopyPathToFile(const Src, Dst: string): Boolean;
+var
+  InS, OutS: TFileStream;
+begin
+  Result := False;
+  try
+    InS := TFileStream.Create(Src, fmOpenRead or fmShareDenyWrite);
+    try
+      OutS := TFileStream.Create(Dst, fmCreate);
+      try
+        OutS.CopyFrom(InS, InS.Size);
+      finally
+        OutS.Free;
+      end;
+    finally
+      InS.Free;
+    end;
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+function PatchRestoreBackup(const Backup, Target: string): Boolean;
+begin
+  {$IFDEF WINDOWS}
+  Result := MoveFileEx(PChar(Backup), PChar(Target), MOVEFILE_REPLACE_EXISTING);
+  {$ELSE}
+  Result := RenameFile(Backup, Target);
+  {$ENDIF}
+end;
+
+procedure RollbackPatchChanges(Changed: TJSONArray; Backups: TStringList; out RollbackFailed: Boolean);
+var
+  K: Integer;
+  Target, Backup: string;
+begin
+  RollbackFailed := False;
+  for K := Changed.Count - 1 downto 0 do
+  begin
+    Target := Changed.Strings[K];
+    Backup := Backups.Values[Target];
+    if Backup = '' then
+    begin
+      if FileExists(Target) and not SysUtils.DeleteFile(Target) then
+        RollbackFailed := True;
+      Continue;
+    end;
+    if not PatchRestoreBackup(Backup, Target) then
+      RollbackFailed := True
+    else
+      Backups.Values[Target] := '';
+  end;
+  for K := 0 to Backups.Count - 1 do
+    if Backups.ValueFromIndex[K] <> '' then
+      SysUtils.DeleteFile(Backups.ValueFromIndex[K]);
+end;
+
 type
   EPatchError = class(Exception)
   public
@@ -31,15 +90,13 @@ type
       const AHint: string = '');
   end;
   TStagedEdit = class
-    Path, TempPath: string;
+    FilePath, TempPath: string;
     Original, Content: RawByteString;
     Remove, CreateFile: Boolean;
     destructor Destroy; override;
   end;
 destructor TStagedEdit.Destroy;
 begin if TempPath <> '' then SysUtils.DeleteFile(TempPath); inherited Destroy; end;
-
-procedure PatchRaise(const AKind, AMessage, APath: string; ALine: Integer = 0); forward;
 
 procedure SplitLines(const S: RawByteString; Lines, Endings: TStrings);
 var I, Start: Integer; E: string;
@@ -66,7 +123,7 @@ begin
   if Result = '/dev/null' then Exit;
   if (Copy(Result, 1, 2) = 'a/') or (Copy(Result, 1, 2) = 'b/') then Delete(Result, 1, 2);
   if (Result = '') or (Result[1] = '"') then
-    PatchRaise('format', 'Patch requires unquoted file paths', '', 0);
+    raise EPatchError.Create('format', 'Patch requires unquoted file paths', '', 0);
   Result := ResolveProjectPath(Result);
 end;
 
@@ -145,12 +202,6 @@ begin
   finally O.Free; end;
 end;
 
-procedure PatchRaise(const AKind, AMessage, APath: string; ALine: Integer = 0;
-  const AHint: string = '');
-begin
-  raise EPatchError.Create(AKind, AMessage, APath, ALine, AHint);
-end;
-
 function IsHunkBodyBoundary(const ALine: string): Boolean;
 begin
   Result := (Copy(ALine, 1, 2) = '@@') or (Copy(ALine, 1, 4) = '--- ');
@@ -175,32 +226,36 @@ procedure Stage(Edit: TStagedEdit);
 {$IFDEF UNIX}var Info: Stat;{$ENDIF}
 begin
   if Edit.Remove then Exit;
-  ResolveProjectPath(Edit.Path);
-  if not ForceDirectories(ExtractFileDir(Edit.Path)) then raise Exception.Create('Cannot create patch parent directory');
-  ResolveProjectPath(Edit.Path);
-  Edit.TempPath := SysUtils.GetTempFileName(ExtractFileDir(Edit.Path), '.agent-patch-');
+  ResolveProjectPath(Edit.FilePath);
+  if not ForceDirectories(ExtractFileDir(Edit.FilePath)) then raise Exception.Create('Cannot create patch parent directory');
+  ResolveProjectPath(Edit.FilePath);
+  Edit.TempPath := SysUtils.GetTempFileName(ExtractFileDir(Edit.FilePath), '.agent-patch-');
   WriteBytes(Edit.TempPath, Edit.Content);
   {$IFDEF UNIX}
-  if not Edit.CreateFile and (fpStat(Edit.Path, Info) = 0) then
+  if not Edit.CreateFile and (fpStat(Edit.FilePath, Info) = 0) then
     if fpChmod(Edit.TempPath, Info.st_mode and &777) <> 0 then raise Exception.Create('Cannot preserve file permissions');
   {$ENDIF}
 end;
 
 function Commit(Edits: TList; APatchWarnings: TStrings = nil): string;
-var I, J: Integer; E: TStagedEdit; O: TJSONObject; Changed, WarnArr: TJSONArray;
-  Warning, W: string;
+var I, J: Integer; Stg: TStagedEdit; O: TJSONObject; Changed, WarnArr: TJSONArray;
+  Warning, W, BackupPath: string;
+  Backups: TStringList;
+  RollbackFailed: Boolean;
 begin
   Warning := '';
+  Backups := TStringList.Create;
+  Backups.NameValueSeparator := '=';
   O := TJSONObject.Create; Changed := TJSONArray.Create; O.Add('changed_paths', Changed);
   try
     try
       for I := 0 to Edits.Count - 1 do
       begin
-        E := TStagedEdit(Edits[I]);
-        ResolveProjectPath(E.Path);
-        if E.CreateFile then
-        begin if FileExists(E.Path) or DirectoryExists(E.Path) then raise Exception.Create('Creation target already exists'); end
-        else if ReadTextBytes(E.Path) <> E.Original then raise Exception.Create('File changed since patch validation: ' + E.Path);
+        Stg := TStagedEdit(Edits[I]);
+        ResolveProjectPath(Stg.FilePath);
+        if Stg.CreateFile then
+        begin if FileExists(Stg.FilePath) or DirectoryExists(Stg.FilePath) then raise Exception.Create('Creation target already exists'); end
+        else if ReadTextBytes(Stg.FilePath) <> Stg.Original then raise Exception.Create('File changed since patch validation: ' + Stg.FilePath);
       end;
       if ToolCancelled then raise Exception.Create('Tool cancelled');
       for I := 0 to Edits.Count - 1 do
@@ -212,23 +267,38 @@ begin
       for I := 0 to Edits.Count - 1 do
       begin
         if ToolCancelled then raise Exception.Create('Tool cancelled');
-        E := TStagedEdit(Edits[I]); ResolveProjectPath(E.Path);
-        if E.Remove then
-        begin if not SysUtils.DeleteFile(E.Path) then raise Exception.Create('Cannot delete ' + E.Path); end
+        Stg := TStagedEdit(Edits[I]); ResolveProjectPath(Stg.FilePath);
+        if (not Stg.CreateFile) and FileExists(Stg.FilePath) then
+        begin
+          BackupPath := SysUtils.GetTempFileName(ExtractFileDir(Stg.FilePath), '.agent-patch-bak-');
+          if not CopyPathToFile(Stg.FilePath, BackupPath) then
+            raise Exception.Create('Cannot back up ' + Stg.FilePath);
+          Backups.Values[Stg.FilePath] := BackupPath;
+        end;
+      end;
+      for I := 0 to Edits.Count - 1 do
+      begin
+        if ToolCancelled then raise Exception.Create('Tool cancelled');
+        Stg := TStagedEdit(Edits[I]); ResolveProjectPath(Stg.FilePath);
+        if Stg.Remove then
+        begin if not SysUtils.DeleteFile(Stg.FilePath) then raise Exception.Create('Cannot delete ' + Stg.FilePath); end
         else
         begin
           {$IFDEF WINDOWS}
-          if not MoveFileEx(PChar(E.TempPath), PChar(E.Path), MOVEFILE_REPLACE_EXISTING) then
+          if not MoveFileEx(PChar(Stg.TempPath), PChar(Stg.FilePath), MOVEFILE_REPLACE_EXISTING) then
           {$ELSE}
-          if not RenameFile(E.TempPath, E.Path) then
+          if not RenameFile(Stg.TempPath, Stg.FilePath) then
           {$ENDIF}
-            raise Exception.Create('Cannot replace ' + E.Path);
-          E.TempPath := '';
+            raise Exception.Create('Cannot replace ' + Stg.FilePath);
+          Stg.TempPath := '';
         end;
-        Changed.Add(E.Path);
-        W := NotifyToolFileChanged(E.Path);
+        Changed.Add(Stg.FilePath);
+        W := NotifyToolFileChanged(Stg.FilePath);
         if W <> '' then Warning := Warning + W + LineEnding;
       end;
+      for I := 0 to Backups.Count - 1 do
+        if Backups.ValueFromIndex[I] <> '' then
+          SysUtils.DeleteFile(Backups.ValueFromIndex[I]);
       O.Add('status', 'success');
       if (APatchWarnings <> nil) and (APatchWarnings.Count > 0) then
       begin
@@ -239,31 +309,37 @@ begin
       end;
     except on Ex: Exception do
       begin
+        if Changed.Count > 0 then
+          RollbackPatchChanges(Changed, Backups, RollbackFailed);
         O.Add('error', Ex.Message);
         O.Add('error_kind', PatchErrorKindForMessage(Ex.Message));
-        O.Add('partial', Changed.Count > 0);
+        O.Add('partial', RollbackFailed);
       end;
     end;
     if Warning <> '' then O.Add('tracking_warning', Trim(Warning));
     Result := O.AsJSON;
-  finally O.Free; end;
+  finally
+    Backups.Free;
+    O.Free;
+  end;
 end;
 
 function ExecuteApplyPatchJson(A: TJSONObject): string;
 var
-  Patch: TStringList; Edits: TList;
+  DiffLines: TStringList; Edits: TList;
   Lines, Endings, Output, OutEndings, PatchWarnings: TStringList;
-  R: TRegExpr; E: TStagedEdit;
-  I, J, Cursor, OldStart, OldCount, NewStart, NewCount, HeaderOldCount, HeaderNewCount;
+  R: TRegExpr; Stg: TStagedEdit;
+  I, J, Cursor, OldStart, OldCount, NewStart, NewCount, HeaderOldCount, HeaderNewCount: Integer;
   SeenOld, SeenNew, MarkerIndex, HunkCount: Integer;
   OldPath, NewPath, Text, EOL, BOM, RelPath: string; MarkerOld, BrokeAtBoundary: Boolean;
+  ContentStream: TStringStream;
   PatchEx: EPatchError;
   procedure AppendOriginal(UntilIndex: Integer);
   begin
     while Cursor < UntilIndex do
     begin
       if Cursor >= Lines.Count then
-        PatchRaise('invalid_hunk', 'Hunk position outside file', E.Path, Cursor + 1);
+        raise EPatchError.Create('invalid_hunk', 'Hunk position outside file', Stg.FilePath, Cursor + 1);
       Output.Add(Lines[Cursor]); OutEndings.Add(Endings[Cursor]); Inc(Cursor);
     end;
   end;
@@ -271,8 +347,8 @@ var
   begin
     if (Cursor >= Lines.Count) or (Lines[Cursor] <> Value) then
       raise EPatchError.Create('context_mismatch', 'Patch context mismatch in ' +
-        E.Path + ' near line ' + IntToStr(Cursor + 1) +
-        '; reread the current file and retry with exact context', E.Path, Cursor + 1,
+        Stg.FilePath + ' near line ' + IntToStr(Cursor + 1) +
+        '; reread the current file and retry with exact context', Stg.FilePath, Cursor + 1,
         'Copy every - and space line exactly from read_file (entities, quotes, trailing spaces).');
   end;
   procedure ApplyHunkLine(const AText: string);
@@ -281,7 +357,7 @@ var
     LineText := AText;
     if LineText = '' then LineText := ' ';
     if LineText[1] <> ' ' then
-      PatchRaise('invalid_hunk', 'Invalid hunk line', E.Path, 0,
+      raise EPatchError.Create('invalid_hunk', 'Invalid hunk line', Stg.FilePath, 0,
         'Each hunk line must start with space, -, or +; blank lines count as context.');
     CheckOld(Copy(LineText, 2, MaxInt));
     Output.Add(Lines[Cursor]); OutEndings.Add(Endings[Cursor]);
@@ -289,64 +365,64 @@ var
     MarkerIndex := Output.Count - 1; MarkerOld := True;
   end;
 begin
-  Patch := TStringList.Create; Edits := TList.Create;
+  DiffLines := TStringList.Create; Edits := TList.Create;
   Lines := TStringList.Create; Endings := TStringList.Create;
   Output := TStringList.Create; OutEndings := TStringList.Create;
   PatchWarnings := TStringList.Create;
   R := TRegExpr.Create;
   try
     try
-      Patch.Text := NormalizePatch(A.Get('patch', ''));
+      DiffLines.Text := NormalizePatch(A.Get('patch', ''));
     R.Expression := '^@@ -([0-9]+)(,([0-9]+))? \+([0-9]+)(,([0-9]+))? @@';
     I := 0;
-    while I < Patch.Count do
+    while I < DiffLines.Count do
     begin
-      if (Copy(Patch[I], 1, 11) = 'diff --git ') or (Copy(Patch[I], 1, 6) = 'index ') or (Patch[I] = '') then begin Inc(I); Continue; end;
-      if Copy(Patch[I], 1, 4) <> '--- ' then
+      if (Copy(DiffLines[I], 1, 11) = 'diff --git ') or (Copy(DiffLines[I], 1, 6) = 'index ') or (DiffLines[I] = '') then begin Inc(I); Continue; end;
+      if Copy(DiffLines[I], 1, 4) <> '--- ' then
       begin
         { A complete diff may be followed by a short explanatory response. }
         if Edits.Count > 0 then Break;
-        if (Pos('*** Begin Patch', Patch.Text) > 0) or
-           (Pos('*** Update File:', Patch.Text) > 0) then
+        if (Pos('*** Begin Patch', DiffLines.Text) > 0) or
+           (Pos('*** Update File:', DiffLines.Text) > 0) then
           raise EPatchError.Create('format', 'Unsupported patch format; send a unified diff with --- and +++ file headers', '', 0)
-        else if Copy(Patch[I], 1, 3) = '```' then
+        else if Copy(DiffLines[I], 1, 3) = '```' then
           raise EPatchError.Create('format', 'Remove surrounding Markdown fences and send a unified diff with --- and +++ file headers', '', 0)
         else
           raise EPatchError.Create('format', 'Expected unified diff file header (--- path / +++ path); check the patch format and remove any surrounding text', '', 0);
       end;
-      OldPath := PatchPath(Patch[I]); Inc(I);
-      if (I >= Patch.Count) or (Copy(Patch[I], 1, 4) <> '+++ ') then
+      OldPath := PatchPath(DiffLines[I]); Inc(I);
+      if (I >= DiffLines.Count) or (Copy(DiffLines[I], 1, 4) <> '+++ ') then
         raise EPatchError.Create('format', 'Missing +++ header after unified diff file header', '', 0);
-      NewPath := PatchPath(Patch[I]); Inc(I);
+      NewPath := PatchPath(DiffLines[I]); Inc(I);
       if (OldPath = '/dev/null') and (NewPath = '/dev/null') then
-        PatchRaise('format', 'Invalid patch paths', '', 0);
+        raise EPatchError.Create('format', 'Invalid patch paths', '', 0);
       if (OldPath <> '/dev/null') and (NewPath <> '/dev/null') and (OldPath <> NewPath) then
-        PatchRaise('format', 'Renaming is unsupported; use delete and create', '', 0);
-      E := TStagedEdit.Create; Edits.Add(E);
-      E.CreateFile := OldPath = '/dev/null'; E.Remove := NewPath = '/dev/null';
-      if E.Remove then E.Path := OldPath else E.Path := NewPath;
+        raise EPatchError.Create('format', 'Renaming is unsupported; use delete and create', '', 0);
+      Stg := TStagedEdit.Create; Edits.Add(Stg);
+      Stg.CreateFile := OldPath = '/dev/null'; Stg.Remove := NewPath = '/dev/null';
+      if Stg.Remove then Stg.FilePath := OldPath else Stg.FilePath := NewPath;
       for J := 0 to Edits.Count-2 do
-        if TStagedEdit(Edits[J]).Path = E.Path then
-          PatchRaise('patch_apply', 'Duplicate patch target', E.Path, 0);
-      if E.CreateFile then
+        if TStagedEdit(Edits[J]).FilePath = Stg.FilePath then
+          raise EPatchError.Create('patch_apply', 'Duplicate patch target', Stg.FilePath, 0);
+      if Stg.CreateFile then
       begin
-        if FileExists(E.Path) or DirectoryExists(E.Path) then
-          PatchRaise('patch_apply', 'Creation target already exists', E.Path, 0);
+        if FileExists(Stg.FilePath) or DirectoryExists(Stg.FilePath) then
+          raise EPatchError.Create('patch_apply', 'Creation target already exists', Stg.FilePath, 0);
       end
-      else E.Original := ReadTextBytes(E.Path);
+      else Stg.Original := ReadTextBytes(Stg.FilePath);
       Lines.Clear; Endings.Clear; Output.Clear; OutEndings.Clear;
-      Text := E.Original; BOM := '';
+      Text := Stg.Original; BOM := '';
       if Copy(Text, 1, 3) = #239#187#191 then begin BOM := Copy(Text, 1, 3); Delete(Text, 1, 3); end;
       SplitLines(Text, Lines, Endings); Cursor := 0; HunkCount := 0;
       { Unified diffs use LF for new files; existing files below retain their
         first observed line ending. }
       EOL := #10;
       for J := 0 to Endings.Count-1 do if Endings[J] <> '' then begin EOL := Endings[J]; Break; end;
-      RelPath := ExtractFileName(E.Path);
-      while (I < Patch.Count) and (Copy(Patch[I], 1, 2) = '@@') do
+      RelPath := ExtractFileName(Stg.FilePath);
+      while (I < DiffLines.Count) and (Copy(DiffLines[I], 1, 2) = '@@') do
       begin
         if ToolCancelled then raise Exception.Create('Tool cancelled');
-        if not R.Exec(Patch[I]) then PatchRaise('invalid_hunk', 'Invalid hunk header', E.Path, 0);
+        if not R.Exec(DiffLines[I]) then raise EPatchError.Create('invalid_hunk', 'Invalid hunk header', Stg.FilePath, 0);
         OldStart := StrToInt(R.Match[1]); NewStart := StrToInt(R.Match[4]);
         HeaderOldCount := 1; HeaderNewCount := 1;
         if R.Match[3] <> '' then HeaderOldCount := StrToInt(R.Match[3]);
@@ -354,16 +430,16 @@ begin
         if HeaderOldCount > 0 then Dec(OldStart);
         if HeaderNewCount > 0 then Dec(NewStart);
         if (OldStart < Cursor) or (OldStart > Lines.Count) then
-          PatchRaise('invalid_hunk', 'Overlapping or invalid hunk', E.Path, OldStart + 1);
+          raise EPatchError.Create('invalid_hunk', 'Overlapping or invalid hunk', Stg.FilePath, OldStart + 1);
         AppendOriginal(OldStart);
         if NewStart <> Output.Count then
           PatchWarnings.Add('hunk at ' + RelPath + ': ignored +start ' + IntToStr(NewStart + 1) +
             ' (expected ' + IntToStr(Output.Count + 1) + ')');
         Inc(I); Inc(HunkCount); SeenOld := 0; SeenNew := 0; MarkerIndex := -1;
         MarkerOld := False; BrokeAtBoundary := False;
-        while I < Patch.Count do
+        while I < DiffLines.Count do
         begin
-          Text := Patch[I];
+          Text := DiffLines[I];
           if IsHunkBodyBoundary(Text) then
           begin
             BrokeAtBoundary := True;
@@ -372,7 +448,7 @@ begin
           if Text = '\ No newline at end of file' then
           begin
             if MarkerOld and ((Cursor = 0) or (Endings[Cursor-1] <> '')) then
-              PatchRaise('invalid_hunk', 'Old newline marker mismatch', E.Path, Cursor);
+              raise EPatchError.Create('invalid_hunk', 'Old newline marker mismatch', Stg.FilePath, Cursor);
             if MarkerIndex >= 0 then OutEndings[MarkerIndex] := '';
             MarkerIndex := -1; MarkerOld := False; Inc(I); Continue;
           end;
@@ -381,8 +457,8 @@ begin
           begin
             ApplyHunkLine('');
             if (SeenOld > HeaderOldCount) or (SeenNew > HeaderNewCount) then
-              PatchRaise('hunk_count_mismatch',
-                'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+              raise EPatchError.Create('hunk_count_mismatch',
+                'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', Stg.FilePath, 0);
             Inc(I);
             Continue;
           end;
@@ -390,25 +466,25 @@ begin
             ' ': begin ApplyHunkLine(Text); end;
             '-': begin
               if SeenOld >= HeaderOldCount then
-                PatchRaise('hunk_count_mismatch',
-                  'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+                raise EPatchError.Create('hunk_count_mismatch',
+                  'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', Stg.FilePath, 0);
               CheckOld(Copy(Text, 2, MaxInt)); Inc(Cursor); Inc(SeenOld);
               MarkerIndex := -1; MarkerOld := True;
             end;
             '+': begin
               if SeenNew >= HeaderNewCount then
-                PatchRaise('hunk_count_mismatch',
-                  'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+                raise EPatchError.Create('hunk_count_mismatch',
+                  'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', Stg.FilePath, 0);
               Output.Add(Copy(Text, 2, MaxInt)); OutEndings.Add(EOL); Inc(SeenNew);
               MarkerIndex := Output.Count - 1; MarkerOld := False;
             end;
             else
-              PatchRaise('invalid_hunk', 'Invalid hunk line', E.Path, 0,
+              raise EPatchError.Create('invalid_hunk', 'Invalid hunk line', Stg.FilePath, 0,
                 'Each hunk line must start with space, -, or +.');
           end;
           if (SeenOld > HeaderOldCount) or (SeenNew > HeaderNewCount) then
-            PatchRaise('hunk_count_mismatch',
-              'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', E.Path, 0);
+            raise EPatchError.Create('hunk_count_mismatch',
+              'Hunk count mismatch; @@ old/new counts must match space, -, and + lines', Stg.FilePath, 0);
           Inc(I);
         end;
         if (SeenOld <> HeaderOldCount) or (SeenNew <> HeaderNewCount) then
@@ -416,34 +492,40 @@ begin
           if BrokeAtBoundary then
           begin
             if (SeenOld = 0) and (SeenNew = 0) then
-              PatchRaise('incomplete_hunk',
+              raise EPatchError.Create('incomplete_hunk',
                 'Incomplete hunk; expected ' + IntToStr(HeaderOldCount) + ' old and ' +
-                IntToStr(HeaderNewCount) + ' new lines, got none', E.Path, 0,
+                IntToStr(HeaderNewCount) + ' new lines, got none', Stg.FilePath, 0,
                 'Add - and + lines or use @@ -N,1 +N,1 @@ for one-line changes.');
             PatchWarnings.Add('hunk at ' + RelPath + ': adjusted @@ counts from ' +
               IntToStr(HeaderOldCount) + '/' + IntToStr(HeaderNewCount) + ' to ' +
               IntToStr(SeenOld) + '/' + IntToStr(SeenNew));
           end
           else
-            PatchRaise('incomplete_hunk',
+            raise EPatchError.Create('incomplete_hunk',
               'Incomplete hunk; expected ' + IntToStr(HeaderOldCount) + '/' +
               IntToStr(HeaderNewCount) + ' old/new lines, got ' + IntToStr(SeenOld) + '/' +
-              IntToStr(SeenNew), E.Path, 0,
+              IntToStr(SeenNew), Stg.FilePath, 0,
               'Recount space, -, and + lines in the hunk or start the next hunk with @@.');
         end;
       end;
-      if HunkCount = 0 then PatchRaise('empty_patch', 'Patch file has no hunks', E.Path, 0);
-      AppendOriginal(Lines.Count); E.Content := BOM;
-      for J := 0 to Output.Count-1 do
-      begin
-        if (J < Output.Count-1) and (OutEndings[J] = '') then
-          PatchRaise('invalid_hunk', 'No-newline marker before final line', E.Path, 0);
-        E.Content := E.Content + Output[J] + OutEndings[J];
+      if HunkCount = 0 then raise EPatchError.Create('empty_patch', 'Patch file has no hunks', Stg.FilePath, 0);
+      AppendOriginal(Lines.Count);
+      ContentStream := TStringStream.Create(BOM);
+      try
+        for J := 0 to Output.Count - 1 do
+        begin
+          if (J < Output.Count - 1) and (OutEndings[J] = '') then
+            raise EPatchError.Create('invalid_hunk', 'No-newline marker before final line', Stg.FilePath, 0);
+          ContentStream.WriteString(Output[J] + OutEndings[J]);
+        end;
+        Stg.Content := ContentStream.DataString;
+      finally
+        ContentStream.Free;
       end;
-      if E.Remove and (Output.Count <> 0) then
-        PatchRaise('patch_apply', 'Deletion patch must remove all lines', E.Path, 0);
+      if Stg.Remove and (Output.Count <> 0) then
+        raise EPatchError.Create('patch_apply', 'Deletion patch must remove all lines', Stg.FilePath, 0);
     end;
-    if Edits.Count = 0 then PatchRaise('empty_patch', 'Patch is empty', '', 0);
+    if Edits.Count = 0 then raise EPatchError.Create('empty_patch', 'Patch is empty', '', 0);
       Result := Commit(Edits, PatchWarnings);
     except
       on Ex: EPatchError do Result := PatchErrorJSON(Ex);
@@ -455,34 +537,34 @@ begin
     end;
   finally
     for J := 0 to Edits.Count-1 do TObject(Edits[J]).Free;
-    Patch.Free; Edits.Free; Lines.Free; Endings.Free; Output.Free; OutEndings.Free;
+    DiffLines.Free; Edits.Free; Lines.Free; Endings.Free; Output.Free; OutEndings.Free;
     PatchWarnings.Free; R.Free;
   end;
 end;
 
 function ExecuteEditFileJson(A: TJSONObject): string;
 var
-  E: TStagedEdit;
+  Stg: TStagedEdit;
   Edits: TList;
   Old, NewText: string;
   P: Integer;
 begin
-  E := TStagedEdit.Create;
+  Stg := TStagedEdit.Create;
   Edits := TList.Create;
-  Edits.Add(E);
+  Edits.Add(Stg);
   try
-    E.Path := ResolveProjectPath(A.Get('path', ''));
-    E.Original := ReadTextBytes(E.Path);
+    Stg.FilePath := ResolveProjectPath(A.Get('path', ''));
+    Stg.Original := ReadTextBytes(Stg.FilePath);
     Old := A.Get('old_text', '');
     NewText := A.Get('new_text', '');
     if Old = '' then raise Exception.Create('old_text must not be empty');
-    P := Pos(Old, E.Original);
-    if (P = 0) or (Pos(Old, Copy(E.Original, P + 1, MaxInt)) > 0) then
+    P := Pos(Old, Stg.Original);
+    if (P = 0) or (Pos(Old, Copy(Stg.Original, P + 1, MaxInt)) > 0) then
       raise Exception.Create('old_text must match exactly once');
-    E.Content := Copy(E.Original, 1, P - 1) + NewText + Copy(E.Original, P + Length(Old), MaxInt);
+    Stg.Content := Copy(Stg.Original, 1, P - 1) + NewText + Copy(Stg.Original, P + Length(Old), MaxInt);
     Result := Commit(Edits);
   finally
-    E.Free;
+    Stg.Free;
     Edits.Free;
   end;
 end;

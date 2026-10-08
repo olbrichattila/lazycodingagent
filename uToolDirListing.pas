@@ -54,7 +54,7 @@ begin
       Rel := Files[I];
       Full := IncludeTrailingPathDelimiter(Root) + Rel;
       if Recursive then
-        Rel := StringReplace(ExtractRelativePath(IncludeTrailingPathDelimiter(CurrentToolContext.WorkspaceRoot), Full),
+        Rel := StringReplace(ExtractRelativePath(IncludeTrailingPathDelimiter(CanonicalWorkspaceRoot), Full),
           DirectorySeparator, '/', [rfReplaceAll]);
       if Recursive and not GlobMatches(Pattern, Rel) then Continue;
       if Entries.Count = 500 then begin Truncated := True; Break; end;

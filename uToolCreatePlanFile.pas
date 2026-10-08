@@ -51,6 +51,11 @@ begin
     Result := ToolResultFromJson(ToolError('Plan content is required'));
     Exit;
   end;
+  if Length(Content) > 1024 * 1024 then
+  begin
+    Result := ToolResultFromJson(ToolError('Plan content exceeds 1 MiB limit'));
+    Exit;
+  end;
 
   try
     PlanDir := IncludeTrailingPathDelimiter(ResolveProjectPath('')) + '.plan';

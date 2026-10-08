@@ -40,8 +40,30 @@ begin
   Result.Add('function', FnObj);
 end;
 
+function ExtractJsonFence(const Text: string): string;
 var
-  Line, Name, Args, ModeStr, TargetPath: string;
+  Marker: string;
+  StartI, EndI: Integer;
+begin
+  Marker := '```json';
+  StartI := Pos(Marker, Text);
+  if StartI = 0 then Exit('');
+  StartI := StartI + Length(Marker);
+  if (StartI <= Length(Text)) and (Text[StartI] in [#10, #13]) then
+  begin
+    if (Text[StartI] = #13) and (StartI < Length(Text)) and (Text[StartI + 1] = #10) then
+      StartI := StartI + 2
+    else
+      Inc(StartI);
+  end;
+  EndI := Pos('```', Copy(Text, StartI, MaxInt));
+  if EndI = 0 then Exit('');
+  Result := Trim(Copy(Text, StartI, EndI - 1));
+end;
+
+var
+  Line, Name, Args, ModeStr, TargetPath, FenceText, CallName, CallArgs: string;
+  CallObj: TJSONObject;
   A, OutObj: TJSONObject;
   Context: TAgentToolContext;
   Registry: TAgentToolRegistry;
@@ -117,6 +139,27 @@ begin
               WriteLn(Messages.AsJSON);
             finally
               Messages.Free;
+            end;
+          end
+          else if Name = '_fallback' then
+          begin
+            FenceText := ExtractJsonFence(A.Get('text', ''));
+            if FenceText = '' then
+              WriteLn(ToolError('No JSON tool call found in text'))
+            else
+            begin
+              CallObj := TJSONObject(GetJSON(FenceText));
+              try
+                CallName := CallObj.Get('name', '');
+                if CallObj.Find('arguments') <> nil then
+                  CallArgs := CallObj.Find('arguments').AsJSON
+                else
+                  CallArgs := '{}';
+                Res := Registry.ExecuteTool(CallName, CallArgs, Mode);
+                WriteLn(Res.Output);
+              finally
+                CallObj.Free;
+              end;
             end;
           end
           else if Name = '_json_wellformed' then

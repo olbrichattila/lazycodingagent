@@ -15,6 +15,7 @@ type
     ResolvedTarget: string;
     UseShell: Boolean;
     ShellCommand: string;
+    WorkingDirectory: string;
   end;
 
 function ResolveBuildInvocation(const WorkspaceRoot, TargetPath: string;
@@ -134,7 +135,11 @@ begin
     RelTarget := '.';
     if TargetPath <> '' then
       RelTarget := TargetPath;
+    {$IFDEF UNIX}
+    SetDirect(Inv, 'python3', 'python3', TargetPath, ['-m', 'compileall', '-q', RelTarget]);
+    {$ELSE}
     SetDirect(Inv, 'python', 'python', TargetPath, ['-m', 'compileall', '-q', RelTarget]);
+    {$ENDIF}
     Exit(True);
   end;
   if FileExists(SearchDir + 'CMakeLists.txt') then
@@ -220,6 +225,7 @@ begin
   Inv.ResolvedTarget := TargetPath;
   Inv.UseShell := False;
   Inv.ShellCommand := '';
+  Inv.WorkingDirectory := '';
   Inv.Args := TStringList.Create;
 
   SearchDir := MarkerDir(WorkspaceRoot, TargetPath);
@@ -228,13 +234,28 @@ begin
     Exit(True);
 
   if TryMarkerBuild(SearchDir, TargetPath, Inv) then
+  begin
+    Inv.WorkingDirectory := ExcludeTrailingPathDelimiter(SearchDir);
     Exit(True);
+  end;
 
   if TargetPath = '' then
   begin
-    if TryGlobProjectFile(SearchDir, '*.sln', 'dotnet', 'dotnet', Inv) then Exit(True);
-    if TryGlobProjectFile(SearchDir, '*.csproj', 'dotnet', 'dotnet', Inv) then Exit(True);
-    if TryGlobProjectFile(SearchDir, '*.lpi', 'lazbuild', 'lazbuild', Inv) then Exit(True);
+    if TryGlobProjectFile(SearchDir, '*.sln', 'dotnet', 'dotnet', Inv) then
+    begin
+      Inv.WorkingDirectory := ExcludeTrailingPathDelimiter(SearchDir);
+      Exit(True);
+    end;
+    if TryGlobProjectFile(SearchDir, '*.csproj', 'dotnet', 'dotnet', Inv) then
+    begin
+      Inv.WorkingDirectory := ExcludeTrailingPathDelimiter(SearchDir);
+      Exit(True);
+    end;
+    if TryGlobProjectFile(SearchDir, '*.lpi', 'lazbuild', 'lazbuild', Inv) then
+    begin
+      Inv.WorkingDirectory := ExcludeTrailingPathDelimiter(SearchDir);
+      Exit(True);
+    end;
   end;
 
   if (TargetPath <> '') and FileExists(TargetPath) then
@@ -253,6 +274,7 @@ begin
   Inv.ResolvedTarget := '';
   Inv.UseShell := True;
   Inv.ShellCommand := Command;
+  Inv.WorkingDirectory := '';
   Inv.Args := nil;
   Result := Trim(Command) <> '';
 end;

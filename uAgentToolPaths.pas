@@ -9,6 +9,7 @@ uses
 
 function ResolveProjectPath(const Path: string): string;
 function CanonicalFilePath(const Path: string): string;
+function CanonicalWorkspaceRoot: string;
 function ReadTextBytes(const Path: string): RawByteString;
 procedure WriteBytes(const Path: string; const Content: RawByteString);
 function IsPathLink(const Path: string): Boolean;
@@ -21,6 +22,87 @@ implementation
 
 uses
   {$IFDEF UNIX}BaseUnix{$ELSE}Windows{$ENDIF};
+
+const
+  TextFileMaxBytes = 16 * 1024 * 1024;
+
+function PathJailPrefixMatches(const Root, Prefix, Candidate: string): Boolean;
+begin
+  {$IFDEF WINDOWS}
+  if SameText(Candidate, Root) then Exit(True);
+  Result := SameText(Copy(Candidate, 1, Length(Prefix)), Prefix);
+  {$ELSE}
+  {$IFDEF DARWIN}
+  if SameText(Candidate, Root) then Exit(True);
+  Result := SameText(Copy(Candidate, 1, Length(Prefix)), Prefix);
+  {$ELSE}
+  if Candidate = Root then Exit(True);
+  Result := Copy(Candidate, 1, Length(Prefix)) = Prefix;
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+function GlobCharEqual(A, B: Char): Boolean;
+begin
+  if A = B then Exit(True);
+  if B = '/' then Exit(False);
+  {$IFDEF WINDOWS}
+  if SameText(A, B) then Exit(True);
+  if (A = '\') and (B = '/') then Exit(True);
+  if (A = '/') and (B = '\') then Exit(True);
+  {$ELSE}
+  {$IFDEF DARWIN}
+  if SameText(A, B) then Exit(True);
+  {$ENDIF}
+  {$ENDIF}
+  Result := False;
+end;
+
+{$IFDEF WINDOWS}
+function WinGetFinalPath(const Path: string): string;
+var
+  H: THandle;
+  Buf: array[0..32767] of WideChar;
+  N: DWORD;
+  S: string;
+begin
+  Result := '';
+  H := CreateFile(PChar(Path), 0, FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE,
+    nil, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+  if H = INVALID_HANDLE_VALUE then Exit;
+  try
+    N := GetFinalPathNameByHandleW(H, Buf, Length(Buf), FILE_NAME_NORMALIZED);
+    if N = 0 then Exit;
+    SetString(S, Buf, N);
+    if Copy(S, 1, 4) = '\\?\' then
+      Result := Copy(S, 5, MaxInt)
+    else
+      Result := S;
+  finally
+    CloseHandle(H);
+  end;
+end;
+
+function WinPathIsDirectory(const Path: string): Boolean;
+var
+  Attr: DWORD;
+begin
+  Attr := GetFileAttributes(PChar(Path));
+  Result := (Attr <> INVALID_FILE_ATTRIBUTES) and ((Attr and FILE_ATTRIBUTE_DIRECTORY) <> 0);
+end;
+
+procedure AssertRegularFileTarget(const Path: string; ForWrite: Boolean);
+var
+  Attr: DWORD;
+begin
+  Attr := GetFileAttributes(PChar(Path));
+  if Attr = INVALID_FILE_ATTRIBUTES then Exit;
+  if (Attr and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+    raise Exception.Create('Not a regular file: ' + Path);
+  if ForWrite and ((Attr and FILE_ATTRIBUTE_DEVICE) <> 0) then
+    raise Exception.Create('Not a regular file: ' + Path);
+end;
+{$ENDIF}
 
 function JoinPathSegments(const Prefix, Suffix: string): string;
 begin
@@ -46,7 +128,8 @@ function CanonicalPath(const Path: string; Depth: Integer): string;
 var
   Parts: TStringList;
   I: Integer;
-  Cur, Link, Tail, Drive, Remainder: string;
+  Cur, Link, Tail, Drive, Remainder, FinalPath: string;
+  {$IFDEF WINDOWS}Attr: DWORD;{$ENDIF}
 begin
   if Depth > 32 then raise Exception.Create('Too many symbolic links');
   Result := ExpandFileName(Path);
@@ -77,11 +160,17 @@ begin
         Exit(CanonicalPath(JoinPathSegments(Link, Tail), Depth + 1));
       end;
       {$ELSE}
-      if (GetFileAttributes(PChar(Cur)) <> INVALID_FILE_ATTRIBUTES) and
-        ((GetFileAttributes(PChar(Cur)) and FILE_ATTRIBUTE_REPARSE_POINT) <> 0) then
-        raise Exception.Create('Reparse-point paths are unsupported');
+      Attr := GetFileAttributes(PChar(Cur));
+      if (Attr <> INVALID_FILE_ATTRIBUTES) and ((Attr and FILE_ATTRIBUTE_REPARSE_POINT) <> 0) then
+      begin
+        FinalPath := WinGetFinalPath(Cur);
+        if FinalPath = '' then raise Exception.Create('Cannot resolve reparse point: ' + Cur);
+        Tail := RemainingPathParts(Parts, I + 1);
+        Exit(CanonicalPath(JoinPathSegments(FinalPath, Tail), Depth + 1));
+      end;
       {$ENDIF}
     end;
+    Result := Cur;
   finally
     Parts.Free;
   end;
@@ -92,6 +181,15 @@ begin
   Result := CanonicalPath(Path, 0);
 end;
 
+function CanonicalWorkspaceRoot: string;
+var
+  C: TAgentToolContext;
+begin
+  C := CurrentToolContext;
+  if not Assigned(C) then raise Exception.Create('Tool context is not active');
+  Result := ExcludeTrailingPathDelimiter(CanonicalPath(C.WorkspaceRoot, 0));
+end;
+
 function ResolveProjectPath(const Path: string): string;
 var
   Root, Candidate, Prefix: string;
@@ -100,7 +198,7 @@ begin
   if Pos(#0, Path) > 0 then raise Exception.Create('Invalid path');
   C := CurrentToolContext;
   if not Assigned(C) then raise Exception.Create('Tool context is not active');
-  Root := ExcludeTrailingPathDelimiter(CanonicalPath(C.WorkspaceRoot, 0));
+  Root := CanonicalWorkspaceRoot;
   if Path = '' then Candidate := Root
   {$IFDEF UNIX}
   else if Path[1] = '/' then Candidate := Path
@@ -111,11 +209,7 @@ begin
   Result := CanonicalPath(Candidate, 0);
   if SafeToolText(Result) <> Result then raise Exception.Create('Unsupported path encoding');
   Prefix := IncludeTrailingPathDelimiter(Root);
-  {$IFDEF WINDOWS}
-  if not SameText(Result, Root) and not SameText(Copy(Result, 1, Length(Prefix)), Prefix) then
-  {$ELSE}
-  if (Result <> Root) and (Copy(Result, 1, Length(Prefix)) <> Prefix) then
-  {$ENDIF}
+  if not PathJailPrefixMatches(Root, Prefix, Result) then
     raise Exception.Create('Path escapes the active project: ' + Path);
 end;
 
@@ -128,10 +222,13 @@ begin
   {$IFDEF UNIX}
   if (fpStat(Path, Info) <> 0) or not FPS_ISREG(Info.st_mode) then
     raise Exception.Create('Not a regular text file: ' + Path);
+  {$ELSE}
+  if WinPathIsDirectory(Path) then
+    raise Exception.Create('Not a regular text file: ' + Path);
   {$ENDIF}
   S := TFileStream.Create(Path, fmOpenRead or fmShareDenyWrite);
   try
-    if S.Size > 16 * 1024 * 1024 then raise Exception.Create('Text file exceeds 16 MiB limit');
+    if S.Size > TextFileMaxBytes then raise Exception.Create('Text file exceeds 16 MiB limit');
     SetLength(Result, S.Size);
     if Length(Result) > 0 then S.ReadBuffer(Result[1], Length(Result));
   finally
@@ -146,20 +243,40 @@ end;
 procedure WriteBytes(const Path: string; const Content: RawByteString);
 var
   S: TFileStream;
-  Resolved: string;
+  Resolved, TempPath: string;
   {$IFDEF UNIX}Info: Stat;{$ENDIF}
 begin
   Resolved := ResolveProjectPath(Path);
   {$IFDEF UNIX}
   if (fpStat(Resolved, Info) = 0) and not FPS_ISREG(Info.st_mode) then
     raise Exception.Create('Not a regular file: ' + Path);
+  {$ELSE}
+  AssertRegularFileTarget(Resolved, True);
   {$ENDIF}
   if not ForceDirectories(ExtractFileDir(Resolved)) then raise Exception.Create('Cannot create parent directories');
-  S := TFileStream.Create(Resolved, fmCreate);
+  TempPath := SysUtils.GetTempFileName(ExtractFileDir(Resolved), '.agent-write-');
   try
-    if Length(Content) > 0 then S.WriteBuffer(Content[1], Length(Content));
+    S := TFileStream.Create(TempPath, fmCreate);
+    try
+      if Length(Content) > 0 then S.WriteBuffer(Content[1], Length(Content));
+    finally
+      S.Free;
+    end;
+    {$IFDEF UNIX}
+    if fpStat(Resolved, Info) = 0 then
+      if fpChmod(TempPath, Info.st_mode and &777) <> 0 then
+        raise Exception.Create('Cannot preserve file permissions');
+    {$ENDIF}
+    {$IFDEF WINDOWS}
+    if not MoveFileEx(PChar(TempPath), PChar(Resolved), MOVEFILE_REPLACE_EXISTING) then
+      raise Exception.Create('Cannot replace ' + Path);
+    {$ELSE}
+    if not RenameFile(TempPath, Resolved) then
+      raise Exception.Create('Cannot replace ' + Path);
+    {$ENDIF}
+    TempPath := '';
   finally
-    S.Free;
+    if TempPath <> '' then SysUtils.DeleteFile(TempPath);
   end;
 end;
 
@@ -181,20 +298,22 @@ begin
 end;
 
 function GlobMatches(const Pattern, Path: string): Boolean;
+var
+  NormPattern: string;
 
   function Match(P, S: Integer): Boolean;
   var
     K: Integer;
     Recursive: Boolean;
   begin
-    if P > Length(Pattern) then Exit(S > Length(Path));
-    if Pattern[P] = '*' then
+    if P > Length(NormPattern) then Exit(S > Length(Path));
+    if NormPattern[P] = '*' then
     begin
-      Recursive := (P < Length(Pattern)) and (Pattern[P + 1] = '*');
+      Recursive := (P < Length(NormPattern)) and (NormPattern[P + 1] = '*');
       if Recursive then
       begin
         Inc(P);
-        if (P < Length(Pattern)) and (Pattern[P + 1] = '/') and Match(P + 2, S) then Exit(True);
+        if (P < Length(NormPattern)) and (NormPattern[P + 1] = '/') and Match(P + 2, S) then Exit(True);
       end;
       K := S;
       repeat
@@ -206,10 +325,15 @@ function GlobMatches(const Pattern, Path: string): Boolean;
       Exit(False);
     end;
     if S > Length(Path) then Exit(False);
-    Result := ((Pattern[P] = Path[S]) or ((Pattern[P] = '?') and (Path[S] <> '/'))) and Match(P + 1, S + 1);
+    Result := (GlobCharEqual(NormPattern[P], Path[S]) or
+      ((NormPattern[P] = '?') and (Path[S] <> '/'))) and Match(P + 1, S + 1);
   end;
 
 begin
+  NormPattern := Pattern;
+  {$IFDEF WINDOWS}
+  NormPattern := StringReplace(NormPattern, '\', '/', [rfReplaceAll]);
+  {$ENDIF}
   Result := Match(1, 1);
 end;
 

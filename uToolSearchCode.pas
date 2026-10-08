@@ -20,6 +20,10 @@ implementation
 uses
   uAgentToolPaths, StrUtils;
 
+const
+  SearchFileMaxBytes = 16 * 1024 * 1024;
+  SearchLineMaxBytes = 1024 * 1024;
+
 constructor TToolSearchCode.Create(AContext: TAgentToolContext);
 begin
   inherited Create(AContext);
@@ -120,7 +124,7 @@ var
 
 begin
   Json := '{}';
-  Root := CurrentToolContext.WorkspaceRoot;
+  Root := CanonicalWorkspaceRoot;
   SearchRoot := ResolveProjectPath(Args.Get('path', '.'));
   Query := Args.Get('query', '');
   if Query = '' then
@@ -169,17 +173,8 @@ begin
 
         Stream := TFileStream.Create(FullPath, fmOpenRead or fmShareDenyWrite);
         try
+          if Stream.Size > SearchFileMaxBytes then Continue;
           BinaryFile := False;
-          while Stream.Position < Stream.Size do
-          begin
-            if ToolCancelled then raise Exception.Create('Tool cancelled');
-            N := Stream.Read(Buffer, SizeOf(Buffer));
-            for B := 0 to N - 1 do
-              if Buffer[B] = 0 then begin BinaryFile := True; Break; end;
-            if BinaryFile then Break;
-          end;
-          if BinaryFile then Continue;
-          Stream.Position := 0;
           LineNo := 0;
           RawLine := '';
           LineLength := 0;
@@ -190,6 +185,7 @@ begin
             N := Stream.Read(Buffer, SizeOf(Buffer));
             for B := 0 to N - 1 do
             begin
+              if Buffer[B] = 0 then begin BinaryFile := True; Break; end;
               if Buffer[B] = 10 then
               begin
                 if (LineLength > 0) and (RawLine[LineLength] = #13) then Dec(LineLength);
@@ -201,6 +197,11 @@ begin
               end
               else
               begin
+                if LineLength >= SearchLineMaxBytes then
+                begin
+                  BinaryFile := True;
+                  Break;
+                end;
                 if LineLength >= LineCapacity then
                 begin
                   if LineCapacity = 0 then LineCapacity := 256 else LineCapacity := LineCapacity * 2;
@@ -210,8 +211,9 @@ begin
                 RawLine[LineLength] := AnsiChar(Buffer[B]);
               end;
             end;
-            if Truncated then Break;
+            if BinaryFile or Truncated then Break;
           end;
+          if BinaryFile then Continue;
           if not Truncated and (LineLength > 0) then
           begin
             SetLength(RawLine, LineLength);

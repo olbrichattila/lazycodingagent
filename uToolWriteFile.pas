@@ -64,7 +64,7 @@ begin
 
   try
     ResolvedPath := ResolveProjectPath(FilePath);
-    WriteBytes(ResolvedPath, Content);
+    WriteBytes(ResolvedPath, UTF8Encode(Content));
     OutJSON := TJSONObject.Create;
     try
       OutJSON.Add('status', 'success');
