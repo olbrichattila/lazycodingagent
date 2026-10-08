@@ -22,6 +22,8 @@
 /lazycodingagent.exe
 /lazycodingagent.app/
 /lazycodingagent.res
+# FPC linker temp response files (project root)
+/link*.res
 
 # Lazarus IDE session and local state
 *.lps
