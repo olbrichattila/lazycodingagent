@@ -2,6 +2,12 @@
 
 The main window is a dockable IDE-style layout: navigation on the left, chat in the center, optional side panels, and an optional bottom terminal.
 
+## Title bar and menu
+
+The main window uses a **borderless frame** with a custom **title bar** (app name, drag to move, double-click to maximize) and **window controls** (minimize, maximize/restore, close) that follow the active light/dark theme. On macOS the controls use the familiar left-side traffic-light layout; on Windows and Linux they sit on the right.
+
+The **menu bar** (File, View, Workspace, …) is a separate row directly under the title bar. Menu commands and keyboard shortcuts are unchanged.
+
 ## Navigation rail
 
 The narrow left **activity bar** switches views:

@@ -13,7 +13,7 @@ uses
   uUtilityPlanTab, uUtilityExecutionDetailTab, uAgentExecutionLog, uAgentToolErrorLog,
   uFileEditorTab,
   uFileMarkdownTab, uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, fpjson, jsonparser, uFormChrome;
 
 type
   { TLazyCodingAgentForm }
@@ -49,6 +49,8 @@ type
 
     StatusBar1: TStatusBar;
 
+    pnlTitleChrome: TFormChromeBar;
+    pnlMenuStrip: TFormMenuStrip;
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
     pnlNavHost: TPanel;
@@ -569,6 +571,11 @@ begin
 
   InitWorkspaceSubControls;
   PopulateMenusAndCombos;
+
+  pnlTitleChrome.SetTitle(Caption);
+  pnlTitleChrome.AttachForm(Self, pnlMenuStrip);
+  pnlMenuStrip.WireMenu(MainMenu1);
+  Menu := nil;
 end;
 
 procedure TLazyCodingAgentForm.FormShow(Sender: TObject);
@@ -1069,6 +1076,10 @@ begin
 
   Color := P.Background;
   Font.Color := P.Text;
+  if Assigned(pnlTitleChrome) then
+    pnlTitleChrome.ApplyTheme(FState.Theme);
+  if Assigned(pnlMenuStrip) then
+    pnlMenuStrip.ApplyTheme(FState.Theme);
   pnlMainContainer.Color := P.Background;
 
   pnlNavRailHost.Color := P.RailBg;
@@ -1120,7 +1131,7 @@ end;
 procedure TLazyCodingAgentForm.ApplyPlatformChromeThemes;
 begin
   if not HandleAllocated then Exit;
-  ApplyPlatformChrome(Self, FState.Theme);
+  // Main window uses custom title chrome and menu strip instead of native frame/menubar.
   if Assigned(FReservedMemo) then
     ApplyPlatformScrollableTheme(FReservedMemo, FState.Theme);
   if Assigned(FNavContent) then
@@ -1166,8 +1177,6 @@ begin
       mnuWindow.Add(SubItem);
     end;
   end;
-
-  ApplyPlatformChrome(Self, FState.Theme);
 end;
 
 procedure TLazyCodingAgentForm.NavRailSelect(Sender: TObject);
