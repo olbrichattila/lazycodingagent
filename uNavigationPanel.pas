@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
   ComCtrls, LCLType, uAppTypes, uTheme, uThemedButton, uAppLogo, uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog;
+  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -30,8 +30,10 @@ type
     FPressedIndex: Integer;
     FTheme: TThemeKind;
     FOnSelect: TNotifyEvent;
+    function GetItemTopY(AIndex: Integer): Integer;
     function GetItemRect(AIndex: Integer): TRect;
     function HitTestItemIndex(X, Y: Integer): Integer;
+    function FutureFeatureSeparatorY: Integer;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -207,13 +209,48 @@ begin
   end;
 end;
 
-function TNavRailControl.GetItemRect(AIndex: Integer): TRect;
+function TNavRailControl.GetItemTopY(AIndex: Integer): Integer;
 const
   ItemH = 40;
   ItemGap = 2;
+  SepGap = 10;
+var
+  I, TopY: Integer;
+  Item: TNavigationItem;
 begin
-  Result := Rect(6, 48 + AIndex * (ItemH + ItemGap), Width - 6,
-    48 + (AIndex + 1) * (ItemH + ItemGap) - ItemGap);
+  TopY := 48;
+  I := 0;
+  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
+    if I = AIndex then
+      Exit(TopY);
+    Inc(TopY, ItemH + ItemGap);
+    if Item = Pred(NavigationFutureFeatureFirst) then
+      Inc(TopY, SepGap);
+    Inc(I);
+  end;
+  Result := TopY;
+end;
+
+function TNavRailControl.GetItemRect(AIndex: Integer): TRect;
+const
+  ItemH = 40;
+var
+  TopY: Integer;
+begin
+  TopY := GetItemTopY(AIndex);
+  Result := Rect(6, TopY, Width - 6, TopY + ItemH);
+end;
+
+function TNavRailControl.FutureFeatureSeparatorY: Integer;
+const
+  SepGap = 10;
+var
+  ToolErrorsIdx: Integer;
+  R: TRect;
+begin
+  ToolErrorsIdx := Ord(niToolErrors);
+  R := GetItemRect(ToolErrorsIdx);
+  Result := R.Bottom + SepGap div 2;
 end;
 
 function TNavRailControl.HitTestItemIndex(X, Y: Integer): Integer;
@@ -279,6 +316,11 @@ begin
 
     Inc(I);
   end;
+
+  Canvas.Pen.Color := P.Border;
+  Canvas.MoveTo(10, FutureFeatureSeparatorY);
+  Canvas.LineTo(Width - 10, FutureFeatureSeparatorY);
+
   Canvas.Brush.Style := bsSolid;
 end;
 
@@ -594,6 +636,8 @@ begin
   H := Height;
   if (FSelected = niSessions) and FSecondaryActionBtn.Visible then
     ListH := MaxLayoutDim(H - 148, 8)
+  else if NavigationIsFutureFeature(FSelected) or not FActionBtn.Visible then
+    ListH := MaxLayoutDim(H - 72, 8)
   else
     ListH := MaxLayoutDim(H - 110, 8);
 
@@ -852,6 +896,8 @@ begin
     niToolErrors:
       if Assigned(FOnClearToolErrorLog) then
         FOnClearToolErrorLog(Self);
+    niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain:
+      ;
   end;
 end;
 
@@ -893,6 +939,7 @@ begin
   FErrorLogList.Visible := False;
   if FSelected <> niSessions then
     FSecondaryActionBtn.Visible := False;
+  FActionBtn.Visible := True;
 
   case FSelected of
     niHome:
@@ -976,9 +1023,16 @@ begin
           FFileList.Items.Add('No tasks tracked for this session.');
         FActionBtn.Caption := '🔄 Refresh Tasks';
       end;
+    niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain:
+      begin
+        FFileList.Visible := True;
+        FTitleLabel.Caption := NavigationFutureFeatureTitle(FSelected);
+        FSubLabel.Caption := 'Roadmap preview — functionality not available yet.';
+        PopulateFutureFeatureNavList(FSelected, FFileList.Items);
+        FActionBtn.Visible := False;
+      end;
   end;
   UpdateLayout;
 end;
 
 end.
-                                                                                      

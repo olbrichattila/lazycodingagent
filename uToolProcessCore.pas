@@ -214,7 +214,7 @@ var
         raise Exception.Create('Cannot track nonregular file: ' + Path);
       Result := IntToStr(R.Size) + ':' + IntToStr(R.Time);
     finally
-      FindClose(R);
+      SysUtils.FindClose(R);
     end;
     {$ENDIF}
   end;

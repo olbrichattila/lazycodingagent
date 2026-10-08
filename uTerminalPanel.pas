@@ -73,6 +73,9 @@ begin
   if Assigned(FView) then Exit;
   if not ParentFormHandlesReady(Self) then Exit;
   FView := TTerminalLCLView.Create(Self);
+  {$IFDEF WINDOWS}
+  FView.DoubleBuffered := True;
+  {$ENDIF}
   FView.Parent := Self;
   FView.Align := alClient;
   FView.FontName := 'DejaVu Sans Mono';
@@ -151,6 +154,9 @@ end;
 constructor TTerminalPanel.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  {$IFDEF WINDOWS}
+  DoubleBuffered := True;
+  {$ENDIF}
   BevelOuter := bvNone;
   FWorkingDir := GetUserDir;
   FShellRunning := False;

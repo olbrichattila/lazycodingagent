@@ -14,6 +14,15 @@ The narrow left **activity bar** switches views:
 - **Tasks & Plans** — session task list from the todo tool.
 - **Tool Errors** — failed tool calls for the active session (click a row for full arguments and output). The subtitle shows the on-disk log path; hover for the full path.
 
+A horizontal rule on the rail separates **Future Features** (roadmap placeholders — **Coming Soon**, no backend yet):
+
+- **Multi-Agent Workspace** — specialised agents that collaborate on delivery.
+- **Execution Plans** — numbered plans, tasks, and progress tracking.
+- **Workspace Knowledge Base** — workspace RAG and document sources.
+- **The Brain** — optional adaptive learning and memory.
+
+The same entries appear under **Workspace → Future Features** in the menu.
+
 Icons are tooltipped; the active item is highlighted.
 
 ### Tool error log file

@@ -5,7 +5,8 @@ unit uAppTypes;
 interface
 
 type
-  TNavigationItem = (niHome, niProjects, niSessions, niBots, niTools, niTasks, niToolErrors);
+  TNavigationItem = (niHome, niProjects, niSessions, niBots, niTools, niTasks, niToolErrors,
+    niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain);
   TWorkspaceMode = (wmAsk, wmPlan, wmAgent);
   TPanelId = (piNavigation, piChat, piReserved, piUtility, piTerminal);
   TThemeKind = (tkDark, tkLight);
@@ -13,6 +14,9 @@ type
 function NavigationCaption(AItem: TNavigationItem): string;
 function NavigationHint(AItem: TNavigationItem): string;
 function NavigationIconSymbol(AItem: TNavigationItem): string;
+function NavigationIsFutureFeature(AItem: TNavigationItem): Boolean;
+function NavigationFutureFeatureFirst: TNavigationItem;
+function NavigationFutureFeatureTitle(AItem: TNavigationItem): string;
 function WorkspaceModeCaption(AMode: TWorkspaceMode): string;
 function WorkspaceModeDesc(AMode: TWorkspaceMode): string;
 function PanelCaption(AId: TPanelId): string;
@@ -30,6 +34,10 @@ begin
     niTools: Result := 'Tools & Logs';
     niTasks: Result := 'Tasks & Plans';
     niToolErrors: Result := 'Tool Errors';
+    niMultiAgent: Result := 'Multi-Agent Workspace';
+    niExecutionPlans: Result := 'Execution Plans';
+    niKnowledgeBase: Result := 'Workspace Knowledge Base';
+    niTheBrain: Result := 'The Brain';
   end;
 end;
 
@@ -43,6 +51,10 @@ begin
     niTools: Result := 'Tools - Local tool execution & logs';
     niTasks: Result := 'Tasks - Active plan & task checklists';
     niToolErrors: Result := 'Tool Errors - Failed tools & on-disk error log';
+    niMultiAgent: Result := 'Multi-Agent Workspace - Specialised collaborating agents (coming soon)';
+    niExecutionPlans: Result := 'Execution Plans - Structured plans and progress tracking (coming soon)';
+    niKnowledgeBase: Result := 'Workspace Knowledge Base - RAG and project documentation (coming soon)';
+    niTheBrain: Result := 'The Brain - Adaptive learning and memory (coming soon)';
   end;
 end;
 
@@ -56,6 +68,32 @@ begin
     niTools: Result := '◈';
     niTasks: Result := '☰';
     niToolErrors: Result := '⚠';
+    niMultiAgent: Result := '⬡';
+    niExecutionPlans: Result := '☑';
+    niKnowledgeBase: Result := '📖';
+    niTheBrain: Result := '◉';
+  end;
+end;
+
+function NavigationIsFutureFeature(AItem: TNavigationItem): Boolean;
+begin
+  Result := AItem in [niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain];
+end;
+
+function NavigationFutureFeatureFirst: TNavigationItem;
+begin
+  Result := niMultiAgent;
+end;
+
+function NavigationFutureFeatureTitle(AItem: TNavigationItem): string;
+begin
+  case AItem of
+    niMultiAgent: Result := 'Multi-Agent Workspace';
+    niExecutionPlans: Result := 'Execution Plans & Progress Tracking';
+    niKnowledgeBase: Result := 'Workspace Knowledge Base (RAG)';
+    niTheBrain: Result := 'The Brain — Adaptive Learning & Memory';
+  else
+    Result := NavigationCaption(AItem);
   end;
 end;
 

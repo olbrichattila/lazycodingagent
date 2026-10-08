@@ -59,6 +59,13 @@ begin
 end;
 
 {$IFDEF WINDOWS}
+const
+  FILE_NAME_NORMALIZED = 0;
+
+function WinGetFinalPathNameByHandle(hFile: THandle; lpszFilePath: PWideChar;
+  cchFilePath: DWORD; dwFlags: DWORD): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetFinalPathNameByHandleW';
+
 function WinGetFinalPath(const Path: string): string;
 var
   H: THandle;
@@ -71,7 +78,7 @@ begin
     nil, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
   if H = INVALID_HANDLE_VALUE then Exit;
   try
-    N := GetFinalPathNameByHandleW(H, Buf, Length(Buf), FILE_NAME_NORMALIZED);
+    N := WinGetFinalPathNameByHandle(H, Buf, Length(Buf), FILE_NAME_NORMALIZED);
     if N = 0 then Exit;
     SetString(S, Buf, N);
     if Copy(S, 1, 4) = '\\?\' then
@@ -219,6 +226,7 @@ var
   I: Integer;
   {$IFDEF UNIX}Info: Stat;{$ENDIF}
 begin
+  Result := '';
   {$IFDEF UNIX}
   if (fpStat(Path, Info) <> 0) or not FPS_ISREG(Info.st_mode) then
     raise Exception.Create('Not a regular text file: ' + Path);

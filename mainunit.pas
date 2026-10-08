@@ -827,14 +827,26 @@ begin
   // Remove dynamic navigation entries; keep designer-defined items (separator, rules).
   I := 0;
   while I < mnuWorkspace.Count do begin
-    if (mnuWorkspace.Items[I].Tag >= Ord(Low(TNavigationItem))) and
-       (mnuWorkspace.Items[I].Tag <= Ord(High(TNavigationItem))) then
+    if ((mnuWorkspace.Items[I].Tag >= Ord(Low(TNavigationItem))) and
+        (mnuWorkspace.Items[I].Tag <= Ord(High(TNavigationItem)))) or
+       (mnuWorkspace.Items[I].Tag = -2) or (mnuWorkspace.Items[I].Tag = -3) then
       mnuWorkspace.Delete(I)
     else
       Inc(I);
   end;
 
   for Nav := High(TNavigationItem) downto Low(TNavigationItem) do begin
+    if Nav = NavigationFutureFeatureFirst then begin
+      SubItem := TMenuItem.Create(mnuWorkspace);
+      SubItem.Caption := '-';
+      SubItem.Tag := -2;
+      mnuWorkspace.Insert(0, SubItem);
+      SubItem := TMenuItem.Create(mnuWorkspace);
+      SubItem.Caption := 'Future Features';
+      SubItem.Enabled := False;
+      SubItem.Tag := -3;
+      mnuWorkspace.Insert(0, SubItem);
+    end;
     SubItem := TMenuItem.Create(mnuWorkspace);
     SubItem.Caption := NavigationCaption(Nav);
     SubItem.Hint := NavigationHint(Nav);
