@@ -3,7 +3,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   Height = 900
   Top = 0
   Width = 1440
-  BorderStyle = bsNone
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 900
   ClientWidth = 1440
@@ -16,24 +15,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  object pnlTitleChrome: TFormChromeBar
-    Left = 0
-    Height = 36
-    Top = 0
-    Width = 1440
-    Align = alTop
-    BevelOuter = bvNone
-    TabOrder = 0
-  end
-  object pnlMenuStrip: TFormMenuStrip
-    Left = 0
-    Height = 28
-    Top = 36
-    Width = 1440
-    Align = alTop
-    BevelOuter = bvNone
-    TabOrder = 1
-  end
   object pnlMainContainer: TPanel
     Left = 0
     Height = 651

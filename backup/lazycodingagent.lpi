@@ -341,6 +341,28 @@
         </Win32>
       </Options>
     </Linking>
+    <CustomCommands>
+      <Enabled Value="True"/>
+      <Compile>
+        <Commands Count="3">
+          <Item0>
+            <Description Value="Copy help topics to output directory"/>
+            <Command Value="&quot;$ProjDir/scripts/copy-help.sh&quot; &quot;$ProjDir&quot; &quot;$TargetDir&quot;"/>
+            <Version Value="Linux"/>
+          </Item0>
+          <Item1>
+            <Description Value="Copy help topics to output directory"/>
+            <Command Value="&quot;$ProjDir/scripts/copy-help.sh&quot; &quot;$ProjDir&quot; &quot;$TargetDir&quot;"/>
+            <Version Value="Darwin"/>
+          </Item1>
+          <Item2>
+            <Description Value="Copy help topics to output directory"/>
+            <Command Value="xcopy /E /I /Y &quot;$ProjDir\help&quot; &quot;$TargetDir\help\&quot;"/>
+            <Version Value="Windows"/>
+          </Item2>
+        </Commands>
+      </Compile>
+    </CustomCommands>
   </CompilerOptions>
   <Debugging>
     <Exceptions>

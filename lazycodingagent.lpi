@@ -227,10 +227,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uFormChrome.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="uWorkspaceState.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
