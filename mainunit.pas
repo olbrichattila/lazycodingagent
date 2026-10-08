@@ -108,6 +108,7 @@ type
     FChatDockRoot: TPanel;
     FChatSessionHeader: TPanel;
     FChatSessionTabs: TLazyTabControl;
+    FChatNewSessionBtnHost: TPanel;
     FChatNewSessionBtn: TThemedButton;
     FChatTabSessionIds: TStringList;
     FChatContent: TChatPanel;
@@ -163,6 +164,8 @@ type
     procedure ChatSessionTabClose(Sender: TObject);
     procedure DeferredTabArchiveClose(Data: PtrInt);
     procedure ChatNewSessionBtnClick(Sender: TObject);
+    procedure ChatNewSessionBtnHostResize(Sender: TObject);
+    procedure LayoutChatNewSessionBtn;
     procedure ApplyWorkspaceChatVisibility;
 
     function ParsePlanToolSuccess(const AResult: TToolExecutionResult;
@@ -504,6 +507,29 @@ begin
   CreateAndSelectNewSession;
 end;
 
+procedure TLazyCodingAgentForm.LayoutChatNewSessionBtn;
+const
+  BtnSize = 28;
+var
+  HostW, HostH, LeftPos, TopPos: Integer;
+begin
+  if not Assigned(FChatNewSessionBtnHost) or not Assigned(FChatNewSessionBtn) then Exit;
+  HostW := FChatNewSessionBtnHost.ClientWidth;
+  HostH := FChatNewSessionBtnHost.ClientHeight;
+  LeftPos := HostW - BtnSize - FChatNewSessionBtn.BorderSpacing.Right;
+  if LeftPos < 0 then LeftPos := 0;
+  TopPos := (HostH - BtnSize) div 2;
+  if TopPos < 0 then TopPos := 0;
+  if (FChatNewSessionBtn.Left <> LeftPos) or (FChatNewSessionBtn.Top <> TopPos) or
+     (FChatNewSessionBtn.Width <> BtnSize) or (FChatNewSessionBtn.Height <> BtnSize) then
+    FChatNewSessionBtn.SetBounds(LeftPos, TopPos, BtnSize, BtnSize);
+end;
+
+procedure TLazyCodingAgentForm.ChatNewSessionBtnHostResize(Sender: TObject);
+begin
+  LayoutChatNewSessionBtn;
+end;
+
 procedure TLazyCodingAgentForm.ApplyInitialWindowSize;
 var
   R: TRect;
@@ -720,26 +746,36 @@ begin
   FChatSessionHeader.Align := alTop;
   FChatSessionHeader.Height := 38;
 
-  FChatSessionTabs := TLazyTabControl.Create(FChatSessionHeader);
-  FChatSessionTabs.Parent := FChatSessionHeader;
-  FChatSessionTabs.Align := alClient;
-  FChatSessionTabs.HeaderHeight := 32;
-  FChatSessionTabs.OnChange := @ChatSessionTabChange;
-  FChatSessionTabs.OnTabClose := @ChatSessionTabClose;
+  FChatNewSessionBtnHost := TPanel.Create(FChatSessionHeader);
+  FChatNewSessionBtnHost.Parent := FChatSessionHeader;
+  FChatNewSessionBtnHost.Align := alRight;
+  FChatNewSessionBtnHost.Width := 40;
+  FChatNewSessionBtnHost.BevelOuter := bvNone;
+  FChatNewSessionBtnHost.OnResize := @ChatNewSessionBtnHostResize;
 
-  FChatNewSessionBtn := TThemedButton.Create(FChatSessionHeader);
-  FChatNewSessionBtn.Parent := FChatSessionHeader;
+  FChatNewSessionBtn := TThemedButton.Create(FChatNewSessionBtnHost);
+  FChatNewSessionBtn.Parent := FChatNewSessionBtnHost;
   FChatNewSessionBtn.Align := alNone;
   FChatNewSessionBtn.Anchors := [akTop, akRight];
   FChatNewSessionBtn.BorderSpacing.Right := 6;
   FChatNewSessionBtn.Width := 28;
   FChatNewSessionBtn.Height := 28;
-  FChatNewSessionBtn.Top := (FChatSessionHeader.Height - FChatNewSessionBtn.Height) div 2;
   FChatNewSessionBtn.ButtonRole := tbrCancel;
   FChatNewSessionBtn.Caption := '+';
   FChatNewSessionBtn.Hint := 'New chat session';
   FChatNewSessionBtn.ShowHint := True;
   FChatNewSessionBtn.OnClick := @ChatNewSessionBtnClick;
+  LayoutChatNewSessionBtn;
+
+  FChatSessionTabs := TLazyTabControl.Create(FChatSessionHeader);
+  FChatSessionTabs.Parent := FChatSessionHeader;
+  FChatSessionTabs.Align := alClient;
+  FChatSessionTabs.HeaderHeight := 38;
+  FChatSessionTabs.HeaderOnly := True;
+  FChatSessionTabs.Constraints.MinHeight := 38;
+  FChatSessionTabs.Constraints.MaxHeight := 38;
+  FChatSessionTabs.OnChange := @ChatSessionTabChange;
+  FChatSessionTabs.OnTabClose := @ChatSessionTabClose;
 
   FChatContent := TChatPanel.Create(FChatDockRoot);
   FChatContent.Parent := FChatDockRoot;
@@ -1125,6 +1161,8 @@ begin
   if Assigned(FNavContent) then FNavContent.ApplyTheme(FState.Theme);
 
   if Assigned(FDockChat) then FDockChat.ApplyTheme(FState.Theme);
+  if Assigned(FChatSessionHeader) then FChatSessionHeader.Color := P.HeaderBg;
+  if Assigned(FChatNewSessionBtnHost) then FChatNewSessionBtnHost.Color := P.HeaderBg;
   if Assigned(FChatSessionTabs) then FChatSessionTabs.ApplyTheme(FState.Theme);
   if Assigned(FChatNewSessionBtn) then FChatNewSessionBtn.ApplyTheme(FState.Theme);
   if Assigned(FChatContent) then FChatContent.ApplyTheme(FState.Theme);

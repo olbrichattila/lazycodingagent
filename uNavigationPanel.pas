@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
   ComCtrls, LCLType, uAppTypes, uTheme, uThemedButton, uAppLogo, uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
+  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, uDockPanel;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -148,6 +148,20 @@ type
   end;
 
 implementation
+
+const
+  NavSidePad = 12;
+  NavTitleTop = 20;
+  NavTitleH = 28;
+  NavSubGap = 4;
+  NavSubH = 20;
+  NavListGap = 8;
+  NavDockHeaderReserve = 36;
+  NavBottomSingleBtn = 50;
+  NavBottomDualBtn = 88;
+  NavBottomCompact = 12;
+  NavActionBtnH = 28;
+  NavActionSidePad = 12;
 
 function MaxLayoutDim(V, MinV: Integer): Integer;
 begin
@@ -405,11 +419,13 @@ begin
   FTitleLabel.AutoSize := False;
   FTitleLabel.Font.Size := 11;
   FTitleLabel.Font.Style := [fsBold];
+  FTitleLabel.Layout := tlCenter;
 
   FSubLabel := TLabel.Create(Self);
   FSubLabel.Parent := Self;
   FSubLabel.AutoSize := False;
   FSubLabel.Font.Size := 8;
+  FSubLabel.Layout := tlCenter;
 
   FFileList := TListBox.Create(Self);
   FFileList.Parent := Self;
@@ -629,35 +645,44 @@ end;
 
 procedure TNavContentControl.UpdateLayout;
 var
-  W, H, ListH: Integer;
+  W, H, ListH, TitleTop, SubTop, ListTop, BtnW: Integer;
 begin
   if not ParentFormHandlesReady(Self) then Exit;
-  W := MaxLayoutDim(Width - 24, 8);
+  W := MaxLayoutDim(Width - NavSidePad * 2, 8);
   H := Height;
-  if (FSelected = niSessions) and FSecondaryActionBtn.Visible then
-    ListH := MaxLayoutDim(H - 148, 8)
-  else if NavigationIsFutureFeature(FSelected) or not FActionBtn.Visible then
-    ListH := MaxLayoutDim(H - 72, 8)
-  else
-    ListH := MaxLayoutDim(H - 110, 8);
+  BtnW := MaxLayoutDim(W - NavActionSidePad * 2, 8);
 
-  SetBoundsIfChanged(FTitleLabel, 12, 12, W, 22);
-  SetBoundsIfChanged(FSubLabel, 12, 36, W, 18);
-  SetBoundsIfChanged(FFileList, 12, 60, W, ListH);
-  SetBoundsIfChanged(FTreeView, 12, 60, W, ListH);
-  SetBoundsIfChanged(FLogList, 12, 60, W, ListH);
-  SetBoundsIfChanged(FErrorLogList, 12, 60, W, ListH);
+  TitleTop := NavTitleTop;
+  if Assigned(Parent) and (Parent is TDockPanel) and (Top < NavDockHeaderReserve) then
+    Inc(TitleTop, NavDockHeaderReserve - Top);
+  SubTop := TitleTop + NavTitleH + NavSubGap;
+  ListTop := SubTop + NavSubH + NavListGap;
+
+  if (FSelected = niSessions) and FSecondaryActionBtn.Visible then
+    ListH := MaxLayoutDim(H - ListTop - NavBottomDualBtn, 8)
+  else if NavigationIsFutureFeature(FSelected) or not FActionBtn.Visible then
+    ListH := MaxLayoutDim(H - ListTop - NavBottomCompact, 8)
+  else
+    ListH := MaxLayoutDim(H - ListTop - NavBottomSingleBtn, 8);
+
+  SetBoundsIfChanged(FTitleLabel, NavSidePad, TitleTop, W, NavTitleH);
+  SetBoundsIfChanged(FSubLabel, NavSidePad, SubTop, W, NavSubH);
+  SetBoundsIfChanged(FFileList, NavSidePad, ListTop, W, ListH);
+  SetBoundsIfChanged(FTreeView, NavSidePad, ListTop, W, ListH);
+  SetBoundsIfChanged(FLogList, NavSidePad, ListTop, W, ListH);
+  SetBoundsIfChanged(FErrorLogList, NavSidePad, ListTop, W, ListH);
 
   if H > 80 then begin
     if (FSelected = niSessions) and FSecondaryActionBtn.Visible then begin
-      SetBoundsIfChanged(FSecondaryActionBtn, 12, H - 76, W, 28);
-      SetBoundsIfChanged(FActionBtn, 12, H - 40, W, 28);
+      SetBoundsIfChanged(FSecondaryActionBtn, NavSidePad + NavActionSidePad, H - 76,
+        BtnW, NavActionBtnH);
+      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, NavActionBtnH);
     end else begin
-      SetBoundsIfChanged(FSecondaryActionBtn, 12, H - 76, W, 0);
-      SetBoundsIfChanged(FActionBtn, 12, H - 40, W, 28);
+      SetBoundsIfChanged(FSecondaryActionBtn, NavSidePad + NavActionSidePad, H - 76, BtnW, 0);
+      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, NavActionBtnH);
     end;
   end else
-    SetBoundsIfChanged(FActionBtn, 12, 10, W, 28);
+    SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, 10, BtnW, NavActionBtnH);
 end;
 
 procedure TNavContentControl.Resize;

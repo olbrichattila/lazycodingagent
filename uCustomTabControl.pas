@@ -63,7 +63,9 @@ type
     FOnChange: TNotifyEvent;
     FOnTabClose: TNotifyEvent;
     FOnTabCloseAllow: TTabCloseAllowEvent;
+    FHeaderOnly: Boolean;
     FInLayout: Boolean;
+    procedure SetHeaderOnly(AValue: Boolean);
     function GetPageCount: Integer;
     function GetPage(AIndex: Integer): TLazyTabPage;
     function GetActivePage: TLazyTabPage;
@@ -98,6 +100,7 @@ type
     property ActivePageIndex: Integer read FActivePageIndex write SetActivePageIndex;
     property ActivePage: TLazyTabPage read GetActivePage write SetActivePage;
     property HeaderHeight: Integer read FHeaderHeight write SetHeaderHeight default 34;
+    property HeaderOnly: Boolean read FHeaderOnly write SetHeaderOnly default False;
     property Theme: TThemeKind read FTheme write ApplyTheme;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
     property OnTabClose: TNotifyEvent read FOnTabClose write FOnTabClose;
@@ -203,6 +206,7 @@ begin
   FPages := TFPList.Create;
   FActivePageIndex := -1;
   FHeaderHeight := 34;
+  FHeaderOnly := False;
   FTheme := tkDark;
   FHoverIndex := -1;
   FHoverCloseIndex := -1;
@@ -377,6 +381,16 @@ begin
   end;
 end;
 
+procedure TLazyTabControl.SetHeaderOnly(AValue: Boolean);
+begin
+  if FHeaderOnly = AValue then Exit;
+  FHeaderOnly := AValue;
+  if LayoutPagesAllowed then
+    UpdatePagesLayout;
+  ReAlign;
+  Invalidate;
+end;
+
 procedure TLazyTabControl.ApplyTheme(ATheme: TThemeKind);
 var
   I: Integer;
@@ -398,7 +412,10 @@ begin
   try
     for I := 0 to FPages.Count - 1 do begin
       P := TLazyTabPage(FPages[I]);
-      if I = FActivePageIndex then begin
+      if FHeaderOnly then begin
+        P.Visible := False;
+        P.Align := alNone;
+      end else if I = FActivePageIndex then begin
         P.Align := alClient;
         P.Visible := True;
         P.BringToFront;
@@ -422,6 +439,8 @@ procedure TLazyTabControl.AdjustClientRect(var Rect: TRect);
 begin
   inherited AdjustClientRect(Rect);
   Inc(Rect.Top, FHeaderHeight);
+  if FHeaderOnly or (Rect.Top >= Rect.Bottom) then
+    Rect.Top := Rect.Bottom;
 end;
 
 procedure TLazyTabControl.Loaded;
@@ -571,11 +590,13 @@ begin
     end;
   end;
 
-  // 4. Fill empty client surface background if no pages exist
-  if FPages.Count = 0 then begin
-    Canvas.Brush.Color := P.Surface;
-    Canvas.Pen.Color := P.Surface;
-    Canvas.FillRect(Rect(0, FHeaderHeight, Width, Height));
+  // 4. Fill client band below tabs when there is no page content
+  if FHeaderOnly or (FPages.Count = 0) then begin
+    if FHeaderHeight < Height then begin
+      Canvas.Brush.Color := P.HeaderBg;
+      Canvas.Pen.Color := P.HeaderBg;
+      Canvas.FillRect(Rect(0, FHeaderHeight, Width, Height));
+    end;
   end;
 end;
 

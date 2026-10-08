@@ -94,6 +94,16 @@ implementation
 
 const
   MaxToolBodyInChat = 1200;
+  ComposerSidePad = 14;
+  ComposerBottomPad = 12;
+  ComposerFooterGap = 10;
+  ComposerSendBtnMinW = 108;
+  ComposerSendBtnPadW = 28;
+  ComposerFooterBtnH = 28;
+  ComposerFooterRightPad = 6;
+  ChatHeadingTop = 32;
+  ChatHeadingH = 40;
+  ChatSubHeadingH = 22;
 
 function MaxLayoutDim(V, MinV: Integer): Integer;
 begin
@@ -109,6 +119,22 @@ begin
   if (AControl.Left = AL) and (AControl.Top = AT) and
      (AControl.Width = AW) and (AControl.Height = AH) then Exit;
   AControl.SetBounds(AL, AT, AW, AH);
+end;
+
+function ThemedActionButtonWidth(AChat: TChatPanel; const ACaption: string): Integer;
+var
+  C: TCanvas;
+begin
+  Result := ComposerSendBtnMinW;
+  if not Assigned(AChat) then Exit;
+  if not ParentFormHandlesReady(AChat) then Exit;
+  C := AChat.Canvas;
+  C.Font.Name := 'Segoe UI';
+  C.Font.Size := 9;
+  C.Font.Style := [fsBold];
+  Result := C.TextWidth(ACaption) + ComposerSendBtnPadW;
+  if Result < ComposerSendBtnMinW then
+    Result := ComposerSendBtnMinW;
 end;
 
 function ExtractToolErrorLine(const AJsonText: string): string;
@@ -163,6 +189,7 @@ begin
   FHeading.Font.Size := 16;
   FHeading.Font.Style := [fsBold];
   FHeading.Alignment := taCenter;
+  FHeading.Layout := tlCenter;
 
   FSubHeading := TLabel.Create(Self);
   FSubHeading.Parent := Self;
@@ -270,7 +297,8 @@ end;
 
 procedure TChatPanel.UpdateLayout;
 var
-  W, H, InnerW, CardW, CardH, CardX, CardY, HistoryH, FooterW, ComboH: Integer;
+  W, H, InnerW, CardW, CardH, CardX, CardY, HistoryH, HistoryTop, FooterW, FooterH,
+  FooterY, ComboH, BtnTop, SendW, StopW, SendLeft, StopLeft, MemoH: Integer;
 begin
   if not ParentFormHandlesReady(Self) then Exit;
   if FUpdatingLayout then Exit;
@@ -280,35 +308,57 @@ begin
   H := Height;
   InnerW := MaxLayoutDim(W - 48, 8);
 
-  SetBoundsIfChanged(FHeading, 24, 20, InnerW, 30);
-  SetBoundsIfChanged(FSubHeading, 24, 52, InnerW, 20);
+  SetBoundsIfChanged(FHeading, 24, ChatHeadingTop, InnerW, ChatHeadingH);
+  SetBoundsIfChanged(FSubHeading, 24, ChatHeadingTop + ChatHeadingH + 6, InnerW, ChatSubHeadingH);
+
+  HistoryTop := ChatHeadingTop + ChatHeadingH + 6 + ChatSubHeadingH + 8;
 
   CardW := W - 48;
   if CardW < 100 then CardW := 100;
-  CardH := 160;
+  CardH := 168;
   CardX := 24;
   CardY := H - CardH - 16;
-  if CardY < 80 then CardY := 80;
+  if CardY < HistoryTop + 40 then CardY := HistoryTop + 40;
 
-  HistoryH := MaxLayoutDim(CardY - 86, 8);
-  SetBoundsIfChanged(FHistoryHost, 24, 78, InnerW, HistoryH);
+  HistoryH := MaxLayoutDim(CardY - HistoryTop, 8);
+  SetBoundsIfChanged(FHistoryHost, 24, HistoryTop, InnerW, HistoryH);
   SetBoundsIfChanged(FComposerCard, CardX, CardY, CardW, CardH);
-  SetBoundsIfChanged(FWorkspaceTag, 14, 10, MaxLayoutDim(CardW - 28, 8), 18);
-  SetBoundsIfChanged(FPromptMemo, 14, 32, MaxLayoutDim(CardW - 28, 8), MaxLayoutDim(CardH - 80, 8));
+  SetBoundsIfChanged(FWorkspaceTag, ComposerSidePad, 10, MaxLayoutDim(CardW - ComposerSidePad * 2, 8), 18);
+
+  ComboH := EffectiveThemedComboBoxHeight(FModeCombo);
+  FooterH := MaxLayoutDim(ComboH + 12, ComposerFooterBtnH + 12);
+  FooterY := CardH - FooterH - ComposerBottomPad;
+  FooterW := MaxLayoutDim(CardW - ComposerSidePad * 2, 8);
+  MemoH := MaxLayoutDim(FooterY - 32 - ComposerFooterGap, 8);
+  SetBoundsIfChanged(FPromptMemo, ComposerSidePad, 32, FooterW, MemoH);
 
   if Assigned(FComposerFooter) then begin
-    FooterW := MaxLayoutDim(CardW - 28, 8);
-    SetBoundsIfChanged(FComposerFooter, 14, CardH - 42, FooterW, 32);
+    SetBoundsIfChanged(FComposerFooter, ComposerSidePad, FooterY, FooterW, FooterH);
 
-    ComboH := EffectiveThemedComboBoxHeight(FModeCombo);
-    SetBoundsIfChanged(FModeCombo, 0, 4, 100, ComboH);
-    SetBoundsIfChanged(FModelCombo, 108, 4, 210, ComboH);
+    BtnTop := (FooterH - ComposerFooterBtnH) div 2;
+    if BtnTop < 0 then BtnTop := 0;
+    SetBoundsIfChanged(FModeCombo, 0, BtnTop + (ComposerFooterBtnH - ComboH) div 2, 100, ComboH);
+    SetBoundsIfChanged(FModelCombo, 108, BtnTop + (ComposerFooterBtnH - ComboH) div 2, 210, ComboH);
 
+    SendW := ThemedActionButtonWidth(Self, FSendBtn.Caption);
     if Assigned(FStopBtn) and FStopBtn.Visible then begin
-      SetBoundsIfChanged(FStopBtn, FComposerFooter.Width - 195, 2, 85, 28);
-      SetBoundsIfChanged(FSendBtn, FComposerFooter.Width - 105, 2, 105, 28);
-    end else
-      SetBoundsIfChanged(FSendBtn, FComposerFooter.Width - 110, 2, 110, 28);
+      StopW := ThemedActionButtonWidth(Self, FStopBtn.Caption);
+      SendLeft := FooterW - ComposerFooterRightPad - SendW;
+      StopLeft := SendLeft - 8 - StopW;
+      if StopLeft < 320 then begin
+        StopLeft := 320;
+        if StopLeft + StopW + 8 + SendW + ComposerFooterRightPad > FooterW then
+          SendW := MaxLayoutDim(FooterW - ComposerFooterRightPad - StopLeft - 8 - StopW, ComposerSendBtnMinW);
+        SendLeft := FooterW - ComposerFooterRightPad - SendW;
+      end;
+      SetBoundsIfChanged(FStopBtn, StopLeft, BtnTop, StopW, ComposerFooterBtnH);
+      SetBoundsIfChanged(FSendBtn, SendLeft, BtnTop, SendW, ComposerFooterBtnH);
+    end else begin
+      SendLeft := FooterW - ComposerFooterRightPad - SendW;
+      if SendLeft < 320 then
+        SendLeft := 320;
+      SetBoundsIfChanged(FSendBtn, SendLeft, BtnTop, SendW, ComposerFooterBtnH);
+    end;
   end;
   finally
     FUpdatingLayout := False;
@@ -443,6 +493,7 @@ begin
     wmPlan: FSendBtn.Caption := 'Create Plan';
     wmAgent: FSendBtn.Caption := '➤ Run Agent';
   end;
+  UpdateLayout;
 end;
 
 function ModelComboCaption(const M: TSavedModel): string;
