@@ -1,7 +1,7 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 0
+  Left = 1917
   Height = 900
-  Top = 0
+  Top = -30
   Width = 1440
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 900
@@ -51,7 +51,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       MinSize = 160
     end
     object pnlUtilityHost: TPanel
-      Left = 1040
+      Left = 1160
       Height = 651
       Top = 0
       Width = 280
@@ -61,7 +61,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Visible = False
     end
     object splUtility: TSplitter
-      Left = 1035
+      Left = 1155
       Height = 651
       Top = 0
       Width = 5
@@ -71,7 +71,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Visible = False
     end
     object pnlReservedHost: TPanel
-      Left = 750
+      Left = 870
       Height = 651
       Top = 0
       Width = 285
@@ -81,7 +81,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Visible = False
     end
     object splReserved: TSplitter
-      Left = 745
+      Left = 865
       Height = 651
       Top = 0
       Width = 5
@@ -94,7 +94,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Left = 311
       Height = 651
       Top = 0
-      Width = 434
+      Width = 554
       Align = alClient
       BevelOuter = bvNone
       TabOrder = 5

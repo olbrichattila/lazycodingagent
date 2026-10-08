@@ -191,6 +191,7 @@ type
     procedure NavFileOpen(Sender: TObject; const AFilePath: string);
 
     procedure ApplyInitialWindowSize;
+    procedure RaiseDetachedFloatingForms;
     procedure InitWorkspaceSubControls;
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
@@ -531,6 +532,24 @@ begin
     H := R.Height;
   Width := W;
   Height := H;
+  if Position = poScreenCenter then begin
+    Left := R.Left + (R.Width - W) div 2;
+    Top := R.Top + (R.Height - H) div 2;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.RaiseDetachedFloatingForms;
+begin
+  if Assigned(FDockNav) and FDockNav.IsDetached and Assigned(FDockNav.FloatingForm) then
+    FDockNav.FloatingForm.BringToFront;
+  if Assigned(FDockChat) and FDockChat.IsDetached and Assigned(FDockChat.FloatingForm) then
+    FDockChat.FloatingForm.BringToFront;
+  if Assigned(FDockReserved) and FDockReserved.IsDetached and Assigned(FDockReserved.FloatingForm) then
+    FDockReserved.FloatingForm.BringToFront;
+  if Assigned(FDockUtility) and FDockUtility.IsDetached and Assigned(FDockUtility.FloatingForm) then
+    FDockUtility.FloatingForm.BringToFront;
+  if Assigned(FDockTerminal) and FDockTerminal.IsDetached and Assigned(FDockTerminal.FloatingForm) then
+    FDockTerminal.FloatingForm.BringToFront;
 end;
 
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
@@ -576,6 +595,7 @@ begin
   if FPendingInitialDockLayout then begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
+    RaiseDetachedFloatingForms;
   end;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
@@ -899,6 +919,8 @@ begin
 
   if FState.IsPanelVisible(piTerminal) then
     ScheduleDeferredTerminalStart;
+
+  RaiseDetachedFloatingForms;
 end;
 
 function TLazyCodingAgentForm.EffectiveTerminalDockHeight: Integer;

@@ -73,7 +73,8 @@ constructor TDetachedPanelForm.CreateForPanel(AOwnerPanel: TDockPanel; ALeft, AT
 var
   P: TThemePalette;
 begin
-  inherited CreateNew(AOwnerPanel);
+  // Application owner: independent top-level windows on Qt/GTK (not z-ordered under main form).
+  inherited CreateNew(Application);
   FOwnerPanel := AOwnerPanel;
   Caption := AOwnerPanel.FPanelTitle + ' [Detached Window]';
   Position := poDesigned;
@@ -362,6 +363,7 @@ begin
   end;
 
   FFloatingForm.Show;
+  FFloatingForm.BringToFront;
   Visible := False; // Hide docked host placeholder
 end;
 
