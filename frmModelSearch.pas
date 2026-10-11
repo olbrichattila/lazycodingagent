@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uLlmClient, uTheme, uThemedButton;
+  uAppTypes, uLlmClient, uTheme, fraThemedButton;
 
 type
   TModelAddEvent = procedure(Sender: TObject; const AModelId, ADisplayName: string) of object;
@@ -18,8 +18,8 @@ type
     edtSearch: TEdit;
     lstModels: TListBox;
     pnlBottom: TPanel;
-    btnAdd: TThemedButton;
-    btnClose: TThemedButton;
+    btnAdd: TButton;
+    btnClose: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -83,6 +83,7 @@ end;
 
 procedure TModelSearchForm.FormShow(Sender: TObject);
 begin
+  ApplyFormPlatformThemes(Self, FTheme);
   pnlBottom.BringToFront;
 end;
 
@@ -122,10 +123,8 @@ begin
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstModels, ATheme);
   lstModels.OnDrawItem := @lstModelsDrawItem;
-  btnAdd.ButtonRole := tbrPrimary;
-  btnClose.ButtonRole := tbrCancel;
-  btnAdd.ApplyTheme(ATheme);
-  btnClose.ApplyTheme(ATheme);
+  StylePrimaryButton(btnAdd, ATheme);
+  StyleCancelButton(btnClose, ATheme);
   lstModels.Invalidate;
 end;
 

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uTheme, uThemedButton, uMarkdownView, uHelpContent;
+  uAppTypes, uTheme, fraThemedButton, uMarkdownView, uHelpContent;
 
 type
   { THelpForm }
@@ -19,7 +19,7 @@ type
     lstTopics: TListBox;
     pnlPreviewHost: TPanel;
     pnlBottom: TPanel;
-    btnClose: TThemedButton;
+    btnClose: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure edtSearchChange(Sender: TObject);
@@ -78,6 +78,7 @@ end;
 
 procedure THelpForm.FormShow(Sender: TObject);
 begin
+  ApplyFormPlatformThemes(Self, FTheme);
   pnlBottom.BringToFront;
   if lstTopics.ItemIndex < 0 then
     RebuildFilteredList;
@@ -103,8 +104,7 @@ begin
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstTopics, ATheme);
   lstTopics.OnDrawItem := @lstTopicsDrawItem;
-  btnClose.ButtonRole := tbrCancel;
-  btnClose.ApplyTheme(ATheme);
+  StyleCancelButton(btnClose, ATheme);
   if Assigned(FMarkdown) then
     FMarkdown.ApplyTheme(ATheme);
   lstTopics.Invalidate;

@@ -9,6 +9,8 @@ uses
   LCLType, uAppTypes;
 
 type
+  TThemedButtonRole = (tbrPrimary, tbrCancel, tbrDestructive);
+
   TThemePalette = record
     Background: TColor;      // Main background (e.g. deepest charcoal / soft light gray)
     Surface: TColor;         // Panel surface
@@ -34,6 +36,22 @@ const
   { Fallback until the widget handle exists; GTK/Qt often normalize to 25. }
   ThemedComboBoxHeight = 25;
   ThemedComboBoxItemHeight = 22;
+  ThemedTabBarBaseHeight = 38;
+  { Owner-drawn tab captions in fraThemedTabs; logical pt — do not PPI-scale like strip height. }
+  ThemedTabFontSize = 9;
+  ThemedButtonCornerBase = 6;
+  ThemedButtonFontSizeBase = 9;
+  ThemedButtonHorizPadBase = 14;
+  ThemedButtonHeightBase = 28;
+
+function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
+function ThemedButtonCornerRadius(AControl: TControl): Integer;
+function ThemedButtonFontSize(AControl: TControl): Integer;
+function ThemedButtonHorizPad(AControl: TControl): Integer;
+function ScaledThemedButtonHeight(AControl: TControl): Integer;
+function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
+  ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
+function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 
 // Helper to configure ComboBox for sleek theme owner-drawing
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
@@ -46,6 +64,10 @@ procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
 procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
 procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
 
+procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
+  ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
+  ACornerRadius, AFontSize, AHorizPad: Integer);
+
 procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
 procedure StyleCancelButton(ABtn: TButton; ATheme: TThemeKind);
 procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
@@ -55,6 +77,7 @@ procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
 procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
   const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
 procedure SyncThemedMemoWidget(AMemo: TCustomMemo);
+procedure SyncThemedEditWidget(AEdit: TCustomEdit);
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
@@ -64,12 +87,19 @@ procedure ApplyWin32FormChrome(AForm: TForm; ATheme: TThemeKind);
 
 procedure ApplyPlatformScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
 procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
+procedure ApplyFormPlatformThemes(AForm: TCustomForm; ATheme: TThemeKind);
 procedure ApplyPlatformChrome(AForm: TForm; ATheme: TThemeKind);
+
+type
+  TThemedButtonFrameApplyProc = procedure(AControl: TControl; ATheme: TThemeKind);
+
+var
+  ThemedButtonFrameApplyTheme: TThemedButtonFrameApplyProc = nil;
 
 implementation
 
 uses
-  SysUtils
+  Math, SysUtils
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
@@ -83,6 +113,74 @@ begin
     Exit(False);
   F := GetParentForm(AControl);
   Result := Assigned(F) and F.HandleAllocated;
+end;
+
+function ThemedTabStripPixelsPerInch(AControl: TControl): Integer;
+var
+  F: TCustomForm;
+begin
+  Result := 96;
+  if not Assigned(AControl) then Exit;
+  F := GetParentForm(AControl);
+  if (F <> nil) and (F.PixelsPerInch > 0) then
+    Exit(F.PixelsPerInch);
+  if Screen.PixelsPerInch > 0 then
+    Result := Screen.PixelsPerInch;
+end;
+
+function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
+begin
+  Result := MulDiv(ABaseAt96, ThemedTabStripPixelsPerInch(AControl), 96);
+end;
+
+function ScaledThemedTabBarHeight(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedTabBarBaseHeight);
+end;
+
+function ThemedButtonCornerRadius(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedButtonCornerBase);
+end;
+
+function ThemedButtonFontSize(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedButtonFontSizeBase);
+end;
+
+function ThemedButtonHorizPad(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedButtonHorizPadBase);
+end;
+
+function ScaledThemedButtonHeight(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedButtonHeightBase);
+end;
+
+function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
+  ARole: TThemedButtonRole; AMinWidth: Integer): Integer;
+var
+  Bmp: TBitmap;
+  TextW, Pad: Integer;
+begin
+  Result := AMinWidth;
+  Bmp := TBitmap.Create;
+  try
+    Bmp.Canvas.Font.Name := 'Segoe UI';
+    Bmp.Canvas.Font.Size := ThemedButtonFontSize(AControl);
+    if ARole in [tbrPrimary, tbrDestructive] then
+      Bmp.Canvas.Font.Style := [fsBold]
+    else
+      Bmp.Canvas.Font.Style := [];
+    TextW := Bmp.Canvas.TextWidth(ACaption);
+    Pad := ThemedButtonHorizPad(AControl);
+    Result := TextW + Pad * 2;
+    if Result < AMinWidth then
+      Result := AMinWidth;
+  finally
+    Bmp.Free;
+  end;
 end;
 
 function ColorToStyleHex(AColor: TColor): string;
@@ -326,12 +424,16 @@ begin
 end;
 
 function EffectiveThemedComboBoxHeight(ACombo: TComboBox): Integer;
+const
+  MIN_COMBO_H = 20;
+  MAX_COMBO_H = 40;
 begin
   if not Assigned(ACombo) then
     Exit(ThemedComboBoxHeight);
-  if ACombo.HandleAllocated then
-    Result := ACombo.Height
-  else
+  if not ACombo.HandleAllocated then
+    Exit(ThemedComboBoxHeight);
+  Result := ACombo.Height;
+  if (Result < MIN_COMBO_H) or (Result > MAX_COMBO_H) then
     Result := ThemedComboBoxHeight;
 end;
 
@@ -449,7 +551,9 @@ begin
     TLabel(AControl).Font.Color := P.Text;
   end else if AControl is TPageControl then begin
     StylePageControl(TPageControl(AControl), ATheme);
-  end;
+  end else if Assigned(ThemedButtonFrameApplyTheme) and (AControl <> nil) and
+    AControl.ClassNameIs('TThemedButtonFrame') then
+    ThemedButtonFrameApplyTheme(AControl, ATheme);
 
   if AControl is TWinControl then begin
     WinCtrl := TWinControl(AControl);
@@ -469,6 +573,125 @@ procedure ApplyWin32UnthemedButton(ABtn: TButton);
 begin
 end;
 {$ENDIF}
+
+procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
+  ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
+  ACornerRadius, AFontSize, AHorizPad: Integer);
+var
+  P: TThemePalette;
+  R: TRect;
+  FillColor, TextColor, BorderColor: TColor;
+  DrawBorder: Boolean;
+  TextTop: Integer;
+  Rad: Integer;
+begin
+  P := ThemePalette(ATheme);
+  R := ARect;
+  Dec(R.Right);
+  Dec(R.Bottom);
+  if ACornerRadius < 2 then
+    Rad := 6
+  else
+    Rad := ACornerRadius;
+
+  DrawBorder := False;
+  BorderColor := P.Border;
+
+  case ARole of
+    tbrPrimary:
+      begin
+        FillColor := P.Accent;
+        TextColor := P.AccentText;
+        if APressed and AEnabled then
+          FillColor := P.AccentActive
+        else if AHover and AEnabled then
+          FillColor := P.AccentHover;
+      end;
+    tbrCancel:
+      begin
+        DrawBorder := True;
+        if ATheme = tkDark then begin
+          FillColor := P.SurfaceAlt;
+          BorderColor := P.BorderStrong;
+        end else begin
+          FillColor := P.Surface;
+          BorderColor := P.Border;
+        end;
+        TextColor := P.TextMuted;
+        if APressed and AEnabled then begin
+          FillColor := P.Border;
+          TextColor := P.Text;
+        end else if AHover and AEnabled then
+          TextColor := P.Text;
+      end;
+    tbrDestructive:
+      begin
+        if ATheme = tkDark then begin
+          FillColor := RGBToColor(72, 32, 36);
+          TextColor := RGBToColor(248, 113, 113);
+        end else begin
+          FillColor := RGBToColor(254, 226, 226);
+          TextColor := RGBToColor(185, 28, 28);
+        end;
+        if APressed and AEnabled then begin
+          if ATheme = tkDark then
+            FillColor := RGBToColor(62, 28, 32)
+          else
+            FillColor := RGBToColor(248, 200, 200);
+        end else if AHover and AEnabled then begin
+          if ATheme = tkDark then
+            FillColor := RGBToColor(92, 42, 48)
+          else
+            FillColor := RGBToColor(252, 210, 210);
+        end;
+      end;
+  end;
+
+  if not AEnabled then begin
+    FillColor := P.SurfaceAlt;
+    TextColor := P.TextMuted;
+    DrawBorder := ARole = tbrCancel;
+  end;
+
+  Canvas.Brush.Color := FillColor;
+  Canvas.Pen.Color := FillColor;
+  Canvas.Pen.Width := 1;
+  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+
+  if DrawBorder then begin
+    Canvas.Brush.Style := bsClear;
+    Canvas.Pen.Color := BorderColor;
+    Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+    Canvas.Brush.Style := bsSolid;
+  end;
+
+  if AFocused and AEnabled then begin
+    Canvas.Brush.Style := bsClear;
+    Canvas.Pen.Color := P.Accent;
+    Canvas.Pen.Width := 1;
+    Canvas.RoundRect(R.Left + 1, R.Top + 1, R.Right, R.Bottom, Rad, Rad);
+    Canvas.Brush.Style := bsSolid;
+  end;
+
+  Canvas.Font.Name := 'Segoe UI';
+  if AFontSize > 0 then
+    Canvas.Font.Size := AFontSize
+  else
+    Canvas.Font.Size := ThemedButtonFontSizeBase;
+  if ARole in [tbrPrimary, tbrDestructive] then
+    Canvas.Font.Style := [fsBold]
+  else
+    Canvas.Font.Style := [];
+  Canvas.Font.Color := TextColor;
+
+  TextTop := R.Top + ((R.Bottom - R.Top - Canvas.TextHeight(ACaption)) div 2);
+  if (AHorizPad > 0) and (R.Width > AHorizPad * 2) then
+    Canvas.TextOut(R.Left + AHorizPad +
+      Max(0, (R.Width - AHorizPad * 2 - Canvas.TextWidth(ACaption)) div 2),
+      TextTop, ACaption)
+  else
+    Canvas.TextOut(R.Left + (R.Width - Canvas.TextWidth(ACaption)) div 2, TextTop, ACaption);
+end;
 
 procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
 var
@@ -533,7 +756,7 @@ begin
   AList.BorderStyle := bsNone;
   AList.MultiSelect := False;
   AList.ExtendedSelect := False;
-  AList.Color := P.SurfaceAlt;
+  AList.Color := P.Surface;
   AList.Font.Name := 'Segoe UI';
   AList.Font.Size := 9;
   AList.Font.Color := P.Text;
@@ -547,8 +770,8 @@ begin
   if not Assigned(ATree) then Exit;
   P := ThemePalette(ATheme);
   ATree.BorderStyle := bsNone;
-  ATree.Color := P.SurfaceAlt;
-  ATree.BackgroundColor := P.SurfaceAlt;
+  ATree.Color := P.Surface;
+  ATree.BackgroundColor := P.Surface;
   ATree.Font.Name := 'Segoe UI';
   ATree.Font.Size := 9;
   ATree.Font.Color := P.Text;
@@ -586,6 +809,14 @@ begin
   AMemo.Invalidate;
 end;
 
+procedure SyncThemedEditWidget(AEdit: TCustomEdit);
+begin
+  if not Assigned(AEdit) then Exit;
+  if not AEdit.HandleAllocated then Exit;
+  AEdit.Font.Assign(AEdit.Font);
+  AEdit.Invalidate;
+end;
+
 {$IFDEF LCLQt5}
 procedure ApplyQt5MemoTheme(AMemo: TCustomMemo; ATheme: TThemeKind);
 var
@@ -600,6 +831,41 @@ begin
     '; background-color: ' + ColorToStyleHex(AMemo.Color) + '; }');
   QtWidget.StyleSheet := Sheet;
   SyncThemedMemoWidget(AMemo);
+end;
+
+procedure ApplyQt5EditTheme(AEdit: TCustomEdit; ATheme: TThemeKind);
+var
+  QtWidget: TQtWidget;
+  P: TThemePalette;
+  Sheet: WideString;
+begin
+  if not Assigned(AEdit) then Exit;
+  if not AEdit.HandleAllocated then Exit;
+  P := ThemePalette(ATheme);
+  QtWidget := TQtWidget(Pointer(AEdit.Handle));
+  Sheet := WideString(
+    'QLineEdit { color: ' + ColorToStyleHex(AEdit.Font.Color) +
+    '; background-color: ' + ColorToStyleHex(AEdit.Color) +
+    '; selection-background-color: ' + ColorToStyleHex(P.AccentActive) + '; }');
+  QtWidget.StyleSheet := Sheet;
+  SyncThemedEditWidget(AEdit);
+end;
+
+procedure ApplyQt5ComboBoxTheme(ACombo: TComboBox; ATheme: TThemeKind);
+var
+  QtWidget: TQtWidget;
+  Sheet: WideString;
+begin
+  if not Assigned(ACombo) then Exit;
+  if not ACombo.HandleAllocated then Exit;
+  QtWidget := TQtWidget(Pointer(ACombo.Handle));
+  Sheet := WideString(
+    'QComboBox { color: ' + ColorToStyleHex(ACombo.Font.Color) +
+    '; background-color: ' + ColorToStyleHex(ACombo.Color) + '; } ' +
+    'QComboBox QAbstractItemView { color: ' + ColorToStyleHex(ACombo.Font.Color) +
+    '; background-color: ' + ColorToStyleHex(ACombo.Color) + '; }');
+  QtWidget.StyleSheet := Sheet;
+  ACombo.Invalidate;
 end;
 {$ENDIF}
 
@@ -624,9 +890,7 @@ begin
   if (Index < 0) or (Index >= LBox.Items.Count) then Exit;
 
   TextStr := LBox.Items[Index];
-  LBox.Canvas.Font.Name := 'Segoe UI';
-  LBox.Canvas.Font.Size := 9;
-  LBox.Canvas.Font.Style := [];
+  LBox.Canvas.Font.Assign(LBox.Font);
 
   if (odSelected in State) or (odFocused in State) then
     TextColor := P.Accent
@@ -706,10 +970,24 @@ begin
     ApplyQt5MemoTheme(TCustomMemo(AControl), ATheme);
     Exit;
   end;
+  if AControl is TCustomEdit then begin
+    ApplyQt5EditTheme(TCustomEdit(AControl), ATheme);
+    Exit;
+  end;
+  if AControl is TComboBox then begin
+    ApplyQt5ComboBoxTheme(TComboBox(AControl), ATheme);
+    Exit;
+  end;
   {$ENDIF}
   // GTK/Cocoa: scrollbars follow the OS widget theme; keep client colors via ApplyTheme.
   AControl.Invalidate;
 {$ENDIF}
+end;
+
+procedure ApplyFormPlatformThemes(AForm: TCustomForm; ATheme: TThemeKind);
+begin
+  if not Assigned(AForm) or not AForm.HandleAllocated then Exit;
+  ApplyPlatformScrollableThemeRecursive(AForm, ATheme);
 end;
 
 procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);

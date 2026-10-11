@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme, uThemedButton;
+  uAppTypes, uTheme, fraThemedButton;
 
 type
   { TEditSavedModelForm }
@@ -16,8 +16,9 @@ type
     lblModelId: TLabel;
     edtModelId: TEdit;
     pnlBottom: TPanel;
-    btnOK: TThemedButton;
-    btnCancel: TThemedButton;
+    btnOK: TButton;
+    btnCancel: TButton;
+    procedure FormShow(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
   private
@@ -53,6 +54,11 @@ begin
   end;
 end;
 
+procedure TEditSavedModelForm.FormShow(Sender: TObject);
+begin
+  ApplyFormPlatformThemes(Self, FTheme);
+end;
+
 procedure TEditSavedModelForm.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -68,10 +74,8 @@ begin
   edtDisplayName.Font.Color := P.Text;
   edtModelId.Color := P.SurfaceAlt;
   edtModelId.Font.Color := P.Text;
-  btnOK.ButtonRole := tbrPrimary;
-  btnCancel.ButtonRole := tbrCancel;
-  btnOK.ApplyTheme(ATheme);
-  btnCancel.ApplyTheme(ATheme);
+  StylePrimaryButton(btnOK, ATheme);
+  StyleCancelButton(btnCancel, ATheme);
   ApplyPlatformChrome(Self, ATheme);
 end;
 

@@ -31,7 +31,9 @@ Failures are also appended to `tool-errors.log` under the same user config folde
 
 ## Chat and center area
 
-The center hosts the chat panel with session tabs, message history, and the composer (mode + model + prompt).
+The center uses a **themed tab strip** for the Chat tab and file editor tabs. Click **+** at the end of the strip to open a file in a new tab. Closable editor tabs show **×** on the tab; click it to close (you may be prompted to save). The Chat tab has no close button.
+
+The chat area includes a **session tab strip** above the message history: **+** starts a new session; **×** on a session tab archives that session. The composer (mode + model + prompt) sits below. A running session shows a **●** suffix on its tab caption.
 
 ## Right and utility panels
 
@@ -40,7 +42,7 @@ The center hosts the chat panel with session tabs, message history, and the comp
 
 ## Detachable panels
 
-Most panels can **detach** into floating windows (header **Detach** or **Window** menu) and **dock** back with **⇲ Dock**.
+Most panels can **detach** into floating windows (panel header **Detach** or **Window** menu). Close the floating window or use **Window → Dock …** to reattach.
 
 Detached position and visibility persist when you restart the app.
 

@@ -1,13 +1,14 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 1917
-  Height = 900
-  Top = -30
-  Width = 1440
+  Left = 5960
+  Height = 1800
+  Top = 468
+  Width = 2880
   Caption = 'LazyCodingAgent — AI Workspace'
-  ClientHeight = 900
-  ClientWidth = 1440
-  Constraints.MinHeight = 600
-  Constraints.MinWidth = 900
+  ClientHeight = 1800
+  ClientWidth = 2880
+  Constraints.MinHeight = 1200
+  Constraints.MinWidth = 1800
+  DesignTimePPI = 192
   Menu = MainMenu1
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
@@ -17,95 +18,384 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnShow = FormShow
   object pnlMainContainer: TPanel
     Left = 0
-    Height = 651
+    Height = 1312
     Top = 0
-    Width = 1440
+    Width = 2880
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 651
-    ClientWidth = 1440
+    ClientHeight = 1312
+    ClientWidth = 2880
     TabOrder = 0
     object pnlNavRailHost: TPanel
       Left = 0
-      Height = 651
+      Height = 1312
       Top = 0
-      Width = 56
+      Width = 112
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
     end
     object pnlNavHost: TPanel
-      Left = 56
-      Height = 651
+      Left = 112
+      Height = 1312
       Top = 0
-      Width = 250
+      Width = 500
       Align = alLeft
       BevelOuter = bvNone
+      ClientHeight = 1312
+      ClientWidth = 500
       TabOrder = 1
+      object pnlNavChrome: TPanel
+        Left = 0
+        Height = 68
+        Top = 0
+        Width = 500
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 68
+        ClientWidth = 500
+        TabOrder = 0
+        object lblNavTitle: TLabel
+          Left = 16
+          Height = 36
+          Top = 18
+          Width = 142
+          Caption = 'Navigation'
+        end
+        object btnNavDetach: TButton
+          Left = 316
+          Height = 50
+          Top = 8
+          Width = 104
+          Caption = 'Detach'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
+        object btnNavHide: TButton
+          Left = 428
+          Height = 50
+          Top = 8
+          Width = 64
+          Caption = '✕'
+          TabOrder = 1
+          OnClick = PanelHideClick
+        end
+      end
+      object pnlNavContent: TPanel
+        Left = 0
+        Height = 1244
+        Top = 68
+        Width = 500
+        Align = alClient
+        BevelOuter = bvNone
+        TabOrder = 1
+      end
     end
     object splNav: TSplitter
-      Left = 306
-      Height = 651
+      Left = 612
+      Height = 1312
       Top = 0
-      Width = 5
+      Width = 10
       MinSize = 160
     end
     object pnlUtilityHost: TPanel
-      Left = 1160
-      Height = 651
+      Left = 2320
+      Height = 1312
       Top = 0
-      Width = 280
+      Width = 560
       Align = alRight
       BevelOuter = bvNone
+      ClientHeight = 1312
+      ClientWidth = 560
       TabOrder = 2
       Visible = False
+      object pnlUtilityChrome: TPanel
+        Left = 0
+        Height = 68
+        Top = 0
+        Width = 560
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 68
+        ClientWidth = 560
+        TabOrder = 0
+        object lblUtilityTitle: TLabel
+          Left = 16
+          Height = 36
+          Top = 18
+          Width = 80
+          Caption = 'Utility'
+        end
+        object btnUtilityDetach: TButton
+          Tag = 3
+          Left = 376
+          Height = 50
+          Top = 8
+          Width = 104
+          Caption = 'Detach'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
+        object btnUtilityHide: TButton
+          Tag = 3
+          Left = 488
+          Height = 50
+          Top = 8
+          Width = 64
+          Caption = '✕'
+          TabOrder = 1
+          OnClick = PanelHideClick
+        end
+      end
+      object pnlUtilityContent: TPanel
+        Left = 0
+        Height = 1244
+        Top = 68
+        Width = 560
+        Align = alClient
+        BevelOuter = bvNone
+        ClientHeight = 1244
+        ClientWidth = 560
+        TabOrder = 1
+        object pnlUtilityTabsHost: TPanel
+          BevelOuter = bvNone
+          Left = 0
+          Height = 1244
+          Top = 0
+          Width = 560
+          Align = alClient
+          TabOrder = 0
+          object pnlUtilityScratch: TPanel
+            Left = 0
+            Height = 1244
+            Top = 0
+            Width = 560
+            Align = alClient
+            BevelOuter = bvNone
+            TabOrder = 0
+            Visible = False
+          end
+          object pnlUtilityExecDetail: TPanel
+            Left = 0
+            Height = 1244
+            Top = 0
+            Width = 560
+            Align = alClient
+            BevelOuter = bvNone
+            TabOrder = 1
+            Visible = False
+          end
+        end
+      end
     end
     object splUtility: TSplitter
-      Left = 1155
-      Height = 651
+      Left = 2310
+      Height = 1312
       Top = 0
-      Width = 5
+      Width = 10
       Align = alRight
       MinSize = 160
       ResizeAnchor = akRight
       Visible = False
     end
     object pnlReservedHost: TPanel
-      Left = 870
-      Height = 651
+      Left = 1740
+      Height = 1312
       Top = 0
-      Width = 285
+      Width = 570
       Align = alRight
       BevelOuter = bvNone
+      ClientHeight = 1312
+      ClientWidth = 570
       TabOrder = 3
       Visible = False
+      object pnlReservedChrome: TPanel
+        Left = 0
+        Height = 68
+        Top = 0
+        Width = 570
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 68
+        ClientWidth = 570
+        TabOrder = 0
+        object lblReservedTitle: TLabel
+          Left = 16
+          Height = 36
+          Top = 18
+          Width = 137
+          Caption = 'Guidelines'
+        end
+        object btnReservedDetach: TButton
+          Tag = 2
+          Left = 386
+          Height = 50
+          Top = 8
+          Width = 104
+          Caption = 'Detach'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
+        object btnReservedHide: TButton
+          Tag = 2
+          Left = 498
+          Height = 50
+          Top = 8
+          Width = 64
+          Caption = '✕'
+          TabOrder = 1
+          OnClick = PanelHideClick
+        end
+      end
+      object pnlReservedContent: TPanel
+        Left = 0
+        Height = 1244
+        Top = 68
+        Width = 570
+        Align = alClient
+        BevelOuter = bvNone
+        ClientHeight = 1244
+        ClientWidth = 570
+        TabOrder = 1
+        object memReserved: TMemo
+          Left = 0
+          Height = 1244
+          Top = 0
+          Width = 570
+          Align = alClient
+          BorderStyle = bsNone
+          ScrollBars = ssVertical
+          TabOrder = 0
+        end
+      end
     end
     object splReserved: TSplitter
-      Left = 865
-      Height = 651
+      Left = 1730
+      Height = 1312
       Top = 0
-      Width = 5
+      Width = 10
       Align = alRight
       MinSize = 180
       ResizeAnchor = akRight
       Visible = False
     end
     object pnlChatHost: TPanel
-      Left = 311
-      Height = 651
+      Left = 622
+      Height = 1312
       Top = 0
-      Width = 554
+      Width = 1108
       Align = alClient
       BevelOuter = bvNone
+      ClientHeight = 1312
+      ClientWidth = 1108
       TabOrder = 5
+      object pnlCenterTabsHost: TPanel
+        BevelOuter = bvNone
+        Left = 0
+        Height = 1312
+        Top = 0
+        Width = 1108
+        Align = alClient
+        TabOrder = 0
+        object pnlChatCenter: TPanel
+          Left = 0
+          Height = 1312
+          Top = 0
+          Width = 1108
+          Align = alClient
+          BevelOuter = bvNone
+          ClientHeight = 1280
+          ClientWidth = 1108
+          TabOrder = 0
+          Visible = False
+          object pnlChatChrome: TPanel
+            Left = 0
+            Height = 68
+            Top = 0
+            Width = 1098
+            Align = alTop
+            BevelOuter = bvNone
+            ClientHeight = 68
+            ClientWidth = 1098
+            TabOrder = 0
+            object lblChatTitle: TLabel
+              Left = 16
+              Height = 36
+              Top = 18
+              Width = 62
+              Caption = 'Chat'
+            end
+            object btnChatDetach: TButton
+              Tag = 1
+              Left = 920
+              Height = 50
+              Top = 8
+              Width = 104
+              Caption = 'Detach'
+              TabOrder = 0
+              OnClick = PanelDetachClick
+            end
+            object btnChatHide: TButton
+              Tag = 1
+              Left = 1020
+              Height = 50
+              Top = 8
+              Width = 64
+              Caption = '✕'
+              TabOrder = 1
+              OnClick = PanelHideClick
+            end
+          end
+          object pnlChatContent: TPanel
+            Left = 0
+            Height = 1130
+            Top = 68
+            Width = 1098
+            Align = alClient
+            BevelOuter = bvNone
+            ClientHeight = 1130
+            ClientWidth = 1098
+            TabOrder = 1
+            object pnlChatSessionToolBar: TPanel
+              Left = 0
+              Height = 76
+              Top = 0
+              Width = 1098
+              Align = alTop
+              BevelOuter = bvNone
+              ClientHeight = 76
+              ClientWidth = 1098
+              TabOrder = 0
+              object pnlChatSessionsHost: TPanel
+                BevelOuter = bvNone
+                Left = 0
+                Height = 76
+                Top = 0
+                Width = 1098
+                Align = alClient
+                TabOrder = 0
+              end
+            end
+            object pnlChatBody: TPanel
+              Left = 0
+              Height = 1054
+              Top = 76
+              Width = 1098
+              Align = alClient
+              BevelOuter = bvNone
+              TabOrder = 1
+            end
+          end
+        end
+      end
     end
   end
   object splTerminal: TSplitter
     Cursor = crVSplit
     Left = 0
-    Height = 5
-    Top = 651
-    Width = 1440
+    Height = 10
+    Top = 1312
+    Width = 2880
     Align = alBottom
     MinSize = 120
     ResizeAnchor = akBottom
@@ -114,24 +404,73 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   end
   object pnlTerminalHost: TPanel
     Left = 0
-    Height = 220
-    Top = 656
-    Width = 1440
+    Height = 440
+    Top = 1322
+    Width = 2880
     Align = alBottom
     BevelOuter = bvNone
+    ClientHeight = 440
+    ClientWidth = 2880
     TabOrder = 2
     Visible = False
+    object pnlTerminalChrome: TPanel
+      Left = 0
+      Height = 68
+      Top = 0
+      Width = 2880
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 68
+      ClientWidth = 2880
+      TabOrder = 0
+      object lblTerminalTitle: TLabel
+        Left = 16
+        Height = 36
+        Top = 18
+        Width = 114
+        Caption = 'Terminal'
+      end
+      object btnTerminalDetach: TButton
+        Tag = 4
+        Left = 2696
+        Height = 50
+        Top = 8
+        Width = 104
+        Caption = 'Detach'
+        TabOrder = 0
+        OnClick = PanelDetachClick
+      end
+      object btnTerminalHide: TButton
+        Tag = 4
+        Left = 2808
+        Height = 50
+        Top = 8
+        Width = 64
+        Caption = '✕'
+        TabOrder = 1
+        OnClick = PanelHideClick
+      end
+    end
+    object pnlTerminalContent: TPanel
+      Left = 0
+      Height = 372
+      Top = 68
+      Width = 2880
+      Align = alClient
+      BevelOuter = bvNone
+      TabOrder = 1
+    end
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 24
-    Top = 876
-    Width = 1440
+    Height = 38
+    Top = 1762
+    Width = 2880
     Panels = <>
   end
   object MainMenu1: TMainMenu
-    Left = 360
-    Top = 12
+    Left = 720
+    Top = 24
     object mnuFile: TMenuItem
       Caption = '&File'
       object mnuFileNew: TMenuItem

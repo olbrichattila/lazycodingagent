@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics,
-  uAppTypes, uTheme, uThemedButton, uMarkdownView, uWorkspaceState;
+  uAppTypes, uTheme, fraThemedButton, uMarkdownView, uWorkspaceState;
 
 type
   TPlanBuildEvent = procedure(Sender: TObject; const APlanPath, APlanContent,
@@ -21,7 +21,7 @@ type
     FModelCombo: TComboBox;
     FModelIds: TStringList;
     FModel: string;
-    FBuildBtn: TThemedButton;
+    FBuildBtn: TThemedButtonFrame;
     FMarkdown: TMarkdownView;
     FPlanPath: string;
     FPlanContent: string;
@@ -112,7 +112,7 @@ begin
   FModelCombo.ItemHeight := ThemedComboBoxItemHeight;
   FModelCombo.OnChange := @ModelComboChange;
 
-  FBuildBtn := TThemedButton.Create(FPnlHeader);
+  FBuildBtn := TThemedButtonFrame.Create(FPnlHeader);
   FBuildBtn.Parent := FPnlHeader;
   FBuildBtn.Caption := 'Build';
   FBuildBtn.OnClick := @BuildClick;
@@ -257,7 +257,7 @@ begin
   FPnlHeader.Color := P.Surface;
   FLblPath.Font.Color := P.TextMuted;
   StyleComboBox(FModelCombo, ATheme);
-  FBuildBtn.ApplyTheme(ATheme);
+  StylePrimaryButton(FBuildBtn, ATheme);
   FMarkdown.ApplyTheme(ATheme);
   UpdateLayout;
 end;

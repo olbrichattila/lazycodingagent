@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
-  ComCtrls, LCLType, uAppTypes, uTheme, uThemedButton, uAppLogo, uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, uDockPanel;
+  ComCtrls, LCLType, uAppTypes, uTheme, fraThemedButton, uCodingAgentPresets,
+  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -22,34 +22,8 @@ type
   TNavToolErrorLogClearEvent = procedure(Sender: TObject) of object;
 
 type
-  { TNavRailControl - Left sleek icon bar }
-  TNavRailControl = class(TCustomControl)
-  private
-    FSelected: TNavigationItem;
-    FHovered: Integer;
-    FPressedIndex: Integer;
-    FTheme: TThemeKind;
-    FOnSelect: TNotifyEvent;
-    function GetItemTopY(AIndex: Integer): Integer;
-    function GetItemRect(AIndex: Integer): TRect;
-    function HitTestItemIndex(X, Y: Integer): Integer;
-    function FutureFeatureSeparatorY: Integer;
-  protected
-    procedure Paint; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseLeave; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure ApplyTheme(ATheme: TThemeKind);
-    procedure SetSelected(AItem: TNavigationItem);
-    property Selected: TNavigationItem read FSelected write SetSelected;
-    property OnSelect: TNotifyEvent read FOnSelect write FOnSelect;
-  end;
-
-  { TNavContentControl - Content panel hosting views inside the Nav Dock Host }
-  TNavContentControl = class(TCustomControl)
+  { TNavContentControl - navigation content (designer-placeable TPanel) }
+  TNavContentControl = class(TPanel)
   private
     FSelected: TNavigationItem;
     FTheme: TThemeKind;
@@ -65,8 +39,8 @@ type
     FErrorLogList: TListBox;
     FExecutionLog: TAgentExecutionLog;
     FToolErrorLog: TAgentToolErrorLog;
-    FActionBtn: TThemedButton;
-    FSecondaryActionBtn: TThemedButton;
+    FActionBtn: TThemedButtonFrame;
+    FSecondaryActionBtn: TThemedButtonFrame;
     FWorkspaceIds: TStringList;
     FSessionIds: TStringList;
     FSessionArchived: TStringList;
@@ -108,6 +82,7 @@ type
     procedure RebuildView;
     procedure MaybePopulateProjectsTree;
     procedure UpdateLayout;
+    procedure ApplyNavListMetrics;
   protected
     procedure CreateWnd; override;
     procedure Resize; override;
@@ -156,12 +131,14 @@ const
   NavSubGap = 4;
   NavSubH = 20;
   NavListGap = 8;
-  NavDockHeaderReserve = 36;
+  NavDockHeaderReserve = 0;
   NavBottomSingleBtn = 50;
   NavBottomDualBtn = 88;
   NavBottomCompact = 12;
   NavActionBtnH = 28;
   NavActionSidePad = 12;
+  NavListFontSize = 11;
+  NavListItemHeight = 32;
 
 function MaxLayoutDim(V, MinV: Integer): Integer;
 begin
@@ -179,228 +156,12 @@ begin
   AControl.SetBounds(AL, AT, AW, AH);
 end;
 
-procedure GetRailItemStyle(P: TThemePalette; ASelected, AHover, APressed: Boolean;
-  out DrawEdgeMarker: Boolean; out IconColor: TColor);
-begin
-  DrawEdgeMarker := False;
-  if ASelected then begin
-    DrawEdgeMarker := True;
-    IconColor := P.Accent;
-    if APressed then
-      IconColor := P.AccentHover;
-  end else if AHover or APressed then
-    IconColor := P.Text
-  else
-    IconColor := P.TextMuted;
-end;
-
-{ TNavRailControl }
-
-constructor TNavRailControl.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque];
-  DoubleBuffered := True;
-  Width := 56;
-  FSelected := niHome;
-  FHovered := -1;
-  FPressedIndex := -1;
-  FTheme := tkDark;
-  ShowHint := True;
-end;
-
-procedure TNavRailControl.ApplyTheme(ATheme: TThemeKind);
-begin
-  FTheme := ATheme;
-  Invalidate;
-end;
-
-procedure TNavRailControl.SetSelected(AItem: TNavigationItem);
-begin
-  if FSelected <> AItem then begin
-    FSelected := AItem;
-    Invalidate;
-  end;
-end;
-
-function TNavRailControl.GetItemTopY(AIndex: Integer): Integer;
-const
-  ItemH = 40;
-  ItemGap = 2;
-  SepGap = 10;
-var
-  I, TopY: Integer;
-  Item: TNavigationItem;
-begin
-  TopY := 48;
-  I := 0;
-  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
-    if I = AIndex then
-      Exit(TopY);
-    Inc(TopY, ItemH + ItemGap);
-    if Item = Pred(NavigationFutureFeatureFirst) then
-      Inc(TopY, SepGap);
-    Inc(I);
-  end;
-  Result := TopY;
-end;
-
-function TNavRailControl.GetItemRect(AIndex: Integer): TRect;
-const
-  ItemH = 40;
-var
-  TopY: Integer;
-begin
-  TopY := GetItemTopY(AIndex);
-  Result := Rect(6, TopY, Width - 6, TopY + ItemH);
-end;
-
-function TNavRailControl.FutureFeatureSeparatorY: Integer;
-const
-  SepGap = 10;
-var
-  ToolErrorsIdx: Integer;
-  R: TRect;
-begin
-  ToolErrorsIdx := Ord(niToolErrors);
-  R := GetItemRect(ToolErrorsIdx);
-  Result := R.Bottom + SepGap div 2;
-end;
-
-function TNavRailControl.HitTestItemIndex(X, Y: Integer): Integer;
-var
-  I: Integer;
-  Item: TNavigationItem;
-begin
-  Result := -1;
-  I := 0;
-  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
-    if GetItemRect(I).Contains(Point(X, Y)) then
-      Exit(I);
-    Inc(I);
-  end;
-end;
-
-procedure TNavRailControl.Paint;
-var
-  P: TThemePalette;
-  Item: TNavigationItem;
-  I: Integer;
-  R, MarkerR: TRect;
-  Sym: string;
-  DrawEdgeMarker: Boolean;
-  IconColor: TColor;
-  IsSelected, IsHover, IsPressed: Boolean;
-  IconY: Integer;
-begin
-  P := ThemePalette(FTheme);
-
-  Canvas.Brush.Color := P.RailBg;
-  Canvas.FillRect(ClientRect);
-
-  Canvas.Pen.Color := P.Border;
-  Canvas.Line(Width - 1, 0, Width - 1, Height);
-
-  DrawLazyAgentLogo(Canvas, Rect(12, 10, 44, 42), FTheme = tkDark);
-
-  I := 0;
-  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
-    R := GetItemRect(I);
-    Sym := NavigationIconSymbol(Item);
-
-    IsSelected := Item = FSelected;
-    IsHover := I = FHovered;
-    IsPressed := I = FPressedIndex;
-    GetRailItemStyle(P, IsSelected, IsHover, IsPressed, DrawEdgeMarker, IconColor);
-
-    if DrawEdgeMarker then begin
-      Canvas.Brush.Color := P.Accent;
-      MarkerR := Rect(0, R.Top + 8, 2, R.Bottom - 8);
-      Canvas.FillRect(MarkerR);
-    end;
-
-    Canvas.Font.Style := [];
-    Canvas.Font.Size := 16;
-    Canvas.Font.Name := 'Segoe UI Symbol';
-    Canvas.Font.Color := IconColor;
-    IconY := R.Top + (R.Height - Canvas.TextHeight(Sym)) div 2;
-    Canvas.Brush.Color := P.RailBg;
-    Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(R.Left + (R.Width - Canvas.TextWidth(Sym)) div 2, IconY, Sym);
-
-    Inc(I);
-  end;
-
-  Canvas.Pen.Color := P.Border;
-  Canvas.MoveTo(10, FutureFeatureSeparatorY);
-  Canvas.LineTo(Width - 10, FutureFeatureSeparatorY);
-
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TNavRailControl.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  NewHover: Integer;
-begin
-  inherited MouseMove(Shift, X, Y);
-  NewHover := HitTestItemIndex(X, Y);
-  if NewHover >= 0 then
-    Hint := NavigationHint(TNavigationItem(NewHover));
-
-  if NewHover <> FHovered then begin
-    FHovered := NewHover;
-    Invalidate;
-  end;
-end;
-
-procedure TNavRailControl.MouseLeave;
-begin
-  inherited MouseLeave;
-  if FHovered <> -1 then begin
-    FHovered := -1;
-    Invalidate;
-  end;
-end;
-
-procedure TNavRailControl.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  HitIndex: Integer;
-  Item: TNavigationItem;
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if Button <> mbLeft then Exit;
-
-  HitIndex := HitTestItemIndex(X, Y);
-  if HitIndex < 0 then Exit;
-
-  FPressedIndex := HitIndex;
-  MouseCapture := True;
-  Invalidate;
-
-  Item := TNavigationItem(HitIndex);
-  SetSelected(Item);
-  if Assigned(FOnSelect) then
-    FOnSelect(Self);
-end;
-
-procedure TNavRailControl.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if Button <> mbLeft then Exit;
-
-  if FPressedIndex <> -1 then begin
-    FPressedIndex := -1;
-    MouseCapture := False;
-    Invalidate;
-  end;
-end;
-
 { TNavContentControl }
 
 constructor TNavContentControl.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque];
+  BevelOuter := bvNone;
   DoubleBuffered := True;
   FTheme := tkDark;
   FSelected := niHome;
@@ -432,7 +193,6 @@ begin
   FFileList.OnDrawItem := @FileListDrawItem;
   FFileList.OnClick := @FileListClick;
   FFileList.OnKeyDown := @FileListKeyDown;
-  ConfigureThemedListBox(FFileList, FTheme);
 
   FTreeView := TTreeView.Create(Self);
   FTreeView.Parent := Self;
@@ -440,14 +200,12 @@ begin
   FTreeView.Visible := False;
   FTreeView.OnDblClick := @TreeViewDblClick;
   FTreeView.OnKeyDown := @TreeViewKeyDown;
-  ConfigureThemedTreeView(FTreeView, FTheme);
 
   FLogList := TListBox.Create(Self);
   FLogList.Parent := Self;
   FLogList.Visible := False;
   FLogList.OnClick := @LogListClick;
   FLogList.OnDrawItem := @FileListDrawItem;
-  ConfigureThemedListBox(FLogList, FTheme);
   FExecutionLog := nil;
 
   FErrorLogList := TListBox.Create(Self);
@@ -455,19 +213,17 @@ begin
   FErrorLogList.Visible := False;
   FErrorLogList.OnClick := @ErrorLogListClick;
   FErrorLogList.OnDrawItem := @FileListDrawItem;
-  ConfigureThemedListBox(FErrorLogList, FTheme);
+  ApplyNavListMetrics;
   FToolErrorLog := nil;
 
-  FActionBtn := TThemedButton.Create(Self);
+  FActionBtn := TThemedButtonFrame.Create(Self);
   FActionBtn.Parent := Self;
-  FActionBtn.Height := 28;
-  FActionBtn.ButtonRole := tbrPrimary;
+  FActionBtn.Height := ScaledThemedButtonHeight(FActionBtn);
   FActionBtn.OnClick := @ActionBtnClick;
 
-  FSecondaryActionBtn := TThemedButton.Create(Self);
+  FSecondaryActionBtn := TThemedButtonFrame.Create(Self);
   FSecondaryActionBtn.Parent := Self;
-  FSecondaryActionBtn.Height := 28;
-  FSecondaryActionBtn.ButtonRole := tbrCancel;
+  FSecondaryActionBtn.Height := ScaledThemedButtonHeight(FSecondaryActionBtn);
   FSecondaryActionBtn.Visible := False;
   FSecondaryActionBtn.OnClick := @SecondaryActionBtnClick;
 
@@ -567,13 +323,10 @@ begin
   end;
   Archived := (Idx < FSessionArchived.Count) and (FSessionArchived[Idx] = '1');
   FSecondaryActionBtn.Enabled := True;
-  if Archived then begin
-    FSecondaryActionBtn.Caption := 'Restore Session';
-    FSecondaryActionBtn.ButtonRole := tbrCancel;
-  end else begin
+  if Archived then
+    FSecondaryActionBtn.Caption := 'Restore Session'
+  else
     FSecondaryActionBtn.Caption := 'Archive Session';
-    FSecondaryActionBtn.ButtonRole := tbrCancel;
-  end;
 end;
 
 procedure TNavContentControl.SecondaryActionBtnClick(Sender: TObject);
@@ -645,16 +398,15 @@ end;
 
 procedure TNavContentControl.UpdateLayout;
 var
-  W, H, ListH, TitleTop, SubTop, ListTop, BtnW: Integer;
+  W, H, ListH, TitleTop, SubTop, ListTop, BtnW, BtnH: Integer;
 begin
   if not ParentFormHandlesReady(Self) then Exit;
   W := MaxLayoutDim(Width - NavSidePad * 2, 8);
   H := Height;
   BtnW := MaxLayoutDim(W - NavActionSidePad * 2, 8);
+  BtnH := ScaledThemedButtonHeight(Self);
 
   TitleTop := NavTitleTop;
-  if Assigned(Parent) and (Parent is TDockPanel) and (Top < NavDockHeaderReserve) then
-    Inc(TitleTop, NavDockHeaderReserve - Top);
   SubTop := TitleTop + NavTitleH + NavSubGap;
   ListTop := SubTop + NavSubH + NavListGap;
 
@@ -675,14 +427,14 @@ begin
   if H > 80 then begin
     if (FSelected = niSessions) and FSecondaryActionBtn.Visible then begin
       SetBoundsIfChanged(FSecondaryActionBtn, NavSidePad + NavActionSidePad, H - 76,
-        BtnW, NavActionBtnH);
-      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, NavActionBtnH);
+        BtnW, BtnH);
+      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, BtnH);
     end else begin
       SetBoundsIfChanged(FSecondaryActionBtn, NavSidePad + NavActionSidePad, H - 76, BtnW, 0);
-      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, NavActionBtnH);
+      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, BtnH);
     end;
   end else
-    SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, 10, BtnW, NavActionBtnH);
+    SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, 10, BtnW, BtnH);
 end;
 
 procedure TNavContentControl.Resize;
@@ -697,6 +449,26 @@ begin
   ThemedListBoxDrawItem(Control, Index, ARect, State, FTheme);
 end;
 
+procedure TNavContentControl.ApplyNavListMetrics;
+begin
+  ConfigureThemedListBox(FFileList, FTheme);
+  FFileList.Font.Size := NavListFontSize;
+  FFileList.ItemHeight := NavListItemHeight;
+
+  ConfigureThemedListBox(FLogList, FTheme);
+  FLogList.Font.Size := NavListFontSize;
+  FLogList.ItemHeight := NavListItemHeight;
+
+  ConfigureThemedListBox(FErrorLogList, FTheme);
+  FErrorLogList.Font.Size := NavListFontSize;
+  FErrorLogList.ItemHeight := NavListItemHeight;
+
+  ConfigureThemedTreeView(FTreeView, FTheme);
+  FTreeView.Font.Size := NavListFontSize;
+  FTreeView.Options := FTreeView.Options - [tvoAutoItemHeight];
+  FTreeView.DefaultItemHeight := NavListItemHeight;
+end;
+
 procedure TNavContentControl.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -707,16 +479,12 @@ begin
   FTitleLabel.Font.Color := P.Text;
   FSubLabel.Font.Color := P.TextMuted;
 
-  ConfigureThemedListBox(FFileList, FTheme);
-  ConfigureThemedTreeView(FTreeView, FTheme);
-
-  ConfigureThemedListBox(FLogList, FTheme);
-  ConfigureThemedListBox(FErrorLogList, FTheme);
+  ApplyNavListMetrics;
 
   if Assigned(FActionBtn) then
-    FActionBtn.ApplyTheme(FTheme);
+    StylePrimaryButton(FActionBtn, FTheme);
   if Assigned(FSecondaryActionBtn) then
-    FSecondaryActionBtn.ApplyTheme(FTheme);
+    StyleCancelButton(FSecondaryActionBtn, FTheme);
 
   Invalidate;
 end;
@@ -986,7 +754,7 @@ begin
         else
           FSubLabel.Caption := 'Workspace Tree';
         MaybePopulateProjectsTree;
-        ConfigureThemedTreeView(FTreeView, FTheme);
+        ApplyNavListMetrics;
         FTreeView.Invalidate;
         FActionBtn.Caption := '↻ Refresh Tree';
       end;

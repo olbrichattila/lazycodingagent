@@ -7,16 +7,17 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
   LCLType,
-  uAppTypes, uTheme, uThemedButton;
+  uAppTypes, uTheme, fraThemedButton;
 
 type
   { TEditRuleForm }
   TEditRuleForm = class(TForm)
     memoRule: TMemo;
     pnlBottom: TPanel;
-    btnOK: TThemedButton;
-    btnCancel: TThemedButton;
+    btnOK: TButton;
+    btnCancel: TButton;
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
@@ -57,6 +58,11 @@ begin
   OnKeyDown := @FormKeyDown;
 end;
 
+procedure TEditRuleForm.FormShow(Sender: TObject);
+begin
+  ApplyFormPlatformThemes(Self, FTheme);
+end;
+
 procedure TEditRuleForm.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if Key = VK_ESCAPE then begin
@@ -82,12 +88,10 @@ begin
   pnlBottom.Color := P.Surface;
   ApplyControlTheme(Self, ATheme);
   ConfigureThemedMemo(memoRule, ATheme);
-  btnOK.ButtonRole := tbrPrimary;
-  btnCancel.ButtonRole := tbrCancel;
   btnOK.ModalResult := mrOk;
   btnCancel.ModalResult := mrCancel;
-  btnOK.ApplyTheme(ATheme);
-  btnCancel.ApplyTheme(ATheme);
+  StylePrimaryButton(btnOK, ATheme);
+  StyleCancelButton(btnCancel, ATheme);
   ApplyPlatformChrome(Self, ATheme);
   ApplyPlatformScrollableTheme(memoRule, ATheme);
 end;

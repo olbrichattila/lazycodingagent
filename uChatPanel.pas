@@ -5,9 +5,10 @@ unit uChatPanel;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms,
+  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms,
   LCLType, fpjson, jsonparser,
-  uAppTypes, uTheme, uThemedButton, uAgentTypes, uWorkspaceState, uMarkdownView;
+  uAppTypes, uTheme, fraThemedButton, fraThemedPicker, uAgentTypes, uWorkspaceState,
+  uMarkdownView;
 
 type
   TPromptEvent = procedure(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string) of object;
@@ -16,7 +17,7 @@ type
   TCancelEvent = procedure(Sender: TObject) of object;
 
   { TChatPanel }
-  TChatPanel = class(TCustomControl)
+  TChatPanel = class(TPanel)
   private
     FWorkspaceName: string;
     FTheme: TThemeKind;
@@ -39,20 +40,19 @@ type
     FComposerFooter: TPanel;
     FWorkspaceTag: TLabel;
     FPromptMemo: TMemo;
-    FModeCombo: TComboBox;
-    FModelCombo: TComboBox;
+    FModePicker: TThemedPickerFrame;
+    FModelPicker: TThemedPickerFrame;
     FModelIds: TStringList;
-    FSendBtn: TThemedButton;
-    FStopBtn: TThemedButton;
+    FSendBtn: TThemedButtonFrame;
+    FStopBtn: TThemedButtonFrame;
     FUpdatingLayout: Boolean;
     FInThemeApply: Boolean;
     FDeferLayout: Boolean;
     FLastLayoutW: Integer;
     FLastLayoutH: Integer;
 
-    procedure ModeComboChange(Sender: TObject);
-    procedure ModelComboChange(Sender: TObject);
-    procedure ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect; State: TOwnerDrawState);
+    procedure ModePickerChange(Sender: TObject);
+    procedure ModelPickerChange(Sender: TObject);
     procedure SendBtnClick(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
     procedure UpdateHeading;
@@ -64,7 +64,6 @@ type
     function ToolMessageBody(const AMsg: TChatMessage): string;
   protected
     procedure CreateWnd; override;
-    procedure Paint; override;
     procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -103,9 +102,14 @@ const
   ComposerBottomPad = 12;
   ComposerFooterGap = 10;
   ComposerSendBtnMinW = 108;
-  ComposerSendBtnPadW = 28;
   ComposerFooterBtnH = 28;
   ComposerFooterRightPad = 6;
+  ComposerComboGap = 8;
+  ComposerModelComboMinW = 148;
+  ComposerModelComboMaxW = 360;
+  ComposerModePickerMaxW = 168;
+  ComposerCardHMin = 200;
+  ComposerCardHMax = 240;
   ChatHeadingTop = 32;
   ChatHeadingH = 40;
   ChatSubHeadingH = 22;
@@ -126,31 +130,12 @@ begin
   AControl.SetBounds(AL, AT, AW, AH);
 end;
 
-procedure SetPositionWidthIfChanged(AControl: TControl; AL, AT, AW: Integer);
-begin
-  if not Assigned(AControl) then Exit;
-  if AControl.Left <> AL then
-    AControl.Left := AL;
-  if AControl.Top <> AT then
-    AControl.Top := AT;
-  if AControl.Width <> AW then
-    AControl.Width := AW;
-end;
-
 function ThemedActionButtonWidth(AChat: TChatPanel; const ACaption: string): Integer;
-var
-  C: TCanvas;
 begin
   Result := ComposerSendBtnMinW;
   if not Assigned(AChat) then Exit;
-  if not ParentFormHandlesReady(AChat) then Exit;
-  C := AChat.Canvas;
-  C.Font.Name := 'Segoe UI';
-  C.Font.Size := 9;
-  C.Font.Style := [fsBold];
-  Result := C.TextWidth(ACaption) + ComposerSendBtnPadW;
-  if Result < ComposerSendBtnMinW then
-    Result := ComposerSendBtnMinW;
+  Result := MeasureThemedButtonWidth(AChat, ACaption, tbrPrimary,
+    ScaledThemedTabMetric(AChat, ComposerSendBtnMinW));
 end;
 
 function ExtractToolErrorLine(const AJsonText: string): string;
@@ -189,7 +174,7 @@ var
   M: TWorkspaceMode;
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque];
+  BevelOuter := bvNone;
   DoubleBuffered := True;
   FTheme := tkDark;
   FWorkspaceName := 'LazyCodingAgent';
@@ -250,34 +235,28 @@ begin
   FComposerFooter.Parent := FComposerCard;
   FComposerFooter.BevelOuter := bvNone;
 
-  FModeCombo := TComboBox.Create(FComposerFooter);
-  FModeCombo.Parent := FComposerFooter;
-  FModeCombo.Style := csOwnerDrawFixed;
-  FModeCombo.OnDrawItem := @ComboDrawItem;
-  FModeCombo.ItemHeight := ThemedComboBoxItemHeight;
+  FModePicker := TThemedPickerFrame.Create(FComposerFooter);
+  FModePicker.Parent := FComposerFooter;
+  FModePicker.Placeholder := 'Mode';
   for M := Low(TWorkspaceMode) to High(TWorkspaceMode) do
-    FModeCombo.Items.Add(WorkspaceModeCaption(M));
-  FModeCombo.ItemIndex := Ord(FMode);
-  FModeCombo.OnChange := @ModeComboChange;
+    FModePicker.Items.Add(WorkspaceModeCaption(M));
+  FModePicker.ItemIndex := Ord(FMode);
+  FModePicker.OnChange := @ModePickerChange;
 
-  FModelCombo := TComboBox.Create(FComposerFooter);
-  FModelCombo.Parent := FComposerFooter;
-  FModelCombo.Style := csOwnerDrawFixed;
-  FModelCombo.OnDrawItem := @ComboDrawItem;
-  FModelCombo.ItemHeight := ThemedComboBoxItemHeight;
-  FModelCombo.OnChange := @ModelComboChange;
+  FModelPicker := TThemedPickerFrame.Create(FComposerFooter);
+  FModelPicker.Parent := FComposerFooter;
+  FModelPicker.Placeholder := 'Model';
+  FModelPicker.OnChange := @ModelPickerChange;
 
-  FStopBtn := TThemedButton.Create(FComposerFooter);
+  FStopBtn := TThemedButtonFrame.Create(FComposerFooter);
   FStopBtn.Parent := FComposerFooter;
   FStopBtn.Caption := '⏹ Stop';
-  FStopBtn.ButtonRole := tbrDestructive;
   FStopBtn.Visible := False;
   FStopBtn.OnClick := @StopBtnClick;
 
-  FSendBtn := TThemedButton.Create(FComposerFooter);
+  FSendBtn := TThemedButtonFrame.Create(FComposerFooter);
   FSendBtn.Parent := FComposerFooter;
   FSendBtn.Caption := '➤ Run Agent';
-  FSendBtn.ButtonRole := tbrPrimary;
   FSendBtn.OnClick := @SendBtnClick;
 
   ApplyTheme(FTheme);
@@ -322,8 +301,8 @@ end;
 procedure TChatPanel.UpdateLayout;
 var
   W, H, InnerW, CardW, CardH, CardX, CardY, HistoryH, HistoryTop, FooterW, FooterH,
-  FooterY, ComboRowH, ModelComboRowH, ModeComboTop, ModelComboTop, BtnTop, SendW,
-  StopW, SendLeft, StopLeft, MemoH: Integer;
+  FooterY, BtnTop, FooterBtnH, SendW, StopW, SendLeft, StopLeft, MemoH, ModeW,
+  ModelLeft, ModelW, ModelRight, MinButtonsW: Integer;
 begin
   if not ParentFormHandlesReady(Self) then Exit;
   if FUpdatingLayout or FDeferLayout then Exit;
@@ -340,7 +319,11 @@ begin
 
   CardW := W - 48;
   if CardW < 100 then CardW := 100;
-  CardH := 168;
+  CardH := H div 5;
+  if CardH < ComposerCardHMin then
+    CardH := ComposerCardHMin;
+  if CardH > ComposerCardHMax then
+    CardH := ComposerCardHMax;
   CardX := 24;
   CardY := H - CardH - 16;
   if CardY < HistoryTop + 40 then CardY := HistoryTop + 40;
@@ -350,18 +333,8 @@ begin
   SetBoundsIfChanged(FComposerCard, CardX, CardY, CardW, CardH);
   SetBoundsIfChanged(FWorkspaceTag, ComposerSidePad, 10, MaxLayoutDim(CardW - ComposerSidePad * 2, 8), 18);
 
-  ComboRowH := ComposerFooterBtnH;
-  if Assigned(FModeCombo) then begin
-    ComboRowH := EffectiveThemedComboBoxHeight(FModeCombo);
-    if ComboRowH < ComposerFooterBtnH then
-      ComboRowH := ComposerFooterBtnH;
-  end;
-  if Assigned(FModelCombo) then begin
-    ModelComboRowH := EffectiveThemedComboBoxHeight(FModelCombo);
-    if ModelComboRowH > ComboRowH then
-      ComboRowH := ModelComboRowH;
-  end;
-  FooterH := MaxLayoutDim(ComboRowH + 12, ComposerFooterBtnH + 12);
+  FooterBtnH := ScaledThemedButtonHeight(Self);
+  FooterH := FooterBtnH + 12;
   FooterY := CardH - FooterH - ComposerBottomPad;
   FooterW := MaxLayoutDim(CardW - ComposerSidePad * 2, 8);
   MemoH := MaxLayoutDim(FooterY - 32 - ComposerFooterGap, 8);
@@ -370,34 +343,51 @@ begin
   if Assigned(FComposerFooter) then begin
     SetBoundsIfChanged(FComposerFooter, ComposerSidePad, FooterY, FooterW, FooterH);
 
-    BtnTop := (FooterH - ComposerFooterBtnH) div 2;
+    BtnTop := (FooterH - FooterBtnH) div 2;
     if BtnTop < 0 then BtnTop := 0;
-    ModeComboTop := BtnTop + (ComposerFooterBtnH - FModeCombo.Height) div 2;
-    if ModeComboTop < BtnTop then ModeComboTop := BtnTop;
-    SetPositionWidthIfChanged(FModeCombo, 0, ModeComboTop, 100);
-    ModelComboTop := BtnTop + (ComposerFooterBtnH - FModelCombo.Height) div 2;
-    if ModelComboTop < BtnTop then ModelComboTop := BtnTop;
-    SetPositionWidthIfChanged(FModelCombo, 108, ModelComboTop, 210);
+
+    ModeW := ComposerModePickerMaxW;
+    if Assigned(FModePicker) then
+      ModeW := FModePicker.PreferredWidth;
+    if ModeW > ComposerModePickerMaxW then
+      ModeW := ComposerModePickerMaxW;
+    if ModeW > FooterW div 2 then
+      ModeW := MaxLayoutDim(FooterW div 2, 72);
 
     SendW := ThemedActionButtonWidth(Self, FSendBtn.Caption);
-    if Assigned(FStopBtn) and FStopBtn.Visible then begin
-      StopW := ThemedActionButtonWidth(Self, FStopBtn.Caption);
-      SendLeft := FooterW - ComposerFooterRightPad - SendW;
-      StopLeft := SendLeft - 8 - StopW;
-      if StopLeft < 320 then begin
-        StopLeft := 320;
-        if StopLeft + StopW + 8 + SendW + ComposerFooterRightPad > FooterW then
-          SendW := MaxLayoutDim(FooterW - ComposerFooterRightPad - StopLeft - 8 - StopW, ComposerSendBtnMinW);
-        SendLeft := FooterW - ComposerFooterRightPad - SendW;
-      end;
-      SetBoundsIfChanged(FStopBtn, StopLeft, BtnTop, StopW, ComposerFooterBtnH);
-      SetBoundsIfChanged(FSendBtn, SendLeft, BtnTop, SendW, ComposerFooterBtnH);
-    end else begin
-      SendLeft := FooterW - ComposerFooterRightPad - SendW;
-      if SendLeft < 320 then
-        SendLeft := 320;
-      SetBoundsIfChanged(FSendBtn, SendLeft, BtnTop, SendW, ComposerFooterBtnH);
+    StopW := 0;
+    if Assigned(FStopBtn) and FStopBtn.Visible then
+      StopW := MeasureThemedButtonWidth(FStopBtn, FStopBtn.Caption, tbrDestructive,
+        ScaledThemedTabMetric(Self, ComposerSendBtnMinW));
+
+    SendLeft := FooterW - ComposerFooterRightPad - SendW;
+    if StopW > 0 then begin
+      StopLeft := SendLeft - ComposerComboGap - StopW;
+      ModelRight := StopLeft - ComposerComboGap;
+      SetBoundsIfChanged(FStopBtn, StopLeft, BtnTop, StopW, FooterBtnH);
+    end else
+      ModelRight := SendLeft - ComposerComboGap;
+    SetBoundsIfChanged(FSendBtn, SendLeft, BtnTop, SendW, FooterBtnH);
+
+    ModelLeft := ModeW + ComposerComboGap;
+    ModelW := ComposerModelComboMinW;
+    if Assigned(FModelPicker) then
+      ModelW := FModelPicker.PreferredWidth;
+    if ModelW < ComposerModelComboMinW then
+      ModelW := ComposerModelComboMinW;
+    if ModelW > ComposerModelComboMaxW then
+      ModelW := ComposerModelComboMaxW;
+    if ModelW > ModelRight - ModelLeft then
+      ModelW := MaxLayoutDim(ModelRight - ModelLeft, 8);
+    while (ModelRight - ModelLeft < ComposerModelComboMinW) and (ModeW > 72) do begin
+      ModeW := ModeW - 4;
+      ModelLeft := ModeW + ComposerComboGap;
     end;
+    if ModelW > ModelRight - ModelLeft then
+      ModelW := MaxLayoutDim(ModelRight - ModelLeft, 8);
+
+    SetBoundsIfChanged(FModePicker, 0, BtnTop, ModeW, FooterBtnH);
+    SetBoundsIfChanged(FModelPicker, ModelLeft, BtnTop, ModelW, FooterBtnH);
   end;
   FLastLayoutW := W;
   FLastLayoutH := H;
@@ -412,22 +402,6 @@ begin
   if FDeferLayout or FInThemeApply then Exit;
   if (Width = FLastLayoutW) and (Height = FLastLayoutH) then Exit;
   UpdateLayout;
-end;
-
-procedure TChatPanel.Paint;
-var
-  P: TThemePalette;
-  CR: TRect;
-begin
-  P := ThemePalette(FTheme);
-
-  Canvas.Brush.Color := P.Background;
-  Canvas.FillRect(ClientRect);
-
-  CR := FComposerCard.BoundsRect;
-  Canvas.Brush.Color := P.Surface;
-  Canvas.Pen.Color := P.BorderStrong;
-  Canvas.RoundRect(CR.Left, CR.Top, CR.Right, CR.Bottom, 10, 10);
 end;
 
 procedure TChatPanel.RefreshHistoryView;
@@ -498,13 +472,15 @@ begin
   ConfigureThemedMemo(FPromptMemo, ATheme);
 
   FComposerFooter.Color := P.Surface;
-  StyleComboBox(FModeCombo, FTheme);
-  StyleComboBox(FModelCombo, FTheme);
+  if Assigned(FModePicker) then
+    FModePicker.ApplyTheme(FTheme);
+  if Assigned(FModelPicker) then
+    FModelPicker.ApplyTheme(FTheme);
 
   if Assigned(FSendBtn) then
-    FSendBtn.ApplyTheme(FTheme);
+    StylePrimaryButton(FSendBtn, FTheme);
   if Assigned(FStopBtn) then
-    FStopBtn.ApplyTheme(FTheme);
+    StyleDestructiveButton(FStopBtn, FTheme);
 
   if Assigned(FChatView) then
     FChatView.SetMarkdown(FHistoryMarkdown);
@@ -520,8 +496,6 @@ begin
   ApplyPlatformScrollableTheme(FHistoryHost, ATheme);
   ApplyPlatformScrollableTheme(FChatView, ATheme);
   ApplyPlatformScrollableTheme(FPromptMemo, ATheme);
-  ApplyPlatformScrollableTheme(FModeCombo, ATheme);
-  ApplyPlatformScrollableTheme(FModelCombo, ATheme);
 end;
 
 procedure TChatPanel.SetWorkspace(const AName: string);
@@ -533,7 +507,8 @@ end;
 procedure TChatPanel.SetMode(AMode: TWorkspaceMode);
 begin
   FMode := AMode;
-  FModeCombo.ItemIndex := Ord(AMode);
+  if Assigned(FModePicker) then
+    FModePicker.ItemIndex := Ord(AMode);
   UpdateHeading;
   case FMode of
     wmAsk: FSendBtn.Caption := 'Ask Question';
@@ -556,29 +531,31 @@ var
   I, SelIdx: Integer;
   Cap: string;
 begin
-  FModelCombo.Items.BeginUpdate;
+  FModelPicker.Items.BeginUpdate;
   FModelIds.BeginUpdate;
   try
-    FModelCombo.Items.Clear;
+    FModelPicker.Items.Clear;
     FModelIds.Clear;
     SelIdx := -1;
     for I := 0 to High(AModels) do begin
       Cap := ModelComboCaption(AModels[I]);
-      FModelCombo.Items.Add(Cap);
+      FModelPicker.Items.Add(Cap);
       FModelIds.Add(AModels[I].ModelId);
       if SameText(AModels[I].ModelId, FModel) then
         SelIdx := I;
     end;
     if SelIdx >= 0 then
-      FModelCombo.ItemIndex := SelIdx
-    else if FModelCombo.Items.Count > 0 then begin
-      FModelCombo.ItemIndex := 0;
+      FModelPicker.ItemIndex := SelIdx
+    else if FModelPicker.Items.Count > 0 then begin
+      FModelPicker.ItemIndex := 0;
       FModel := FModelIds[0];
-    end else
+    end else begin
+      FModelPicker.ItemIndex := -1;
       FModel := '';
+    end;
   finally
     FModelIds.EndUpdate;
-    FModelCombo.Items.EndUpdate;
+    FModelPicker.Items.EndUpdate;
   end;
 end;
 
@@ -588,8 +565,12 @@ var
 begin
   FModel := AModel;
   Idx := FModelIds.IndexOf(AModel);
-  if Idx >= 0 then
-    FModelCombo.ItemIndex := Idx;
+  if Assigned(FModelPicker) then begin
+    if Idx >= 0 then
+      FModelPicker.ItemIndex := Idx
+    else if FModel = '' then
+      FModelPicker.ItemIndex := -1;
+  end;
 end;
 
 procedure TChatPanel.ClearHistory;
@@ -668,43 +649,22 @@ begin
   RefreshHistoryView;
 end;
 
-procedure TChatPanel.ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect; State: TOwnerDrawState);
-var
-  Combo: TComboBox;
-  P: TThemePalette;
-  Txt: string;
+procedure TChatPanel.ModePickerChange(Sender: TObject);
 begin
-  Combo := TComboBox(Control);
-  P := ThemePalette(FTheme);
-
-  if odSelected in State then begin
-    Combo.Canvas.Brush.Color := P.Accent;
-    Combo.Canvas.Font.Color := clWhite;
-  end else begin
-    Combo.Canvas.Brush.Color := P.SurfaceAlt;
-    Combo.Canvas.Font.Color := P.Text;
-  end;
-
-  Combo.Canvas.FillRect(ARect);
-  if (Index >= 0) and (Index < Combo.Items.Count) then begin
-    Txt := Combo.Items[Index];
-    Combo.Canvas.TextOut(ARect.Left + 6, ARect.Top + (ARect.Height - Combo.Canvas.TextHeight(Txt)) div 2, Txt);
-  end;
-end;
-
-procedure TChatPanel.ModeComboChange(Sender: TObject);
-begin
-  FMode := TWorkspaceMode(FModeCombo.ItemIndex);
+  if (FModePicker.ItemIndex < Ord(Low(TWorkspaceMode))) or
+     (FModePicker.ItemIndex > Ord(High(TWorkspaceMode))) then
+    Exit;
+  FMode := TWorkspaceMode(FModePicker.ItemIndex);
   UpdateHeading;
   if Assigned(FOnModeChange) then
     FOnModeChange(Self, FMode);
 end;
 
-procedure TChatPanel.ModelComboChange(Sender: TObject);
+procedure TChatPanel.ModelPickerChange(Sender: TObject);
 var
   Idx: Integer;
 begin
-  Idx := FModelCombo.ItemIndex;
+  Idx := FModelPicker.ItemIndex;
   if (Idx >= 0) and (Idx < FModelIds.Count) then
     FModel := FModelIds[Idx]
   else
@@ -716,8 +676,8 @@ end;
 procedure TChatPanel.SetComposerEnabled(AEnabled: Boolean);
 begin
   FPromptMemo.Enabled := AEnabled;
-  FModeCombo.Enabled := AEnabled;
-  FModelCombo.Enabled := AEnabled;
+  FModePicker.Enabled := AEnabled;
+  FModelPicker.Enabled := AEnabled;
   FSendBtn.Enabled := AEnabled and not FIsRunning;
 end;
 

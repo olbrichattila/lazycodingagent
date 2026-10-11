@@ -9,6 +9,7 @@ object EditSavedModelForm: TEditSavedModelForm
   ClientWidth = 440
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
+  OnShow = FormShow
   LCLVersion = '4.8.0.0'
   object lblDisplayName: TLabel
     Left = 16
@@ -50,7 +51,7 @@ object EditSavedModelForm: TEditSavedModelForm
     ClientHeight = 44
     ClientWidth = 440
     TabOrder = 2
-    object btnOK: TThemedButton
+    object btnOK: TButton
       Left = 256
       Height = 28
       Top = 8
@@ -60,7 +61,7 @@ object EditSavedModelForm: TEditSavedModelForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TThemedButton
+    object btnCancel: TButton
       Left = 344
       Height = 28
       Top = 8

@@ -40,7 +40,7 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
     ClientHeight = 36
     ClientWidth = 472
     TabOrder = 1
-    object btnAdd: TThemedButton
+    object btnAdd: TButton
       Left = 0
       Height = 28
       Top = 4
@@ -49,7 +49,7 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
       OnClick = btnAddClick
       TabOrder = 0
     end
-    object btnRemove: TThemedButton
+    object btnRemove: TButton
       Left = 108
       Height = 28
       Top = 4
@@ -59,7 +59,7 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
       OnClick = btnRemoveClick
       TabOrder = 1
     end
-    object btnSetActive: TThemedButton
+    object btnSetActive: TButton
       Left = 216
       Height = 28
       Top = 4
@@ -80,7 +80,7 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
     ClientHeight = 44
     ClientWidth = 504
     TabOrder = 2
-    object btnClose: TThemedButton
+    object btnClose: TButton
       Left = 408
       Height = 28
       Top = 8

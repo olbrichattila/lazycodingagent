@@ -10,6 +10,7 @@ object EditRuleForm: TEditRuleForm
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
   OnCreate = FormCreate
+  OnShow = FormShow
   LCLVersion = '4.8.0.0'
   object memoRule: TMemo
     Left = 0
@@ -34,7 +35,7 @@ object EditRuleForm: TEditRuleForm
     ClientHeight = 44
     ClientWidth = 504
     TabOrder = 1
-    object btnOK: TThemedButton
+    object btnOK: TButton
       Left = 320
       Height = 28
       Top = 8
@@ -44,7 +45,7 @@ object EditRuleForm: TEditRuleForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TThemedButton
+    object btnCancel: TButton
       Left = 408
       Height = 28
       Top = 8

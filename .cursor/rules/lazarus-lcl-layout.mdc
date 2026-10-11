@@ -15,19 +15,20 @@ alwaysApply: true
 - Set **`TComboBox.Height`** in theme helpers (`StyleComboBox`) while another place (`UpdateLayout`, `.lfm`) sets a different height.
 - Use ad-hoc combo heights (23, 24, 28) in panels; use **`uTheme`** constants or `EffectiveThemedComboBoxHeight`.
 - Run layout from `Resize` without a **re-entrancy guard** (`FUpdatingLayout` / `FInLayout`) when the handler calls `SetBounds` on children.
-- Manual `SetBounds(0, HeaderH, …)` on tab pages; use **`AdjustClientRect`** on the parent ([`uCustomTabControl.pas`](uCustomTabControl.pas)).
+- Manual `SetBounds` on themed tab page panels that also use `Align := alClient`. Let `TThemedTabHostFrame` show/hide pages (`alClient` only on the active page).
 
 ## Do
 
 - **One geometry owner** per control: either LCL alignment **or** explicit manual layout, not both.
-- Custom tab headers: override **`AdjustClientRect`**, active page **`Align := alClient`**, defer page layout until **`Loaded`** when streaming `.lfm`.
+- Themed tab strips: [`fraThemedTabs.pas`](fraThemedTabs.pas) — one geometry owner for the strip (`pbTabs` paint + hit-test); do not mix a second tab header implementation on the same host.
 - Themed combos: **`StyleComboBox`** for colors/style/`ItemHeight` only; **caller** sets bounds using **`EffectiveThemedComboBoxHeight`** from `uTheme` (not ad-hoc pixel heights).
 - Designer forms: stream **compatible** `Height`/`ItemHeight` on `TComboBox` in `.lfm` matching runtime theme metrics (`ThemedComboBoxHeight`, `ThemedComboBoxItemHeight`).
-- After **reparent** (detach/attach in [`uDockPanel.pas`](uDockPanel.pas)): expect resize + theme; ensure `ApplyTheme` and layout order do not re-fight combo height.
+- After **reparent** (detach/attach in [`uPanelDetach.pas`](uPanelDetach.pas)): expect resize + theme; ensure `ApplyTheme` and layout order do not re-fight combo height.
 - Verify: detach panel, resize, theme toggle — no ChangeBounds dialog.
 
 ## References
 
 - [`uChatPanel.pas`](uChatPanel.pas) — `FUpdatingLayout`, footer combos
-- [`uCustomTabControl.pas`](uCustomTabControl.pas) — `AdjustClientRect`, `FInLayout`
-- [`uTheme.pas`](uTheme.pas) — combo metrics and `StyleComboBox`
+- [`uPanelDetach.pas`](uPanelDetach.pas) — content reparent into a floating form
+- [`fraThemedTabs.pas`](fraThemedTabs.pas) — tab strip paint and hit-test
+- [`uTheme.pas`](uTheme.pas) — combo metrics, `StyleComboBox`, `TButton` helpers (Windows colors; native buttons on Linux and macOS)

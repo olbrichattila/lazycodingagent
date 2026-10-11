@@ -22,6 +22,16 @@
     </PublishOptions>
     <RunParams>
       <FormatVersion Value="2"/>
+      <Modes>
+        <Mode Name="default">
+          <environment>
+            <UserOverrides Count="1">
+              <Variable0 Name="QT_QPA_PLATFORM" Value="xcb"/>
+            </UserOverrides>
+            <IncludeSystemVariables Value="True"/>
+          </environment>
+        </Mode>
+      </Modes>
     </RunParams>
     <RequiredPackages>
       <Item>
@@ -55,6 +65,28 @@
       <Unit>
         <Filename Value="uAppTypes.pas"/>
         <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uTheme.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fraThemedButton.pas"/>
+        <IsPartOfProject Value="True"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fraThemedTabs.pas"/>
+        <IsPartOfProject Value="True"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
+      </Unit>
+      <Unit>
+        <Filename Value="fraThemedPicker.pas"/>
+        <IsPartOfProject Value="True"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Frame"/>
       </Unit>
       <Unit>
         <Filename Value="uNavFuturePlaceholder.pas"/>
@@ -219,23 +251,11 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uAppLogo.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uTheme.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uThemedButton.pas"/>
+        <Filename Value="uPanelDetach.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uWorkspaceState.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uDockPanel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -256,10 +276,6 @@
       </Unit>
       <Unit>
         <Filename Value="uMainWorkspace.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uCustomTabControl.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

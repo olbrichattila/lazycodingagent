@@ -21,8 +21,8 @@ Save settings before starting a long agent run.
 ## Your first chat
 
 1. In the left rail, open **Sessions** and choose **+ New Chat Session**, or use **+** in the chat header.
-2. Pick a **mode** in the composer (Ask, Plan, or Agent).
-3. Choose a **model** from the dropdown.
+2. Pick a **mode** in the composer (Ask, Plan, or Agent). The menu opens upward.
+3. Choose a **model** from the menu beside it.
 4. Type a prompt and send.
 
 Use **Ask** for questions without file writes. Use **Agent** when you want the assistant to edit the project.

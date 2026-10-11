@@ -6,9 +6,9 @@ Each workspace can run **several chat sessions** in parallel:
 
 - Every session has its own conversation and **agent engine**.
 - Switching sessions or workspaces does **not** stop a run in another session; it continues in the background.
-- Session tabs above the chat switch quickly; closing a tab **archives** the session (not a permanent delete unless you delete from the archive list).
+- Session tabs above the chat switch quickly; **×** on a tab **archives** the session (not a permanent delete unless you delete from the archive list).
 
-Create sessions from **Sessions** in the nav rail (**+ New Chat Session**) or **+** in the chat header.
+Create sessions from **Sessions** in the nav rail (**+ New Chat Session**) or **+** at the end of the session tab strip.
 
 ## Composer modes
 
@@ -20,9 +20,11 @@ Create sessions from **Sessions** in the nav rail (**+ New Chat Session**) or **
 
 The mode applies to the **next run** and is sent with the system prompt so the model knows which tools exist.
 
+Pick **Ask**, **Plan**, or **Agent** from the control at the left of the composer. The menu opens **upward**, above the composer, so the list stays on screen.
+
 ## Model selection
 
-The model dropdown lists models you configured in Settings. The choice is per composer state and shown on the status bar when relevant.
+The model control lists models you configured in Settings. Its menu opens **upward** as well. The choice is kept with the workspace and shown on the status bar when relevant.
 
 ## Debugging mode
 

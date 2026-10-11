@@ -6,20 +6,20 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, LCLType,
-  uAppTypes, uAgentTypes, uTheme, uThemedButton, uWorkspaceState, uWorkspaceRegistry,
-  uCustomTabControl,
+  uAppTypes, uAgentTypes, uTheme, fraThemedButton, fraThemedTabs, uWorkspaceState, uWorkspaceRegistry,
+  
   uLlmClient, frmModelSearch, frmEditSavedModel;
 
 type
   { TSettingsForm }
   TSettingsForm = class(TForm)
     pnlBottom: TPanel;
-    btnOK: TThemedButton;
-    btnCancel: TThemedButton;
-    PageControl1: TLazyTabControl;
-    tabProvider: TLazyTabPage;
-    tabAgent: TLazyTabPage;
-    tabWorkspace: TLazyTabPage;
+    btnOK: TButton;
+    btnCancel: TButton;
+    pnlSettingsTabsHost: TPanel;
+    pnlTabProvider: TPanel;
+    pnlTabAgent: TPanel;
+    pnlTabWorkspace: TPanel;
 
     lblProvider: TLabel;
     cboProvider: TComboBox;
@@ -29,9 +29,9 @@ type
     edtBaseUrl: TEdit;
     lblModels: TLabel;
     lstModels: TListBox;
-    btnFetchModels: TThemedButton;
-    btnEditModel: TThemedButton;
-    btnDeleteModel: TThemedButton;
+    btnFetchModels: TButton;
+    btnEditModel: TButton;
+    btnDeleteModel: TButton;
     lblNotice: TLabel;
 
     lblTemp: TLabel;
@@ -45,11 +45,12 @@ type
 
     lblWorkspaceRoot: TLabel;
     edtWorkspaceRoot: TEdit;
-    btnBrowseWorkspace: TThemedButton;
+    btnBrowseWorkspace: TButton;
     lblWorkspaceName: TLabel;
     edtWorkspaceName: TEdit;
 
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure cboProviderDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
@@ -70,6 +71,7 @@ type
     FDialogProvider: TLlmProvider;
     FDefaultModelId: string;
     FSwitchingProvider: Boolean;
+    FFraSettingsTabs: TThemedTabHostFrame;
     function CurrentDialogProvider: TLlmProvider;
     function SavedModelLine(const M: TSavedModel): string;
     procedure LoadFromState;
@@ -120,6 +122,11 @@ begin
   end;
 end;
 
+procedure TSettingsForm.FormShow(Sender: TObject);
+begin
+  ApplyFormPlatformThemes(Self, FCurrentTheme);
+end;
+
 procedure TSettingsForm.FormCreate(Sender: TObject);
 begin
   Caption := 'LazyCodingAgent Settings';
@@ -127,6 +134,16 @@ begin
   KeyPreview := True;
   OnKeyDown := @FormKeyDown;
   cboProvider.OnDrawItem := @cboProviderDrawItem;
+  FFraSettingsTabs := EnsureThemedTabHost(Self, pnlSettingsTabsHost);
+  if Assigned(FFraSettingsTabs) then begin
+    FFraSettingsTabs.HostPageBody(pnlTabProvider);
+    FFraSettingsTabs.HostPageBody(pnlTabAgent);
+    FFraSettingsTabs.HostPageBody(pnlTabWorkspace);
+    FFraSettingsTabs.RegisterPage(pnlTabProvider, 'AI Provider & Model', False);
+    FFraSettingsTabs.RegisterPage(pnlTabAgent, 'Agent Behavior', False);
+    FFraSettingsTabs.RegisterPage(pnlTabWorkspace, 'Workspace', False);
+    FFraSettingsTabs.ShowPlus := False;
+  end;
 end;
 
 procedure TSettingsForm.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -159,7 +176,8 @@ begin
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
 
-  PageControl1.ApplyTheme(ATheme);
+  if Assigned(FFraSettingsTabs) then
+    FFraSettingsTabs.ApplyTheme(ATheme);
   StyleComboBox(cboProvider, ATheme);
   ApplyControlTheme(Self, ATheme);
 
@@ -190,20 +208,13 @@ begin
   if Assigned(lblDebuggingHint) then
     lblDebuggingHint.Font.Color := P.TextMuted;
 
-  btnOK.ButtonRole := tbrPrimary;
-  btnCancel.ButtonRole := tbrCancel;
-  btnBrowseWorkspace.ButtonRole := tbrPrimary;
-  btnFetchModels.ButtonRole := tbrPrimary;
-  btnEditModel.ButtonRole := tbrPrimary;
-  btnDeleteModel.ButtonRole := tbrDestructive;
-  btnOK.ApplyTheme(ATheme);
-  btnCancel.ApplyTheme(ATheme);
-  btnBrowseWorkspace.ApplyTheme(ATheme);
-  btnFetchModels.ApplyTheme(ATheme);
-  btnEditModel.ApplyTheme(ATheme);
-  btnDeleteModel.ApplyTheme(ATheme);
+  StylePrimaryButton(btnOK, ATheme);
+  StyleCancelButton(btnCancel, ATheme);
+  StyleCancelButton(btnBrowseWorkspace, ATheme);
+  StylePrimaryButton(btnFetchModels, ATheme);
+  StyleCancelButton(btnEditModel, ATheme);
+  StyleDestructiveButton(btnDeleteModel, ATheme);
 
-  PageControl1.Invalidate;
   Invalidate;
 end;
 
@@ -276,7 +287,8 @@ begin
   edtWorkspaceRoot.Text := FState.WorkspaceRoot;
   edtWorkspaceName.Text := FState.WorkspaceName;
 
-  PageControl1.ActivePage := tabProvider;
+  if Assigned(FFraSettingsTabs) then
+    FFraSettingsTabs.ActivePageIndex := 0;
 end;
 
 procedure TSettingsForm.SaveToState;

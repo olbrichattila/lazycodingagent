@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme, uThemedButton, uAgentRules, frmEditRule;
+  uAppTypes, uTheme, fraThemedButton, uAgentRules, frmEditRule;
 
 type
   { TWorkspaceRulesForm }
@@ -14,11 +14,11 @@ type
     lblRules: TLabel;
     lstRules: TListBox;
     pnlActions: TPanel;
-    btnAddRule: TThemedButton;
-    btnEditRule: TThemedButton;
-    btnDeleteRule: TThemedButton;
+    btnAddRule: TButton;
+    btnEditRule: TButton;
+    btnDeleteRule: TButton;
     pnlBottom: TPanel;
-    btnClose: TThemedButton;
+    btnClose: TButton;
     procedure btnAddRuleClick(Sender: TObject);
     procedure btnEditRuleClick(Sender: TObject);
     procedure btnDeleteRuleClick(Sender: TObject);
@@ -109,14 +109,10 @@ begin
   ApplyControlTheme(Self, ATheme);
   ConfigureThemedListBox(lstRules, ATheme);
   lblRules.Font.Color := P.Text;
-  btnAddRule.ButtonRole := tbrPrimary;
-  btnEditRule.ButtonRole := tbrPrimary;
-  btnDeleteRule.ButtonRole := tbrDestructive;
-  btnClose.ButtonRole := tbrCancel;
-  btnAddRule.ApplyTheme(ATheme);
-  btnEditRule.ApplyTheme(ATheme);
-  btnDeleteRule.ApplyTheme(ATheme);
-  btnClose.ApplyTheme(ATheme);
+  StylePrimaryButton(btnAddRule, ATheme);
+  StyleCancelButton(btnEditRule, ATheme);
+  StyleDestructiveButton(btnDeleteRule, ATheme);
+  StyleCancelButton(btnClose, ATheme);
   ApplyPlatformChrome(Self, ATheme);
 end;
 

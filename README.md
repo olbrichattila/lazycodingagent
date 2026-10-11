@@ -14,14 +14,14 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 ### 2. Modern Dark-First Design & Cohesive Dropdowns
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
-- **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards. Custom tab pages use `AdjustClientRect` on `TLazyTabControl` instead of fighting `alClient` with `SetBounds`. Together this avoids LCL `TControl.ChangeBounds loop detected` warnings on startup, theme toggle, and detachable-panel reparent.
-- **Complete Dark & Light Tab Pages Styling**: All `TPageControl` tab strips, active indicators, and `TTabSheet` pages (including Settings dialog and Utility panel) follow the theme seamlessly with custom owner-drawing and cohesive high-contrast styling across Windows, Linux, and macOS.
-- **TLazyTabControl Custom Component**: Robust custom tab control (`TLazyTabControl` and `TLazyTabPage`) with native LCL client area adjustment (`AdjustClientRect`), component streaming protection (`Loaded`), tab close callbacks, badge notifications, and zero `ChangeBounds` loop cycles.
+- **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards.
+- **Themed tab strips**: center editors, chat sessions, utility panel, and Settings use [`fraThemedTabs.pas`](fraThemedTabs.pas) (`TThemedTabHostFrame`) with canvas-drawn headers for reliable dark/light styling on Qt5/Linux (native `TPageControl` tab headers are not used for these areas).
+- **Themed buttons**: dialogs and panel chrome use [`fraThemedButton.pas`](fraThemedButton.pas) (`TThemedButtonFrame`) so actions follow the palette on Qt5/Linux (native `TButton` does not).
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
-- **Icon-only navigation rail** (VS Code–style activity bar) with accent-blue active icon and left indicator; tooltips on hover.
+- **Navigation rail** built from `TSpeedButton` controls on the main form (icon captions, tooltips, accent selection indicator).
 - **Accent text selection** on chat and navigation lists (owner-drawn rows — blue text, no OS highlight band).
-- **Cross-platform role buttons** (`TThemedButton` in `uThemedButton.pas`): accent primary, outlined Cancel (`BorderStrong` / `Border`), and destructive Stop — same painted look on Windows, Linux (GTK), and macOS (Cocoa).
+- **Themed action buttons**: standard `TButton` controls styled with `StylePrimaryButton`, `StyleCancelButton`, and `StyleDestructiveButton` in `uTheme.pas`. Fill and font colors apply on **Windows** (after clearing the native button theme). On **Linux (GTK)** and **macOS (Cocoa)** those colors are ignored; buttons stay native.
 - **Cross-platform UI**: icon-only nav rail, owner-draw list accent selection, and theme tokens apply on all LCL targets.
 - **Scrollbars / title chrome**: on **Windows**, `ApplyPlatformChrome` uses immersive dark mode and `DarkMode_Explorer` for native scrollbars; on **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
 - **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme.
@@ -33,7 +33,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 |-------|---------|-------------|---------------|
 | Nav rail icons + accent selection | Yes | Yes | Yes |
 | List rows: accent text, no blue band | Yes | Yes | Yes |
-| Primary / Cancel / Stop buttons (`TThemedButton`) | Yes | Yes | Yes |
+| Primary / Cancel / Stop buttons (`TButton` + `uTheme`) | Colored via `Style*` helpers | Native GTK button | Native Cocoa button |
 | Dark scrollbars matching app surface | Themed via Win32 | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
 | Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |
@@ -41,11 +41,12 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 ### 3. Detachable Multi-Window Architecture
 - Panels are docked to the main window by default and can be detached into independent, floating `TForm` windows.
 - Floating windows can be moved to separate monitors across Windows, Linux, and macOS.
-- Detached panels can be redocked with one click using the header `⇲ Dock` button or the `Window` menu.
+- Detached panels use a small floating `TForm` (`uPanelDetach.pas`); redock via the **Window** menu or by closing the floating window.
+- Panel chrome (title + **Detach** / hide) uses standard `TPanel` + `TButton` on the main form.
 - Panel visibility and floating window coordinates are persisted in configuration settings.
 
 ### 4. Vertical Navigation Rail & Panel
-- Sleek 56px left navigation rail with logo, icon-only slots, tooltips, and accent active indicator for:
+- Sleek 56px left navigation rail with icon-only slots, tooltips, and accent active indicator for:
   - **⌂ Home**: Workspace dashboard and overview.
   - **◫ Projects**: Project explorer and file tree.
   - **💬 Sessions**: Per-workspace chat sessions (active and archived lists, archive/restore/delete actions).
@@ -78,7 +79,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Dedicated right-side panel for workspace guidelines, coding rules, and instructions context.
 
 ### 9. Detachable Utility / Blank TabPage Panel (Right Corner)
-- Extra right-corner panel hosting a clean `TPageControl` with an initial blank tab sheet (`FTabSheetBlank`).
+- Extra right-corner **utility panel** with themed tabs (scratchpad, execution detail, dynamic plan tabs).
 - **Invisible by default**: Starts hidden to keep the workspace streamlined and distraction-free.
 - **Toggleable & Detachable**: Can be toggled on/off at any time via `Window > Panels > Utility Panel` or detached to a floating multi-monitor window via `Window > Detach Utility Panel to Window` or panel header icon.
 
@@ -143,6 +144,8 @@ Register and compile the terminal Lazarus packages once per machine (or after up
 
 If `lazbuild` is not on `PATH`, set `$env:LAZBUILD` to your `lazbuild.exe` (for example `C:\lazarus\lazbuild.exe`).
 
+**Form designer (no extra Lazarus package):** Dialogs and `mainunit` stream **stock LCL** types in `.lfm` (`TButton`, `TPanel` tab hosts). At runtime, [`fraThemedButton.pas`](fraThemedButton.pas) upgrades placeholders via `EnsureThemedButton` / `Style*Button`, and [`fraThemedTabs.pas`](fraThemedTabs.pas) creates `TThemedTabHostFrame` on host panels via `EnsureThemedTabHost`. Edit forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12), not a standalone `.lfm` tab.
+
 Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewLCL** from `third_party/TerminalEmulator/` if the IDE still prompts after the script), or build from the command line:
 
 **Linux / macOS:**
@@ -151,6 +154,8 @@ Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewL
 ./scripts/build-terminal-deps.sh
 lazbuild lazycodingagent.lpi
 ```
+
+The project pins **Qt5** in `lazycodingagent.lpi` (`LCLWidgetType`). After opening the project in Lazarus, run **Run → Build** (Ctrl+F9) once so the toolbar Run button turns green; Messages should show `-dLCLqt5` on the compile line.
 
 **Windows:**
 
@@ -179,20 +184,19 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 ## Architecture & Unit Structure
 
 - `lazycodingagent.lpr` — Application entry point
-- `mainunit.pas` / `mainunit.lfm` — Main form designed with Lazarus Form Designer (`TLazyCodingAgentForm`), hosting menus, splitters, status bar, and dock hosts
-- `uAppLogo.pas` — Vector brand drawing routines
-- `uDockPanel.pas` — Custom-drawn dockable panel header with Detach/Dock and Hide controls, plus `TDetachedPanelForm` host for floating multi-monitor windows
+- `mainunit.pas` / `mainunit.lfm` — Main form designed with Lazarus Form Designer (`TLazyCodingAgentForm`): menus, splitters, status bar, dock hosts, tab host panels (runtime `TThemedTabHostFrame`), and panel chrome (`TPanel` + designer `TButton` placeholders)
+- `uPanelDetach.pas` — Reparents a content panel into a runtime `TForm` for floating windows (Windows, Linux, macOS); redock via the Window menu or by closing the float
 - `uTerminalPanel.pas` — Embedded PTY terminal (`TTerminalPanel` wrapping TerminalEmulator ViewLCL)
 - `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages
-- `uNavigationPanel.pas` — Custom painted navigation rail and content views
-- `uChatPanel.pas` — Composer card, Ask/Plan/Agent mode dropdown selector, model selector, and markdown message stream
+- `uNavigationPanel.pas` — Navigation content views (`TNavContentControl` on the main form)
+- `uChatPanel.pas` — Composer card, Ask/Plan/Agent mode dropdown, model selector, and markdown message stream
 - `uMarkdownView.pas` — Theme-aware markdown → HTML renderer (`TIpHtmlPanel`) with auto-scroll-to-bottom
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
 - `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes
-- `uTheme.pas` — Dark/light design tokens, platform chrome helpers (`ApplyPlatformChrome`), ComboBox/list owner-draw, and recursive styling
-- `uThemedButton.pas` — Cross-platform painted primary, cancel (outline), and destructive buttons
-- `uCustomTabControl.pas` — Modern custom tab control (`TLazyTabControl`) and tab pages (`TLazyTabPage`) with theme rendering, close badges, and LCL alignment integration
+- `fraThemedTabs.pas` / `fraThemedTabs.lfm` — Designer `TFrame` with canvas-drawn tab strip (`+`, per-tab `×` hit zones) and `pnlPages` for tab bodies
+- `fraThemedButton.pas` / `fraThemedButton.lfm` — `TThemedButtonFrame` (primary/cancel/destructive roles, modal `ModalResult`); upgraded from designer `TButton` at runtime
+- `uTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw, `PaintThemedButton`
 - `uAppTypes.pas` — Shared enumerations, modes, and helpers
 - `uAgentTypes.pas` — Chat roles, LLM providers, tool schemas, and token usage records
 - `uAgentEngine.pas` — Autonomous ReAct execution loop, state management, and LLM communication
