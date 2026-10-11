@@ -64,6 +64,17 @@ begin
   AControl.SetBounds(AL, AT, AW, AH);
 end;
 
+procedure SetPositionWidthIfChanged(AControl: TControl; AL, AT, AW: Integer);
+begin
+  if not Assigned(AControl) then Exit;
+  if AControl.Left <> AL then
+    AControl.Left := AL;
+  if AControl.Top <> AT then
+    AControl.Top := AT;
+  if AControl.Width <> AW then
+    AControl.Width := AW;
+end;
+
 function ModelComboCaption(const M: TSavedModel): string;
 begin
   if (Trim(M.DisplayName) <> '') and not SameText(M.DisplayName, M.ModelId) then
@@ -128,14 +139,13 @@ end;
 
 procedure TUtilityPlanTab.UpdateLayout;
 var
-  W, ComboH, BtnTop, RightX, LabelW: Integer;
+  W, ComboTop, BtnTop, RightX, LabelW: Integer;
 begin
   if FUpdatingLayout then Exit;
   if not Assigned(FPnlHeader) then Exit;
   FUpdatingLayout := True;
   try
     W := FPnlHeader.ClientWidth;
-    ComboH := EffectiveThemedComboBoxHeight(FModelCombo);
     BtnTop := (PlanHeaderHeight - PlanBuildBtnHeight) div 2;
     if BtnTop < 0 then BtnTop := 0;
 
@@ -144,8 +154,10 @@ begin
       PlanBuildBtnWidth, PlanBuildBtnHeight);
     RightX := FBuildBtn.Left - PlanHeaderGap;
 
-    SetBoundsIfChanged(FModelCombo, RightX - PlanModelComboWidth,
-      (PlanHeaderHeight - ComboH) div 2, PlanModelComboWidth, ComboH);
+    ComboTop := (PlanHeaderHeight - FModelCombo.Height) div 2;
+    if ComboTop < 0 then ComboTop := 0;
+    SetPositionWidthIfChanged(FModelCombo, RightX - PlanModelComboWidth, ComboTop,
+      PlanModelComboWidth);
     RightX := FModelCombo.Left - PlanHeaderGap;
 
     LabelW := RightX - PlanHeaderPad;

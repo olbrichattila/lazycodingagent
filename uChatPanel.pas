@@ -45,6 +45,10 @@ type
     FSendBtn: TThemedButton;
     FStopBtn: TThemedButton;
     FUpdatingLayout: Boolean;
+    FInThemeApply: Boolean;
+    FDeferLayout: Boolean;
+    FLastLayoutW: Integer;
+    FLastLayoutH: Integer;
 
     procedure ModeComboChange(Sender: TObject);
     procedure ModelComboChange(Sender: TObject);
@@ -67,6 +71,7 @@ type
     destructor Destroy; override;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
+    procedure EnsureLayout;
     procedure SetWorkspace(const AName: string);
     procedure SetMode(AMode: TWorkspaceMode);
     procedure SetModel(const AModel: string);
@@ -119,6 +124,17 @@ begin
   if (AControl.Left = AL) and (AControl.Top = AT) and
      (AControl.Width = AW) and (AControl.Height = AH) then Exit;
   AControl.SetBounds(AL, AT, AW, AH);
+end;
+
+procedure SetPositionWidthIfChanged(AControl: TControl; AL, AT, AW: Integer);
+begin
+  if not Assigned(AControl) then Exit;
+  if AControl.Left <> AL then
+    AControl.Left := AL;
+  if AControl.Top <> AT then
+    AControl.Top := AT;
+  if AControl.Width <> AW then
+    AControl.Width := AW;
 end;
 
 function ThemedActionButtonWidth(AChat: TChatPanel; const ACaption: string): Integer;
@@ -181,6 +197,10 @@ begin
   FModel := '';
   FIsRunning := False;
   FUpdatingLayout := False;
+  FInThemeApply := False;
+  FDeferLayout := False;
+  FLastLayoutW := -1;
+  FLastLayoutH := -1;
   FModelIds := TStringList.Create;
 
   FHeading := TLabel.Create(Self);
@@ -263,7 +283,6 @@ begin
   ApplyTheme(FTheme);
   RefreshHistoryView;
   UpdateHeading;
-  UpdateLayout;
 end;
 
 destructor TChatPanel.Destroy;
@@ -292,16 +311,22 @@ end;
 procedure TChatPanel.CreateWnd;
 begin
   inherited CreateWnd;
-  UpdateLayout;
+end;
+
+procedure TChatPanel.EnsureLayout;
+begin
+  if ParentFormHandlesReady(Self) then
+    UpdateLayout;
 end;
 
 procedure TChatPanel.UpdateLayout;
 var
   W, H, InnerW, CardW, CardH, CardX, CardY, HistoryH, HistoryTop, FooterW, FooterH,
-  FooterY, ComboH, BtnTop, SendW, StopW, SendLeft, StopLeft, MemoH: Integer;
+  FooterY, ComboRowH, ModelComboRowH, ModeComboTop, ModelComboTop, BtnTop, SendW,
+  StopW, SendLeft, StopLeft, MemoH: Integer;
 begin
   if not ParentFormHandlesReady(Self) then Exit;
-  if FUpdatingLayout then Exit;
+  if FUpdatingLayout or FDeferLayout then Exit;
   FUpdatingLayout := True;
   try
   W := Width;
@@ -325,8 +350,18 @@ begin
   SetBoundsIfChanged(FComposerCard, CardX, CardY, CardW, CardH);
   SetBoundsIfChanged(FWorkspaceTag, ComposerSidePad, 10, MaxLayoutDim(CardW - ComposerSidePad * 2, 8), 18);
 
-  ComboH := EffectiveThemedComboBoxHeight(FModeCombo);
-  FooterH := MaxLayoutDim(ComboH + 12, ComposerFooterBtnH + 12);
+  ComboRowH := ComposerFooterBtnH;
+  if Assigned(FModeCombo) then begin
+    ComboRowH := EffectiveThemedComboBoxHeight(FModeCombo);
+    if ComboRowH < ComposerFooterBtnH then
+      ComboRowH := ComposerFooterBtnH;
+  end;
+  if Assigned(FModelCombo) then begin
+    ModelComboRowH := EffectiveThemedComboBoxHeight(FModelCombo);
+    if ModelComboRowH > ComboRowH then
+      ComboRowH := ModelComboRowH;
+  end;
+  FooterH := MaxLayoutDim(ComboRowH + 12, ComposerFooterBtnH + 12);
   FooterY := CardH - FooterH - ComposerBottomPad;
   FooterW := MaxLayoutDim(CardW - ComposerSidePad * 2, 8);
   MemoH := MaxLayoutDim(FooterY - 32 - ComposerFooterGap, 8);
@@ -337,8 +372,12 @@ begin
 
     BtnTop := (FooterH - ComposerFooterBtnH) div 2;
     if BtnTop < 0 then BtnTop := 0;
-    SetBoundsIfChanged(FModeCombo, 0, BtnTop + (ComposerFooterBtnH - ComboH) div 2, 100, ComboH);
-    SetBoundsIfChanged(FModelCombo, 108, BtnTop + (ComposerFooterBtnH - ComboH) div 2, 210, ComboH);
+    ModeComboTop := BtnTop + (ComposerFooterBtnH - FModeCombo.Height) div 2;
+    if ModeComboTop < BtnTop then ModeComboTop := BtnTop;
+    SetPositionWidthIfChanged(FModeCombo, 0, ModeComboTop, 100);
+    ModelComboTop := BtnTop + (ComposerFooterBtnH - FModelCombo.Height) div 2;
+    if ModelComboTop < BtnTop then ModelComboTop := BtnTop;
+    SetPositionWidthIfChanged(FModelCombo, 108, ModelComboTop, 210);
 
     SendW := ThemedActionButtonWidth(Self, FSendBtn.Caption);
     if Assigned(FStopBtn) and FStopBtn.Visible then begin
@@ -360,6 +399,8 @@ begin
       SetBoundsIfChanged(FSendBtn, SendLeft, BtnTop, SendW, ComposerFooterBtnH);
     end;
   end;
+  FLastLayoutW := W;
+  FLastLayoutH := H;
   finally
     FUpdatingLayout := False;
   end;
@@ -368,6 +409,8 @@ end;
 procedure TChatPanel.Resize;
 begin
   inherited Resize;
+  if FDeferLayout or FInThemeApply then Exit;
+  if (Width = FLastLayoutW) and (Height = FLastLayoutH) then Exit;
   UpdateLayout;
 end;
 
@@ -435,6 +478,8 @@ var
   P: TThemePalette;
 begin
   FTheme := ATheme;
+  FInThemeApply := True;
+  FDeferLayout := True;
   P := ThemePalette(FTheme);
 
   Color := P.Background;
@@ -464,6 +509,8 @@ begin
   if Assigned(FChatView) then
     FChatView.SetMarkdown(FHistoryMarkdown);
 
+  FDeferLayout := False;
+  FInThemeApply := False;
   UpdateLayout;
   Invalidate;
 end;
