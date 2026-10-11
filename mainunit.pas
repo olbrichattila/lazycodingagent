@@ -91,6 +91,9 @@ type
     FPendingTabArchiveSessionId: string;
     FPendingInitialDockLayout: Boolean;
     FPendingInitialWorkspaceUI: Boolean;
+    FDeferThemesUntilShown: Boolean;
+    FPostShowStartupScheduled: Boolean;
+    FPostShowStartupTimer: TTimer;
     FTerminalStartQueued: Boolean;
     FTerminalRetryTimer: TTimer;
     FTerminalRetryCount: Integer;
@@ -195,6 +198,7 @@ type
 
     procedure ApplyInitialWindowSize;
     procedure RaiseDetachedFloatingForms;
+    procedure SyncLazyTabLayouts;
     procedure InitWorkspaceSubControls;
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
@@ -209,6 +213,8 @@ type
     function EffectiveTerminalDockHeight: Integer;
     procedure ApplyAllThemes;
     procedure ApplyPlatformChromeThemes;
+    procedure SchedulePostShowStartup;
+    procedure PostShowStartup(Sender: TObject);
     procedure RebuildWindowMenu;
 
     procedure NavRailSelect(Sender: TObject);
@@ -548,6 +554,10 @@ begin
   H := IDEAL_H;
   if H > MaxH then
     H := MaxH;
+  if Constraints.MinWidth > R.Width then
+    Constraints.MinWidth := R.Width;
+  if Constraints.MinHeight > R.Height then
+    Constraints.MinHeight := R.Height;
   if W < Constraints.MinWidth then
     W := Constraints.MinWidth;
   if H < Constraints.MinHeight then
@@ -562,6 +572,16 @@ begin
     Left := R.Left + (R.Width - W) div 2;
     Top := R.Top + (R.Height - H) div 2;
   end;
+end;
+
+procedure TLazyCodingAgentForm.SyncLazyTabLayouts;
+begin
+  if Assigned(FPageControlCenter) then
+    FPageControlCenter.SyncPageLayout;
+  if Assigned(FChatSessionTabs) then
+    FChatSessionTabs.SyncPageLayout;
+  if Assigned(FPageControlUtility) then
+    FPageControlUtility.SyncPageLayout;
 end;
 
 procedure TLazyCodingAgentForm.RaiseDetachedFloatingForms;
@@ -586,6 +606,13 @@ begin
   FTerminalStartQueued := False;
   FPendingInitialDockLayout := True;
   FPendingInitialWorkspaceUI := True;
+  FDeferThemesUntilShown := True;
+  FPostShowStartupScheduled := False;
+
+  FPostShowStartupTimer := TTimer.Create(Self);
+  FPostShowStartupTimer.Enabled := False;
+  FPostShowStartupTimer.Interval := 1;
+  FPostShowStartupTimer.OnTimer := @PostShowStartup;
 
   FState := TWorkspaceState.Create;
   FState.Load;
@@ -622,16 +649,35 @@ begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
     RaiseDetachedFloatingForms;
+    SyncLazyTabLayouts;
   end;
+  SchedulePostShowStartup;
+end;
+
+procedure TLazyCodingAgentForm.SchedulePostShowStartup;
+begin
+  if FPostShowStartupScheduled then Exit;
+  FPostShowStartupScheduled := True;
+  FPostShowStartupTimer.Enabled := True;
+end;
+
+procedure TLazyCodingAgentForm.PostShowStartup(Sender: TObject);
+begin
+  FPostShowStartupTimer.Enabled := False;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
     if Trim(FRegistry.ActiveWorkspaceId) <> '' then
       ActivateWorkspace(FRegistry.ActiveWorkspaceId)
     else
       DeactivateWorkspace;
-    StateChanged(Self);
   end;
-  ApplyPlatformChromeThemes;
+  if FDeferThemesUntilShown then begin
+    FDeferThemesUntilShown := False;
+    ApplyAllThemes;
+    ApplyPlatformChromeThemes;
+  end;
+  if Assigned(FChatContent) then
+    FChatContent.EnsureLayout;
 end;
 
 procedure TLazyCodingAgentForm.FinalizeDockPanelForClose(ADock: TDockPanel; AId: TPanelId);
@@ -1110,7 +1156,8 @@ begin
     if not FPendingInitialDockLayout then
       ApplyDockPanelsLayout;
 
-    ApplyAllThemes;
+    if not FDeferThemesUntilShown then
+      ApplyAllThemes;
     RebuildWindowMenu;
     if Assigned(mnuViewTerminal) then
       mnuViewTerminal.Checked := FState.IsPanelVisible(piTerminal);

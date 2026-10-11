@@ -91,6 +91,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ApplyTheme(ATheme: TThemeKind);
+    procedure SyncPageLayout;
     function AddPage(const ACaption: string): TLazyTabPage;
     procedure RemovePage(APage: TLazyTabPage);
     procedure Clear;
@@ -387,7 +388,6 @@ begin
   FHeaderOnly := AValue;
   if LayoutPagesAllowed then
     UpdatePagesLayout;
-  ReAlign;
   Invalidate;
 end;
 
@@ -399,6 +399,11 @@ begin
   for I := 0 to PageCount - 1 do
     Pages[I].Invalidate;
   Invalidate;
+end;
+
+procedure TLazyTabControl.SyncPageLayout;
+begin
+  UpdatePagesLayout;
 end;
 
 procedure TLazyTabControl.UpdatePagesLayout;
@@ -424,6 +429,8 @@ begin
         P.Align := alNone;
       end;
     end;
+    if not FHeaderOnly and (FPages.Count > 0) and (FActivePageIndex >= 0) then
+      ReAlign;
   finally
     FInLayout := False;
   end;

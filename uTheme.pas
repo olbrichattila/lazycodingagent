@@ -37,7 +37,7 @@ const
 
 // Helper to configure ComboBox for sleek theme owner-drawing
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
-// Control height after StyleComboBox — use for manual SetBounds (widgetset truth).
+// Read-only row height estimate for panels around a combo (do not pass to SetBounds height).
 function EffectiveThemedComboBoxHeight(ACombo: TComboBox): Integer;
 // Unified DrawItem handler for styled ComboBoxes (Black style on dark mode, clean on light mode)
 procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
