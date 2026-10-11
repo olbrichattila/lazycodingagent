@@ -57,6 +57,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uNavFuturePlaceholder.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uCodingAgentPresets.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

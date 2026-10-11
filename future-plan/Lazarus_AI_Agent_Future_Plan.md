@@ -35,6 +35,8 @@ Items to confirm against the code before planning implementation:
 
 Visible responses and execution traces do not necessarily expose a model's private internal reasoning. The application should describe its visibility accurately.
 
+**Embedded persistence:** A companion document, [Lazarus_Embedded_Storage_and_Vector_Plan.md](Lazarus_Embedded_Storage_and_Vector_Plan.md), specifies statically embedded SQLite for app configuration (replacing INI/JSON under the config dir), per-workspace databases for chat and future indexes, and a minimal-dependency hybrid retrieval strategy for the knowledge base below. It is input for a later implementation sprint, not current product behavior.
+
 ## 3. Overall system responsibilities
 
 | System | Responsibility |
@@ -210,6 +212,8 @@ Sources include URLs, free text, PDF, Markdown, TXT and Confluence. Confluence s
 | Background processing | Persistent, cancellable ingestion jobs |
 
 These are options to evaluate for Free Pascal integration and packaging, not selected dependencies.
+
+**Selected direction (planning):** [Lazarus_Embedded_Storage_and_Vector_Plan.md](Lazarus_Embedded_Storage_and_Vector_Plan.md) chooses embedded static SQLite for document/chunk metadata, FTS5 for keyword recall, `float32` embedding blobs with in-process vector rerank (Phase A), and optional sqlite-vec or USearch only if profiling requires approximate nearest-neighbor search (Phase B). Implementation remains future work.
 
 ### Retrieval modes
 
