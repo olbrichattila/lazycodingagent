@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uTheme, fraThemedButton, uMarkdownView, uHelpContent;
+  uAppTypes, uTheme, uHelpContent;
 
 type
   { THelpForm }
@@ -18,6 +18,7 @@ type
     pnlTopics: TPanel;
     lstTopics: TListBox;
     pnlPreviewHost: TPanel;
+    memHelpPreview: TMemo;
     pnlBottom: TPanel;
     btnClose: TButton;
     procedure FormCreate(Sender: TObject);
@@ -30,8 +31,7 @@ type
   private
     FTheme: TThemeKind;
     FCatalog: THelpCatalog;
-    FMarkdown: TMarkdownView;
-    FFilteredIndices: array of Integer;
+    FFilteredIndices: THelpTopicIndexArray;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure RebuildFilteredList;
     procedure ShowTopicAtListIndex(AListIndex: Integer);
@@ -70,9 +70,6 @@ end;
 procedure THelpForm.FormCreate(Sender: TObject);
 begin
   FCatalog := nil;
-  FMarkdown := TMarkdownView.Create(Self);
-  FMarkdown.Parent := pnlPreviewHost;
-  FMarkdown.Align := alClient;
   KeyPreview := True;
 end;
 
@@ -104,9 +101,8 @@ begin
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstTopics, ATheme);
   lstTopics.OnDrawItem := @lstTopicsDrawItem;
+  ConfigureThemedMemo(memHelpPreview, ATheme);
   StyleCancelButton(btnClose, ATheme);
-  if Assigned(FMarkdown) then
-    FMarkdown.ApplyTheme(ATheme);
   lstTopics.Invalidate;
 end;
 
@@ -120,20 +116,17 @@ begin
   lstTopics.Items.BeginUpdate;
   try
     lstTopics.Items.Clear;
-    for I := 0 to High(FFilteredIndices) do
-    begin
+    for I := 0 to High(FFilteredIndices) do begin
       TopicIdx := FFilteredIndices[I];
       Topic := FCatalog.GetTopic(TopicIdx);
       lstTopics.Items.AddObject(Topic.Title, TObject(PtrUInt(TopicIdx)));
     end;
-    if lstTopics.Items.Count > 0 then
-    begin
+    if lstTopics.Items.Count > 0 then begin
       lstTopics.ItemIndex := 0;
       ShowTopicAtListIndex(0);
-    end
-    else if Assigned(FMarkdown) then
-      FMarkdown.SetMarkdown('# No matching topics' + LineEnding + LineEnding +
-        'Try a different search term.');
+    end else
+      memHelpPreview.Lines.Text := '# No matching topics' + LineEnding + LineEnding +
+        'Try a different search term.';
   finally
     lstTopics.Items.EndUpdate;
   end;
@@ -144,11 +137,11 @@ var
   TopicIdx: Integer;
   Topic: THelpTopic;
 begin
-  if (FCatalog = nil) or not Assigned(FMarkdown) then Exit;
+  if FCatalog = nil then Exit;
   if (AListIndex < 0) or (AListIndex >= lstTopics.Items.Count) then Exit;
   TopicIdx := Integer(PtrUInt(lstTopics.Items.Objects[AListIndex]));
   Topic := FCatalog.GetTopic(TopicIdx);
-  FMarkdown.SetMarkdown(Topic.Body);
+  memHelpPreview.Lines.Text := Topic.Body;
 end;
 
 procedure THelpForm.edtSearchChange(Sender: TObject);

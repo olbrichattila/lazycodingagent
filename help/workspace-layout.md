@@ -1,6 +1,6 @@
 # Workspace layout and panels
 
-The main window is a dockable IDE-style layout: navigation on the left, chat in the center, optional side panels, and an optional bottom terminal.
+The main window is an IDE-style layout: navigation on the left, a tabbed center area, optional side panels, and an optional bottom terminal.
 
 ## Navigation rail
 
@@ -23,38 +23,40 @@ A horizontal rule on the rail separates **Future Features** (roadmap placeholder
 
 The same entries appear under **Workspace → Future Features** in the menu.
 
-Icons are tooltipped; the active item is highlighted.
+Icons are tooltipped; the active rail button stays **down** (speed-button group).
 
 ### Tool error log file
 
 Failures are also appended to `tool-errors.log` under the same user config folder as chat sessions (`lazycodingagent` beside session storage). The path is resolved at runtime on **Windows, Linux, and macOS** (see the Tool Errors panel subtitle). The file is JSONL (one JSON object per line). Clearing the panel only clears the in-memory list for the current session; delete the file manually if you want to reset the on-disk history.
 
-## Chat and center area
+## Center area
 
-The center uses a **themed tab strip** for the Chat tab and file editor tabs. Click **+** at the end of the strip to open a file in a new tab. Closable editor tabs show **×** on the tab; click it to close (you may be prompted to save). The Chat tab has no close button.
+The center uses a **PageControl** with three fixed tabs:
 
-The chat area includes a **session tab strip** above the message history: **+** starts a new session; **×** on a session tab archives that session. The composer (mode + model + prompt) sits below. A running session shows a **●** suffix on its tab caption.
+- **Chat** — conversation history (plain text), current session label, composer, mode and model combos, Stop and Run.
+- **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing).
+- **Markdown** — read-only preview memo for markdown files (source editing uses the Editor tab).
+
+There is **no** session tab strip and **no** per-file editor tabs. Switch sessions from **Sessions** in the nav rail; open another file from **Projects**.
 
 ## Right and utility panels
 
 - **Guidelines / instructions** — workspace context on the right when enabled.
-- **Utility panel** — extra tabbed area (plans, execution detail, etc.). Toggle via **Window → Panels → Utility Panel**. It can be detached like other panels.
+- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**.
 
-## Detachable panels
+## Panel visibility
 
-Most panels can **detach** into floating windows (panel header **Detach** or **Window** menu). Close the floating window or use **Window → Dock …** to reattach.
-
-Detached position and visibility persist when you restart the app.
+Use **✕** on a panel header or **Window → Panels** to show or hide navigation, guidelines, utility, and terminal. Layout and visibility persist when you restart the app.
 
 ## Terminal
 
-**View → Terminal** opens a bottom dock with a real shell in the **workspace root**. Detach and resize like other panels. On Linux, the embedded terminal needs PTY support (see README).
+**View → Terminal** opens a bottom dock with a real shell in the **workspace root**. Resize with the splitter above the status bar. On Linux, the embedded terminal needs PTY support (see README).
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. Combo boxes, tabs, and lists follow the active theme.
+**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, and combos follow the active theme; native page-control tabs and buttons follow the OS widget set on Linux and macOS.
 
 ## Tips
 
 - Use splitters between panels to resize.
-- If a combo or panel layout looks wrong after detach, try toggling theme once; the app guards against common LCL layout loops.
+- If a combo looks wrong after a resize, try toggling theme once; chat footer combos use fixed heights in the form resource to match theme metrics.

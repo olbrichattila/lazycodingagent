@@ -71,24 +71,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="fraThemedButton.pas"/>
-        <IsPartOfProject Value="True"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fraThemedTabs.pas"/>
-        <IsPartOfProject Value="True"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fraThemedPicker.pas"/>
-        <IsPartOfProject Value="True"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Frame"/>
-      </Unit>
-      <Unit>
         <Filename Value="uNavFuturePlaceholder.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -251,10 +233,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uPanelDetach.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="uWorkspaceState.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -271,15 +249,15 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uMarkdownView.pas"/>
+        <Filename Value="uMainFileEditor.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uPlanView.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uMainWorkspace.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uUtilityPlanTab.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -288,10 +266,6 @@
       </Unit>
       <Unit>
         <Filename Value="uAgentToolErrorLog.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uUtilityExecutionDetailTab.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -307,10 +281,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uFileEditorTab.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="frmSyntaxSchemes.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="SyntaxSchemesForm"/>
@@ -323,10 +293,6 @@
         <ComponentName Value="OpenMarkdownForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uFileMarkdownTab.pas"/>
-        <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uHelpContent.pas"/>

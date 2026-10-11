@@ -5,8 +5,8 @@ unit frmSettings;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, LCLType,
-  uAppTypes, uAgentTypes, uTheme, fraThemedButton, fraThemedTabs, uWorkspaceState, uWorkspaceRegistry,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType,
+  uAppTypes, uAgentTypes, uTheme, uWorkspaceState, uWorkspaceRegistry,
   
   uLlmClient, frmModelSearch, frmEditSavedModel;
 
@@ -17,8 +17,12 @@ type
     btnOK: TButton;
     btnCancel: TButton;
     pnlSettingsTabsHost: TPanel;
+    pgcSettings: TPageControl;
+    tsProvider: TTabSheet;
     pnlTabProvider: TPanel;
+    tsAgent: TTabSheet;
     pnlTabAgent: TPanel;
+    tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
 
     lblProvider: TLabel;
@@ -71,7 +75,6 @@ type
     FDialogProvider: TLlmProvider;
     FDefaultModelId: string;
     FSwitchingProvider: Boolean;
-    FFraSettingsTabs: TThemedTabHostFrame;
     function CurrentDialogProvider: TLlmProvider;
     function SavedModelLine(const M: TSavedModel): string;
     procedure LoadFromState;
@@ -134,16 +137,6 @@ begin
   KeyPreview := True;
   OnKeyDown := @FormKeyDown;
   cboProvider.OnDrawItem := @cboProviderDrawItem;
-  FFraSettingsTabs := EnsureThemedTabHost(Self, pnlSettingsTabsHost);
-  if Assigned(FFraSettingsTabs) then begin
-    FFraSettingsTabs.HostPageBody(pnlTabProvider);
-    FFraSettingsTabs.HostPageBody(pnlTabAgent);
-    FFraSettingsTabs.HostPageBody(pnlTabWorkspace);
-    FFraSettingsTabs.RegisterPage(pnlTabProvider, 'AI Provider & Model', False);
-    FFraSettingsTabs.RegisterPage(pnlTabAgent, 'Agent Behavior', False);
-    FFraSettingsTabs.RegisterPage(pnlTabWorkspace, 'Workspace', False);
-    FFraSettingsTabs.ShowPlus := False;
-  end;
 end;
 
 procedure TSettingsForm.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -176,8 +169,6 @@ begin
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
 
-  if Assigned(FFraSettingsTabs) then
-    FFraSettingsTabs.ApplyTheme(ATheme);
   StyleComboBox(cboProvider, ATheme);
   ApplyControlTheme(Self, ATheme);
 
@@ -287,8 +278,8 @@ begin
   edtWorkspaceRoot.Text := FState.WorkspaceRoot;
   edtWorkspaceName.Text := FState.WorkspaceName;
 
-  if Assigned(FFraSettingsTabs) then
-    FFraSettingsTabs.ActivePageIndex := 0;
+  if Assigned(pgcSettings) then
+    pgcSettings.ActivePageIndex := 0;
 end;
 
 procedure TSettingsForm.SaveToState;

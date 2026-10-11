@@ -11,8 +11,10 @@ uses
 type
   TTerminalStatusEvent = procedure(Sender: TObject; const AMessage: string) of object;
 
-  TTerminalPanel = class(TPanel)
+  { PTY controller bound to designer-placed TTerminalLCLView. }
+  TTerminalPanel = class(TComponent)
   private
+    FHost: TWinControl;
     FView: TTerminalLCLView;
     FController: TTerminalController;
     FStatusLabel: TLabel;
@@ -20,22 +22,20 @@ type
     FWorkingDir: string;
     FOnTerminalStatus: TTerminalStatusEvent;
     procedure ShellExited(Sender: TObject);
-    procedure EnsureTerminalView;
     function TryStartShell: Boolean;
     procedure SetStatus(const AMessage: string);
     procedure HideStatus;
-  protected
-    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure Bind(AHost: TWinControl; AView: TTerminalLCLView; AStatus: TLabel);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetWorkingDirectory(const ADir: string);
     function EnsureRunning: Boolean;
     procedure Stop;
     procedure RestartForWorkspace;
     procedure FocusTerminal;
-    property TerminalView: TTerminalLCLView read FView;
+    function Visible: Boolean;
     property OnTerminalStatus: TTerminalStatusEvent read FOnTerminalStatus write FOnTerminalStatus;
   end;
 
@@ -68,19 +68,12 @@ begin
   SetStatus('Shell exited — hide and show Terminal (View menu) to start a new session.');
 end;
 
-procedure TTerminalPanel.EnsureTerminalView;
+function TTerminalPanel.Visible: Boolean;
 begin
-  if Assigned(FView) then Exit;
-  if not ParentFormHandlesReady(Self) then Exit;
-  FView := TTerminalLCLView.Create(Self);
-  {$IFDEF WINDOWS}
-  FView.DoubleBuffered := True;
-  {$ENDIF}
-  FView.Parent := Self;
-  FView.Align := alClient;
-  FView.FontName := 'DejaVu Sans Mono';
-  FView.FontSize := 10;
-  FView.OnShellExit := @ShellExited;
+  if Assigned(FHost) then
+    Result := FHost.Visible
+  else
+    Result := False;
 end;
 
 function TTerminalPanel.TryStartShell: Boolean;
@@ -97,14 +90,14 @@ begin
   end;
   if not Assigned(FController) then
     Exit;
-  if not ParentFormHandlesReady(Self) then
+  if not Assigned(FView) or not Assigned(FHost) then
     Exit;
-  if not Visible then
+  if not ParentFormHandlesReady(FHost) then
+    Exit;
+  if not FHost.Visible then
     Exit;
 
-  EnsureTerminalView;
-  if not Assigned(FView) then
-    Exit;
+  FView.OnShellExit := @ShellExited;
 
   FView.DetachController;
   SetLength(ShellArgs, 0);
@@ -154,21 +147,9 @@ end;
 constructor TTerminalPanel.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  {$IFDEF WINDOWS}
-  DoubleBuffered := True;
-  {$ENDIF}
-  BevelOuter := bvNone;
   FWorkingDir := GetUserDir;
   FShellRunning := False;
-  FView := nil;
   FController := TTerminalController.Create(80, 24, 5000);
-  FStatusLabel := TLabel.Create(Self);
-  FStatusLabel.Parent := Self;
-  FStatusLabel.Align := alTop;
-  FStatusLabel.AutoSize := True;
-  FStatusLabel.WordWrap := True;
-  FStatusLabel.Visible := False;
-  FStatusLabel.Caption := '';
 end;
 
 destructor TTerminalPanel.Destroy;
@@ -180,10 +161,16 @@ begin
   inherited Destroy;
 end;
 
-procedure TTerminalPanel.CreateWnd;
+procedure TTerminalPanel.Bind(AHost: TWinControl; AView: TTerminalLCLView; AStatus: TLabel);
 begin
-  inherited CreateWnd;
-  EnsureTerminalView;
+  FHost := AHost;
+  FView := AView;
+  FStatusLabel := AStatus;
+  if Assigned(FView) then begin
+    FView.FontName := 'DejaVu Sans Mono';
+    FView.FontSize := 10;
+    FView.OnShellExit := @ShellExited;
+  end;
 end;
 
 procedure TTerminalPanel.ApplyTheme(ATheme: TThemeKind);
@@ -191,11 +178,10 @@ var
   P: TThemePalette;
 begin
   P := ThemePalette(ATheme);
-  Color := P.Background;
-  FStatusLabel.Color := P.Background;
-  FStatusLabel.Font.Color := P.TextMuted;
-  if ParentFormHandlesReady(Self) and Visible then
-    EnsureTerminalView;
+  if Assigned(FStatusLabel) then begin
+    FStatusLabel.Color := P.Background;
+    FStatusLabel.Font.Color := P.TextMuted;
+  end;
   if not Assigned(FView) then Exit;
   FView.BackgroundColor := P.Background;
   FView.DefaultFGColor := P.Text;

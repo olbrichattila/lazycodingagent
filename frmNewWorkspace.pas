@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil,
-  uAppTypes, uTheme, fraThemedButton, uWorkspaceRegistry;
+  uAppTypes, uTheme, uWorkspaceRegistry;
 
 type
   TNewWorkspaceForm = class(TForm)

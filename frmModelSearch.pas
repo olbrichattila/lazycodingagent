@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uLlmClient, uTheme, fraThemedButton;
+  uAppTypes, uLlmClient, uTheme;
 
 type
   TModelAddEvent = procedure(Sender: TObject; const AModelId, ADisplayName: string) of object;

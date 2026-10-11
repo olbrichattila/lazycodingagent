@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme, fraThemedButton, uSyntaxSchemeRegistry;
+  uAppTypes, uTheme, uSyntaxSchemeRegistry;
 
 type
   { TSyntaxSchemesForm }

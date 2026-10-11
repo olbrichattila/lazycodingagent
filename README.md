@@ -15,8 +15,8 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
 - **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards.
-- **Themed tab strips**: center editors, chat sessions, utility panel, and Settings use [`fraThemedTabs.pas`](fraThemedTabs.pas) (`TThemedTabHostFrame`) with canvas-drawn headers for reliable dark/light styling on Qt5/Linux (native `TPageControl` tab headers are not used for these areas).
-- **Themed buttons**: dialogs and panel chrome use [`fraThemedButton.pas`](fraThemedButton.pas) (`TThemedButtonFrame`) so actions follow the palette on Qt5/Linux (native `TButton` does not).
+- **Designer-first layout**: the main window and dialogs stream **stock LCL** controls in `.lfm` files (`TPageControl`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, `TTerminalLCLView`). Open `mainunit.pas` in Lazarus (F12) to edit the full layout.
+- **Native tabs and buttons** on Linux/macOS; Windows may apply `Style*` button fills from [`uTheme.pas`](uTheme.pas).
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
 - **Navigation rail** built from `TSpeedButton` controls on the main form (icon captions, tooltips, accent selection indicator).
@@ -38,12 +38,9 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 | Light/dark toggle coherent | Yes | Yes | Yes |
 | Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |
 
-### 3. Detachable Multi-Window Architecture
-- Panels are docked to the main window by default and can be detached into independent, floating `TForm` windows.
-- Floating windows can be moved to separate monitors across Windows, Linux, and macOS.
-- Detached panels use a small floating `TForm` (`uPanelDetach.pas`); redock via the **Window** menu or by closing the floating window.
-- Panel chrome (title + **Detach** / hide) uses standard `TPanel` + `TButton` on the main form.
-- Panel visibility and floating window coordinates are persisted in configuration settings.
+### 3. Docked panels (show / hide)
+- Navigation, guidelines, utility, and terminal panels dock on the main form.
+- **Window → Panels** and panel **✕** buttons toggle visibility; sizes and visibility persist in workspace settings.
 
 ### 4. Vertical Navigation Rail & Panel
 - Sleek 56px left navigation rail with icon-only slots, tooltips, and accent active indicator for:
@@ -54,9 +51,9 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Connected content area with contextual actions for the active navigation selection.
 
 ### 5. Primary AI Agent & Chat Workspace
-- **Multiple parallel sessions** per workspace: each session has its own `TAgentEngine` and async run thread. Switch sessions (left **Sessions** nav or chat tab strip) without stopping other sessions. Background runs continue when you switch workspace and return later.
-- **New chat:** primary path is the left rail **Sessions** view → **+ New Chat Session**; shortcut **+** in the chat header (next to session tabs) also creates a session and focuses the center Chat tab.
-- **Session tabs** above the chat panel for quick switching; closing a tab **archives** that session (not a permanent delete). Archiving the last open tab opens a fresh empty session automatically.
+- **Multiple parallel sessions** per workspace: each session has its own `TAgentEngine` and async run thread. Switch sessions from the left **Sessions** nav without stopping other sessions. Background runs continue when you switch workspace and return later.
+- **New chat:** **Sessions** → **+ New Chat Session**; the center **Chat** tab shows the active session name.
+- **Single chat surface** (no session tab strip). Archive, restore, or delete sessions from the Sessions list.
 - **Archive** via Sessions panel (**Archive Session** / **Restore Session**), `Delete` on an active session, or `Shift+Delete` to permanently delete an archived session.
 - Clean hero greeting: `What should we build in <project name>?`.
 - Embedded workspace badge and live conversation history stream.
@@ -78,14 +75,13 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 ### 8. Reserved Context & Instructions Panel
 - Dedicated right-side panel for workspace guidelines, coding rules, and instructions context.
 
-### 9. Detachable Utility / Blank TabPage Panel (Right Corner)
-- Extra right-corner **utility panel** with themed tabs (scratchpad, execution detail, dynamic plan tabs).
-- **Invisible by default**: Starts hidden to keep the workspace streamlined and distraction-free.
-- **Toggleable & Detachable**: Can be toggled on/off at any time via `Window > Panels > Utility Panel` or detached to a floating multi-monitor window via `Window > Detach Utility Panel to Window` or panel header icon.
+### 9. Utility panel (right)
+- **Utility panel** with a `TPageControl`: Scratchpad, Execution Detail, and Plan.
+- **Hidden by default**; toggle via **Window → Panels → Utility Panel**.
 
 ### 10. Integrated terminal (bottom panel)
 - **View → Terminal** toggles a full-width bottom dock (above the status bar) with a real PTY shell (`$SHELL` / `/bin/bash` on Unix, `%COMSPEC%` on Windows).
-- **Detachable** like other panels (`Window` menu or header **Detach**); layout persists as `Panel_4` (visible, floating bounds, `DockedHeight` for the bottom strip).
+- **`TTerminalLCLView`** is on the main form; [`uTerminalPanel.pas`](uTerminalPanel.pas) drives the PTY controller.
 - Docked height defaults to about **one quarter** of the client area (resizable splitter); floating window size is stored separately from docked height.
 - When you open the panel with an active workspace, the shell starts in the **workspace root** (`pwd` / `cd`); switching workspaces restarts the shell in the new folder if the terminal is already visible.
 - Powered by the [TerminalEmulator](https://github.com/andrewd207/TerminalEmulator) submodule (`third_party/TerminalEmulator`). **Windows** requires Windows 10 1809+ (ConPTY).
@@ -97,7 +93,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 |------|----------------|---------|
 | View → Terminal shows bottom panel | `pwd` matches workspace | `cd` matches workspace |
 | Resize splitter; restart app | Height restored | Height restored |
-| Detach / dock panel | Works on second monitor | Works on second monitor |
+| Hide / show terminal & utility | Yes | Yes |
 | Theme toggle | Colors readable | Colors readable |
 | Interactive TUI | `ls` colors; optional `vim`/`nano` | `dir`, `git status` |
 
@@ -108,7 +104,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - [Free Pascal (FPC)](https://www.freepascal.org/)
 - [Lazarus IDE](https://www.lazarus-ide.org/)
 - Lazarus Component Library (LCL)
-- **TurboPowerIPro** (Lazarus package; IpHtml markdown chat transcript in `uMarkdownView.pas`)
+- Chat transcript and Help preview use plain **`TMemo`** text (no HTML markdown renderer in the UI).
 
 ---
 
@@ -144,7 +140,7 @@ Register and compile the terminal Lazarus packages once per machine (or after up
 
 If `lazbuild` is not on `PATH`, set `$env:LAZBUILD` to your `lazbuild.exe` (for example `C:\lazarus\lazbuild.exe`).
 
-**Form designer (no extra Lazarus package):** Dialogs and `mainunit` stream **stock LCL** types in `.lfm` (`TButton`, `TPanel` tab hosts). At runtime, [`fraThemedButton.pas`](fraThemedButton.pas) upgrades placeholders via `EnsureThemedButton` / `Style*Button`, and [`fraThemedTabs.pas`](fraThemedTabs.pas) creates `TThemedTabHostFrame` on host panels via `EnsureThemedTabHost`. Edit forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12), not a standalone `.lfm` tab.
+**Form designer:** Dialogs and `mainunit` stream **stock LCL** types in `.lfm`. Regenerate the main shell with `python3 scripts/gen-main-lfm.py` when changing rail items or large structure. Edit forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12).
 
 Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewLCL** from `third_party/TerminalEmulator/` if the IDE still prompts after the script), or build from the command line:
 
@@ -184,19 +180,17 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 ## Architecture & Unit Structure
 
 - `lazycodingagent.lpr` — Application entry point
-- `mainunit.pas` / `mainunit.lfm` — Main form designed with Lazarus Form Designer (`TLazyCodingAgentForm`): menus, splitters, status bar, dock hosts, tab host panels (runtime `TThemedTabHostFrame`), and panel chrome (`TPanel` + designer `TButton` placeholders)
-- `uPanelDetach.pas` — Reparents a content panel into a runtime `TForm` for floating windows (Windows, Linux, macOS); redock via the Window menu or by closing the float
-- `uTerminalPanel.pas` — Embedded PTY terminal (`TTerminalPanel` wrapping TerminalEmulator ViewLCL)
+- `mainunit.pas` / `mainunit.lfm` — Main form: nav rail, nav body, center `TPageControl`, utility `TPageControl`, terminal view, menus, splitters, status bar
+- `uTerminalPanel.pas` — PTY controller bound to streamed `TTerminalLCLView`
+- `uMainFileEditor.pas` — Single `TSynEdit` load/save/highlighter
+- `uPlanView.pas` — Plan utility tab (path, build, memo)
 - `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages
-- `uNavigationPanel.pas` — Navigation content views (`TNavContentControl` on the main form)
-- `uChatPanel.pas` — Composer card, Ask/Plan/Agent mode dropdown, model selector, and markdown message stream
-- `uMarkdownView.pas` — Theme-aware markdown → HTML renderer (`TIpHtmlPanel`) with auto-scroll-to-bottom
+- `uNavigationPanel.pas` — `TNavContentControl` binds to streamed nav controls on the main form
+- `uChatPanel.pas` — Binds composer memos/combos/buttons; plain-text history in `TMemo`
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
 - `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes
-- `fraThemedTabs.pas` / `fraThemedTabs.lfm` — Designer `TFrame` with canvas-drawn tab strip (`+`, per-tab `×` hit zones) and `pnlPages` for tab bodies
-- `fraThemedButton.pas` / `fraThemedButton.lfm` — `TThemedButtonFrame` (primary/cancel/destructive roles, modal `ModalResult`); upgraded from designer `TButton` at runtime
-- `uTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw, `PaintThemedButton`
+- `uTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw, optional `TButton` styling on Windows
 - `uAppTypes.pas` — Shared enumerations, modes, and helpers
 - `uAgentTypes.pas` — Chat roles, LLM providers, tool schemas, and token usage records
 - `uAgentEngine.pas` — Autonomous ReAct execution loop, state management, and LLM communication

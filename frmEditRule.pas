@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
   LCLType,
-  uAppTypes, uTheme, fraThemedButton;
+  uAppTypes, uTheme;
 
 type
   { TEditRuleForm }

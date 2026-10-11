@@ -37,7 +37,7 @@ const
   ThemedComboBoxHeight = 25;
   ThemedComboBoxItemHeight = 22;
   ThemedTabBarBaseHeight = 38;
-  { Owner-drawn tab captions in fraThemedTabs; logical pt — do not PPI-scale like strip height. }
+  { Logical pt for combo/list metrics — do not PPI-scale ad hoc. }
   ThemedTabFontSize = 9;
   ThemedButtonCornerBase = 6;
   ThemedButtonFontSizeBase = 9;

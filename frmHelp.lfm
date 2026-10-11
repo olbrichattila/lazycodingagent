@@ -77,6 +77,16 @@ object HelpForm: THelpForm
     ClientHeight = 456
     ClientWidth = 619
     TabOrder = 2
+    object memHelpPreview: TMemo
+      Left = 0
+      Height = 456
+      Top = 0
+      Width = 619
+      Align = alClient
+      ReadOnly = True
+      ScrollBars = ssVertical
+      TabOrder = 0
+    end
   end
   object pnlBottom: TPanel
     Left = 0
