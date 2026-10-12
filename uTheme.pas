@@ -43,6 +43,8 @@ const
   ThemedButtonFontSizeBase = 9;
   ThemedButtonHorizPadBase = 14;
   ThemedButtonHeightBase = 28;
+  { Code editor — logical pt; LCL scales Font.Size on DPI-aware forms. }
+  ThemedEditorFontSizeBase = 9;
 
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
@@ -52,6 +54,7 @@ function ScaledThemedButtonHeight(AControl: TControl): Integer;
 function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
   ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
+function ScaledEditorFontSize(AControl: TControl): Integer;
 
 // Helper to configure ComboBox for sleek theme owner-drawing
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
@@ -139,6 +142,11 @@ end;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedTabBarBaseHeight);
+end;
+
+function ScaledEditorFontSize(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedEditorFontSizeBase);
 end;
 
 function ThemedButtonCornerRadius(AControl: TControl): Integer;

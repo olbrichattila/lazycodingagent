@@ -55,7 +55,7 @@ begin
     if FEditor.Font.Name = '' then
       FEditor.Font.Name := 'Consolas';
     if FEditor.Font.Size = 0 then
-      FEditor.Font.Size := 10;
+      FEditor.Font.Size := ScaledEditorFontSize(FEditor);
   end;
 end;
 
@@ -145,6 +145,7 @@ begin
   if Assigned(FEditor) then begin
     FEditor.Color := P.SurfaceAlt;
     FEditor.Font.Color := P.Text;
+    FEditor.Font.Size := ScaledEditorFontSize(FEditor);
     ApplyPlatformScrollableTheme(FEditor, ATheme);
   end;
   ApplySyntaxScheme(FScheme);
