@@ -71,6 +71,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uThemedPageTabBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uNavFuturePlaceholder.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

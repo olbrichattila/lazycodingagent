@@ -97,6 +97,7 @@ type
     procedure RefreshToolErrorLogList;
     procedure AppendToolErrorLogEntry(AIndex: Integer);
     procedure UpdateSessionTasks(const ACaptions: TStrings);
+    procedure SetCenterAddTabAvailable(AAvailable: Boolean);
 
     property OnWorkspaceSelect: TNavWorkspaceSelectEvent read FOnWorkspaceSelect write FOnWorkspaceSelect;
     property OnWorkspaceNew: TNavWorkspaceActionEvent read FOnWorkspaceNew write FOnWorkspaceNew;
@@ -702,6 +703,14 @@ begin
         FActionBtn.Visible := False;
       end;
   end;
+end;
+
+procedure TNavContentControl.SetCenterAddTabAvailable(AAvailable: Boolean);
+begin
+  { Reserved: center tab [+] mirrors new-session when chat panel is visible. }
+  if not Assigned(FActionBtn) then Exit;
+  if FSelected = niSessions then
+    FActionBtn.Enabled := AAvailable;
 end;
 
 end.

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes,
-  uAppTypes, uAgentTypes, uAgentTools, uTheme, uWorkspaceState,
+  uAppTypes, uAgentTypes, uAgentTools, uTheme, uThemedPageTabBar, uWorkspaceState,
   uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel, uChatPanel,
   uTerminalPanel, uMainFileEditor, uPlanView,
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
@@ -78,7 +78,7 @@ type
     splNav: TSplitter;
     pnlUtilityHost: TPanel;
     pnlUtilityChrome: TPanel;
-    lblUtilityTitle: TLabel;
+    pnlUtilityTabStripHost: TPanel;
     btnUtilityHide: TButton;
     pnlUtilityContent: TPanel;
     pgcUtility: TPageControl;
@@ -102,7 +102,7 @@ type
     splReserved: TSplitter;
     pnlChatHost: TPanel;
     pnlChatChrome: TPanel;
-    lblChatTitle: TLabel;
+    pnlCenterTabStripHost: TPanel;
     btnChatHide: TButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
@@ -155,6 +155,8 @@ type
     procedure MnuHelpAboutClick(Sender: TObject);
     procedure NavRailBtnClick(Sender: TObject);
   private
+    FCenterTabBar: TThemedPageTabBar;
+    FUtilityTabBar: TThemedPageTabBar;
     FState: TWorkspaceState;
     FSessionHubs: TChatSessionHubManager;
     FActiveHub: TChatSessionHub;
@@ -242,6 +244,11 @@ type
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
     procedure ApplyDockPanelsLayout;
+    procedure SyncCenterAddTabNav;
+    procedure CreateThemedTabBars;
+    procedure InitCenterTabStrip;
+    procedure TabBarCenterAddTab(Sender: TObject);
+    procedure TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet; var AllowClose: Boolean);
     procedure SyncTerminalWorkingDirectory;
     procedure ScheduleDeferredTerminalStart;
     procedure DeferredEnsureTerminal(Data: PtrInt);
@@ -529,6 +536,7 @@ begin
   mnuWorkspaceSepRules.Tag := -1;
   mnuWorkspaceProjectRules.Tag := -1;
 
+  CreateThemedTabBars;
   InitWorkspaceSubControls;
   PopulateMenusAndCombos;
 end;
@@ -691,14 +699,75 @@ begin
     pgcCenter.ActivePage := tsChat;
 end;
 
+procedure TLazyCodingAgentForm.CreateThemedTabBars;
+begin
+  if Assigned(pnlCenterTabStripHost) and not Assigned(FCenterTabBar) then begin
+    FCenterTabBar := TThemedPageTabBar.Create(Self);
+    FCenterTabBar.Parent := pnlCenterTabStripHost;
+    FCenterTabBar.Align := alClient;
+    FCenterTabBar.PageControl := pgcCenter;
+    FCenterTabBar.ShowAddTab := True;
+    FCenterTabBar.AddTabCaption := '[+]';
+    FCenterTabBar.OnAddTab := @TabBarCenterAddTab;
+    FCenterTabBar.OnTabClose := @TabBarCenterTabClose;
+  end;
+  if Assigned(pnlUtilityTabStripHost) and not Assigned(FUtilityTabBar) then begin
+    FUtilityTabBar := TThemedPageTabBar.Create(Self);
+    FUtilityTabBar.Parent := pnlUtilityTabStripHost;
+    FUtilityTabBar.Align := alClient;
+    FUtilityTabBar.PageControl := pgcUtility;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.InitCenterTabStrip;
+begin
+  TThemedPageTabBar.SetTabAllowsClose(tsEditor, True);
+  TThemedPageTabBar.SetTabAllowsClose(tsMarkdown, True);
+  TThemedPageTabBar.SetTabHidden(tsEditor, True);
+  TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
+end;
+
+procedure TLazyCodingAgentForm.SyncCenterAddTabNav;
+begin
+  if Assigned(FNavContent) then
+    FNavContent.SetCenterAddTabAvailable(FState.IsPanelVisible(piChat));
+end;
+
+procedure TLazyCodingAgentForm.TabBarCenterAddTab(Sender: TObject);
+begin
+  CreateAndSelectNewSession;
+end;
+
+procedure TLazyCodingAgentForm.TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet;
+  var AllowClose: Boolean);
+begin
+  AllowClose := False;
+  if TabSheet = tsEditor then begin
+    if not PromptDirtyEditor then Exit;
+    if Assigned(FFileEditor) then
+      FFileEditor.Clear;
+    TThemedPageTabBar.SetTabHidden(tsEditor, True);
+    AllowClose := True;
+    ShowChatCenterTab;
+  end else if TabSheet = tsMarkdown then begin
+    FMarkdownPath := '';
+    memMarkdownPreview.Clear;
+    TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
+    AllowClose := True;
+    ShowChatCenterTab;
+  end;
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
+end;
 
 procedure TLazyCodingAgentForm.InitWorkspaceSubControls;
 begin
   lblNavTitle.Caption := PanelCaption(piNavigation);
-  lblChatTitle.Caption := PanelCaption(piChat);
   lblReservedTitle.Caption := PanelCaption(piReserved);
-  lblUtilityTitle.Caption := PanelCaption(piUtility);
   lblTerminalTitle.Caption := PanelCaption(piTerminal);
+  InitCenterTabStrip;
 
   if memReserved.Lines.Count = 0 then begin
     memReserved.Lines.Add('=== Workspace Context & Guidelines ===');
@@ -821,6 +890,7 @@ begin
   if FState.IsPanelVisible(piTerminal) and not FDeferThemesUntilShown
      and not FPendingInitialWorkspaceUI then
     ScheduleDeferredTerminalStart;
+  SyncCenterAddTabNav;
 end;
 
 function TLazyCodingAgentForm.EffectiveTerminalDockHeight: Integer;
@@ -1032,6 +1102,8 @@ begin
     ConfigureThemedMemo(memReserved, FState.Theme, 'Segoe UI', P.Surface);
   if Assigned(FTerminalPanel) then FTerminalPanel.ApplyTheme(FState.Theme);
   if Assigned(FPlanView) then FPlanView.ApplyTheme(FState.Theme);
+  if Assigned(FCenterTabBar) then FCenterTabBar.ApplyTheme(FState.Theme);
+  if Assigned(FUtilityTabBar) then FUtilityTabBar.ApplyTheme(FState.Theme);
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
   ConfigureThemedMemo(memUtilityExecDetail, FState.Theme, 'Consolas');
   ConfigureThemedMemo(memMarkdownPreview, FState.Theme);
@@ -1883,10 +1955,13 @@ begin
   FMarkdownPath := Path;
   memMarkdownPreview.Lines.LoadFromFile(Path);
   tsMarkdown.Caption := ExtractFileName(Path) + ' [Preview]';
+  TThemedPageTabBar.SetTabHidden(tsMarkdown, False);
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
   if Assigned(pgcCenter) then
     pgcCenter.ActivePage := tsMarkdown;
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
 end;
 
 
@@ -1928,12 +2003,15 @@ begin
     Exit;
   end;
   tsEditor.Caption := ExtractFileName(Path);
+  TThemedPageTabBar.SetTabHidden(tsEditor, False);
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
   ApplyEditorTheme;
   RefreshEditorScheme;
   if Assigned(pgcCenter) then
     pgcCenter.ActivePage := tsEditor;
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
 end;
 
 procedure TLazyCodingAgentForm.ApplyEditorTheme;
@@ -1964,8 +2042,11 @@ begin
   if (pgcCenter = nil) or (pgcCenter.ActivePage <> tsEditor) then
     Exit(False);
   Result := FFileEditor.SaveFile;
-  if Result then
+  if Result then begin
     tsEditor.Caption := ExtractFileName(FFileEditor.FilePath);
+    if Assigned(FCenterTabBar) then
+      FCenterTabBar.RefreshFromPageControl;
+  end;
 end;
 
 

@@ -1,13 +1,14 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 2557
-  Height = 900
-  Top = -30
-  Width = 1440
+  Left = 30
+  Height = 1350
+  Top = 178
+  Width = 2160
   Caption = 'LazyCodingAgent — AI Workspace'
-  ClientHeight = 900
-  ClientWidth = 1440
-  Constraints.MinHeight = 600
-  Constraints.MinWidth = 900
+  ClientHeight = 1350
+  ClientWidth = 2160
+  Constraints.MinHeight = 900
+  Constraints.MinWidth = 1350
+  DesignTimePPI = 144
   Menu = MainMenu1
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
@@ -17,30 +18,30 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnShow = FormShow
   object pnlMainContainer: TPanel
     Left = 0
-    Height = 651
+    Height = 976
     Top = 0
-    Width = 1440
+    Width = 2160
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 651
-    ClientWidth = 1440
+    ClientHeight = 976
+    ClientWidth = 2160
     TabOrder = 0
     object pnlNavRailHost: TPanel
       Left = 0
-      Height = 651
+      Height = 976
       Top = 0
-      Width = 56
+      Width = 84
       Align = alLeft
       BevelOuter = bvNone
-      ClientHeight = 651
-      ClientWidth = 56
+      ClientHeight = 976
+      ClientWidth = 84
       TabOrder = 0
       object sbtnNavBrain: TSpeedButton
         Tag = 10
         Left = 0
-        Height = 20
-        Top = 200
-        Width = 56
+        Height = 30
+        Top = 300
+        Width = 84
         Align = alTop
         Caption = '◉'
         Flat = True
@@ -50,9 +51,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavKnowledge: TSpeedButton
         Tag = 9
         Left = 0
-        Height = 20
-        Top = 180
-        Width = 56
+        Height = 30
+        Top = 270
+        Width = 84
         Align = alTop
         Caption = '📖'
         Flat = True
@@ -62,9 +63,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavExecPlans: TSpeedButton
         Tag = 8
         Left = 0
-        Height = 20
-        Top = 160
-        Width = 56
+        Height = 30
+        Top = 240
+        Width = 84
         Align = alTop
         Caption = '☑'
         Flat = True
@@ -74,9 +75,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavMultiAgent: TSpeedButton
         Tag = 7
         Left = 0
-        Height = 20
-        Top = 140
-        Width = 56
+        Height = 30
+        Top = 210
+        Width = 84
         Align = alTop
         Caption = '⬡'
         Flat = True
@@ -86,9 +87,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavToolErrors: TSpeedButton
         Tag = 6
         Left = 0
-        Height = 20
-        Top = 120
-        Width = 56
+        Height = 30
+        Top = 180
+        Width = 84
         Align = alTop
         Caption = '⚠'
         Flat = True
@@ -98,9 +99,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavTasks: TSpeedButton
         Tag = 5
         Left = 0
-        Height = 20
-        Top = 100
-        Width = 56
+        Height = 30
+        Top = 150
+        Width = 84
         Align = alTop
         Caption = '☰'
         Flat = True
@@ -110,9 +111,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavTools: TSpeedButton
         Tag = 4
         Left = 0
-        Height = 20
-        Top = 80
-        Width = 56
+        Height = 30
+        Top = 120
+        Width = 84
         Align = alTop
         Caption = '◈'
         Flat = True
@@ -122,9 +123,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavBots: TSpeedButton
         Tag = 3
         Left = 0
-        Height = 20
-        Top = 60
-        Width = 56
+        Height = 30
+        Top = 90
+        Width = 84
         Align = alTop
         Caption = '✦'
         Flat = True
@@ -134,9 +135,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavSessions: TSpeedButton
         Tag = 2
         Left = 0
-        Height = 20
-        Top = 40
-        Width = 56
+        Height = 30
+        Top = 60
+        Width = 84
         Align = alTop
         Caption = '✉'
         Flat = True
@@ -146,9 +147,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavProjects: TSpeedButton
         Tag = 1
         Left = 0
-        Height = 20
-        Top = 20
-        Width = 56
+        Height = 30
+        Top = 30
+        Width = 84
         Align = alTop
         Caption = '◫'
         Flat = True
@@ -157,9 +158,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
       object sbtnNavHome: TSpeedButton
         Left = 0
-        Height = 20
+        Height = 30
         Top = 0
-        Width = 56
+        Width = 84
         Align = alTop
         Caption = '⌂'
         Flat = True
@@ -168,37 +169,37 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object pnlNavHost: TPanel
-      Left = 56
-      Height = 651
+      Left = 84
+      Height = 976
       Top = 0
-      Width = 250
+      Width = 375
       Align = alLeft
       BevelOuter = bvNone
-      ClientHeight = 651
-      ClientWidth = 250
+      ClientHeight = 976
+      ClientWidth = 375
       TabOrder = 1
       object pnlNavChrome: TPanel
         Left = 0
-        Height = 34
+        Height = 51
         Top = 0
-        Width = 250
+        Width = 375
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 34
-        ClientWidth = 250
+        ClientHeight = 51
+        ClientWidth = 375
         TabOrder = 0
         object lblNavTitle: TLabel
-          Left = 8
-          Height = 19
-          Top = 9
-          Width = 73
+          Left = 12
+          Height = 25
+          Top = 14
+          Width = 86
           Caption = 'Navigation'
         end
         object btnNavHide: TButton
-          Left = 214
-          Height = 25
-          Top = 4
-          Width = 32
+          Left = 321
+          Height = 38
+          Top = 6
+          Width = 48
           Caption = '✕'
           TabOrder = 0
           OnClick = PanelHideClick
@@ -206,46 +207,46 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
       object pnlNavContent: TPanel
         Left = 0
-        Height = 617
-        Top = 34
-        Width = 250
+        Height = 925
+        Top = 51
+        Width = 375
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 617
-        ClientWidth = 250
+        ClientHeight = 925
+        ClientWidth = 375
         TabOrder = 1
         object lblNavViewTitle: TLabel
           Left = 0
-          Height = 19
+          Height = 25
           Top = 0
-          Width = 250
+          Width = 375
           Align = alTop
           Caption = 'Workspaces'
           Layout = tlCenter
         end
         object lblNavViewSub: TLabel
           Left = 0
-          Height = 19
-          Top = 19
-          Width = 250
+          Height = 25
+          Top = 25
+          Width = 375
           Align = alTop
           Caption = 'Select a workspace'
           Layout = tlCenter
         end
         object btnNavPrimary: TButton
           Left = 0
-          Height = 20
-          Top = 597
-          Width = 250
+          Height = 30
+          Top = 895
+          Width = 375
           Align = alBottom
           Caption = 'Action'
           TabOrder = 0
         end
         object btnNavSecondary: TButton
           Left = 0
-          Height = 18
-          Top = 579
-          Width = 250
+          Height = 27
+          Top = 868
+          Width = 375
           Align = alBottom
           Caption = 'Secondary'
           TabOrder = 1
@@ -253,19 +254,18 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavFile: TListBox
           Left = 0
-          Height = 541
-          Top = 38
-          Width = 250
+          Height = 818
+          Top = 50
+          Width = 375
           Align = alClient
           ItemHeight = 0
           TabOrder = 2
-          TopIndex = -1
         end
         object tvNavProjects: TTreeView
           Left = 0
-          Height = 541
-          Top = 38
-          Width = 250
+          Height = 818
+          Top = 50
+          Width = 375
           Align = alClient
           ReadOnly = True
           TabOrder = 3
@@ -274,102 +274,104 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavLog: TListBox
           Left = 0
-          Height = 541
-          Top = 38
-          Width = 250
+          Height = 818
+          Top = 50
+          Width = 375
           Align = alClient
           ItemHeight = 0
           TabOrder = 4
-          TopIndex = -1
           Visible = False
         end
         object lstNavErrors: TListBox
           Left = 0
-          Height = 541
-          Top = 38
-          Width = 250
+          Height = 818
+          Top = 50
+          Width = 375
           Align = alClient
           ItemHeight = 0
           TabOrder = 5
-          TopIndex = -1
           Visible = False
         end
       end
     end
     object splNav: TSplitter
-      Left = 306
-      Height = 651
+      Left = 459
+      Height = 976
       Top = 0
-      Width = 5
+      Width = 8
       MinSize = 160
     end
     object pnlUtilityHost: TPanel
-      Left = 1160
-      Height = 651
+      Left = 1740
+      Height = 976
       Top = 0
-      Width = 280
+      Width = 420
       Align = alRight
       BevelOuter = bvNone
-      ClientHeight = 651
-      ClientWidth = 280
+      ClientHeight = 976
+      ClientWidth = 420
       TabOrder = 2
       Visible = False
       object pnlUtilityChrome: TPanel
         Left = 0
-        Height = 34
+        Height = 51
         Top = 0
-        Width = 280
+        Width = 420
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 34
-        ClientWidth = 280
+        ClientHeight = 51
+        ClientWidth = 420
         TabOrder = 0
-        object lblUtilityTitle: TLabel
-          Left = 8
-          Height = 19
-          Top = 9
-          Width = 41
-          Caption = 'Utility'
+        object pnlUtilityTabStripHost: TPanel
+          Left = 0
+          Height = 38
+          Top = 6
+          Width = 354
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
         end
         object btnUtilityHide: TButton
           Tag = 3
-          Left = 244
-          Height = 25
-          Top = 4
-          Width = 32
+          Left = 366
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 0
+          TabOrder = 1
           OnClick = PanelHideClick
         end
       end
       object pnlUtilityContent: TPanel
         Left = 0
-        Height = 617
-        Top = 34
-        Width = 280
+        Height = 925
+        Top = 51
+        Width = 420
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 617
-        ClientWidth = 280
+        ClientHeight = 925
+        ClientWidth = 420
         TabOrder = 1
         object pgcUtility: TPageControl
           Left = 0
-          Height = 617
+          Height = 925
           Top = 0
-          Width = 280
+          Width = 420
           ActivePage = tsUtilityScratch
           Align = alClient
+          ShowTabs = False
           TabIndex = 0
           TabOrder = 0
           object tsUtilityScratch: TTabSheet
             Caption = 'Scratchpad'
-            ClientHeight = 584
-            ClientWidth = 276
+            ClientHeight = 887
+            ClientWidth = 412
             object memUtilityScratch: TMemo
               Left = 0
-              Height = 584
+              Height = 887
               Top = 0
-              Width = 276
+              Width = 412
               Align = alClient
               ScrollBars = ssVertical
               TabOrder = 0
@@ -377,13 +379,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityExecDetail: TTabSheet
             Caption = 'Execution Detail'
-            ClientHeight = 584
-            ClientWidth = 276
+            ClientHeight = 887
+            ClientWidth = 412
             object memUtilityExecDetail: TMemo
               Left = 0
-              Height = 584
+              Height = 887
               Top = 0
-              Width = 276
+              Width = 412
               Align = alClient
               ReadOnly = True
               ScrollBars = ssBoth
@@ -393,40 +395,40 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityPlan: TTabSheet
             Caption = 'Plan'
-            ClientHeight = 584
-            ClientWidth = 276
+            ClientHeight = 887
+            ClientWidth = 412
             object pnlPlanHeader: TPanel
               Left = 0
-              Height = 18
+              Height = 27
               Top = 0
-              Width = 276
+              Width = 412
               Align = alTop
               BevelOuter = bvNone
-              ClientHeight = 18
-              ClientWidth = 276
+              ClientHeight = 27
+              ClientWidth = 412
               TabOrder = 0
               object lblPlanPath: TLabel
-                Left = 4
-                Height = 19
-                Top = 5
-                Width = 58
+                Left = 6
+                Height = 25
+                Top = 8
+                Width = 65
                 Caption = 'Plan file:'
               end
               object cboPlanModel: TComboBox
-                Left = 140
-                Height = 27
-                Top = 2
-                Width = 90
+                Left = 208
+                Height = 33
+                Top = 3
+                Width = 135
                 Anchors = [akTop, akRight]
-                ItemHeight = 27
+                ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 0
               end
               object btnPlanBuild: TButton
-                Left = 234
-                Height = 14
-                Top = 2
-                Width = 36
+                Left = 349
+                Height = 21
+                Top = 3
+                Width = 54
                 Anchors = [akTop, akRight]
                 Caption = 'Build'
                 TabOrder = 1
@@ -434,9 +436,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object memPlanBody: TMemo
               Left = 0
-              Height = 566
-              Top = 18
-              Width = 276
+              Height = 860
+              Top = 27
+              Width = 412
               Align = alClient
               ReadOnly = True
               ScrollBars = ssVertical
@@ -447,49 +449,49 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object splUtility: TSplitter
-      Left = 1155
-      Height = 651
+      Left = 1732
+      Height = 976
       Top = 0
-      Width = 5
+      Width = 8
       Align = alRight
       MinSize = 160
       ResizeAnchor = akRight
       Visible = False
     end
     object pnlReservedHost: TPanel
-      Left = 870
-      Height = 651
+      Left = 1304
+      Height = 976
       Top = 0
-      Width = 285
+      Width = 428
       Align = alRight
       BevelOuter = bvNone
-      ClientHeight = 651
-      ClientWidth = 285
+      ClientHeight = 976
+      ClientWidth = 428
       TabOrder = 3
       Visible = False
       object pnlReservedChrome: TPanel
         Left = 0
-        Height = 34
+        Height = 51
         Top = 0
-        Width = 285
+        Width = 428
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 34
-        ClientWidth = 285
+        ClientHeight = 51
+        ClientWidth = 428
         TabOrder = 0
         object lblReservedTitle: TLabel
-          Left = 8
-          Height = 19
-          Top = 9
-          Width = 71
+          Left = 12
+          Height = 25
+          Top = 14
+          Width = 81
           Caption = 'Guidelines'
         end
         object btnReservedHide: TButton
           Tag = 2
-          Left = 249
-          Height = 25
-          Top = 4
-          Width = 32
+          Left = 374
+          Height = 38
+          Top = 6
+          Width = 48
           Caption = '✕'
           TabOrder = 0
           OnClick = PanelHideClick
@@ -497,19 +499,19 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
       object pnlReservedContent: TPanel
         Left = 0
-        Height = 617
-        Top = 34
-        Width = 285
+        Height = 925
+        Top = 51
+        Width = 428
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 617
-        ClientWidth = 285
+        ClientHeight = 925
+        ClientWidth = 428
         TabOrder = 1
         object memReserved: TMemo
           Left = 0
-          Height = 617
+          Height = 925
           Top = 0
-          Width = 285
+          Width = 428
           Align = alClient
           BorderStyle = bsNone
           ScrollBars = ssVertical
@@ -518,157 +520,162 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object splReserved: TSplitter
-      Left = 865
-      Height = 651
+      Left = 1296
+      Height = 976
       Top = 0
-      Width = 5
+      Width = 8
       Align = alRight
       MinSize = 180
       ResizeAnchor = akRight
       Visible = False
     end
     object pnlChatHost: TPanel
-      Left = 311
-      Height = 651
+      Left = 467
+      Height = 976
       Top = 0
-      Width = 554
+      Width = 829
       Align = alClient
       BevelOuter = bvNone
-      ClientHeight = 651
-      ClientWidth = 554
+      ClientHeight = 976
+      ClientWidth = 829
       TabOrder = 5
       object pnlChatChrome: TPanel
         Left = 0
-        Height = 34
+        Height = 51
         Top = 0
-        Width = 554
+        Width = 829
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 34
-        ClientWidth = 554
+        ClientHeight = 51
+        ClientWidth = 829
         TabOrder = 0
-        object lblChatTitle: TLabel
-          Left = 8
-          Height = 19
-          Top = 9
-          Width = 32
-          Caption = 'Chat'
+        object pnlCenterTabStripHost: TPanel
+          Left = 0
+          Height = 38
+          Top = 6
+          Width = 763
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
         end
         object btnChatHide: TButton
           Tag = 1
-          Left = 510
-          Height = 25
-          Top = 4
-          Width = 32
+          Left = 765
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 0
+          TabOrder = 1
           OnClick = PanelHideClick
         end
       end
       object pgcCenter: TPageControl
         Left = 0
-        Height = 617
-        Top = 34
-        Width = 554
+        Height = 925
+        Top = 51
+        Width = 829
         ActivePage = tsChat
         Align = alClient
+        ShowTabs = False
         TabIndex = 0
         TabOrder = 1
         object tsChat: TTabSheet
           Caption = 'Chat'
-          ClientHeight = 584
-          ClientWidth = 550
+          ClientHeight = 887
+          ClientWidth = 821
           object lblChatHeading: TLabel
-            Left = 8
-            Height = 19
-            Top = 4
-            Width = 151
+            Left = 12
+            Height = 25
+            Top = 6
+            Width = 181
             Caption = 'What should we build?'
           end
           object lblChatSession: TLabel
-            Left = 8
-            Height = 19
-            Top = 22
-            Width = 54
+            Left = 12
+            Height = 25
+            Top = 33
+            Width = 64
             Caption = 'Session:'
           end
           object lblChatSub: TLabel
-            Left = 8
-            Height = 19
-            Top = 34
-            Width = 222
+            Left = 12
+            Height = 25
+            Top = 51
+            Width = 266
             Caption = 'Autonomous AI agent workspace'
           end
           object pnlChatComposer: TPanel
             Left = 0
-            Height = 140
-            Top = 444
-            Width = 550
+            Height = 210
+            Top = 677
+            Width = 821
             Align = alBottom
             BevelOuter = bvNone
-            ClientHeight = 140
-            ClientWidth = 550
+            ClientHeight = 210
+            ClientWidth = 821
             TabOrder = 0
             object lblChatWorkspaceTag: TLabel
               Left = 0
-              Height = 19
+              Height = 33
               Top = 0
-              Width = 550
+              Width = 821
               Align = alTop
+              AutoSize = False
               Caption = 'PROJECT'
             end
             object memChatPrompt: TMemo
               Left = 0
-              Height = 69
-              Top = 19
-              Width = 550
+              Height = 99
+              Top = 33
+              Width = 821
               Align = alClient
               ScrollBars = ssVertical
               TabOrder = 0
             end
             object pnlChatFooter: TPanel
               Left = 0
-              Height = 52
-              Top = 88
-              Width = 550
+              Height = 78
+              Top = 132
+              Width = 821
               Align = alBottom
               BevelOuter = bvNone
-              ClientHeight = 52
-              ClientWidth = 550
+              ClientHeight = 78
+              ClientWidth = 821
               TabOrder = 1
               object cboChatMode: TComboBox
-                Left = 6
-                Height = 27
-                Top = 8
-                Width = 70
-                ItemHeight = 27
+                Left = 9
+                Height = 33
+                Top = 12
+                Width = 105
+                ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 0
               end
               object cboChatModel: TComboBox
-                Left = 82
-                Height = 27
-                Top = 8
-                Width = 110
-                ItemHeight = 27
+                Left = 123
+                Height = 33
+                Top = 12
+                Width = 237
+                ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 1
               end
               object btnChatStop: TButton
-                Left = 416
-                Height = 16
-                Top = 17
-                Width = 40
+                Left = 620
+                Height = 24
+                Top = 26
+                Width = 60
                 Anchors = [akTop, akRight]
                 Caption = 'Stop'
                 TabOrder = 2
                 Visible = False
               end
               object btnChatSend: TButton
-                Left = 464
-                Height = 16
-                Top = 17
-                Width = 72
+                Left = 692
+                Height = 24
+                Top = 26
+                Width = 108
                 Anchors = [akTop, akRight]
                 Caption = 'Run Agent'
                 TabOrder = 3
@@ -677,9 +684,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object memChatHistory: TMemo
             Left = 0
-            Height = 444
+            Height = 677
             Top = 0
-            Width = 550
+            Width = 821
             Align = alClient
             ReadOnly = True
             ScrollBars = ssVertical
@@ -688,22 +695,22 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsEditor: TTabSheet
           Caption = 'Editor'
-          ClientHeight = 584
-          ClientWidth = 550
+          ClientHeight = 887
+          ClientWidth = 821
           inline synEditor: TSynEdit
             Left = 0
-            Height = 584
+            Height = 887
             Top = 0
-            Width = 550
+            Width = 821
             Align = alClient
-            Font.Height = 7
+            Font.Height = 11
             Font.Name = 'DejaVu Sans Mono'
             Font.Pitch = fpFixed
             Font.Quality = fqNonAntialiased
             ParentColor = False
             ParentFont = False
             TabOrder = 0
-            Gutter.Width = 47
+            Gutter.Width = 71
             Gutter.MouseActions = <>
             RightGutter.Width = 0
             RightGutter.MouseActions = <>
@@ -732,7 +739,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             LineHighlightColor.Foreground = clNone
             inline SynLeftGutterPartList1: TSynGutterPartList
               object SynGutterMarks1: TSynGutterMarks
-                Width = 24
+                Width = 36
                 MouseActions = <>
                 MaxExtraMarksColums = 0
                 Options = [sgmoDeDuplicateMarksOnOverflow]
@@ -740,7 +747,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 MarkupInfo.Foreground = clNone
               end
               object SynGutterLineNumber1: TSynGutterLineNumber
-                Width = 9
+                Width = 11
                 MouseActions = <>
                 MarkupInfo.Background = clBtnFace
                 MarkupInfo.Foreground = clNone
@@ -750,7 +757,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 LeadingZeros = False
               end
               object SynGutterChanges1: TSynGutterChanges
-                Width = 4
+                Width = 6
                 MouseActions = <>
                 ModifiedColor = 59900
                 SavedColor = clGreen
@@ -759,13 +766,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 MarkupInfo.FrameColor = 59900
               end
               object SynGutterSeparator1: TSynGutterSeparator
-                Width = 2
+                Width = 3
                 MouseActions = <>
                 MarkupInfo.Background = clWhite
                 MarkupInfo.Foreground = clGray
               end
               object SynGutterCodeFolding1: TSynGutterCodeFolding
-                Width = 8
+                Width = 15
                 MouseActions = <>
                 MarkupInfo.Background = clNone
                 MarkupInfo.Foreground = clGray
@@ -777,13 +784,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsMarkdown: TTabSheet
           Caption = 'Markdown'
-          ClientHeight = 584
-          ClientWidth = 550
+          ClientHeight = 887
+          ClientWidth = 821
           object memMarkdownPreview: TMemo
             Left = 0
-            Height = 584
+            Height = 887
             Top = 0
-            Width = 550
+            Width = 821
             Align = alClient
             ReadOnly = True
             ScrollBars = ssVertical
@@ -796,9 +803,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   object splTerminal: TSplitter
     Cursor = crVSplit
     Left = 0
-    Height = 5
-    Top = 651
-    Width = 1440
+    Height = 8
+    Top = 976
+    Width = 2160
     Align = alBottom
     MinSize = 120
     ResizeAnchor = akBottom
@@ -807,38 +814,38 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   end
   object pnlTerminalHost: TPanel
     Left = 0
-    Height = 220
-    Top = 656
-    Width = 1440
+    Height = 330
+    Top = 984
+    Width = 2160
     Align = alBottom
     BevelOuter = bvNone
-    ClientHeight = 220
-    ClientWidth = 1440
+    ClientHeight = 330
+    ClientWidth = 2160
     TabOrder = 2
     Visible = False
     object pnlTerminalChrome: TPanel
       Left = 0
-      Height = 34
+      Height = 51
       Top = 0
-      Width = 1440
+      Width = 2160
       Align = alTop
       BevelOuter = bvNone
-      ClientHeight = 34
-      ClientWidth = 1440
+      ClientHeight = 51
+      ClientWidth = 2160
       TabOrder = 0
       object lblTerminalTitle: TLabel
-        Left = 8
-        Height = 19
-        Top = 9
-        Width = 59
+        Left = 12
+        Height = 25
+        Top = 14
+        Width = 65
         Caption = 'Terminal'
       end
       object btnTerminalHide: TButton
         Tag = 4
-        Left = 1404
-        Height = 25
-        Top = 4
-        Width = 32
+        Left = 2106
+        Height = 38
+        Top = 6
+        Width = 48
         Caption = '✕'
         TabOrder = 0
         OnClick = PanelHideClick
@@ -846,19 +853,19 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object pnlTerminalContent: TPanel
       Left = 0
-      Height = 186
-      Top = 34
-      Width = 1440
+      Height = 279
+      Top = 51
+      Width = 2160
       Align = alClient
       BevelOuter = bvNone
-      ClientHeight = 186
-      ClientWidth = 1440
+      ClientHeight = 279
+      ClientWidth = 2160
       TabOrder = 1
       object lblTerminalStatus: TLabel
         Left = 0
         Height = 1
         Top = 0
-        Width = 1440
+        Width = 2160
         Align = alTop
         WordWrap = True
       end
@@ -866,14 +873,14 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   end
   object StatusBar1: TStatusBar
     Left = 0
-    Height = 24
-    Top = 876
-    Width = 1440
+    Height = 36
+    Top = 1314
+    Width = 2160
     Panels = <>
   end
   object MainMenu1: TMainMenu
-    Left = 360
-    Top = 12
+    Left = 540
+    Top = 18
     object mnuFile: TMenuItem
       Caption = '&File'
       object mnuFileNew: TMenuItem

@@ -64,6 +64,9 @@ procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
 procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
 procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
 
+procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
+  AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind);
+
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
   ACornerRadius, AFontSize, AHorizPad: Integer);
@@ -533,6 +536,78 @@ begin
   end;
 
   APageControl.Invalidate;
+end;
+
+procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
+  AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  R, TextR, CloseR: TRect;
+  FillColor, TextColor: TColor;
+  TextTop, Rad: Integer;
+  CloseCaption: string;
+begin
+  P := ThemePalette(ATheme);
+  R := ARect;
+  Dec(R.Right);
+  Dec(R.Bottom);
+  Rad := 6;
+
+  if AActive then begin
+    FillColor := P.Surface;
+    TextColor := P.Text;
+  end else if AHover then begin
+    FillColor := P.SurfaceAlt;
+    TextColor := P.Text;
+  end else begin
+    FillColor := P.HeaderBg;
+    TextColor := P.TextMuted;
+  end;
+
+  Canvas.Brush.Color := FillColor;
+  Canvas.Pen.Color := P.Border;
+  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+
+  if AActive then begin
+    Canvas.Pen.Color := P.Accent;
+    Canvas.Pen.Width := 2;
+    Canvas.MoveTo(R.Left + Rad, R.Bottom);
+    Canvas.LineTo(R.Right - Rad + 1, R.Bottom);
+    Canvas.Pen.Width := 1;
+  end;
+
+  Canvas.Font.Name := 'Segoe UI';
+  Canvas.Font.Size := ThemedTabFontSize;
+  Canvas.Font.Color := TextColor;
+
+  TextR := R;
+  if AShowClose then
+    Dec(TextR.Right, 16);
+  Inc(TextR.Left, 8);
+  TextTop := TextR.Top + ((TextR.Bottom - TextR.Top - Canvas.TextHeight(ACaption)) div 2);
+  Canvas.TextRect(TextR, TextR.Left, TextTop, ACaption);
+
+  if AShowClose then begin
+    CloseR.Left := R.Right - 20;
+    CloseR.Top := R.Top + 3;
+    CloseR.Right := R.Right - 2;
+    CloseR.Bottom := R.Bottom - 3;
+    if ACloseHover then begin
+      Canvas.Brush.Color := P.SurfaceAlt;
+      Canvas.Pen.Color := P.Border;
+      Canvas.RoundRect(CloseR.Left, CloseR.Top, CloseR.Right + 1, CloseR.Bottom + 1, 4, 4);
+    end;
+    CloseCaption := '✕';
+    Canvas.Font.Size := 9;
+    if ACloseHover then
+      Canvas.Font.Color := P.Accent
+    else if AActive then
+      Canvas.Font.Color := P.Text
+    else
+      Canvas.Font.Color := P.TextMuted;
+    TextTop := CloseR.Top + ((CloseR.Bottom - CloseR.Top - Canvas.TextHeight(CloseCaption)) div 2);
+    Canvas.TextRect(CloseR, CloseR.Left + 5, TextTop, CloseCaption);
+  end;
 end;
 
 procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
