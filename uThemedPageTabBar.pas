@@ -29,8 +29,10 @@ type
     function VisibleTabSheetAt(AVisibleIndex: Integer): TTabSheet;
     function IndexOfTabSheet(ASheet: TTabSheet): Integer;
     procedure LayoutTabs;
+    procedure LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
     procedure PaintTabStrip;
     procedure SetPageControl(AControl: TPageControl);
+    function UsesParentForHeight: Boolean;
     class function FindMetaIndex(ASheet: TTabSheet): Integer; static;
     class procedure EnsureMeta(ASheet: TTabSheet); static;
   protected
@@ -134,16 +136,23 @@ begin
     Result := GThemedTabMeta[I].AllowClose;
 end;
 
+function TThemedPageTabBar.UsesParentForHeight: Boolean;
+begin
+  Result := Align in [alClient, alTop, alBottom];
+end;
+
 constructor TThemedPageTabBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
+  ControlStyle := ControlStyle + [csOpaque];
   FTheme := tkDark;
   FHoverTabIndex := -1;
   FHoverCloseIndex := -1;
   FShowAddTab := False;
-  FAddTabCaption := '[+]';
-  Height := ScaledThemedTabBarHeight(Self);
+  FAddTabCaption := '+';
+  if not UsesParentForHeight then
+    Height := ScaledThemedTabBarHeight(Self);
   DoubleBuffered := True;
 end;
 
@@ -213,6 +222,20 @@ begin
   end;
 end;
 
+procedure TThemedPageTabBar.LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
+var
+  TabW: Integer;
+begin
+  FAddTabRect := Rect(0, 0, 0, 0);
+  if not FShowAddTab then Exit;
+  TabW := AMeasureCanvas.TextWidth(FAddTabCaption) + 16;
+  if TabW < 32 then TabW := 32;
+  FAddTabRect.Left := AX;
+  FAddTabRect.Top := 2;
+  FAddTabRect.Right := AX + TabW;
+  FAddTabRect.Bottom := Height - 2;
+end;
+
 procedure TThemedPageTabBar.LayoutTabs;
 var
   I, Count, TabW, X, Pad, MinW: Integer;
@@ -222,7 +245,7 @@ begin
   SetLength(FTabRects, 0);
   FAddTabRect := Rect(0, 0, 0, 0);
   Count := VisibleTabCount;
-  if Count = 0 then Exit;
+  if (Count = 0) and not FShowAddTab then Exit;
 
   MeasureCanvas := TControlCanvas.Create;
   try
@@ -231,29 +254,24 @@ begin
     MeasureCanvas.Font.Size := ThemedTabFontSize;
     Pad := 8;
     MinW := 72;
-    SetLength(FTabRects, Count);
     X := Pad;
-    for I := 0 to Count - 1 do begin
-      Sheet := VisibleTabSheetAt(I);
-      TabW := MeasureCanvas.TextWidth(Sheet.Caption) + 28;
-      if TabAllowsClose(Sheet) then
-        Inc(TabW, 16);
-      if TabW < MinW then
-        TabW := MinW;
-      FTabRects[I].Left := X;
-      FTabRects[I].Top := 2;
-      FTabRects[I].Right := X + TabW;
-      FTabRects[I].Bottom := Height - 2;
-      X := FTabRects[I].Right + 4;
+    if Count > 0 then begin
+      SetLength(FTabRects, Count);
+      for I := 0 to Count - 1 do begin
+        Sheet := VisibleTabSheetAt(I);
+        TabW := MeasureCanvas.TextWidth(Sheet.Caption) + 28;
+        if TabAllowsClose(Sheet) then
+          Inc(TabW, 16);
+        if TabW < MinW then
+          TabW := MinW;
+        FTabRects[I].Left := X;
+        FTabRects[I].Top := 2;
+        FTabRects[I].Right := X + TabW;
+        FTabRects[I].Bottom := Height - 2;
+        X := FTabRects[I].Right + 4;
+      end;
     end;
-    if FShowAddTab then begin
-      TabW := MeasureCanvas.TextWidth(FAddTabCaption) + 16;
-      if TabW < 40 then TabW := 40;
-      FAddTabRect.Left := X;
-      FAddTabRect.Top := 2;
-      FAddTabRect.Right := X + TabW;
-      FAddTabRect.Bottom := Height - 2;
-    end;
+    LayoutAddTabRect(MeasureCanvas, X);
   finally
     MeasureCanvas.Free;
   end;
@@ -271,13 +289,14 @@ var
   Sheet: TTabSheet;
   ActiveSheet: TTabSheet;
 begin
-  if not Assigned(FPageControl) then Exit;
-  ActiveSheet := FPageControl.ActivePage;
   LayoutTabs;
-  for I := 0 to High(FTabRects) do begin
-    Sheet := VisibleTabSheetAt(I);
-    PaintThemedTab(Canvas, FTabRects[I], Sheet.Caption, Sheet = ActiveSheet, FHoverTabIndex = I,
-      TabAllowsClose(Sheet), FHoverCloseIndex = I, FTheme);
+  if Assigned(FPageControl) then begin
+    ActiveSheet := FPageControl.ActivePage;
+    for I := 0 to High(FTabRects) do begin
+      Sheet := VisibleTabSheetAt(I);
+      PaintThemedTab(Canvas, FTabRects[I], Sheet.Caption, Sheet = ActiveSheet, FHoverTabIndex = I,
+        TabAllowsClose(Sheet), FHoverCloseIndex = I, FTheme);
+    end;
   end;
   if FShowAddTab and (FAddTabRect.Right > FAddTabRect.Left) then
     PaintThemedTab(Canvas, FAddTabRect, FAddTabCaption, False, FHoverTabIndex = VisibleTabCount,
@@ -375,7 +394,8 @@ end;
 procedure TThemedPageTabBar.ChangeScale(M, D: Integer);
 begin
   inherited ChangeScale(M, D);
-  Height := ScaledThemedTabBarHeight(Self);
+  if not UsesParentForHeight then
+    Height := ScaledThemedTabBarHeight(Self);
 end;
 
 end.

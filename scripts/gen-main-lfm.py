@@ -602,6 +602,7 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         Height = 50
         Top = 8
         Width = 64
+        Anchors = [akTop, akRight]
         Caption = '✕'
         TabOrder = 0
         OnClick = PanelHideClick

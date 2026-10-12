@@ -107,7 +107,6 @@ type
     pnlChatChrome: TPanel;
     pnlCenterTabStripHost: TPanel;
     btnChatDetach: TButton;
-    btnChatHide: TButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
     lblChatHeading: TLabel;
@@ -735,7 +734,7 @@ begin
     FCenterTabBar.Align := alClient;
     FCenterTabBar.PageControl := pgcCenter;
     FCenterTabBar.ShowAddTab := True;
-    FCenterTabBar.AddTabCaption := '[+]';
+    FCenterTabBar.AddTabCaption := '+';
     FCenterTabBar.OnAddTab := @TabBarCenterAddTab;
     FCenterTabBar.OnTabClose := @TabBarCenterTabClose;
   end;
@@ -1126,7 +1125,6 @@ begin
   StyleCancelButton(btnNavDetach, FState.Theme);
   StyleCancelButton(btnNavHide, FState.Theme);
   StyleCancelButton(btnChatDetach, FState.Theme);
-  StyleCancelButton(btnChatHide, FState.Theme);
   StyleCancelButton(btnReservedDetach, FState.Theme);
   StyleCancelButton(btnReservedHide, FState.Theme);
   StyleCancelButton(btnUtilityDetach, FState.Theme);

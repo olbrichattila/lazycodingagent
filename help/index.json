@@ -15,7 +15,7 @@
     "id": "chat-and-modes",
     "title": "Chat, sessions, and modes",
     "file": "chat-and-modes.md",
-    "keywords": ["session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging"]
+    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "tab strip", "+"]
   },
   {
     "id": "project-rules",

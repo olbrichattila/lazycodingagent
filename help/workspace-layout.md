@@ -46,7 +46,7 @@ There is **no** session tab strip and **no** per-file editor tabs. Switch sessio
 
 ## Panel visibility and detach
 
-Use **✕** on a panel header or **Window → Panels** to show or hide navigation, chat, guidelines, utility, and terminal. Layout and visibility persist when you restart the app.
+Use **✕** on navigation, guidelines, utility, or terminal panel headers, or **Window → Panels**, to show or hide those areas. The **center (chat / editor / markdown)** area has **⧉ detach** on its header but no **✕** — hide the chat panel from **Window → Panels** only. Layout and visibility persist when you restart the app.
 
 Use **⧉** on navigation, chat, guidelines, and utility headers to **detach** the panel into a floating window (position and size are saved). Close the float window or click **⧉** again to re-dock. The **terminal** panel supports **hide** only — it does not detach.
 

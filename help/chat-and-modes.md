@@ -8,7 +8,7 @@ Each workspace can run **several chat sessions** in parallel:
 - Switching sessions or workspaces does **not** stop a run in another session; it continues in the background.
 - Switch sessions from **Sessions** in the nav rail; the active session name appears on the **Chat** tab.
 
-Create sessions from **Sessions** (**+ New Chat Session**). Archive, restore, or delete from the same view (archiving is not a permanent delete until you delete from the archive list).
+Create sessions from **Sessions** (**+ New Chat Session**) or click **+** on the center tab strip above the Chat panel (same action). Archive, restore, or delete from the same view (archiving is not a permanent delete until you delete from the archive list).
 
 ## Composer modes
 
