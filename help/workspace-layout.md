@@ -33,9 +33,9 @@ Failures are also appended to `tool-errors.log` under the same user config folde
 
 The center uses a **PageControl** with three fixed tabs:
 
-- **Chat** — conversation history (plain text), current session label, composer, mode and model combos, Stop and Run.
-- **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing).
-- **Markdown** — read-only preview memo for markdown files (source editing uses the Editor tab).
+- **Chat** — conversation history rendered as **Markdown** (headings, bold, code, lists — subset, not full GFM), current session label, composer, mode and model combos, Stop and Run.
+- **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing). Font size scales with display DPI.
+- **Markdown** — formatted preview when you open a `.md` file and choose **Preview** (same HTML renderer as chat). Choose **Source** to edit in the Editor tab.
 
 There is **no** session tab strip and **no** per-file editor tabs. Switch sessions from **Sessions** in the nav rail; open another file from **Projects**.
 
@@ -44,9 +44,11 @@ There is **no** session tab strip and **no** per-file editor tabs. Switch sessio
 - **Guidelines / instructions** — workspace context on the right when enabled.
 - **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**.
 
-## Panel visibility
+## Panel visibility and detach
 
-Use **✕** on a panel header or **Window → Panels** to show or hide navigation, guidelines, utility, and terminal. Layout and visibility persist when you restart the app.
+Use **✕** on a panel header or **Window → Panels** to show or hide navigation, chat, guidelines, utility, and terminal. Layout and visibility persist when you restart the app.
+
+Use **⧉** on navigation, chat, guidelines, and utility headers to **detach** the panel into a floating window (position and size are saved). Close the float window or click **⧉** again to re-dock. The **terminal** panel supports **hide** only — it does not detach.
 
 ## Terminal
 
@@ -54,7 +56,7 @@ Use **✕** on a panel header or **Window → Panels** to show or hide navigatio
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, and combos follow the active theme; native page-control tabs and buttons follow the OS widget set on Linux and macOS.
+**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, combos, and HTML preview areas follow the active theme; native page-control tabs and buttons follow the OS widget set on Linux and macOS.
 
 ## Tips
 

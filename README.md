@@ -104,7 +104,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - [Free Pascal (FPC)](https://www.freepascal.org/)
 - [Lazarus IDE](https://www.lazarus-ide.org/)
 - Lazarus Component Library (LCL)
-- Chat transcript and Help preview use plain **`TMemo`** text (no HTML markdown renderer in the UI).
+- Chat history, Markdown file preview, and Help topics use a **Markdown subset → HTML** renderer (`TMarkdownHtmlView` on streamed `TPanel` hosts; TurboPower IPro at runtime).
 
 ---
 
@@ -186,7 +186,10 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 - `uPlanView.pas` — Plan utility tab (path, build, memo)
 - `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages
 - `uNavigationPanel.pas` — `TNavContentControl` binds to streamed nav controls on the main form
-- `uChatPanel.pas` — Binds composer memos/combos/buttons; plain-text history in `TMemo`
+- `uChatPanel.pas` — Binds composer memos/combos/buttons; Markdown HTML history on `pnlChatHistoryHost`
+- `uMarkdownHtmlView.pas` — Shared Markdown subset renderer for chat, center preview, and Help
+- `uPanelDetach.pas` — Detach navigation, chat, guidelines, and utility panels to floating windows
+- `uThemeHooks.pas` — Custom control hooks for recursive theming (tab bar, SynEdit, terminal view)
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
 - `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes

@@ -9,7 +9,7 @@
     "id": "workspace-layout",
     "title": "Workspace layout and panels",
     "file": "workspace-layout.md",
-    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "editor", "markdown"]
+    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "editor", "markdown", "html preview", "detach", "floating panel"]
   },
   {
     "id": "chat-and-modes",

@@ -9,7 +9,7 @@ alwaysApply: true
 
 - **LazyCodingAgent** is a **Lazarus + LCL** desktop application (Free Pascal compiler under the hood).
 - Default workflow: open `lazycodingagent.lpi` in the **Lazarus IDE**, edit forms in the **Form Designer**, build with the IDE or `lazbuild`.
-- **No custom component package:** every visible control is a **stock LCL** type streamed in the form **`.lfm`** (`TPageControl`, `TTabSheet`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab. **Exception:** `TTerminalLCLView` (ViewLCL) is created at runtime in [`uTerminalPanel.pas`](uTerminalPanel.pas), not streamed on [`mainunit.lfm`](mainunit.lfm), so Lazarus can open the main form without the ViewLCL design package.
+- **No custom component package:** every visible control is a **stock LCL** type streamed in the form **`.lfm`** (`TPageControl`, `TTabSheet`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab. **Runtime-only (not in `.lfm`):** `TTerminalLCLView` (ViewLCL) via [`uTerminalPanel.pas`](uTerminalPanel.pas); **`TThemedPageTabBar`** on streamed **`TPanel`** tab-strip hosts via [`uThemedPageTabBar.pas`](uThemedPageTabBar.pas); **`TMarkdownHtmlView`** (TurboPower IpHtml) on streamed **`TPanel`** hosts for chat history, Markdown preview, and Help—via [`uMarkdownHtmlView.pas`](uMarkdownHtmlView.pas)—so the IDE needs no ViewLCL or custom tab design package.
 - Do **not** treat this repo as a console-only or “code-only UI” FPC project. The main window and dialogs must remain **editable in Lazarus** for layout.
 
 ## Lazarus IDE contract (hard requirements)
@@ -24,10 +24,10 @@ alwaysApply: true
 ### Standard LCL component palette only
 
 - Use stock LCL controls from the component palette only.
-- **Buttons:** designer **`TButton`**; optional `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from [`uTheme.pas`](uTheme.pas) for Windows fill colors (Linux/macOS stay native).
-- **Tabs:** native **`TPageControl`** / **`TTabSheet`** on the main form (center chat/editor/markdown, utility scratchpad/execution/plan, Settings).
-- Apply look-and-feel at runtime via [`uTheme.pas`](uTheme.pas)—not custom tab or button frame subclasses.
-- **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, `fraThemedButton`, `fraThemedPicker`, `uPanelDetach`, `uMarkdownView`, or a Lazarus design package under `components/`.
+- **Buttons:** designer **`TButton`**; optional `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from [`uTheme.pas`](uTheme.pas) for Windows fill colors (Linux/macOS stay native). **No** Win32 `TButton` paint hook.
+- **Tabs:** keep **`TPageControl`** / **`TTabSheet`** in **`.lfm`** with **`ShowTabs = False`**; use a stock **`TPanel`** tab-strip host in chrome; create **`TThemedPageTabBar`** at runtime in `FormCreate` (themed headers, optional **✕**, optional **`[+]`**).
+- Apply look-and-feel at runtime via [`uTheme.pas`](uTheme.pas)—not other custom tab or button frame subclasses.
+- **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, `fraThemedButton`, `fraThemedPicker`, `uMarkdownView`, or a Lazarus design package under `components/`. **`uPanelDetach`** is allowed for floating panels; detach controls are stock **`TButton`** (`⧉`) on panel chrome in `.lfm`.
 
 ### Published events and designer wiring
 
@@ -37,8 +37,9 @@ alwaysApply: true
 ### Non-visual helpers (not layout owners)
 
 - [`uNavigationPanel.pas`](uNavigationPanel.pas) — `TNavContentControl` binds to streamed nav labels, lists, tree, and buttons on `mainunit`.
-- [`uChatPanel.pas`](uChatPanel.pas) — `TChatPanel` binds to streamed chat memos, combos, and buttons.
+- [`uChatPanel.pas`](uChatPanel.pas) — `TChatPanel` binds to streamed chat labels, `pnlChatHistoryHost`, prompt memo, combos, and buttons; creates **`TMarkdownHtmlView`** on the history host at runtime.
 - [`uTerminalPanel.pas`](uTerminalPanel.pas) — PTY controller; creates **`TTerminalLCLView`** on the streamed `pnlTerminalContent` host at runtime.
+- [`uThemedPageTabBar.pas`](uThemedPageTabBar.pas) — themed tab strip; created on streamed `pnl*TabStripHost` panels in [`mainunit.pas`](mainunit.pas) / [`frmSettings.pas`](frmSettings.pas) at runtime (not streamed).
 - [`uMainFileEditor.pas`](uMainFileEditor.pas) / [`uPlanView.pas`](uPlanView.pas) — logic for streamed `TSynEdit` and plan utility controls.
 
 Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
@@ -47,7 +48,7 @@ Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
 
 - **Nav rail:** one `TSpeedButton` per navigation item, `Align = alTop`, shared `GroupIndex`, `OnClick` in `.lfm`.
 - **Nav body:** title/subtitle labels, `TListBox` / `TTreeView`, log list boxes, action buttons — visibility and captions only in code.
-- **Center `TPageControl`:** Chat (history + composer + mode/model combos), Editor (`TSynEdit`), Markdown preview (`TMemo`). One open file at a time; no per-file tab strip. Session name on the chat sheet; session list in **Sessions** nav.
+- **Center `TPageControl`:** Chat (history + composer + mode/model combos), Editor (`TSynEdit`), Markdown preview (`TPanel` host). One open file at a time; no per-file tab strip. Session name on the chat sheet; session list in **Sessions** nav.
 - **Utility `TPageControl`:** Scratchpad, Execution Detail, Plan — fixed sheets.
 - **Terminal:** chrome and status label on the bottom host in `.lfm`; `TTerminalLCLView` added at runtime. Panel **hide** (✕) only; no floating detach.
 
@@ -55,8 +56,8 @@ Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) w
 
 ## Theming (dark and light)
 
-- Do **not** hardcode theme colors or fonts in `.lfm`. Runtime applies [`uTheme.pas`](uTheme.pas): `ApplyAllThemes`, `ThemePalette`, `ApplyControlTheme`, `StyleComboBox`, `ConfigureThemedListBox`, `ApplyPlatformChrome`.
-- Chat history and Help preview are **plain text** in `TMemo` (not rendered HTML markdown).
+- Do **not** hardcode theme colors or fonts in `.lfm`. Runtime applies [`uTheme.pas`](uTheme.pas): `ApplyAllThemes`, `ApplyThemedControlTree`, `ApplyThemedForm`, `ThemePalette`, `StyleComboBox`, `ConfigureThemedListBox`, `ApplyPlatformChrome`; custom hooks via [`uThemeHooks.pas`](uThemeHooks.pas).
+- Chat history, Markdown file preview, and Help topics use **`TMarkdownHtmlView`** on streamed **`TPanel`** hosts (rendered Markdown subset).
 
 ## When adding UI
 
