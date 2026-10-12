@@ -234,16 +234,17 @@ end;
 
 destructor TMarkdownHtmlView.Destroy;
 begin
-  if Assigned(FHtmlPanel) then
-    FHtmlPanel.Free;
+  { IpHtmlPanel is owned by FHost (LCL); freeing here double-frees on form close. }
+  FHtmlPanel := nil;
   inherited Destroy;
 end;
 
 procedure TMarkdownHtmlView.EnsureViewer;
 begin
   if not Assigned(FHost) then Exit;
+  if (csDestroying in FHost.ComponentState) or not FHost.HandleAllocated then Exit;
   if Assigned(FHtmlPanel) then Exit;
-  FHtmlPanel := TIpHtmlPanel.Create(FOwner);
+  FHtmlPanel := TIpHtmlPanel.Create(FHost);
   FHtmlPanel.Parent := FHost;
   FHtmlPanel.Align := alClient;
   TIpHtmlPanel(FHtmlPanel).BorderStyle := bsNone;
@@ -256,8 +257,10 @@ procedure TMarkdownHtmlView.Render;
 var
   Html: string;
 begin
+  if Assigned(FHost) and (csDestroying in FHost.ComponentState) then Exit;
   EnsureViewer;
   if not Assigned(FHtmlPanel) then Exit;
+  if csDestroying in FHtmlPanel.ComponentState then Exit;
   Html := WrapThemedHtmlDocument(MarkdownSubsetToHtml(FMarkdown), FTheme);
   TIpHtmlPanel(FHtmlPanel).BgColor := ThemePalette(FTheme).Background;
   TIpHtmlPanel(FHtmlPanel).TextColor := ThemePalette(FTheme).Text;

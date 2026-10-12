@@ -59,8 +59,11 @@ begin
 end;
 
 destructor TPanelDetachManager.Destroy;
+var
+  P: TPanelId;
 begin
-  AttachAll;
+  for P := Low(TPanelId) to High(TPanelId) do
+    FreeAndNil(FFloatForm[P]);
   inherited Destroy;
 end;
 
@@ -151,6 +154,7 @@ var
 begin
   if AId = piTerminal then Exit;
   if not FBound[AId] then Exit;
+  if not Assigned(FMainForm) or (csDestroying in FMainForm.ComponentState) then Exit;
   if not FState.IsPanelFloating(AId) then Exit;
 
   FF := FFloatForm[AId];
@@ -235,6 +239,7 @@ procedure TPanelDetachManager.AttachAll;
 var
   P: TPanelId;
 begin
+  if not Assigned(FMainForm) or (csDestroying in FMainForm.ComponentState) then Exit;
   for P := Low(TPanelId) to High(TPanelId) do
     if FState.IsPanelFloating(P) then
       AttachPanel(P);
