@@ -682,14 +682,15 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               end
             end
           end
-          object memChatHistory: TMemo
+          object pnlChatHistoryHost: TPanel
             Left = 0
             Height = 677
             Top = 0
             Width = 821
             Align = alClient
-            ReadOnly = True
-            ScrollBars = ssVertical
+            BevelOuter = bvNone
+            ClientHeight = 677
+            ClientWidth = 821
             TabOrder = 1
           end
         end
@@ -786,14 +787,15 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Caption = 'Markdown'
           ClientHeight = 887
           ClientWidth = 821
-          object memMarkdownPreview: TMemo
+          object pnlMarkdownPreviewHost: TPanel
             Left = 0
             Height = 887
             Top = 0
             Width = 821
             Align = alClient
-            ReadOnly = True
-            ScrollBars = ssVertical
+            BevelOuter = bvNone
+            ClientHeight = 887
+            ClientWidth = 821
             TabOrder = 0
           end
         end

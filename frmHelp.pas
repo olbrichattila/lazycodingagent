@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uTheme, uHelpContent;
+  uAppTypes, uTheme, uHelpContent, uMarkdownHtmlView;
 
 type
   { THelpForm }
@@ -18,7 +18,6 @@ type
     pnlTopics: TPanel;
     lstTopics: TListBox;
     pnlPreviewHost: TPanel;
-    memHelpPreview: TMemo;
     pnlBottom: TPanel;
     btnClose: TButton;
     procedure FormCreate(Sender: TObject);
@@ -31,7 +30,9 @@ type
   private
     FTheme: TThemeKind;
     FCatalog: THelpCatalog;
+    FPreview: TMarkdownHtmlView;
     FFilteredIndices: THelpTopicIndexArray;
+    procedure EnsurePreview;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure RebuildFilteredList;
     procedure ShowTopicAtListIndex(AListIndex: Integer);
@@ -63,8 +64,16 @@ end;
 
 destructor THelpForm.Destroy;
 begin
+  FreeAndNil(FPreview);
   FCatalog.Free;
   inherited Destroy;
+end;
+
+procedure THelpForm.EnsurePreview;
+begin
+  if Assigned(FPreview) then Exit;
+  if not Assigned(pnlPreviewHost) then Exit;
+  FPreview := TMarkdownHtmlView.Create(Self, pnlPreviewHost);
 end;
 
 procedure THelpForm.FormCreate(Sender: TObject);
@@ -101,7 +110,9 @@ begin
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstTopics, ATheme);
   lstTopics.OnDrawItem := @lstTopicsDrawItem;
-  ConfigureThemedMemo(memHelpPreview, ATheme);
+  EnsurePreview;
+  if Assigned(FPreview) then
+    FPreview.ApplyTheme(ATheme);
   StyleCancelButton(btnClose, ATheme);
   lstTopics.Invalidate;
 end;
@@ -124,9 +135,12 @@ begin
     if lstTopics.Items.Count > 0 then begin
       lstTopics.ItemIndex := 0;
       ShowTopicAtListIndex(0);
-    end else
-      memHelpPreview.Lines.Text := '# No matching topics' + LineEnding + LineEnding +
-        'Try a different search term.';
+    end else begin
+      EnsurePreview;
+      if Assigned(FPreview) then
+        FPreview.SetMarkdown('# No matching topics' + LineEnding + LineEnding +
+          'Try a different search term.');
+    end;
   finally
     lstTopics.Items.EndUpdate;
   end;
@@ -141,7 +155,9 @@ begin
   if (AListIndex < 0) or (AListIndex >= lstTopics.Items.Count) then Exit;
   TopicIdx := Integer(PtrUInt(lstTopics.Items.Objects[AListIndex]));
   Topic := FCatalog.GetTopic(TopicIdx);
-  memHelpPreview.Lines.Text := Topic.Body;
+  EnsurePreview;
+  if Assigned(FPreview) then
+    FPreview.SetMarkdown(Topic.Body);
 end;
 
 procedure THelpForm.edtSearchChange(Sender: TObject);

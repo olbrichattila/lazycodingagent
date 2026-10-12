@@ -13,7 +13,7 @@ uses
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, fpjson, jsonparser;
 
 type
   { TLazyCodingAgentForm }
@@ -117,11 +117,11 @@ type
     cboChatModel: TComboBox;
     btnChatStop: TButton;
     btnChatSend: TButton;
-    memChatHistory: TMemo;
+    pnlChatHistoryHost: TPanel;
     tsEditor: TTabSheet;
     synEditor: TSynEdit;
     tsMarkdown: TTabSheet;
-    memMarkdownPreview: TMemo;
+    pnlMarkdownPreviewHost: TPanel;
     splTerminal: TSplitter;
     pnlTerminalHost: TPanel;
     pnlTerminalChrome: TPanel;
@@ -178,6 +178,7 @@ type
     FTerminalPanel: TTerminalPanel;
     FFileEditor: TMainFileEditor;
     FPlanView: TPlanView;
+    FMarkdownPreview: TMarkdownHtmlView;
     FMarkdownPath: string;
     FCurrentRunMode: TWorkspaceMode;
     FPlanSavedThisRun: Boolean;
@@ -611,6 +612,7 @@ procedure TLazyCodingAgentForm.FormDestroy(Sender: TObject);
 var
   I: Integer;
 begin
+  FreeAndNil(FMarkdownPreview);
   FreeAndNil(FFileEditor);
   if Assigned(FSessionHubs) then begin
     for I := 0 to FSessionHubs.Count - 1 do
@@ -753,7 +755,8 @@ begin
     ShowChatCenterTab;
   end else if TabSheet = tsMarkdown then begin
     FMarkdownPath := '';
-    memMarkdownPreview.Clear;
+    if Assigned(FMarkdownPreview) then
+      FMarkdownPreview.SetMarkdown('');
     TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
     AllowClose := True;
     ShowChatCenterTab;
@@ -800,7 +803,7 @@ begin
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
 
   FChatPanel := TChatPanel.Create(Self);
-  FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, memChatHistory, memChatPrompt,
+  FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
     lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop);
   FChatPanel.OnPrompt := @ChatPrompt;
   FChatPanel.OnModeChange := @ChatModeChange;
@@ -818,7 +821,9 @@ begin
 
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
   ConfigureThemedMemo(memUtilityExecDetail, FState.Theme, 'Consolas');
-  ConfigureThemedMemo(memMarkdownPreview, FState.Theme);
+  if not Assigned(FMarkdownPreview) then
+    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  FMarkdownPreview.ApplyTheme(FState.Theme);
 
   FTerminalRetryTimer := TTimer.Create(Self);
   FTerminalRetryTimer.Enabled := False;
@@ -1106,7 +1111,9 @@ begin
   if Assigned(FUtilityTabBar) then FUtilityTabBar.ApplyTheme(FState.Theme);
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
   ConfigureThemedMemo(memUtilityExecDetail, FState.Theme, 'Consolas');
-  ConfigureThemedMemo(memMarkdownPreview, FState.Theme);
+  if not Assigned(FMarkdownPreview) then
+    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  FMarkdownPreview.ApplyTheme(FState.Theme);
   ApplyEditorTheme;
 
   UpdateNavRailSelection;
@@ -1946,6 +1953,7 @@ end;
 procedure TLazyCodingAgentForm.OpenMarkdownInCenterTab(const APath: string);
 var
   Path: string;
+  Lines: TStringList;
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
@@ -1953,7 +1961,15 @@ begin
     Exit;
   end;
   FMarkdownPath := Path;
-  memMarkdownPreview.Lines.LoadFromFile(Path);
+  if Assigned(FMarkdownPreview) then begin
+    Lines := TStringList.Create;
+    try
+      Lines.LoadFromFile(Path);
+      FMarkdownPreview.SetMarkdown(Lines.Text);
+    finally
+      Lines.Free;
+    end;
+  end;
   tsMarkdown.Caption := ExtractFileName(Path) + ' [Preview]';
   TThemedPageTabBar.SetTabHidden(tsMarkdown, False);
   FState.SetPanelVisible(piChat, True);

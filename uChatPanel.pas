@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms,
   LCLType, fpjson, jsonparser,
-  uAppTypes, uTheme, uAgentTypes, uWorkspaceState;
+  uAppTypes, uTheme, uAgentTypes, uWorkspaceState, uMarkdownHtmlView;
 
 type
   TPromptEvent = procedure(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode;
@@ -16,7 +16,7 @@ type
   TModelChangeEvent = procedure(Sender: TObject; const AModel: string) of object;
   TCancelEvent = procedure(Sender: TObject) of object;
 
-  { Binds designer-placed chat controls; plain-text transcript in TMemo. }
+  { Binds designer-placed chat controls; Markdown subset in TMarkdownHtmlView on host panel. }
   TChatPanel = class(TComponent)
   private
     FWorkspaceName: string;
@@ -34,7 +34,8 @@ type
     FHeading: TLabel;
     FSubHeading: TLabel;
     FSessionLabel: TLabel;
-    FHistoryMemo: TMemo;
+    FHistoryHost: TPanel;
+    FHistoryView: TMarkdownHtmlView;
     FWorkspaceTag: TLabel;
     FPromptMemo: TMemo;
     FModeCombo: TComboBox;
@@ -50,17 +51,18 @@ type
     procedure UpdateHeading;
     procedure UpdateSessionLabel(const ACaption: string);
     procedure InitWelcomeText;
+    procedure EnsureHistoryView;
     procedure AppendToHistory(const ARoleLabel, ABody: string);
     procedure RefreshHistoryView;
-    procedure ScrollChatToBottom(Data: PtrInt);
     function ToolMessageBody(const AMsg: TChatMessage): string;
     procedure ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
       State: TOwnerDrawState);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistory, APrompt: TMemo;
-      AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TComboBox; ASendBtn, AStopBtn: TButton);
+    procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
+      APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TComboBox;
+      ASendBtn, AStopBtn: TButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetWorkspace(const AName: string);
@@ -136,25 +138,42 @@ end;
 
 destructor TChatPanel.Destroy;
 begin
+  FreeAndNil(FHistoryView);
   FModelIds.Free;
   inherited Destroy;
 end;
 
-procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistory, APrompt: TMemo;
-  AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TComboBox; ASendBtn, AStopBtn: TButton);
+procedure TChatPanel.EnsureHistoryView;
+var
+  OwnerComp: TComponent;
+begin
+  if not Assigned(FHistoryHost) then Exit;
+  if Assigned(FHistoryView) then Exit;
+  if FHistoryHost.Owner is TComponent then
+    OwnerComp := TComponent(FHistoryHost.Owner)
+  else
+    OwnerComp := Self;
+  FHistoryView := TMarkdownHtmlView.Create(OwnerComp, FHistoryHost);
+end;
+
+procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
+  APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TComboBox;
+  ASendBtn, AStopBtn: TButton);
 var
   M: TWorkspaceMode;
 begin
   FHeading := AHeading;
   FSubHeading := ASubHeading;
   FSessionLabel := ASessionLabel;
-  FHistoryMemo := AHistory;
+  FHistoryHost := AHistoryHost;
   FPromptMemo := APrompt;
   FWorkspaceTag := AWorkspaceTag;
   FModeCombo := AModeCombo;
   FModelCombo := AModelCombo;
   FSendBtn := ASendBtn;
   FStopBtn := AStopBtn;
+
+  EnsureHistoryView;
 
   if Assigned(FModeCombo) then begin
     FModeCombo.Items.Clear;
@@ -193,7 +212,7 @@ end;
 procedure TChatPanel.InitWelcomeText;
 begin
   FHistoryText :=
-    'Welcome to LazyCodingAgent!' + LineEnding + LineEnding +
+    '# Welcome to LazyCodingAgent!' + LineEnding + LineEnding +
     'Type a prompt below or pick a mode (Ask, Plan, Agent) to start building.';
 end;
 
@@ -228,19 +247,9 @@ end;
 
 procedure TChatPanel.RefreshHistoryView;
 begin
-  if Assigned(FHistoryMemo) then
-    FHistoryMemo.Lines.Text := FHistoryText;
-  if ParentFormHandlesReady(FHistoryMemo) then
-    Application.QueueAsyncCall(@ScrollChatToBottom, 0);
-end;
-
-procedure TChatPanel.ScrollChatToBottom(Data: PtrInt);
-begin
-  if Data <> 0 then ;
-  if Assigned(FHistoryMemo) then begin
-    FHistoryMemo.SelStart := Length(FHistoryMemo.Text);
-    FHistoryMemo.SelLength := 0;
-  end;
+  EnsureHistoryView;
+  if Assigned(FHistoryView) then
+    FHistoryView.SetMarkdown(FHistoryText);
 end;
 
 procedure TChatPanel.AppendToHistory(const ARoleLabel, ABody: string);
@@ -248,7 +257,7 @@ begin
   if Trim(ABody) = '' then Exit;
   if FHistoryText <> '' then
     FHistoryText := FHistoryText + LineEnding + LineEnding;
-  FHistoryText := FHistoryText + ARoleLabel + ':' + LineEnding + ABody;
+  FHistoryText := FHistoryText + '### ' + ARoleLabel + LineEnding + LineEnding + ABody;
   RefreshHistoryView;
 end;
 
@@ -285,8 +294,11 @@ begin
     FSubHeading.Font.Color := P.TextMuted;
   if Assigned(FSessionLabel) then
     FSessionLabel.Font.Color := P.TextMuted;
-  if Assigned(FHistoryMemo) then
-    ConfigureThemedMemo(FHistoryMemo, ATheme, 'Segoe UI', P.Surface);
+  EnsureHistoryView;
+  if Assigned(FHistoryView) then
+    FHistoryView.ApplyTheme(ATheme);
+  if Assigned(FHistoryHost) then
+    FHistoryHost.Color := P.Surface;
   if Assigned(FWorkspaceTag) then
     FWorkspaceTag.Font.Color := P.Accent;
   if Assigned(FPromptMemo) then
@@ -304,8 +316,6 @@ end;
 
 procedure TChatPanel.ApplyPlatformChrome(ATheme: TThemeKind);
 begin
-  if Assigned(FHistoryMemo) then
-    ApplyPlatformScrollableTheme(FHistoryMemo, ATheme);
   if Assigned(FPromptMemo) then
     ApplyPlatformScrollableTheme(FPromptMemo, ATheme);
 end;
@@ -381,8 +391,8 @@ end;
 procedure TChatPanel.ClearHistory;
 begin
   FHistoryText := '';
-  if Assigned(FHistoryMemo) then
-    FHistoryMemo.Clear;
+  InitWelcomeText;
+  RefreshHistoryView;
 end;
 
 procedure TChatPanel.AppendToolMessage(const AMsg: TChatMessage; ADebuggingMode: Boolean);
@@ -495,13 +505,16 @@ procedure TChatPanel.ReloadFromMessages(const AMessages: TChatMessageArray; ADeb
 var
   I: Integer;
 begin
-  ClearHistory;
+  FHistoryText := '';
   for I := 0 to High(AMessages) do begin
     if AMessages[I].Role = crTool then
       AppendToolMessage(AMessages[I], ADebuggingMode)
     else
       AppendMessage(AMessages[I]);
   end;
+  if FHistoryText = '' then
+    InitWelcomeText;
+  RefreshHistoryView;
 end;
 
 procedure TChatPanel.SubmitPrompt(const APrompt: string);
