@@ -15,7 +15,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
 - **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards.
-- **Designer-first layout**: the main window and dialogs stream **stock LCL** controls in `.lfm` files (`TPageControl`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, `TTerminalLCLView`). Open `mainunit.pas` in Lazarus (F12) to edit the full layout.
+- **Designer-first layout**: the main window and dialogs stream **stock LCL** controls in `.lfm` files (`TPageControl`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout. The embedded terminal view (`TTerminalLCLView`) is created at runtime in [`uTerminalPanel.pas`](uTerminalPanel.pas) so the IDE does not need the ViewLCL design package on the palette.
 - **Native tabs and buttons** on Linux/macOS; Windows may apply `Style*` button fills from [`uTheme.pas`](uTheme.pas).
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
@@ -81,7 +81,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ### 10. Integrated terminal (bottom panel)
 - **View → Terminal** toggles a full-width bottom dock (above the status bar) with a real PTY shell (`$SHELL` / `/bin/bash` on Unix, `%COMSPEC%` on Windows).
-- **`TTerminalLCLView`** is on the main form; [`uTerminalPanel.pas`](uTerminalPanel.pas) drives the PTY controller.
+- Terminal chrome is on the main form; [`uTerminalPanel.pas`](uTerminalPanel.pas) creates **`TTerminalLCLView`** at runtime and drives the PTY controller.
 - Docked height defaults to about **one quarter** of the client area (resizable splitter); floating window size is stored separately from docked height.
 - When you open the panel with an active workspace, the shell starts in the **workspace root** (`pwd` / `cd`); switching workspaces restarts the shell in the new folder if the terminal is already visible.
 - Powered by the [TerminalEmulator](https://github.com/andrewd207/TerminalEmulator) submodule (`third_party/TerminalEmulator`). **Windows** requires Windows 10 1809+ (ConPTY).
@@ -181,7 +181,7 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 
 - `lazycodingagent.lpr` — Application entry point
 - `mainunit.pas` / `mainunit.lfm` — Main form: nav rail, nav body, center `TPageControl`, utility `TPageControl`, terminal view, menus, splitters, status bar
-- `uTerminalPanel.pas` — PTY controller bound to streamed `TTerminalLCLView`
+- `uTerminalPanel.pas` — PTY controller; runtime `TTerminalLCLView` on designer-placed host panel
 - `uMainFileEditor.pas` — Single `TSynEdit` load/save/highlighter
 - `uPlanView.pas` — Plan utility tab (path, build, memo)
 - `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages

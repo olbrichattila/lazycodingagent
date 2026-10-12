@@ -7,7 +7,6 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes,
-  Terminal.View.LCL,
   uAppTypes, uAgentTypes, uAgentTools, uTheme, uWorkspaceState,
   uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel, uChatPanel,
   uTerminalPanel, uMainFileEditor, uPlanView,
@@ -130,7 +129,6 @@ type
     btnTerminalHide: TButton;
     pnlTerminalContent: TPanel;
     lblTerminalStatus: TLabel;
-    terminalView: TTerminalLCLView;
 
     procedure PanelHideClick(Sender: TObject);
 
@@ -746,7 +744,7 @@ begin
   FPlanView.OnBuild := @PlanBuildRequested;
 
   FTerminalPanel := TTerminalPanel.Create(Self);
-  FTerminalPanel.Bind(pnlTerminalContent, terminalView, lblTerminalStatus);
+  FTerminalPanel.Bind(pnlTerminalContent, lblTerminalStatus);
   FTerminalPanel.OnTerminalStatus := @TerminalStatus;
 
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);

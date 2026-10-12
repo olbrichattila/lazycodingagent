@@ -9,7 +9,7 @@ alwaysApply: true
 
 - **LazyCodingAgent** is a **Lazarus + LCL** desktop application (Free Pascal compiler under the hood).
 - Default workflow: open `lazycodingagent.lpi` in the **Lazarus IDE**, edit forms in the **Form Designer**, build with the IDE or `lazbuild`.
-- **No custom component package:** every visible control is a **stock LCL** type streamed in the form **`.lfm`** (`TPageControl`, `TTabSheet`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, `TTerminalLCLView`, etc.). Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab.
+- **No custom component package:** every visible control is a **stock LCL** type streamed in the form **`.lfm`** (`TPageControl`, `TTabSheet`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab. **Exception:** `TTerminalLCLView` (ViewLCL) is created at runtime in [`uTerminalPanel.pas`](uTerminalPanel.pas), not streamed on [`mainunit.lfm`](mainunit.lfm), so Lazarus can open the main form without the ViewLCL design package.
 - Do **not** treat this repo as a console-only or “code-only UI” FPC project. The main window and dialogs must remain **editable in Lazarus** for layout.
 
 ## Lazarus IDE contract (hard requirements)
@@ -38,7 +38,7 @@ alwaysApply: true
 
 - [`uNavigationPanel.pas`](uNavigationPanel.pas) — `TNavContentControl` binds to streamed nav labels, lists, tree, and buttons on `mainunit`.
 - [`uChatPanel.pas`](uChatPanel.pas) — `TChatPanel` binds to streamed chat memos, combos, and buttons.
-- [`uTerminalPanel.pas`](uTerminalPanel.pas) — PTY controller; **`TTerminalLCLView`** is on `mainunit.lfm`.
+- [`uTerminalPanel.pas`](uTerminalPanel.pas) — PTY controller; creates **`TTerminalLCLView`** on the streamed `pnlTerminalContent` host at runtime.
 - [`uMainFileEditor.pas`](uMainFileEditor.pas) / [`uPlanView.pas`](uPlanView.pas) — logic for streamed `TSynEdit` and plan utility controls.
 
 Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
@@ -49,7 +49,7 @@ Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
 - **Nav body:** title/subtitle labels, `TListBox` / `TTreeView`, log list boxes, action buttons — visibility and captions only in code.
 - **Center `TPageControl`:** Chat (history + composer + mode/model combos), Editor (`TSynEdit`), Markdown preview (`TMemo`). One open file at a time; no per-file tab strip. Session name on the chat sheet; session list in **Sessions** nav.
 - **Utility `TPageControl`:** Scratchpad, Execution Detail, Plan — fixed sheets.
-- **Terminal:** status label + `TTerminalLCLView` on the bottom host. Panel **hide** (✕) only; no floating detach.
+- **Terminal:** chrome and status label on the bottom host in `.lfm`; `TTerminalLCLView` added at runtime. Panel **hide** (✕) only; no floating detach.
 
 Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) when adding rail items or large structural changes; preserve the `MainMenu1` tail.
 

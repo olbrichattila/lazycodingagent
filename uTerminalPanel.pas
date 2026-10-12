@@ -11,7 +11,7 @@ uses
 type
   TTerminalStatusEvent = procedure(Sender: TObject; const AMessage: string) of object;
 
-  { PTY controller bound to designer-placed TTerminalLCLView. }
+  { PTY controller; TTerminalLCLView is created at runtime (not on .lfm) for IDE compatibility. }
   TTerminalPanel = class(TComponent)
   private
     FHost: TWinControl;
@@ -22,13 +22,14 @@ type
     FWorkingDir: string;
     FOnTerminalStatus: TTerminalStatusEvent;
     procedure ShellExited(Sender: TObject);
+    procedure EnsureTerminalView;
     function TryStartShell: Boolean;
     procedure SetStatus(const AMessage: string);
     procedure HideStatus;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Bind(AHost: TWinControl; AView: TTerminalLCLView; AStatus: TLabel);
+    procedure Bind(AHost: TWinControl; AStatus: TLabel);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetWorkingDirectory(const ADir: string);
     function EnsureRunning: Boolean;
@@ -90,11 +91,15 @@ begin
   end;
   if not Assigned(FController) then
     Exit;
-  if not Assigned(FView) or not Assigned(FHost) then
+  if not Assigned(FHost) then
     Exit;
   if not ParentFormHandlesReady(FHost) then
     Exit;
   if not FHost.Visible then
+    Exit;
+
+  EnsureTerminalView;
+  if not Assigned(FView) then
     Exit;
 
   FView.OnShellExit := @ShellExited;
@@ -161,16 +166,24 @@ begin
   inherited Destroy;
 end;
 
-procedure TTerminalPanel.Bind(AHost: TWinControl; AView: TTerminalLCLView; AStatus: TLabel);
+procedure TTerminalPanel.EnsureTerminalView;
+begin
+  if Assigned(FView) then Exit;
+  if not Assigned(FHost) then Exit;
+  if not ParentFormHandlesReady(FHost) then Exit;
+  FView := TTerminalLCLView.Create(Self);
+  FView.Parent := FHost;
+  FView.Align := alClient;
+  FView.FontName := 'DejaVu Sans Mono';
+  FView.FontSize := 10;
+  FView.OnShellExit := @ShellExited;
+end;
+
+procedure TTerminalPanel.Bind(AHost: TWinControl; AStatus: TLabel);
 begin
   FHost := AHost;
-  FView := AView;
   FStatusLabel := AStatus;
-  if Assigned(FView) then begin
-    FView.FontName := 'DejaVu Sans Mono';
-    FView.FontSize := 10;
-    FView.OnShellExit := @ShellExited;
-  end;
+  EnsureTerminalView;
 end;
 
 procedure TTerminalPanel.ApplyTheme(ATheme: TThemeKind);

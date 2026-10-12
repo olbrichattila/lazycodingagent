@@ -624,14 +624,6 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         AutoSize = True
         WordWrap = True
       end
-      object terminalView: TTerminalLCLView
-        Left = 0
-        Height = 353
-        Top = 19
-        Width = 2880
-        Align = alClient
-        TabOrder = 0
-      end
     end
   end
   object StatusBar1: TStatusBar

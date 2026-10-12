@@ -119,7 +119,6 @@ pub_new = """    StatusBar1: TStatusBar;
     btnTerminalHide: TButton;
     pnlTerminalContent: TPanel;
     lblTerminalStatus: TLabel;
-    terminalView: TTerminalLCLView;
 
 """
 text, n = pub_pat.subn(pub_new, text, count=1)
