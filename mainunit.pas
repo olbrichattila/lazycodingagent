@@ -145,6 +145,8 @@ type
     procedure MnuViewResetLayoutClick(Sender: TObject);
     procedure MnuViewTerminalClick(Sender: TObject);
     procedure SplTerminalMoved(Sender: TObject);
+    procedure PnlTerminalHostResize(Sender: TObject);
+    procedure PnlTerminalChromeResize(Sender: TObject);
     procedure MnuFileNewClick(Sender: TObject);
     procedure MnuFileOpenClick(Sender: TObject);
     procedure MnuFileSaveClick(Sender: TObject);
@@ -173,6 +175,7 @@ type
     FTerminalStartQueued: Boolean;
     FTerminalRetryTimer: TTimer;
     FTerminalRetryCount: Integer;
+    FTerminalChromeLayout: Boolean;
 
     FNavRailBtns: array[TNavigationItem] of TSpeedButton;
     FNavContent: TNavContentControl;
@@ -263,6 +266,7 @@ type
     procedure TerminalStatus(Sender: TObject; const AMessage: string);
     function IsTerminalSurfaceVisible: Boolean;
     function EffectiveTerminalDockHeight: Integer;
+    procedure LayoutTerminalChromeControls;
     procedure ApplyAllThemes;
     procedure ApplyPlatformChromeThemes;
     procedure SchedulePostShowStartup;
@@ -902,6 +906,36 @@ begin
 end;
 
 
+procedure TLazyCodingAgentForm.LayoutTerminalChromeControls;
+const
+  HIDE_MARGIN = 6;
+var
+  NewLeft: Integer;
+begin
+  if FTerminalChromeLayout then Exit;
+  if not Assigned(btnTerminalHide) or not Assigned(pnlTerminalChrome) then Exit;
+  FTerminalChromeLayout := True;
+  try
+    NewLeft := pnlTerminalChrome.ClientWidth - btnTerminalHide.Width - HIDE_MARGIN;
+    if NewLeft < 0 then
+      NewLeft := 0;
+    if btnTerminalHide.Left <> NewLeft then
+      btnTerminalHide.Left := NewLeft;
+  finally
+    FTerminalChromeLayout := False;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.PnlTerminalHostResize(Sender: TObject);
+begin
+  LayoutTerminalChromeControls;
+end;
+
+procedure TLazyCodingAgentForm.PnlTerminalChromeResize(Sender: TObject);
+begin
+  LayoutTerminalChromeControls;
+end;
+
 procedure TLazyCodingAgentForm.ApplyDockPanelsLayout;
 begin
   pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and
@@ -920,8 +954,10 @@ begin
   splTerminal.Visible := pnlTerminalHost.Visible;
   if Assigned(FPanelDetach) then
     FPanelDetach.ApplyLayout;
-  if pnlTerminalHost.Visible then
+  if pnlTerminalHost.Visible then begin
     pnlTerminalHost.Height := EffectiveTerminalDockHeight;
+    LayoutTerminalChromeControls;
+  end;
 
   if FState.IsPanelVisible(piTerminal) and not FDeferThemesUntilShown
      and not FPendingInitialWorkspaceUI then

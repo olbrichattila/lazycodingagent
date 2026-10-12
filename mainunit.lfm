@@ -855,6 +855,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     ClientWidth = 2160
     TabOrder = 2
     Visible = False
+    OnResize = PnlTerminalHostResize
     object pnlTerminalChrome: TPanel
       Left = 0
       Height = 51
@@ -865,6 +866,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       ClientHeight = 51
       ClientWidth = 2160
       TabOrder = 0
+      OnResize = PnlTerminalChromeResize
       object lblTerminalTitle: TLabel
         Left = 12
         Height = 25
