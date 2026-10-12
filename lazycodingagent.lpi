@@ -75,6 +75,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uMarkdownHtmlView.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uNavFuturePlaceholder.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
