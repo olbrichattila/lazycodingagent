@@ -195,13 +195,26 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Width = 86
           Caption = 'Navigation'
         end
+        object btnNavDetach: TButton
+          Tag = 0
+          Left = 267
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
         object btnNavHide: TButton
+          Tag = 0
           Left = 321
           Height = 38
           Top = 6
           Width = 48
+          Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 0
+          TabOrder = 1
           OnClick = PanelHideClick
         end
       end
@@ -326,10 +339,21 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Left = 0
           Height = 38
           Top = 6
-          Width = 354
+          Width = 306
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
+        end
+        object btnUtilityDetach: TButton
+          Tag = 3
+          Left = 312
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 1
+          OnClick = PanelDetachClick
         end
         object btnUtilityHide: TButton
           Tag = 3
@@ -339,7 +363,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Width = 48
           Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 1
+          TabOrder = 2
           OnClick = PanelHideClick
         end
       end
@@ -486,14 +510,26 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Width = 81
           Caption = 'Guidelines'
         end
+        object btnReservedDetach: TButton
+          Tag = 2
+          Left = 318
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
         object btnReservedHide: TButton
           Tag = 2
           Left = 374
           Height = 38
           Top = 6
           Width = 48
+          Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 0
+          TabOrder = 1
           OnClick = PanelHideClick
         end
       end
@@ -553,10 +589,21 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Left = 0
           Height = 38
           Top = 6
-          Width = 763
+          Width = 703
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
+        end
+        object btnChatDetach: TButton
+          Tag = 1
+          Left = 711
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 1
+          OnClick = PanelDetachClick
         end
         object btnChatHide: TButton
           Tag = 1
@@ -566,7 +613,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Width = 48
           Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 1
+          TabOrder = 2
           OnClick = PanelHideClick
         end
       end

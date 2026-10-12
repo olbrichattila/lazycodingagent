@@ -13,7 +13,7 @@ uses
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, uPanelDetach, fpjson, jsonparser;
 
 type
   { TLazyCodingAgentForm }
@@ -65,6 +65,7 @@ type
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
     lblNavTitle: TLabel;
+    btnNavDetach: TButton;
     btnNavHide: TButton;
     pnlNavContent: TPanel;
     lblNavViewTitle: TLabel;
@@ -79,6 +80,7 @@ type
     pnlUtilityHost: TPanel;
     pnlUtilityChrome: TPanel;
     pnlUtilityTabStripHost: TPanel;
+    btnUtilityDetach: TButton;
     btnUtilityHide: TButton;
     pnlUtilityContent: TPanel;
     pgcUtility: TPageControl;
@@ -96,6 +98,7 @@ type
     pnlReservedHost: TPanel;
     pnlReservedChrome: TPanel;
     lblReservedTitle: TLabel;
+    btnReservedDetach: TButton;
     btnReservedHide: TButton;
     pnlReservedContent: TPanel;
     memReserved: TMemo;
@@ -103,6 +106,7 @@ type
     pnlChatHost: TPanel;
     pnlChatChrome: TPanel;
     pnlCenterTabStripHost: TPanel;
+    btnChatDetach: TButton;
     btnChatHide: TButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
@@ -131,6 +135,7 @@ type
     lblTerminalStatus: TLabel;
 
     procedure PanelHideClick(Sender: TObject);
+    procedure PanelDetachClick(Sender: TObject);
 
     // Published Event Handlers (Form Designer connected)
     procedure FormCreate(Sender: TObject);
@@ -179,6 +184,7 @@ type
     FFileEditor: TMainFileEditor;
     FPlanView: TPlanView;
     FMarkdownPreview: TMarkdownHtmlView;
+    FPanelDetach: TPanelDetachManager;
     FMarkdownPath: string;
     FCurrentRunMode: TWorkspaceMode;
     FPlanSavedThisRun: Boolean;
@@ -539,6 +545,11 @@ begin
 
   CreateThemedTabBars;
   InitWorkspaceSubControls;
+  FPanelDetach := TPanelDetachManager.Create(Self, Self, FState);
+  FPanelDetach.Bind(piNavigation, pnlNavHost, pnlNavContent);
+  FPanelDetach.Bind(piChat, pnlChatHost, pgcCenter);
+  FPanelDetach.Bind(piReserved, pnlReservedHost, pnlReservedContent);
+  FPanelDetach.Bind(piUtility, pnlUtilityHost, pnlUtilityContent);
   PopulateMenusAndCombos;
 end;
 
@@ -548,6 +559,8 @@ begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
   end;
+  if Assigned(FPanelDetach) then
+    FPanelDetach.RaiseFloatingForms;
   SchedulePostShowStartup;
 end;
 
@@ -606,12 +619,15 @@ begin
     FRegistry.Save;
   if Assigned(FTerminalPanel) then
     FTerminalPanel.Stop;
+  if Assigned(FPanelDetach) then
+    FPanelDetach.FinalizeOnClose;
 end;
 
 procedure TLazyCodingAgentForm.FormDestroy(Sender: TObject);
 var
   I: Integer;
 begin
+  FreeAndNil(FPanelDetach);
   FreeAndNil(FMarkdownPreview);
   FreeAndNil(FFileEditor);
   if Assigned(FSessionHubs) then begin
@@ -681,6 +697,8 @@ end;
 
 procedure TLazyCodingAgentForm.PanelHideClickAction(AId: TPanelId);
 begin
+  if Assigned(FPanelDetach) and FState.IsPanelFloating(AId) then
+    FPanelDetach.AttachPanel(AId);
   FState.SetPanelVisible(AId, False);
   StateChanged(Self);
 end;
@@ -689,6 +707,13 @@ procedure TLazyCodingAgentForm.PanelHideClick(Sender: TObject);
 begin
   if Sender is TControl then
     PanelHideClickAction(TPanelId(TControl(Sender).Tag));
+end;
+
+procedure TLazyCodingAgentForm.PanelDetachClick(Sender: TObject);
+begin
+  if not Assigned(FPanelDetach) then Exit;
+  if Sender is TControl then
+    FPanelDetach.ToggleDetach(TPanelId(TControl(Sender).Tag));
 end;
 
 
@@ -879,16 +904,22 @@ end;
 
 procedure TLazyCodingAgentForm.ApplyDockPanelsLayout;
 begin
-  pnlNavHost.Visible := FState.IsPanelVisible(piNavigation);
+  pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and
+    not FState.IsPanelFloating(piNavigation);
   splNav.Visible := pnlNavHost.Visible;
-  pnlChatHost.Visible := FState.IsPanelVisible(piChat);
-  pnlReservedHost.Visible := FState.IsPanelVisible(piReserved);
+  pnlChatHost.Visible := FState.IsPanelVisible(piChat) and
+    not FState.IsPanelFloating(piChat);
+  pnlReservedHost.Visible := FState.IsPanelVisible(piReserved) and
+    not FState.IsPanelFloating(piReserved);
   splReserved.Visible := pnlReservedHost.Visible;
-  pnlUtilityHost.Visible := FState.IsPanelVisible(piUtility);
+  pnlUtilityHost.Visible := FState.IsPanelVisible(piUtility) and
+    not FState.IsPanelFloating(piUtility);
   splUtility.Visible := pnlUtilityHost.Visible;
 
   pnlTerminalHost.Visible := FState.IsPanelVisible(piTerminal);
   splTerminal.Visible := pnlTerminalHost.Visible;
+  if Assigned(FPanelDetach) then
+    FPanelDetach.ApplyLayout;
   if pnlTerminalHost.Visible then
     pnlTerminalHost.Height := EffectiveTerminalDockHeight;
 
@@ -1095,11 +1126,17 @@ begin
   ApplyControlTheme(pnlReservedChrome, FState.Theme);
   ApplyControlTheme(pnlUtilityChrome, FState.Theme);
   ApplyControlTheme(pnlTerminalChrome, FState.Theme);
+  StyleCancelButton(btnNavDetach, FState.Theme);
   StyleCancelButton(btnNavHide, FState.Theme);
+  StyleCancelButton(btnChatDetach, FState.Theme);
   StyleCancelButton(btnChatHide, FState.Theme);
+  StyleCancelButton(btnReservedDetach, FState.Theme);
   StyleCancelButton(btnReservedHide, FState.Theme);
+  StyleCancelButton(btnUtilityDetach, FState.Theme);
   StyleCancelButton(btnUtilityHide, FState.Theme);
   StyleCancelButton(btnTerminalHide, FState.Theme);
+  if Assigned(FPanelDetach) then
+    FPanelDetach.ApplyThemes(FState.Theme);
 
   if Assigned(FNavContent) then FNavContent.ApplyTheme(FState.Theme);
   if Assigned(FChatPanel) then FChatPanel.ApplyTheme(FState.Theme);
