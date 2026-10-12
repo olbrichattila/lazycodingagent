@@ -106,7 +106,7 @@ begin
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
   pnlActions.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
   ConfigureThemedListBox(lstRules, ATheme);
   lblRules.Font.Color := P.Text;
   StylePrimaryButton(btnAddRule, ATheme);

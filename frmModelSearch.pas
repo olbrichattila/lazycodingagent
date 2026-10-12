@@ -116,7 +116,7 @@ begin
   Font.Color := P.Text;
   pnlTop.Color := P.Surface;
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
   edtSearch.Color := P.SurfaceAlt;
   edtSearch.Font.Color := P.Text;
   ApplyPlatformChrome(Self, ATheme);

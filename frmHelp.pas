@@ -102,7 +102,11 @@ begin
   pnlTopics.Color := P.Surface;
   pnlPreviewHost.Color := P.Background;
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
+  pnlTop.Color := P.Surface;
+  pnlTopics.Color := P.Surface;
+  pnlPreviewHost.Color := P.Background;
+  pnlBottom.Color := P.Surface;
   lblSearch.Font.Color := P.TextMuted;
   edtSearch.Color := P.SurfaceAlt;
   edtSearch.Font.Color := P.Text;

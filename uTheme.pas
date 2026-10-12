@@ -5,7 +5,7 @@ unit uTheme;
 interface
 
 uses
-  Classes, Controls, Graphics, Forms, StdCtrls, ExtCtrls, ComCtrls,
+  Classes, Controls, Graphics, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons,
   LCLType, uAppTypes;
 
 type
@@ -95,6 +95,14 @@ procedure ApplyPlatformScrollableTheme(AControl: TWinControl; ATheme: TThemeKind
 procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
 procedure ApplyFormPlatformThemes(AForm: TCustomForm; ATheme: TThemeKind);
 procedure ApplyPlatformChrome(AForm: TForm; ATheme: TThemeKind);
+
+type
+  TThemeCustomApplyProc = function(AControl: TControl; ATheme: TThemeKind): Boolean of object;
+
+procedure RegisterThemeCustomApply(const AProc: TThemeCustomApplyProc);
+procedure ApplyThemedButtonControl(ABtn: TButton; ATheme: TThemeKind);
+procedure ApplyThemedControlTree(ARoot: TWinControl; ATheme: TThemeKind);
+procedure ApplyThemedForm(AForm: TCustomForm; ATheme: TThemeKind);
 
 type
   TThemedButtonFrameApplyProc = procedure(AControl: TControl; ATheme: TThemeKind);
@@ -1102,5 +1110,134 @@ begin
     AForm.Invalidate;
 {$ENDIF}
 end;
+
+type
+  TThemedDrawHandlers = class
+  public
+    procedure ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
+      State: TOwnerDrawState);
+    procedure ListDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
+      State: TOwnerDrawState);
+  end;
+
+var
+  ThemeCustomApplies: array of TThemeCustomApplyProc;
+  InternalThemeApplyContext: TThemeKind = tkDark;
+  ThemedDrawHandlers: TThemedDrawHandlers;
+
+procedure RegisterThemeCustomApply(const AProc: TThemeCustomApplyProc);
+begin
+  SetLength(ThemeCustomApplies, Length(ThemeCustomApplies) + 1);
+  ThemeCustomApplies[High(ThemeCustomApplies)] := AProc;
+end;
+
+function TryThemeCustomApply(AControl: TControl; ATheme: TThemeKind): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 0 to High(ThemeCustomApplies) do
+    if Assigned(ThemeCustomApplies[I]) and ThemeCustomApplies[I](AControl, ATheme) then
+      Exit(True);
+end;
+
+procedure TThemedDrawHandlers.ComboDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+begin
+  StyleComboBoxDrawItem(Control, Index, ARect, State, InternalThemeApplyContext);
+end;
+
+procedure TThemedDrawHandlers.ListDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState);
+begin
+  ThemedListBoxDrawItem(Control, Index, ARect, State, InternalThemeApplyContext);
+end;
+
+procedure ApplyThemedButtonControl(ABtn: TButton; ATheme: TThemeKind);
+begin
+  if not Assigned(ABtn) then Exit;
+  case ABtn.Tag of
+    1: StylePrimaryButton(ABtn, ATheme);
+    2: StyleDestructiveButton(ABtn, ATheme);
+  else
+    StyleCancelButton(ABtn, ATheme);
+  end;
+end;
+
+procedure ApplyThemedControlTree(ARoot: TWinControl; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  I: Integer;
+  C: TControl;
+  Child: TWinControl;
+begin
+  if not Assigned(ARoot) then Exit;
+  InternalThemeApplyContext := ATheme;
+  P := ThemePalette(ATheme);
+
+  for I := 0 to ARoot.ControlCount - 1 do begin
+    C := ARoot.Controls[I];
+    if TryThemeCustomApply(C, ATheme) then
+      Continue;
+
+    if C is TButton then
+      ApplyThemedButtonControl(TButton(C), ATheme)
+    else if C is TComboBox then begin
+      StyleComboBox(TComboBox(C), ATheme);
+      TComboBox(C).OnDrawItem := @ThemedDrawHandlers.ComboDrawItem;
+    end else if C is TListBox then begin
+      ConfigureThemedListBox(TListBox(C), ATheme);
+      TListBox(C).OnDrawItem := @ThemedDrawHandlers.ListDrawItem;
+      TListBox(C).Invalidate;
+    end else if C is TTreeView then
+      ConfigureThemedTreeView(TTreeView(C), ATheme)
+    else if C is TCustomMemo then
+      ConfigureThemedMemo(TCustomMemo(C), ATheme)
+    else if C is TCustomEdit then begin
+      TCustomEdit(C).Color := P.SurfaceAlt;
+      TCustomEdit(C).Font.Color := P.Text;
+    end else if C is TLabel then
+      TLabel(C).Font.Color := P.Text
+    else if C is TPanel then
+      TPanel(C).Color := P.Surface
+    else if C is TPageControl then
+      StylePageControl(TPageControl(C), ATheme)
+    else if C is TSplitter then
+      TSplitter(C).Color := P.Border
+    else if C is TStatusBar then begin
+      TStatusBar(C).Color := P.Surface;
+      TStatusBar(C).Font.Color := P.TextMuted;
+    end else if C is TCheckBox then
+      TCheckBox(C).Font.Color := P.Text
+    else if C is TSpeedButton then begin
+      TSpeedButton(C).Font.Color := P.TextMuted;
+      TSpeedButton(C).Color := P.RailBg;
+    end;
+
+    if C is TWinControl then begin
+      Child := TWinControl(C);
+      if Child.ControlCount > 0 then
+        ApplyThemedControlTree(Child, ATheme);
+    end;
+  end;
+end;
+
+procedure ApplyThemedForm(AForm: TCustomForm; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(AForm) then Exit;
+  InternalThemeApplyContext := ATheme;
+  P := ThemePalette(ATheme);
+  AForm.Color := P.Background;
+  AForm.Font.Color := P.Text;
+  ApplyThemedControlTree(AForm, ATheme);
+end;
+
+initialization
+  ThemedDrawHandlers := TThemedDrawHandlers.Create;
+
+finalization
+  FreeAndNil(ThemedDrawHandlers);
 
 end.

@@ -86,7 +86,7 @@ begin
   Font.Color := P.Text;
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
   ConfigureThemedMemo(memoRule, ATheme);
   btnOK.ModalResult := mrOk;
   btnCancel.ModalResult := mrCancel;

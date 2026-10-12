@@ -70,7 +70,7 @@ begin
   Color := P.Background;
   Font.Color := P.Text;
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
   edtDisplayName.Color := P.SurfaceAlt;
   edtDisplayName.Font.Color := P.Text;
   edtFolder.Color := P.SurfaceAlt;

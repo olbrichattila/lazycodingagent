@@ -116,6 +116,7 @@ object SettingsForm: TSettingsForm
         TabOrder = 3
       end
       object btnFetchModels: TButton
+        Tag = 1
         Left = 16
         Height = 28
         Top = 336
@@ -134,6 +135,7 @@ object SettingsForm: TSettingsForm
         TabOrder = 5
       end
       object btnDeleteModel: TButton
+        Tag = 2
         Left = 240
         Height = 28
         Top = 336
@@ -290,6 +292,7 @@ object SettingsForm: TSettingsForm
     ClientWidth = 560
     TabOrder = 1
     object btnOK: TButton
+      Tag = 1
       Left = 376
       Height = 28
       Top = 8

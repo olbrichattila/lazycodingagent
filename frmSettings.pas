@@ -170,7 +170,8 @@ begin
   pnlBottom.Color := P.Surface;
 
   StyleComboBox(cboProvider, ATheme);
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
+  pnlBottom.Color := P.Surface;
 
   edtApiKey.Color := P.SurfaceAlt;
   edtApiKey.Font.Color := P.Text;

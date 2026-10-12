@@ -69,7 +69,7 @@ begin
   Font.Color := P.Text;
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
   edtDisplayName.Color := P.SurfaceAlt;
   edtDisplayName.Font.Color := P.Text;
   edtModelId.Color := P.SurfaceAlt;

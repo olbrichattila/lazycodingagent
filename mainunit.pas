@@ -13,7 +13,7 @@ uses
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, uPanelDetach, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
 
 type
   { TLazyCodingAgentForm }
@@ -543,6 +543,7 @@ begin
   mnuWorkspaceSepRules.Tag := -1;
   mnuWorkspaceProjectRules.Tag := -1;
 
+  RegisterThemeCustomHooks;
   CreateThemedTabBars;
   InitWorkspaceSubControls;
   FPanelDetach := TPanelDetachManager.Create(Self, Self, FState);
@@ -1121,11 +1122,7 @@ begin
   pnlUtilityChrome.Color := P.HeaderBg;
   pnlTerminalChrome.Color := P.HeaderBg;
 
-  ApplyControlTheme(pnlNavChrome, FState.Theme);
-  ApplyControlTheme(pnlChatChrome, FState.Theme);
-  ApplyControlTheme(pnlReservedChrome, FState.Theme);
-  ApplyControlTheme(pnlUtilityChrome, FState.Theme);
-  ApplyControlTheme(pnlTerminalChrome, FState.Theme);
+  ApplyThemedControlTree(pnlMainContainer, FState.Theme);
   StyleCancelButton(btnNavDetach, FState.Theme);
   StyleCancelButton(btnNavHide, FState.Theme);
   StyleCancelButton(btnChatDetach, FState.Theme);
@@ -1140,14 +1137,10 @@ begin
 
   if Assigned(FNavContent) then FNavContent.ApplyTheme(FState.Theme);
   if Assigned(FChatPanel) then FChatPanel.ApplyTheme(FState.Theme);
-  if Assigned(memReserved) then
-    ConfigureThemedMemo(memReserved, FState.Theme, 'Segoe UI', P.Surface);
   if Assigned(FTerminalPanel) then FTerminalPanel.ApplyTheme(FState.Theme);
   if Assigned(FPlanView) then FPlanView.ApplyTheme(FState.Theme);
   if Assigned(FCenterTabBar) then FCenterTabBar.ApplyTheme(FState.Theme);
   if Assigned(FUtilityTabBar) then FUtilityTabBar.ApplyTheme(FState.Theme);
-  ConfigureThemedMemo(memUtilityScratch, FState.Theme);
-  ConfigureThemedMemo(memUtilityExecDetail, FState.Theme, 'Consolas');
   if not Assigned(FMarkdownPreview) then
     FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
   FMarkdownPreview.ApplyTheme(FState.Theme);
