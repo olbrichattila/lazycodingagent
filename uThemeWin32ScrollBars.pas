@@ -99,12 +99,27 @@ type
     procedure MaybeDrawFlatBorder(HDC: HDC);
     function ThumbColor(const sbi: TScrollBarInfo; ThumbIndex: Integer): TColor;
     function ArrowColor(const sbi: TScrollBarInfo; ArrowIndex: Integer): TColor;
+    function NcScrollBarHasBarGeometry(const Bar: TRect; Vertical: Boolean): Boolean;
+    function WindowNcScrollBarEnabled(Vertical: Boolean): Boolean;
+    procedure InitDefaultScrollBarInfo(var sbi: TScrollBarInfo; Vertical: Boolean);
+    procedure FallbackNcScrollBarRect(Vertical: Boolean; const Wnd, OtherBar: TRect;
+      out Bar: TRect; var sbi: TScrollBarInfo);
+    procedure PaintScrollCorner(Canvas: TCanvas; const VertBar, HorzBar: TRect);
+    procedure ResolveNcScrollBarRects(out BarVert, BarHorz: TRect; var sbiVert, sbiHorz: TScrollBarInfo);
+    procedure PaintNcScrollBarsContent(Canvas: TCanvas; const BarVert, BarHorz: TRect;
+      const sbiVert, sbiHorz: TScrollBarInfo);
+    procedure ExcludeClientFromWindowDC(DC: HDC);
   public
     constructor Create(AOwner: TWinControl); reintroduce;
     destructor Destroy; override;
     procedure Apply(ATheme: TThemeKind);
     class function FindOnControl(AControl: TWinControl): TWin32ThemedScrollBarPaint;
   end;
+
+function NcScrollBarHit(WParam: WPARAM): Boolean;
+begin
+  Result := (WParam = HTVSCROLL) or (WParam = HTHSCROLL);
+end;
 
 function IsSynEditClass(AControl: TControl): Boolean;
 begin
@@ -190,6 +205,78 @@ begin
   if (sbi.rgstate[ArrowIndex] and STATE_SYSTEM_HOTTRACKED) <> 0 then
     Exit(P.Text);
   Result := P.TextMuted;
+end;
+
+function TWin32ThemedScrollBarPaint.NcScrollBarHasBarGeometry(const Bar: TRect;
+  Vertical: Boolean): Boolean;
+begin
+  if Vertical then
+    Result := (Bar.Right > Bar.Left) and (Bar.Bottom - Bar.Top >= 4)
+  else
+    Result := (Bar.Bottom > Bar.Top) and (Bar.Right - Bar.Left >= 4);
+end;
+
+function TWin32ThemedScrollBarPaint.WindowNcScrollBarEnabled(Vertical: Boolean): Boolean;
+var
+  Style: LongInt;
+begin
+  Style := Windows.GetWindowLong(HostHwnd, GWL_STYLE);
+  if Vertical then
+    Result := (Style and WS_VSCROLL) <> 0
+  else
+    Result := (Style and WS_HSCROLL) <> 0;
+end;
+
+procedure TWin32ThemedScrollBarPaint.InitDefaultScrollBarInfo(var sbi: TScrollBarInfo;
+  Vertical: Boolean);
+begin
+  FillChar(sbi, SizeOf(sbi), 0);
+  sbi.cbSize := SizeOf(sbi);
+  if Vertical then
+    sbi.dxyLineButton := GetSystemMetrics(SM_CYVSCROLL)
+  else
+    sbi.dxyLineButton := GetSystemMetrics(SM_CXHSCROLL);
+end;
+
+procedure TWin32ThemedScrollBarPaint.FallbackNcScrollBarRect(Vertical: Boolean; const Wnd,
+  OtherBar: TRect; out Bar: TRect; var sbi: TScrollBarInfo);
+var
+  Thickness: Integer;
+begin
+  InitDefaultScrollBarInfo(sbi, Vertical);
+  Bar := Wnd;
+  if Vertical then begin
+    Thickness := GetSystemMetrics(SM_CXVSCROLL);
+    if Thickness <= 0 then
+      Thickness := 17;
+    Bar.Left := Wnd.Right - Thickness;
+    Bar.Right := Wnd.Right;
+    if NcScrollBarHasBarGeometry(OtherBar, False) then
+      Bar.Bottom := OtherBar.Top;
+  end else begin
+    Thickness := GetSystemMetrics(SM_CYHSCROLL);
+    if Thickness <= 0 then
+      Thickness := 17;
+    Bar.Top := Wnd.Bottom - Thickness;
+    Bar.Bottom := Wnd.Bottom;
+    if NcScrollBarHasBarGeometry(OtherBar, True) then
+      Bar.Right := OtherBar.Left;
+  end;
+end;
+
+procedure TWin32ThemedScrollBarPaint.PaintScrollCorner(Canvas: TCanvas; const VertBar,
+  HorzBar: TRect);
+var
+  Corner: TRect;
+begin
+  if not NcScrollBarHasBarGeometry(VertBar, True) then Exit;
+  if not NcScrollBarHasBarGeometry(HorzBar, False) then Exit;
+  Corner.Left := VertBar.Left;
+  Corner.Top := HorzBar.Top;
+  Corner.Right := VertBar.Right;
+  Corner.Bottom := HorzBar.Bottom;
+  if (Corner.Right <= Corner.Left) or (Corner.Bottom <= Corner.Top) then Exit;
+  FillSolid(Canvas, Corner, Palette.Background);
 end;
 
 procedure TWin32ThemedScrollBarPaint.DrawThumb(Canvas: TCanvas; const ThumbRect: TRect;
@@ -588,33 +675,103 @@ begin
   end;
 end;
 
-procedure TWin32ThemedScrollBarPaint.PaintNcScrollBars(HDC: HDC);
+procedure TWin32ThemedScrollBarPaint.ResolveNcScrollBarRects(out BarVert, BarHorz: TRect;
+  var sbiVert, sbiHorz: TScrollBarInfo);
 var
-  sbi: TScrollBarInfo;
-  Canvas: TCanvas;
-  WR, Bar: TRect;
+  WR, Wnd, Mapped: TRect;
 begin
+  BarVert.Left := 0;
+  BarVert.Top := 0;
+  BarVert.Right := 0;
+  BarVert.Bottom := 0;
+  BarHorz := BarVert;
   if HostHwnd = 0 then Exit;
   if not GetWindowRect(HostHwnd, WR) then Exit;
+  Wnd := WR;
+  OffsetRect(Wnd, -WR.Left, -WR.Top);
+
+  if WindowNcScrollBarEnabled(True) then begin
+    InitDefaultScrollBarInfo(sbiVert, True);
+    if GetScrollBarInfo(HostHwnd, OBJID_VSCROLL, sbiVert) then begin
+      Mapped := sbiVert.rcScrollBar;
+      OffsetRect(Mapped, -WR.Left, -WR.Top);
+      if NcScrollBarHasBarGeometry(Mapped, True) then
+        BarVert := Mapped
+      else
+        FallbackNcScrollBarRect(True, Wnd, BarHorz, BarVert, sbiVert);
+    end else
+      FallbackNcScrollBarRect(True, Wnd, BarHorz, BarVert, sbiVert);
+  end;
+
+  if WindowNcScrollBarEnabled(False) then begin
+    InitDefaultScrollBarInfo(sbiHorz, False);
+    if GetScrollBarInfo(HostHwnd, OBJID_HSCROLL, sbiHorz) then begin
+      Mapped := sbiHorz.rcScrollBar;
+      OffsetRect(Mapped, -WR.Left, -WR.Top);
+      if NcScrollBarHasBarGeometry(Mapped, False) then
+        BarHorz := Mapped
+      else
+        FallbackNcScrollBarRect(False, Wnd, BarVert, BarHorz, sbiHorz);
+    end else
+      FallbackNcScrollBarRect(False, Wnd, BarVert, BarHorz, sbiHorz);
+  end;
+
+  if WindowNcScrollBarEnabled(True) and WindowNcScrollBarEnabled(False) and
+     NcScrollBarHasBarGeometry(BarHorz, False) and
+     (not NcScrollBarHasBarGeometry(BarVert, True) or (BarVert.Bottom > BarHorz.Top)) then
+  begin
+    if NcScrollBarHasBarGeometry(BarVert, True) then
+      BarVert.Bottom := BarHorz.Top
+    else
+      FallbackNcScrollBarRect(True, Wnd, BarHorz, BarVert, sbiVert);
+  end;
+end;
+
+procedure TWin32ThemedScrollBarPaint.PaintNcScrollBarsContent(Canvas: TCanvas;
+  const BarVert, BarHorz: TRect; const sbiVert, sbiHorz: TScrollBarInfo);
+begin
+  if NcScrollBarHasBarGeometry(BarHorz, False) then
+    PaintHorizontalBar(Canvas, BarHorz, sbiHorz);
+  if NcScrollBarHasBarGeometry(BarVert, True) then
+    PaintVerticalBar(Canvas, BarVert, sbiVert);
+  PaintScrollCorner(Canvas, BarVert, BarHorz);
+end;
+
+procedure TWin32ThemedScrollBarPaint.ExcludeClientFromWindowDC(DC: HDC);
+var
+  WR, ClientInWindow: TRect;
+  Origin: TPoint;
+  CW, CH: Integer;
+begin
+  if (HostHwnd = 0) or (DC = 0) then Exit;
+  if not GetWindowRect(HostHwnd, WR) then Exit;
+  if not GetClientRect(HostHwnd, ClientInWindow) then Exit;
+  CW := ClientInWindow.Right - ClientInWindow.Left;
+  CH := ClientInWindow.Bottom - ClientInWindow.Top;
+  Origin.X := 0;
+  Origin.Y := 0;
+  if ClientToScreen(HostHwnd, Origin) then begin
+    ClientInWindow.Left := Origin.X - WR.Left;
+    ClientInWindow.Top := Origin.Y - WR.Top;
+    ClientInWindow.Right := ClientInWindow.Left + CW;
+    ClientInWindow.Bottom := ClientInWindow.Top + CH;
+    ExcludeClipRect(DC, ClientInWindow.Left, ClientInWindow.Top, ClientInWindow.Right,
+      ClientInWindow.Bottom);
+  end;
+end;
+
+procedure TWin32ThemedScrollBarPaint.PaintNcScrollBars(HDC: HDC);
+var
+  sbiVert, sbiHorz: TScrollBarInfo;
+  Canvas: TCanvas;
+  BarVert, BarHorz: TRect;
+begin
+  if HostHwnd = 0 then Exit;
+  ResolveNcScrollBarRects(BarVert, BarHorz, sbiVert, sbiHorz);
   Canvas := TCanvas.Create;
   try
     Canvas.Handle := HDC;
-    FillChar(sbi, SizeOf(sbi), 0);
-    sbi.cbSize := SizeOf(sbi);
-    if GetScrollBarInfo(HostHwnd, OBJID_VSCROLL, sbi) then
-      if (sbi.rgstate[0] and STATE_SYSTEM_INVISIBLE) = 0 then begin
-        Bar := sbi.rcScrollBar;
-        OffsetRect(Bar, -WR.Left, -WR.Top);
-        PaintVerticalBar(Canvas, Bar, sbi);
-      end;
-    FillChar(sbi, SizeOf(sbi), 0);
-    sbi.cbSize := SizeOf(sbi);
-    if GetScrollBarInfo(HostHwnd, OBJID_HSCROLL, sbi) then
-      if (sbi.rgstate[0] and STATE_SYSTEM_INVISIBLE) = 0 then begin
-        Bar := sbi.rcScrollBar;
-        OffsetRect(Bar, -WR.Left, -WR.Top);
-        PaintHorizontalBar(Canvas, Bar, sbi);
-      end;
+    PaintNcScrollBarsContent(Canvas, BarVert, BarHorz, sbiVert, sbiHorz);
   finally
     Canvas.Handle := 0;
     Canvas.Free;
@@ -814,6 +971,7 @@ begin
       end;
     WM_NCUAHSCROLL:
       begin
+        Helper.RepaintNcScrollBarsNow;
         Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
         Helper.RepaintNcScrollBarsNow;
         Exit;
@@ -826,13 +984,11 @@ begin
       end;
     WM_NCMOUSEMOVE:
       begin
-        if (wParam = HTVSCROLL) or (wParam = HTHSCROLL) then begin
+        if NcScrollBarHit(wParam) then begin
           Helper.RepaintNcScrollBarsNow;
           Exit(0);
         end;
-        Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
-        Helper.RepaintNcScrollBarsNow;
-        Exit;
+        Exit(DefSubclassProc(hWnd, uMsg, wParam, lParam));
       end;
     WM_NCLBUTTONDOWN, WM_NCLBUTTONUP:
       begin
@@ -884,6 +1040,7 @@ begin
   DC := GetWindowDC(HostHwnd);
   if DC = 0 then Exit;
   try
+    ExcludeClientFromWindowDC(DC);
     PaintNcScrollBars(DC);
   finally
     ReleaseDC(HostHwnd, DC);
