@@ -4,12 +4,16 @@ unit uThemeHooks;
 
 interface
 
+uses
+  SynEdit, uAppTypes;
+
 procedure RegisterThemeCustomHooks;
+procedure ApplySynEditGutterTheme(AEd: TSynEdit; ATheme: TThemeKind);
 
 implementation
 
 uses
-  Classes, SysUtils, Controls, SynEdit, Terminal.View.LCL, uAppTypes, uTheme, uThemedPageTabBar;
+  Classes, SysUtils, Controls, Graphics, Terminal.View.LCL, uTheme, uThemedPageTabBar;
 
 type
   TThemeHookRegistry = class
@@ -32,6 +36,35 @@ begin
   Result := True;
 end;
 
+procedure ApplySynEditGutterTheme(AEd: TSynEdit; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  GutterBg, LineNumFg: TColor;
+begin
+  if not Assigned(AEd) then Exit;
+  P := ThemePalette(ATheme);
+  if ATheme = tkDark then begin
+    GutterBg := P.Background;
+    LineNumFg := clWhite;
+  end else begin
+    GutterBg := clWhite;
+    LineNumFg := clBlack;
+  end;
+  AEd.Gutter.Color := GutterBg;
+  with AEd.Gutter.LineNumberPart do begin
+    MarkupInfo.Background := GutterBg;
+    MarkupInfo.Foreground := LineNumFg;
+  end;
+  with AEd.Gutter.MarksPart do
+    MarkupInfo.Background := GutterBg;
+  with AEd.Gutter.SeparatorPart do begin
+    MarkupInfo.Background := GutterBg;
+    MarkupInfo.Foreground := P.TextMuted;
+  end;
+  with AEd.Gutter.CodeFoldPart do
+    MarkupInfo.Foreground := P.TextMuted;
+end;
+
 function TThemeHookRegistry.HookSynEdit(AControl: TControl; ATheme: TThemeKind): Boolean;
 var
   P: TThemePalette;
@@ -44,6 +77,7 @@ begin
   Ed.Color := P.SurfaceAlt;
   Ed.Font.Color := P.Text;
   Ed.Font.Size := ScaledEditorFontSize(Ed);
+  ApplySynEditGutterTheme(Ed, ATheme);
   ApplyPlatformScrollableTheme(Ed, ATheme);
   Ed.Invalidate;
   Result := True;

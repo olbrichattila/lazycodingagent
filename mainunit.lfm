@@ -660,7 +660,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object memChatPrompt: TMemo
               Left = 0
-              Height = 99
+              Height = 139
               Top = 33
               Width = 821
               Align = alClient
@@ -669,47 +669,51 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object pnlChatFooter: TPanel
               Left = 0
-              Height = 78
-              Top = 132
+              Height = 38
+              Top = 172
               Width = 821
               Align = alBottom
               BevelOuter = bvNone
-              ClientHeight = 78
+              ClientHeight = 38
               ClientWidth = 821
               TabOrder = 1
               object cboChatMode: TComboBox
-                Left = 9
+                Left = 0
                 Height = 33
-                Top = 12
+                Top = 0
                 Width = 105
+                Align = alLeft
                 ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 0
               end
               object cboChatModel: TComboBox
-                Left = 123
+                Left = 105
                 Height = 33
-                Top = 12
+                Top = 0
                 Width = 237
+                Align = alLeft
                 ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 1
               end
               object btnChatStop: TButton
-                Left = 568
-                Height = 28
-                Top = 12
+                Left = 597
+                Height = 38
+                Top = 0
                 Width = 84
+                Align = alRight
                 Anchors = [akTop, akRight]
                 Caption = 'Stop'
                 TabOrder = 2
                 Visible = False
               end
               object btnChatSend: TButton
-                Left = 664
-                Height = 28
-                Top = 12
+                Left = 681
+                Height = 38
+                Top = 0
                 Width = 140
+                Align = alRight
                 Anchors = [akTop, akRight]
                 Caption = 'Run Agent'
                 TabOrder = 3

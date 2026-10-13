@@ -44,7 +44,7 @@ const
   ThemedButtonHorizPadBase = 14;
   ThemedButtonHeightBase = 28;
   { Code editor — logical pt; LCL scales Font.Size on DPI-aware forms. }
-  ThemedEditorFontSizeBase = 9;
+  ThemedEditorFontSizeBase = 6;
 
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;

@@ -18,6 +18,10 @@ uses
 type
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
+    btnChatSend: TButton;
+    btnChatStop: TButton;
+    cboChatMode: TComboBox;
+    cboChatModel: TComboBox;
     MainMenu1: TMainMenu;
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
@@ -116,10 +120,6 @@ type
     lblChatWorkspaceTag: TLabel;
     memChatPrompt: TMemo;
     pnlChatFooter: TPanel;
-    cboChatMode: TComboBox;
-    cboChatModel: TComboBox;
-    btnChatStop: TButton;
-    btnChatSend: TButton;
     pnlChatHistoryHost: TPanel;
     tsEditor: TTabSheet;
     synEditor: TSynEdit;

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Dialogs, LCLType,
   SynEdit, SynEditTypes, SynHighlighterAny,
-  uAppTypes, uTheme, uSyntaxScheme, uSynGenericClike;
+  uAppTypes, uTheme, uThemeHooks, uSyntaxScheme, uSynGenericClike;
 
 type
   TMainFileEditor = class
@@ -146,6 +146,7 @@ begin
     FEditor.Color := P.SurfaceAlt;
     FEditor.Font.Color := P.Text;
     FEditor.Font.Size := ScaledEditorFontSize(FEditor);
+    ApplySynEditGutterTheme(FEditor, ATheme);
     ApplyPlatformScrollableTheme(FEditor, ATheme);
   end;
   ApplySyntaxScheme(FScheme);
