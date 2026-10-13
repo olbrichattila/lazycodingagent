@@ -23,7 +23,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - **Accent text selection** on chat and navigation lists (owner-drawn rows — blue text, no OS highlight band).
 - **Themed action buttons**: standard `TButton` controls styled with `StylePrimaryButton`, `StyleCancelButton`, and `StyleDestructiveButton` in `uTheme.pas`. On **Windows**, fills are drawn by `PaintThemedButton` through a Win32 paint subclass in `uThemeWin32Buttons.pas`. On **Linux (GTK)** and **macOS (Cocoa)**, `TButton.Color` tints the native widget; no custom paint hook.
 - **Cross-platform UI**: icon-only nav rail, owner-draw list accent selection, and theme tokens apply on all LCL targets.
-- **Scrollbars / title chrome**: on **Windows**, `ApplyPlatformChrome` uses immersive dark mode and `DarkMode_Explorer` for native scrollbars; on **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
+- **Scrollbars / title chrome**: on **Windows**, scrollbars on lists, memos, the editor, HTML preview, and similar controls are painted from the app palette via `uThemeWin32ScrollBars.pas` (immersive dark title bar via `ApplyPlatformChrome`); combo/edit fields still use Explorer subthemes where needed. On **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
 - **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme.
 - Clean splitters allowing custom width resizing between all panels.
 
@@ -34,7 +34,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 | Nav rail icons + accent selection | Yes | Yes | Yes |
 | List rows: accent text, no blue band | Yes | Yes | Yes |
 | Primary / Cancel / Stop buttons (`TButton` + `uTheme`) | Custom-painted via `uThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
-| Dark scrollbars matching app surface | Themed via Win32 | OS GTK theme | OS AppKit theme |
+| Scrollbars matching app light/dark palette | Custom-painted (`uThemeWin32ScrollBars`) | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
 | Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |
 
@@ -193,7 +193,7 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
 - `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes
-- `uTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw, optional `TButton` styling on Windows
+- `uTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw; on Windows, `uThemeWin32Buttons.pas` and `uThemeWin32ScrollBars.pas` custom-paint buttons and scrollbars
 - `uAppTypes.pas` — Shared enumerations, modes, and helpers
 - `uAgentTypes.pas` — Chat roles, LLM providers, tool schemas, and token usage records
 - `uAgentEngine.pas` — Autonomous ReAct execution loop, state management, and LLM communication

@@ -1198,8 +1198,7 @@ procedure TLazyCodingAgentForm.ApplyPlatformChromeThemes;
 begin
   if not HandleAllocated then Exit;
   ApplyPlatformChrome(Self, FState.Theme);
-  if Assigned(memReserved) then
-    ApplyPlatformScrollableTheme(memReserved, FState.Theme);
+  ApplyPlatformScrollableThemeRecursive(Self, FState.Theme);
   if Assigned(FNavContent) then
     FNavContent.ApplyPlatformChrome(FState.Theme);
   if Assigned(FChatPanel) then

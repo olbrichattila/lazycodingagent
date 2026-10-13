@@ -200,6 +200,7 @@ begin
   FView.DefaultFGColor := P.Text;
   FView.SelectionFGColor := P.AccentText;
   FView.SelectionBGColor := P.Accent;
+  ApplyPlatformScrollableTheme(FView, ATheme);
   FView.Invalidate;
 end;
 

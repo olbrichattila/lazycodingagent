@@ -56,7 +56,7 @@ Use **⧉** on navigation, chat, guidelines, and utility headers to **detach** t
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, combos, and HTML preview areas follow the active theme. Primary, cancel, and destructive action buttons use the app palette on **Windows** (custom-painted `TButton` via `uThemeWin32Buttons.pas`). On **Linux and macOS**, those buttons use the native widget with `TButton.Color` from the theme helpers; page-control tabs stay on the OS widget set.
+**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, combos, and HTML preview areas follow the active theme. On **Windows**, scrollbars on scrollable controls (lists, tree, memos, editor, chat HTML, terminal bar) use the same palette via `uThemeWin32ScrollBars.pas`. Primary, cancel, and destructive action buttons use the app palette on **Windows** (custom-painted `TButton` via `uThemeWin32Buttons.pas`). On **Linux and macOS**, buttons and scrollbars use the native widget set (`TButton.Color` from theme helpers for buttons); page-control tabs stay on the OS widget set.
 
 ## Tips
 

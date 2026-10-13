@@ -278,6 +278,10 @@ begin
   FTheme := ATheme;
   if FMarkdown <> '' then
     Render;
+  EnsureViewer;
+  if Assigned(FHtmlPanel) and (FHtmlPanel is TWinControl) and
+     TWinControl(FHtmlPanel).HandleAllocated then
+    ApplyPlatformScrollableTheme(TWinControl(FHtmlPanel), ATheme);
 end;
 
 end.

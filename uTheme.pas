@@ -114,7 +114,7 @@ implementation
 
 uses
   Math, SysUtils, LCLIntf
-  {$IFDEF WINDOWS}, uThemeWin32Buttons{$ENDIF}
+  {$IFDEF WINDOWS}, uThemeWin32Buttons, uThemeWin32ScrollBars{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
@@ -1015,19 +1015,14 @@ begin
   if not Assigned(AControl) then Exit;
   if not AControl.HandleAllocated then Exit;
 {$IFDEF WINDOWS}
-  if AControl is TTreeView then begin
-    // App palette sets Font.Color / BackgroundColor; Explorer subthemes paint system (black) text.
-    SetWindowTheme(AControl.Handle, '', '');
-  end else if (AControl is TMemo) or (AControl is TListBox) or
-     (AControl is TComboBox) or (AControl is TEdit) then begin
-    if not ((AControl is TListBox) and
-       (TListBox(AControl).Style in [lbOwnerDrawFixed, lbOwnerDrawVariable])) then begin
-      if ATheme = tkDark then
-        ThemeId := 'DarkMode_Explorer'
-      else
-        ThemeId := 'Explorer';
-      SetWindowTheme(AControl.Handle, ThemeId, nil);
-    end;
+  if ControlUsesThemedScrollBars(AControl) then
+    ApplyWin32ThemedScrollBars(AControl, ATheme)
+  else if (AControl is TComboBox) or (AControl is TEdit) then begin
+    if ATheme = tkDark then
+      ThemeId := 'DarkMode_Explorer'
+    else
+      ThemeId := 'Explorer';
+    SetWindowTheme(AControl.Handle, ThemeId, nil);
   end;
 {$ENDIF}
   AControl.Invalidate;
