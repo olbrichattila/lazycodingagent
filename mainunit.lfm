@@ -30,146 +30,179 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Left = 0
       Height = 976
       Top = 0
-      Width = 100
+      Width = 76
       Align = alLeft
       BevelOuter = bvNone
       ClientHeight = 976
-      ClientWidth = 100
+      ClientWidth = 76
       TabOrder = 0
       object sbtnNavBrain: TSpeedButton
         Tag = 10
         Left = 0
         Height = 40
-        Top = 300
-        Width = 100
+        Top = 496
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '◉'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavKnowledge: TSpeedButton
         Tag = 9
         Left = 0
         Height = 40
-        Top = 270
-        Width = 100
+        Top = 448
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '📖'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavExecPlans: TSpeedButton
         Tag = 8
         Left = 0
         Height = 40
-        Top = 240
-        Width = 100
+        Top = 400
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '☑'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavMultiAgent: TSpeedButton
         Tag = 7
         Left = 0
         Height = 40
-        Top = 210
-        Width = 100
+        Top = 352
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 16
         Caption = '⬡'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavToolErrors: TSpeedButton
         Tag = 6
         Left = 0
         Height = 40
-        Top = 180
-        Width = 100
+        Top = 296
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '⚠'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavTasks: TSpeedButton
         Tag = 5
         Left = 0
         Height = 40
-        Top = 150
-        Width = 100
+        Top = 248
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '☰'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavTools: TSpeedButton
         Tag = 4
         Left = 0
         Height = 40
-        Top = 120
-        Width = 100
+        Top = 200
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '◈'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavBots: TSpeedButton
         Tag = 3
         Left = 0
         Height = 40
-        Top = 90
-        Width = 100
+        Top = 152
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '✦'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavSessions: TSpeedButton
         Tag = 2
         Left = 0
         Height = 40
-        Top = 60
-        Width = 100
+        Top = 104
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '✉'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavProjects: TSpeedButton
         Tag = 1
         Left = 0
         Height = 40
-        Top = 30
-        Width = 100
+        Top = 56
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '◫'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
       object sbtnNavHome: TSpeedButton
         Left = 0
         Height = 40
-        Top = 0
-        Width = 100
+        Top = 8
+        Width = 76
         Align = alTop
+        BorderSpacing.Top = 8
         Caption = '⌂'
         Flat = True
+        Font.Height = -24
         GroupIndex = 1
+        ParentFont = False
         OnClick = NavRailBtnClick
       end
     end
     object pnlNavHost: TPanel
-      Left = 100
+      Left = 76
       Height = 976
       Top = 0
       Width = 375
@@ -227,20 +260,22 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ClientWidth = 375
         TabOrder = 1
         object lblNavViewTitle: TLabel
-          Left = 0
+          Left = 10
           Height = 25
           Top = 0
-          Width = 375
+          Width = 365
           Align = alTop
+          BorderSpacing.Left = 10
           Caption = 'Workspaces'
           Layout = tlCenter
         end
         object lblNavViewSub: TLabel
-          Left = 0
+          Left = 10
           Height = 25
           Top = 25
-          Width = 375
+          Width = 365
           Align = alTop
+          BorderSpacing.Left = 10
           Caption = 'Select a workspace'
           Layout = tlCenter
         end
@@ -294,11 +329,12 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Visible = False
         end
         object lstNavErrors: TListBox
-          Left = 0
+          Left = 10
           Height = 782
           Top = 50
-          Width = 375
+          Width = 365
           Align = alClient
+          BorderSpacing.Left = 10
           ItemHeight = 0
           TabOrder = 5
           Visible = False
@@ -306,7 +342,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object splNav: TSplitter
-      Left = 459
+      Left = 451
       Height = 976
       Top = 0
       Width = 8
@@ -564,37 +600,37 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Visible = False
     end
     object pnlChatHost: TPanel
-      Left = 467
+      Left = 459
       Height = 976
       Top = 0
-      Width = 829
+      Width = 837
       Align = alClient
       BevelOuter = bvNone
       ClientHeight = 976
-      ClientWidth = 829
+      ClientWidth = 837
       TabOrder = 5
       object pnlChatChrome: TPanel
         Left = 0
         Height = 51
         Top = 0
-        Width = 829
+        Width = 837
         Align = alTop
         BevelOuter = bvNone
         ClientHeight = 51
-        ClientWidth = 829
+        ClientWidth = 837
         TabOrder = 0
         object pnlCenterTabStripHost: TPanel
           Left = 0
           Height = 51
           Top = 0
-          Width = 829
+          Width = 837
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
         end
         object btnChatDetach: TButton
           Tag = 1
-          Left = 765
+          Left = 773
           Height = 38
           Top = 6
           Width = 48
@@ -608,7 +644,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Left = 0
         Height = 925
         Top = 51
-        Width = 829
+        Width = 837
         ActivePage = tsChat
         Align = alClient
         ShowTabs = False
@@ -617,7 +653,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         object tsChat: TTabSheet
           Caption = 'Chat'
           ClientHeight = 917
-          ClientWidth = 821
+          ClientWidth = 829
           object lblChatHeading: TLabel
             Left = 12
             Height = 25
@@ -643,17 +679,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Left = 0
             Height = 210
             Top = 707
-            Width = 821
+            Width = 829
             Align = alBottom
             BevelOuter = bvNone
             ClientHeight = 210
-            ClientWidth = 821
+            ClientWidth = 829
             TabOrder = 0
             object lblChatWorkspaceTag: TLabel
               Left = 0
               Height = 33
               Top = 0
-              Width = 821
+              Width = 829
               Align = alTop
               AutoSize = False
               Caption = 'PROJECT'
@@ -662,7 +698,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               Left = 0
               Height = 79
               Top = 33
-              Width = 821
+              Width = 829
               Align = alClient
               ScrollBars = ssVertical
               TabOrder = 0
@@ -671,11 +707,11 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               Left = 0
               Height = 98
               Top = 112
-              Width = 821
+              Width = 829
               Align = alBottom
               BevelOuter = bvNone
               ClientHeight = 98
-              ClientWidth = 821
+              ClientWidth = 829
               TabOrder = 1
               object cboChatMode: TComboBox
                 Left = 8
@@ -696,7 +732,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 TabOrder = 1
               end
               object btnChatStop: TButton
-                Left = 576
+                Left = 584
                 Height = 37
                 Top = 6
                 Width = 84
@@ -706,7 +742,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Visible = False
               end
               object btnChatSend: TButton
-                Left = 672
+                Left = 680
                 Height = 37
                 Top = 7
                 Width = 140
@@ -720,7 +756,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Left = 0
             Height = 707
             Top = 0
-            Width = 821
+            Width = 829
             Align = alClient
             BevelOuter = bvNone
             TabOrder = 1
@@ -729,12 +765,12 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         object tsEditor: TTabSheet
           Caption = 'Editor'
           ClientHeight = 917
-          ClientWidth = 821
+          ClientWidth = 829
           inline synEditor: TSynEdit
             Left = 0
             Height = 917
             Top = 0
-            Width = 821
+            Width = 829
             Align = alClient
             Font.Height = 11
             Font.Name = 'DejaVu Sans Mono'
@@ -818,12 +854,12 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         object tsMarkdown: TTabSheet
           Caption = 'Markdown'
           ClientHeight = 917
-          ClientWidth = 821
+          ClientWidth = 829
           object pnlMarkdownPreviewHost: TPanel
             Left = 0
             Height = 917
             Top = 0
-            Width = 821
+            Width = 829
             Align = alClient
             BevelOuter = bvNone
             TabOrder = 0

@@ -681,7 +681,6 @@ begin
     if not Assigned(Btn) then Continue;
     Btn.Hint := NavigationHint(Nav);
     Btn.ShowHint := True;
-    Btn.Font.Size := ThemedNavRailIconFontSize(Btn);
   end;
 end;
 

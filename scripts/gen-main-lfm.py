@@ -14,6 +14,7 @@ nav_items = [
 ]
 nav_rail = ""
 for name, tag, cap in nav_items:
+    top_spacing = 16 if name == "sbtnNavMultiAgent" else 8
     nav_rail += f"""      object {name}: TSpeedButton
         Tag = {tag}
         Left = 6
@@ -24,6 +25,8 @@ for name, tag, cap in nav_items:
         Caption = '{cap}'
         Flat = True
         GroupIndex = 1
+        BorderSpacing.Top = {top_spacing}
+        Font.Size = 12
         OnClick = NavRailBtnClick
       end
 """
