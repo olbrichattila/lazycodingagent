@@ -19,6 +19,7 @@ uses
 const
   SUBCLASS_ID = 2;
   MIN_THUMB_PX = 24;
+  MIN_DRAW_THUMB_PX = 8;
   THUMB_INSET = 2;
   THUMB_RADIUS = 3;
   WM_NCMOUSEMOVE = $00A0;
@@ -26,6 +27,8 @@ const
   WM_NCLBUTTONUP = $00A2;
   WM_NCUAHDRAWSCROLL = $0313;
   WM_NCUAHSCROLL = $0314;
+  HTHSCROLL = 6;
+  HTVSCROLL = 7;
   OBJID_VSCROLL = -5;
   OBJID_HSCROLL = -4;
   STATE_SYSTEM_PRESSED = $00000008;
@@ -79,7 +82,12 @@ type
     function Palette: TThemePalette;
     procedure PaintNcScrollBars(HDC: HDC);
     procedure PaintStandaloneScrollBar(HDC: HDC);
-    function ThumbRectInTrack(SBCode: Integer; const Track: TRect; Vertical: Boolean): TRect;
+    function ClipRectToInner(const R, Bounds: TRect): TRect;
+    function FitThumbIntoTrack(const Thumb, Track: TRect; Vertical: Boolean): TRect;
+    function MappedScrollbarThumbUsable(const Mapped, Track: TRect; Vertical: Boolean): Boolean;
+    function ThumbRectFromScrollInfo(SBCode: Integer; const Track: TRect; Vertical: Boolean): TRect;
+    function ResolveThumbRect(SBCode: Integer; const Track, BarRect: TRect;
+      const sbi: TScrollBarInfo; Vertical: Boolean): TRect;
     procedure PaintVerticalBar(Canvas: TCanvas; const BarRect: TRect; const sbi: TScrollBarInfo);
     procedure PaintHorizontalBar(Canvas: TCanvas; const BarRect: TRect; const sbi: TScrollBarInfo);
     procedure FillSolid(Canvas: TCanvas; const R: TRect; AColor: TColor);
@@ -87,7 +95,7 @@ type
     procedure DrawArrowDown(Canvas: TCanvas; const R: TRect; AColor: TColor);
     procedure DrawArrowLeft(Canvas: TCanvas; const R: TRect; AColor: TColor);
     procedure DrawArrowRight(Canvas: TCanvas; const R: TRect; AColor: TColor);
-    procedure DrawThumb(Canvas: TCanvas; const ThumbRect: TRect; AColor: TColor);
+    procedure DrawThumb(Canvas: TCanvas; const ThumbRect: TRect; Vertical: Boolean; AColor: TColor);
     procedure MaybeDrawFlatBorder(HDC: HDC);
     function ThumbColor(const sbi: TScrollBarInfo; ThumbIndex: Integer): TColor;
     function ArrowColor(const sbi: TScrollBarInfo; ArrowIndex: Integer): TColor;
@@ -185,14 +193,29 @@ begin
 end;
 
 procedure TWin32ThemedScrollBarPaint.DrawThumb(Canvas: TCanvas; const ThumbRect: TRect;
-  AColor: TColor);
+  Vertical: Boolean; AColor: TColor);
 var
   R: TRect;
+  Span: Integer;
 begin
   if (ThumbRect.Right <= ThumbRect.Left) or (ThumbRect.Bottom <= ThumbRect.Top) then
     Exit;
   R := ThumbRect;
-  InflateRect(R, -THUMB_INSET, -THUMB_INSET);
+  if Vertical then begin
+    InflateRect(R, -THUMB_INSET, 0);
+    Span := R.Bottom - R.Top;
+    if Span < MIN_DRAW_THUMB_PX then begin
+      R.Top := ThumbRect.Top;
+      R.Bottom := ThumbRect.Top + IMin(MIN_DRAW_THUMB_PX, ThumbRect.Bottom - ThumbRect.Top);
+    end;
+  end else begin
+    InflateRect(R, 0, -THUMB_INSET);
+    Span := R.Right - R.Left;
+    if Span < MIN_DRAW_THUMB_PX then begin
+      R.Left := ThumbRect.Left;
+      R.Right := ThumbRect.Left + IMin(MIN_DRAW_THUMB_PX, ThumbRect.Right - ThumbRect.Left);
+    end;
+  end;
   if (R.Right <= R.Left) or (R.Bottom <= R.Top) then
     Exit;
   Canvas.Brush.Color := AColor;
@@ -276,11 +299,89 @@ begin
   Canvas.Polygon(Pts);
 end;
 
-function TWin32ThemedScrollBarPaint.ThumbRectInTrack(SBCode: Integer; const Track: TRect;
+function TWin32ThemedScrollBarPaint.ClipRectToInner(const R, Bounds: TRect): TRect;
+begin
+  Result := R;
+  if Result.Left < Bounds.Left then Result.Left := Bounds.Left;
+  if Result.Top < Bounds.Top then Result.Top := Bounds.Top;
+  if Result.Right > Bounds.Right then Result.Right := Bounds.Right;
+  if Result.Bottom > Bounds.Bottom then Result.Bottom := Bounds.Bottom;
+end;
+
+function TWin32ThemedScrollBarPaint.FitThumbIntoTrack(const Thumb, Track: TRect;
+  Vertical: Boolean): TRect;
+var
+  TrackLen, ThumbLen: Integer;
+begin
+  Result := Thumb;
+  if Vertical then begin
+    TrackLen := Track.Bottom - Track.Top;
+    if TrackLen <= 0 then Exit;
+    ThumbLen := Result.Bottom - Result.Top;
+    if ThumbLen < MIN_DRAW_THUMB_PX then
+      ThumbLen := IMin(MIN_DRAW_THUMB_PX, TrackLen);
+    if ThumbLen > TrackLen then
+      ThumbLen := TrackLen;
+    if Result.Bottom > Track.Bottom then begin
+      Result.Bottom := Track.Bottom;
+      Result.Top := Result.Bottom - ThumbLen;
+    end;
+    if Result.Top < Track.Top then begin
+      Result.Top := Track.Top;
+      Result.Bottom := Result.Top + ThumbLen;
+    end;
+    if Result.Bottom > Track.Bottom then
+      Result.Bottom := Track.Bottom;
+  end else begin
+    TrackLen := Track.Right - Track.Left;
+    if TrackLen <= 0 then Exit;
+    ThumbLen := Result.Right - Result.Left;
+    if ThumbLen < MIN_DRAW_THUMB_PX then
+      ThumbLen := IMin(MIN_DRAW_THUMB_PX, TrackLen);
+    if ThumbLen > TrackLen then
+      ThumbLen := TrackLen;
+    if Result.Right > Track.Right then begin
+      Result.Right := Track.Right;
+      Result.Left := Result.Right - ThumbLen;
+    end;
+    if Result.Left < Track.Left then begin
+      Result.Left := Track.Left;
+      Result.Right := Result.Left + ThumbLen;
+    end;
+    if Result.Right > Track.Right then
+      Result.Right := Track.Right;
+  end;
+end;
+
+function TWin32ThemedScrollBarPaint.MappedScrollbarThumbUsable(const Mapped, Track: TRect;
+  Vertical: Boolean): Boolean;
+var
+  Span, ClippedSpan: Integer;
+  Clipped: TRect;
+begin
+  if Vertical then
+    Span := Mapped.Bottom - Mapped.Top
+  else
+    Span := Mapped.Right - Mapped.Left;
+  if Span < MIN_DRAW_THUMB_PX then
+    Exit(False);
+  Clipped := ClipRectToInner(Mapped, Track);
+  if Vertical then
+    ClippedSpan := Clipped.Bottom - Clipped.Top
+  else
+    ClippedSpan := Clipped.Right - Clipped.Left;
+  if ClippedSpan < MIN_DRAW_THUMB_PX then
+    Exit(False);
+  if ClippedSpan * 2 < Span then
+    Exit(False);
+  Result := True;
+end;
+
+function TWin32ThemedScrollBarPaint.ThumbRectFromScrollInfo(SBCode: Integer; const Track: TRect;
   Vertical: Boolean): TRect;
 var
   si: TScrollInfo;
-  Range, Page, Pos, TrackLen, ThumbLen, ThumbPos, MaxPos: Integer;
+  Range, Page, Pos, TrackLen, ThumbLen, ThumbPos, MaxPos, Span: Integer;
 begin
   Result.Left := 0;
   Result.Top := 0;
@@ -290,20 +391,48 @@ begin
   si.cbSize := SizeOf(si);
   si.fMask := SIF_PAGE or SIF_POS or SIF_RANGE;
   if not GetScrollInfo(HostHwnd, SBCode, si) then Exit;
-  Range := si.nMax - si.nMin + 1;
-  Page := Integer(si.nPage);
-  if Page < 1 then Page := 1;
-  if Range <= Page then Exit;
   if Vertical then
     TrackLen := Track.Bottom - Track.Top
   else
     TrackLen := Track.Right - Track.Left;
   if TrackLen <= 0 then Exit;
+
+  Range := si.nMax - si.nMin + 1;
+  Page := Integer(si.nPage);
+  if Page < 1 then Page := 1;
+
+  if Range <= Page then begin
+    if si.nMax <= si.nMin then Exit;
+    ThumbLen := IMin(MIN_THUMB_PX, TrackLen);
+    if ThumbLen < MIN_DRAW_THUMB_PX then
+      ThumbLen := IMin(MIN_DRAW_THUMB_PX, TrackLen);
+    Result := Track;
+    Pos := si.nPos;
+    if Pos <= si.nMin then
+      ThumbPos := 0
+    else if Pos >= si.nMax then
+      ThumbPos := IMax(0, TrackLen - ThumbLen)
+    else begin
+      Span := si.nMax - si.nMin;
+      if Span < 1 then Span := 1;
+      ThumbPos := MulDivFloor(Pos - si.nMin, TrackLen - ThumbLen, Span);
+    end;
+    if Vertical then begin
+      Result.Top := Track.Top + ThumbPos;
+      Result.Bottom := Result.Top + ThumbLen;
+    end else begin
+      Result.Left := Track.Left + ThumbPos;
+      Result.Right := Result.Left + ThumbLen;
+    end;
+    Exit(FitThumbIntoTrack(Result, Track, Vertical));
+  end;
+
   ThumbLen := MulDivFloor(TrackLen, Page, Range);
   if ThumbLen < MIN_THUMB_PX then
     ThumbLen := IMin(MIN_THUMB_PX, TrackLen);
   MaxPos := Range - Page;
-  if MaxPos < 1 then Exit;
+  if MaxPos < 1 then
+    MaxPos := 1;
   Pos := si.nPos - si.nMin;
   if Pos < 0 then Pos := 0;
   if Pos > MaxPos then Pos := MaxPos;
@@ -312,22 +441,44 @@ begin
   if Vertical then begin
     Result.Top := Track.Top + ThumbPos;
     Result.Bottom := Result.Top + ThumbLen;
-    if Result.Bottom > Track.Bottom then begin
-      Result.Bottom := Track.Bottom;
-      Result.Top := IMax(Track.Top, Result.Bottom - ThumbLen);
-    end;
-    if Result.Top < Track.Top then
-      Result.Top := Track.Top;
   end else begin
     Result.Left := Track.Left + ThumbPos;
     Result.Right := Result.Left + ThumbLen;
-    if Result.Right > Track.Right then begin
-      Result.Right := Track.Right;
-      Result.Left := IMax(Track.Left, Result.Right - ThumbLen);
-    end;
-    if Result.Left < Track.Left then
-      Result.Left := Track.Left;
   end;
+  Result := FitThumbIntoTrack(Result, Track, Vertical);
+end;
+
+function TWin32ThemedScrollBarPaint.ResolveThumbRect(SBCode: Integer; const Track, BarRect: TRect;
+  const sbi: TScrollBarInfo; Vertical: Boolean): TRect;
+var
+  Thumb: TRect;
+begin
+  Result.Left := 0;
+  Result.Top := 0;
+  Result.Right := 0;
+  Result.Bottom := 0;
+  if Vertical then begin
+    if sbi.xyThumbBottom > sbi.xyThumbTop then begin
+      Thumb := Track;
+      Thumb.Top := BarRect.Top + (sbi.xyThumbTop - sbi.rcScrollBar.Top);
+      Thumb.Bottom := BarRect.Top + (sbi.xyThumbBottom - sbi.rcScrollBar.Top);
+      Thumb.Left := Track.Left;
+      Thumb.Right := Track.Right;
+      if MappedScrollbarThumbUsable(Thumb, Track, True) then
+        Exit(FitThumbIntoTrack(Thumb, Track, True));
+    end;
+  end else begin
+    if sbi.xyThumbBottom > sbi.xyThumbTop then begin
+      Thumb := Track;
+      Thumb.Left := BarRect.Left + (sbi.xyThumbTop - sbi.rcScrollBar.Left);
+      Thumb.Right := BarRect.Left + (sbi.xyThumbBottom - sbi.rcScrollBar.Left);
+      Thumb.Top := Track.Top;
+      Thumb.Bottom := Track.Bottom;
+      if MappedScrollbarThumbUsable(Thumb, Track, False) then
+        Exit(FitThumbIntoTrack(Thumb, Track, False));
+    end;
+  end;
+  Result := ThumbRectFromScrollInfo(SBCode, Track, Vertical);
 end;
 
 procedure TWin32ThemedScrollBarPaint.PaintVerticalBar(Canvas: TCanvas; const BarRect: TRect;
@@ -360,10 +511,10 @@ begin
   Track.Bottom := BarRect.Bottom - ArrowH;
   FillSolid(Canvas, Track, P.Background);
 
-  if (Track.Bottom > Track.Top) and ((sbi.rgstate[2] and STATE_SYSTEM_INVISIBLE) = 0) then begin
-    Thumb := ThumbRectInTrack(SB_VERT, Track, True);
+  if Track.Bottom > Track.Top then begin
+    Thumb := ResolveThumbRect(SB_VERT, Track, BarRect, sbi, True);
     if Thumb.Bottom > Thumb.Top then
-      DrawThumb(Canvas, Thumb, ThumbColor(sbi, 2));
+      DrawThumb(Canvas, Thumb, True, ThumbColor(sbi, 2));
   end;
 end;
 
@@ -397,10 +548,10 @@ begin
   Track.Right := BarRect.Right - ArrowW;
   FillSolid(Canvas, Track, P.Background);
 
-  if (Track.Right > Track.Left) and ((sbi.rgstate[2] and STATE_SYSTEM_INVISIBLE) = 0) then begin
-    Thumb := ThumbRectInTrack(SB_HORZ, Track, False);
+  if Track.Right > Track.Left then begin
+    Thumb := ResolveThumbRect(SB_HORZ, Track, BarRect, sbi, False);
     if Thumb.Right > Thumb.Left then
-      DrawThumb(Canvas, Thumb, ThumbColor(sbi, 2));
+      DrawThumb(Canvas, Thumb, False, ThumbColor(sbi, 2));
   end;
 end;
 
@@ -535,19 +686,33 @@ begin
       TrackLen := IMax(0, Track.Bottom - Track.Top);
       FillSolid(Canvas, Track, P.Background);
 
-      ThumbLen := MulDivFloor(TrackLen, Visible, Range);
-      if ThumbLen < MIN_THUMB_PX then
+      if Range > Visible then begin
+        ThumbLen := MulDivFloor(TrackLen, Visible, Range);
+        if ThumbLen < MIN_THUMB_PX then
+          ThumbLen := IMin(MIN_THUMB_PX, TrackLen);
+        ThumbPos := MulDivFloor(si.nPos - si.nMin, TrackLen - ThumbLen, Range - Visible);
+      end else if si.nMax > si.nMin then begin
         ThumbLen := IMin(MIN_THUMB_PX, TrackLen);
-      if Range > Visible then
-        ThumbPos := MulDivFloor(si.nPos - si.nMin, TrackLen - ThumbLen, Range - Visible)
-      else
+        if ThumbLen < MIN_DRAW_THUMB_PX then
+          ThumbLen := IMin(MIN_DRAW_THUMB_PX, TrackLen);
+        if si.nPos <= si.nMin then
+          ThumbPos := 0
+        else if si.nPos >= si.nMax then
+          ThumbPos := IMax(0, TrackLen - ThumbLen)
+        else
+          ThumbPos := MulDivFloor(si.nPos - si.nMin, TrackLen - ThumbLen, si.nMax - si.nMin);
+      end else begin
+        ThumbLen := 0;
         ThumbPos := 0;
+      end;
 
-      if (TrackLen > 0) and (ThumbLen > 0) and (Range > Visible) then begin
+      if (TrackLen > 0) and (ThumbLen > 0) then begin
         Thumb := Track;
         Thumb.Top := Track.Top + ThumbPos;
         Thumb.Bottom := Thumb.Top + ThumbLen;
-        DrawThumb(Canvas, Thumb, P.BorderStrong);
+        Thumb := FitThumbIntoTrack(Thumb, Track, True);
+        if Thumb.Bottom > Thumb.Top then
+          DrawThumb(Canvas, Thumb, True, P.BorderStrong);
       end;
     end else begin
       Btn := CR;
@@ -566,19 +731,33 @@ begin
       TrackLen := IMax(0, Track.Right - Track.Left);
       FillSolid(Canvas, Track, P.Background);
 
-      ThumbLen := MulDivFloor(TrackLen, Visible, Range);
-      if ThumbLen < MIN_THUMB_PX then
+      if Range > Visible then begin
+        ThumbLen := MulDivFloor(TrackLen, Visible, Range);
+        if ThumbLen < MIN_THUMB_PX then
+          ThumbLen := IMin(MIN_THUMB_PX, TrackLen);
+        ThumbPos := MulDivFloor(si.nPos - si.nMin, TrackLen - ThumbLen, Range - Visible);
+      end else if si.nMax > si.nMin then begin
         ThumbLen := IMin(MIN_THUMB_PX, TrackLen);
-      if Range > Visible then
-        ThumbPos := MulDivFloor(si.nPos - si.nMin, TrackLen - ThumbLen, Range - Visible)
-      else
+        if ThumbLen < MIN_DRAW_THUMB_PX then
+          ThumbLen := IMin(MIN_DRAW_THUMB_PX, TrackLen);
+        if si.nPos <= si.nMin then
+          ThumbPos := 0
+        else if si.nPos >= si.nMax then
+          ThumbPos := IMax(0, TrackLen - ThumbLen)
+        else
+          ThumbPos := MulDivFloor(si.nPos - si.nMin, TrackLen - ThumbLen, si.nMax - si.nMin);
+      end else begin
+        ThumbLen := 0;
         ThumbPos := 0;
+      end;
 
-      if (TrackLen > 0) and (ThumbLen > 0) and (Range > Visible) then begin
+      if (TrackLen > 0) and (ThumbLen > 0) then begin
         Thumb := Track;
         Thumb.Left := Track.Left + ThumbPos;
         Thumb.Right := Thumb.Left + ThumbLen;
-        DrawThumb(Canvas, Thumb, P.BorderStrong);
+        Thumb := FitThumbIntoTrack(Thumb, Track, False);
+        if Thumb.Right > Thumb.Left then
+          DrawThumb(Canvas, Thumb, False, P.BorderStrong);
       end;
     end;
   finally
@@ -625,11 +804,15 @@ begin
   case uMsg of
     WM_NCPAINT:
       begin
-        Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
         Helper.RepaintNcScrollBarsNow;
-        Exit;
+        Exit(0);
       end;
-    WM_NCUAHDRAWSCROLL, WM_NCUAHSCROLL:
+    WM_NCUAHDRAWSCROLL:
+      begin
+        Helper.RepaintNcScrollBarsNow;
+        Exit(0);
+      end;
+    WM_NCUAHSCROLL:
       begin
         Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
         Helper.RepaintNcScrollBarsNow;
@@ -641,7 +824,17 @@ begin
         Helper.RepaintNcScrollBarsNow;
         Exit;
       end;
-    WM_NCMOUSEMOVE, WM_NCLBUTTONDOWN, WM_NCLBUTTONUP:
+    WM_NCMOUSEMOVE:
+      begin
+        if (wParam = HTVSCROLL) or (wParam = HTHSCROLL) then begin
+          Helper.RepaintNcScrollBarsNow;
+          Exit(0);
+        end;
+        Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
+        Helper.RepaintNcScrollBarsNow;
+        Exit;
+      end;
+    WM_NCLBUTTONDOWN, WM_NCLBUTTONUP:
       begin
         Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
         Helper.RepaintNcScrollBarsNow;
