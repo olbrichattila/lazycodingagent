@@ -23,6 +23,7 @@ type
     FRole: TThemedButtonRole;
     FHover: Boolean;
     FSubclassInstalled: Boolean;
+    FInstalling: Boolean;
     FChainedWindowProc: Boolean;
     FPrevWindowProc: TWndMethod;
     procedure ButtonWindowProc(var Message: TMessage);
@@ -97,8 +98,14 @@ var
   TME: TTrackMouseEvent;
 begin
   Helper := TWin32ThemedButtonPaint(Pointer(dwRefData));
-  if (Helper = nil) or not Assigned(Helper.FButton) or
-    (Helper.FButton.Handle <> hWnd) then
+  if Helper = nil then
+    Exit(DefSubclassProc(hWnd, uMsg, wParam, lParam));
+  if uMsg = WM_NCDESTROY then begin
+    Helper.FSubclassInstalled := False;
+    Helper.FHover := False;
+    Exit(DefSubclassProc(hWnd, uMsg, wParam, lParam));
+  end;
+  if not Assigned(Helper.FButton) or (Helper.FButton.Handle <> hWnd) then
     Exit(DefSubclassProc(hWnd, uMsg, wParam, lParam));
 
   case uMsg of
@@ -139,11 +146,6 @@ begin
       end;
     WM_LBUTTONDOWN, WM_LBUTTONUP, WM_SETFOCUS, WM_KILLFOCUS, WM_ENABLE:
       Helper.InvalidateButton;
-    WM_NCDESTROY:
-      begin
-        Helper.RemoveSubclass;
-        Helper.FHover := False;
-      end;
   end;
   Result := DefSubclassProc(hWnd, uMsg, wParam, lParam);
 end;
@@ -165,6 +167,7 @@ begin
   FButton := AOwner;
   FHover := False;
   FSubclassInstalled := False;
+  FInstalling := False;
   FChainedWindowProc := False;
 end;
 
@@ -221,11 +224,16 @@ end;
 
 procedure TWin32ThemedButtonPaint.InstallSubclass;
 begin
-  if FSubclassInstalled then Exit;
+  if FSubclassInstalled or FInstalling then Exit;
   if not Assigned(FButton) or not FButton.HandleAllocated then Exit;
-  SetWindowTheme(FButton.Handle, '', '');
-  if SetWindowSubclass(FButton.Handle, @ThemedButtonSubclassProc, 1, PtrUInt(Self)) then
-    FSubclassInstalled := True;
+  FInstalling := True;
+  try
+    SetWindowTheme(FButton.Handle, '', '');
+    if SetWindowSubclass(FButton.Handle, @ThemedButtonSubclassProc, 1, PtrUInt(Self)) then
+      FSubclassInstalled := True;
+  finally
+    FInstalling := False;
+  end;
 end;
 
 procedure TWin32ThemedButtonPaint.RemoveSubclass;
@@ -237,9 +245,23 @@ begin
 end;
 
 procedure TWin32ThemedButtonPaint.ButtonWindowProc(var Message: TMessage);
+var
+  WasInstalled: Boolean;
 begin
-  if Message.Msg = LM_CREATE then
+  WasInstalled := FSubclassInstalled;
+  // Win32 does not deliver WM_CREATE to the LCL WindowProc. Dialogs style
+  // buttons before the HWND exists, so install on the first later message.
+  if Message.Msg <> LM_DESTROY then
     InstallSubclass;
+  if FSubclassInstalled and not WasInstalled then begin
+    if Message.Msg = LM_PAINT then begin
+      if Message.WParam <> 0 then
+        PaintClient(HDC(Message.WParam));
+      Message.Result := 0;
+      Exit;
+    end;
+    InvalidateButton;
+  end;
   if Assigned(FPrevWindowProc) then
     FPrevWindowProc(Message);
 end;
