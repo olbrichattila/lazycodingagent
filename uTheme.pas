@@ -113,7 +113,8 @@ var
 implementation
 
 uses
-  Math, SysUtils
+  Math, SysUtils, LCLIntf
+  {$IFDEF WINDOWS}, uThemeWin32Buttons{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
@@ -665,6 +666,13 @@ begin
 end;
 {$ENDIF}
 
+{$IFNDEF WINDOWS}
+procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
+  ARole: TThemedButtonRole);
+begin
+end;
+{$ENDIF}
+
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
   ACornerRadius, AFontSize, AHorizPad: Integer);
@@ -796,6 +804,7 @@ begin
   ABtn.Font.Color := P.AccentText;
   ABtn.Color := P.Accent;
   ApplyWin32UnthemedButton(ABtn);
+  ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrPrimary);
   ABtn.Invalidate;
 end;
 
@@ -816,6 +825,7 @@ begin
     ABtn.Font.Color := P.TextMuted;
   end;
   ApplyWin32UnthemedButton(ABtn);
+  ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrCancel);
   ABtn.Invalidate;
 end;
 
@@ -833,6 +843,7 @@ begin
     ABtn.Font.Color := RGBToColor(185, 28, 28);
   end;
   ApplyWin32UnthemedButton(ABtn);
+  ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrDestructive);
   ABtn.Invalidate;
 end;
 

@@ -16,12 +16,12 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
 - **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards.
 - **Designer-first layout**: the main window and dialogs stream **stock LCL** controls in `.lfm` files (`TPageControl`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout. The embedded terminal view (`TTerminalLCLView`) is created at runtime in [`uTerminalPanel.pas`](uTerminalPanel.pas) so the IDE does not need the ViewLCL design package on the palette.
-- **Native tabs and buttons** on Linux/macOS; Windows may apply `Style*` button fills from [`uTheme.pas`](uTheme.pas).
+- **Native tabs and buttons** on Linux/macOS; on **Windows**, `Style*` helpers custom-paint primary/cancel/destructive `TButton` fills via [`uThemeWin32Buttons.pas`](uThemeWin32Buttons.pas).
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
 - **Navigation rail** built from `TSpeedButton` controls on the main form (icon captions, tooltips, accent selection indicator).
 - **Accent text selection** on chat and navigation lists (owner-drawn rows — blue text, no OS highlight band).
-- **Themed action buttons**: standard `TButton` controls styled with `StylePrimaryButton`, `StyleCancelButton`, and `StyleDestructiveButton` in `uTheme.pas`. Fill and font colors apply on **Windows** (after clearing the native button theme). On **Linux (GTK)** and **macOS (Cocoa)** those colors are ignored; buttons stay native.
+- **Themed action buttons**: standard `TButton` controls styled with `StylePrimaryButton`, `StyleCancelButton`, and `StyleDestructiveButton` in `uTheme.pas`. On **Windows**, fills are drawn by `PaintThemedButton` through a Win32 paint subclass in `uThemeWin32Buttons.pas`. On **Linux (GTK)** and **macOS (Cocoa)**, `TButton.Color` tints the native widget; no custom paint hook.
 - **Cross-platform UI**: icon-only nav rail, owner-draw list accent selection, and theme tokens apply on all LCL targets.
 - **Scrollbars / title chrome**: on **Windows**, `ApplyPlatformChrome` uses immersive dark mode and `DarkMode_Explorer` for native scrollbars; on **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
 - **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme.
@@ -33,7 +33,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 |-------|---------|-------------|---------------|
 | Nav rail icons + accent selection | Yes | Yes | Yes |
 | List rows: accent text, no blue band | Yes | Yes | Yes |
-| Primary / Cancel / Stop buttons (`TButton` + `uTheme`) | Colored via `Style*` helpers | Native GTK button | Native Cocoa button |
+| Primary / Cancel / Stop buttons (`TButton` + `uTheme`) | Custom-painted via `uThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
 | Dark scrollbars matching app surface | Themed via Win32 | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
 | Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |

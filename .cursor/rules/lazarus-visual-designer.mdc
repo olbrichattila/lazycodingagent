@@ -24,7 +24,7 @@ alwaysApply: true
 ### Standard LCL component palette only
 
 - Use stock LCL controls from the component palette only.
-- **Buttons:** designer **`TButton`**; optional `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from [`uTheme.pas`](uTheme.pas) for Windows fill colors (Linux/macOS stay native). **No** Win32 `TButton` paint hook.
+- **Buttons:** designer **`TButton`**; optional `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from [`uTheme.pas`](uTheme.pas). On **Windows**, [`uThemeWin32Buttons.pas`](uThemeWin32Buttons.pas) custom-paints those fills via `SetWindowSubclass` + `PaintThemedButton` (stock `TButton` in `.lfm` only). Linux/macOS use native widget colors (`TButton.Color`).
 - **Tabs:** keep **`TPageControl`** / **`TTabSheet`** in **`.lfm`** with **`ShowTabs = False`**; use a stock **`TPanel`** tab-strip host in chrome; create **`TThemedPageTabBar`** at runtime in `FormCreate` (themed headers, optional **✕**, optional **`[+]`**).
 - Apply look-and-feel at runtime via [`uTheme.pas`](uTheme.pas)—not other custom tab or button frame subclasses.
 - **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, `fraThemedButton`, `fraThemedPicker`, `uMarkdownView`, or a Lazarus design package under `components/`. **`uPanelDetach`** is allowed for floating panels; detach controls are stock **`TButton`** (`⧉`) on panel chrome in `.lfm`.

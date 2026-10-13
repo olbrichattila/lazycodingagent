@@ -71,6 +71,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uThemeWin32Buttons.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uThemedPageTabBar.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
