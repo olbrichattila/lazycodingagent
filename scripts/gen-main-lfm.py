@@ -58,13 +58,13 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
       Left = 0
       Height = 1312
       Top = 0
-      Width = 112
+      Width = 100
       Align = alLeft
       BevelOuter = bvNone
       TabOrder = 0
 {nav_rail}    end
     object pnlNavHost: TPanel
-      Left = 112
+      Left = 100
       Height = 1312
       Top = 0
       Width = 500

@@ -661,6 +661,9 @@ end;
 
 
 procedure TLazyCodingAgentForm.InitNavRailButtons;
+var
+  Nav: TNavigationItem;
+  Btn: TSpeedButton;
 begin
   FNavRailBtns[niHome] := sbtnNavHome;
   FNavRailBtns[niProjects] := sbtnNavProjects;
@@ -673,6 +676,13 @@ begin
   FNavRailBtns[niExecutionPlans] := sbtnNavExecPlans;
   FNavRailBtns[niKnowledgeBase] := sbtnNavKnowledge;
   FNavRailBtns[niTheBrain] := sbtnNavBrain;
+  for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
+    Btn := FNavRailBtns[Nav];
+    if not Assigned(Btn) then Continue;
+    Btn.Hint := NavigationHint(Nav);
+    Btn.ShowHint := True;
+    Btn.Font.Size := ThemedNavRailIconFontSize(Btn);
+  end;
 end;
 
 procedure TLazyCodingAgentForm.NavRailBtnClick(Sender: TObject);

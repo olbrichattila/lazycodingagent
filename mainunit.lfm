@@ -30,18 +30,18 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Left = 0
       Height = 976
       Top = 0
-      Width = 84
+      Width = 100
       Align = alLeft
       BevelOuter = bvNone
       ClientHeight = 976
-      ClientWidth = 84
+      ClientWidth = 100
       TabOrder = 0
       object sbtnNavBrain: TSpeedButton
         Tag = 10
         Left = 0
-        Height = 30
+        Height = 40
         Top = 300
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '◉'
         Flat = True
@@ -51,9 +51,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavKnowledge: TSpeedButton
         Tag = 9
         Left = 0
-        Height = 30
+        Height = 40
         Top = 270
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '📖'
         Flat = True
@@ -63,9 +63,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavExecPlans: TSpeedButton
         Tag = 8
         Left = 0
-        Height = 30
+        Height = 40
         Top = 240
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '☑'
         Flat = True
@@ -75,9 +75,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavMultiAgent: TSpeedButton
         Tag = 7
         Left = 0
-        Height = 30
+        Height = 40
         Top = 210
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '⬡'
         Flat = True
@@ -87,9 +87,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavToolErrors: TSpeedButton
         Tag = 6
         Left = 0
-        Height = 30
+        Height = 40
         Top = 180
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '⚠'
         Flat = True
@@ -99,9 +99,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavTasks: TSpeedButton
         Tag = 5
         Left = 0
-        Height = 30
+        Height = 40
         Top = 150
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '☰'
         Flat = True
@@ -111,9 +111,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavTools: TSpeedButton
         Tag = 4
         Left = 0
-        Height = 30
+        Height = 40
         Top = 120
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '◈'
         Flat = True
@@ -123,9 +123,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavBots: TSpeedButton
         Tag = 3
         Left = 0
-        Height = 30
+        Height = 40
         Top = 90
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '✦'
         Flat = True
@@ -135,9 +135,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavSessions: TSpeedButton
         Tag = 2
         Left = 0
-        Height = 30
+        Height = 40
         Top = 60
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '✉'
         Flat = True
@@ -147,9 +147,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavProjects: TSpeedButton
         Tag = 1
         Left = 0
-        Height = 30
+        Height = 40
         Top = 30
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '◫'
         Flat = True
@@ -158,9 +158,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
       object sbtnNavHome: TSpeedButton
         Left = 0
-        Height = 30
+        Height = 40
         Top = 0
-        Width = 84
+        Width = 100
         Align = alTop
         Caption = '⌂'
         Flat = True
@@ -169,7 +169,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object pnlNavHost: TPanel
-      Left = 84
+      Left = 100
       Height = 976
       Top = 0
       Width = 375
@@ -660,7 +660,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object memChatPrompt: TMemo
               Left = 0
-              Height = 139
+              Height = 79
               Top = 33
               Width = 821
               Align = alClient
@@ -669,51 +669,47 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object pnlChatFooter: TPanel
               Left = 0
-              Height = 38
-              Top = 172
+              Height = 98
+              Top = 112
               Width = 821
               Align = alBottom
               BevelOuter = bvNone
-              ClientHeight = 38
+              ClientHeight = 98
               ClientWidth = 821
               TabOrder = 1
               object cboChatMode: TComboBox
-                Left = 0
+                Left = 8
                 Height = 33
-                Top = 0
+                Top = 6
                 Width = 105
-                Align = alLeft
                 ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 0
               end
               object cboChatModel: TComboBox
-                Left = 105
+                Left = 121
                 Height = 33
-                Top = 0
+                Top = 6
                 Width = 237
-                Align = alLeft
                 ItemHeight = 25
                 Style = csDropDownList
                 TabOrder = 1
               end
               object btnChatStop: TButton
-                Left = 597
-                Height = 38
-                Top = 0
+                Left = 576
+                Height = 37
+                Top = 6
                 Width = 84
-                Align = alRight
                 Anchors = [akTop, akRight]
                 Caption = 'Stop'
                 TabOrder = 2
                 Visible = False
               end
               object btnChatSend: TButton
-                Left = 681
-                Height = 38
-                Top = 0
+                Left = 672
+                Height = 37
+                Top = 7
                 Width = 140
-                Align = alRight
                 Anchors = [akTop, akRight]
                 Caption = 'Run Agent'
                 TabOrder = 3

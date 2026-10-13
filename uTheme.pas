@@ -45,6 +45,7 @@ const
   ThemedButtonHeightBase = 28;
   { Code editor — logical pt; LCL scales Font.Size on DPI-aware forms. }
   ThemedEditorFontSizeBase = 6;
+  ThemedNavRailIconFontSizeBase = 12;
 
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
@@ -55,6 +56,7 @@ function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
   ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 function ScaledEditorFontSize(AControl: TControl): Integer;
+function ThemedNavRailIconFontSize(AControl: TControl): Integer;
 
 // Helper to configure ComboBox for sleek theme owner-drawing
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
@@ -156,6 +158,11 @@ end;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedEditorFontSizeBase);
+end;
+
+function ThemedNavRailIconFontSize(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedNavRailIconFontSizeBase);
 end;
 
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
@@ -542,14 +549,10 @@ begin
 
   APageControl.Color := P.Background;
   APageControl.Font.Color := P.Text;
-  APageControl.Font.Name := 'Segoe UI';
-  APageControl.Font.Size := 9;
 
   for I := 0 to APageControl.PageCount - 1 do begin
     APageControl.Pages[I].Color := P.Surface;
     APageControl.Pages[I].Font.Color := P.Text;
-    APageControl.Pages[I].Font.Name := 'Segoe UI';
-    APageControl.Pages[I].Font.Size := 9;
   end;
 
   APageControl.Invalidate;
@@ -772,15 +775,6 @@ begin
     Canvas.Brush.Style := bsSolid;
   end;
 
-  Canvas.Font.Name := 'Segoe UI';
-  if AFontSize > 0 then
-    Canvas.Font.Size := AFontSize
-  else
-    Canvas.Font.Size := ThemedButtonFontSizeBase;
-  if ARole in [tbrPrimary, tbrDestructive] then
-    Canvas.Font.Style := [fsBold]
-  else
-    Canvas.Font.Style := [];
   Canvas.Font.Color := TextColor;
 
   TextTop := R.Top + ((R.Bottom - R.Top - Canvas.TextHeight(ACaption)) div 2);
@@ -792,31 +786,41 @@ begin
     Canvas.TextOut(R.Left + (R.Width - Canvas.TextWidth(ACaption)) div 2, TextTop, ACaption);
 end;
 
+procedure RestoreButtonDesignerBounds(ABtn: TButton; ASavedW, ASavedH: Integer);
+begin
+  if (ABtn.Width <> ASavedW) or (ABtn.Height <> ASavedH) then begin
+    ABtn.Width := ASavedW;
+    ABtn.Height := ASavedH;
+  end;
+end;
+
 procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
 var
   P: TThemePalette;
+  SavedW, SavedH: Integer;
 begin
   if not Assigned(ABtn) then Exit;
+  SavedW := ABtn.Width;
+  SavedH := ABtn.Height;
   P := ThemePalette(ATheme);
-  ABtn.Font.Name := 'Segoe UI';
-  ABtn.Font.Size := 9;
-  ABtn.Font.Style := [fsBold];
   ABtn.Font.Color := P.AccentText;
   ABtn.Color := P.Accent;
+  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ApplyWin32UnthemedButton(ABtn);
   ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrPrimary);
+  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ABtn.Invalidate;
 end;
 
 procedure StyleCancelButton(ABtn: TButton; ATheme: TThemeKind);
 var
   P: TThemePalette;
+  SavedW, SavedH: Integer;
 begin
   if not Assigned(ABtn) then Exit;
+  SavedW := ABtn.Width;
+  SavedH := ABtn.Height;
   P := ThemePalette(ATheme);
-  ABtn.Font.Name := 'Segoe UI';
-  ABtn.Font.Size := 9;
-  ABtn.Font.Style := [];
   if ATheme = tkDark then begin
     ABtn.Color := P.SurfaceAlt;
     ABtn.Font.Color := P.TextMuted;
@@ -824,17 +828,20 @@ begin
     ABtn.Color := P.Surface;
     ABtn.Font.Color := P.TextMuted;
   end;
+  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ApplyWin32UnthemedButton(ABtn);
   ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrCancel);
+  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ABtn.Invalidate;
 end;
 
 procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
+var
+  SavedW, SavedH: Integer;
 begin
   if not Assigned(ABtn) then Exit;
-  ABtn.Font.Name := 'Segoe UI';
-  ABtn.Font.Size := 9;
-  ABtn.Font.Style := [fsBold];
+  SavedW := ABtn.Width;
+  SavedH := ABtn.Height;
   if ATheme = tkDark then begin
     ABtn.Color := RGBToColor(72, 32, 36);
     ABtn.Font.Color := RGBToColor(248, 113, 113);
@@ -842,8 +849,10 @@ begin
     ABtn.Color := RGBToColor(254, 226, 226);
     ABtn.Font.Color := RGBToColor(185, 28, 28);
   end;
+  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ApplyWin32UnthemedButton(ABtn);
   ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrDestructive);
+  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ABtn.Invalidate;
 end;
 

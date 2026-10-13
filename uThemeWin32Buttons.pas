@@ -210,9 +210,9 @@ begin
     Enabled := FButton.Enabled;
     Focused := GetFocus = FButton.Handle;
     Pressed := (SendMessage(FButton.Handle, BM_GETSTATE, 0, 0) and BST_PUSHED) <> 0;
+    Canvas.Font.Assign(FButton.Font);
     PaintThemedButton(Canvas, R, FTheme, FRole, DisplayCaption, Enabled, FHover and Enabled,
-      Pressed, Focused, ThemedButtonCornerRadius(FButton), ThemedButtonFontSize(FButton),
-      ThemedButtonHorizPad(FButton));
+      Pressed, Focused, ThemedButtonCornerRadius(FButton), FButton.Font.Size, 0);
   finally
     Canvas.Handle := 0;
     Canvas.Free;
