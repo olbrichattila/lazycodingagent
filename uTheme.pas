@@ -45,6 +45,8 @@ const
   ThemedButtonHeightBase = 28;
   { Code editor — logical pt; LCL scales Font.Size on DPI-aware forms. }
   ThemedEditorFontSizeBase = 6;
+  { Utility Execution Detail memo — logical pt; LCL scales on DPI-aware forms (no MulDiv). }
+  ThemedExecDetailFontSizeBase = 10;
 
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
@@ -82,6 +84,7 @@ procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
 procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
 procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
   const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
+procedure ConfigureThemedExecDetailMemo(AMemo: TCustomMemo; ATheme: TThemeKind);
 procedure SyncThemedMemoWidget(AMemo: TCustomMemo);
 procedure SyncThemedEditWidget(AEdit: TCustomEdit);
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
@@ -903,6 +906,13 @@ begin
   AMemo.Font.Color := P.Text;
   if AFontName <> '' then
     AMemo.Font.Name := AFontName;
+end;
+
+procedure ConfigureThemedExecDetailMemo(AMemo: TCustomMemo; ATheme: TThemeKind);
+begin
+  ConfigureThemedMemo(AMemo, ATheme, 'Consolas');
+  if Assigned(AMemo) then
+    AMemo.Font.Size := ThemedExecDetailFontSizeBase;
 end;
 
 procedure SyncThemedMemoWidget(AMemo: TCustomMemo);

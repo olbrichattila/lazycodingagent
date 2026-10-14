@@ -75,6 +75,7 @@ type
     procedure AppendMessage(const AMsg: TChatMessage);
     procedure AppendToolMessage(const AMsg: TChatMessage; ADebuggingMode: Boolean);
     procedure AppendText(const AText: string);
+    procedure AppendTraceLine(const AText: string);
     procedure ClearHistory;
     procedure ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);
     procedure SetComposerEnabled(AEnabled: Boolean);
@@ -453,6 +454,12 @@ begin
     RoleLabel := 'Message';
   end;
   AppendToHistory(RoleLabel, Body);
+end;
+
+procedure TChatPanel.AppendTraceLine(const AText: string);
+begin
+  if Trim(AText) = '' then Exit;
+  AppendToHistory('Activity', AText);
 end;
 
 procedure TChatPanel.AppendText(const AText: string);

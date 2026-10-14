@@ -10,7 +10,7 @@ uses
 
 type
   THubStateChangeEvent = procedure(Sender: TObject; const ASessionId: string;
-    AOldState, ANewState: TAgentState) of object;
+    AOldState, ANewState: TAgentState; AStep, AMaxSteps: Integer) of object;
   THubMessageEvent = procedure(Sender: TObject; const ASessionId: string;
     const AMessage: TChatMessage) of object;
   THubToolCallEvent = procedure(Sender: TObject; const ASessionId: string;
@@ -47,7 +47,9 @@ type
     function IndexOfRuntime(const ASessionId: string): Integer;
     function IndexOfEngine(AEngine: TAgentEngine): Integer;
     procedure WireEngine(ARuntime: TSessionRuntime);
-    procedure EngineStateChange(Sender: TObject; AOldState, ANewState: TAgentState);
+    procedure UnwireEngine(AEngine: TAgentEngine);
+    procedure EngineStateChange(Sender: TObject; AOldState, ANewState: TAgentState;
+      AStep, AMaxSteps: Integer);
     procedure EngineMessageAdded(Sender: TObject; const AMessage: TChatMessage);
     procedure EngineToolCall(Sender: TObject; const AToolName, AArgs: string);
     procedure EngineToolResult(Sender: TObject; const AToolName, AArgsJson: string;
@@ -122,9 +124,17 @@ end;
 
 destructor TSessionRuntime.Destroy;
 begin
-  Engine.ExecutionLog := nil;
-  Engine.ToolErrorLog := nil;
-  Engine.Free;
+  if Assigned(Engine) then begin
+    Engine.OnStateChange := nil;
+    Engine.OnMessageAdded := nil;
+    Engine.OnToolCall := nil;
+    Engine.OnToolResult := nil;
+    Engine.OnExecutionLogAdded := nil;
+    Engine.OnToolErrorAdded := nil;
+    Engine.ExecutionLog := nil;
+    Engine.ToolErrorLog := nil;
+    Engine.Free;
+  end;
   ExecutionLog.Free;
   ToolErrorLog.Free;
   inherited Destroy;
@@ -178,7 +188,19 @@ begin
   ARuntime.Engine.OnToolErrorAdded := @EngineToolErrorAdded;
 end;
 
-procedure TChatSessionHub.EngineStateChange(Sender: TObject; AOldState, ANewState: TAgentState);
+procedure TChatSessionHub.UnwireEngine(AEngine: TAgentEngine);
+begin
+  if not Assigned(AEngine) then Exit;
+  AEngine.OnStateChange := nil;
+  AEngine.OnMessageAdded := nil;
+  AEngine.OnToolCall := nil;
+  AEngine.OnToolResult := nil;
+  AEngine.OnExecutionLogAdded := nil;
+  AEngine.OnToolErrorAdded := nil;
+end;
+
+procedure TChatSessionHub.EngineStateChange(Sender: TObject; AOldState, ANewState: TAgentState;
+  AStep, AMaxSteps: Integer);
 var
   Idx: Integer;
   Sid: string;
@@ -187,7 +209,7 @@ begin
   if Idx < 0 then Exit;
   Sid := FRuntimes[Idx].SessionId;
   if Assigned(FOnStateChange) then
-    FOnStateChange(Self, Sid, AOldState, ANewState);
+    FOnStateChange(Self, Sid, AOldState, ANewState, AStep, AMaxSteps);
   if ANewState in [asIdle, asFinished, asError] then
     SaveSessionToStore(Sid);
 end;
@@ -390,6 +412,7 @@ begin
   for I := High(FRuntimes) downto 0 do begin
     if ACancelRuns then
       FRuntimes[I].Engine.RequestCancel;
+    UnwireEngine(FRuntimes[I].Engine);
     FRuntimes[I].Free;
   end;
   SetLength(FRuntimes, 0);

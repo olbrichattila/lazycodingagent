@@ -5,7 +5,7 @@ unit uAgentToolErrorLog;
 interface
 
 uses
-  Classes, SysUtils, SyncObjs, Contnrs, Forms, uAgentExecutionLog;
+  Classes, SysUtils, SyncObjs, Contnrs, Forms, uAppTypes, uAgentExecutionLog;
 
 type
   TToolErrorLogEntry = class
@@ -19,6 +19,7 @@ type
     WasException: Boolean;
     ExceptionClass: string;
     function BuildInspectorText: string;
+    function BuildInspectorHtml(ATheme: TThemeKind): string;
   end;
 
   TAgentToolErrorLog = class
@@ -50,7 +51,7 @@ procedure AppendToolErrorLogFile(const AWorkspaceId, AWorkspaceRoot, ASessionId,
 implementation
 
 uses
-  fpjson, DateUtils;
+  fpjson, DateUtils, uExecutionDetailHtml;
 
 function ToolErrorLogDir: string;
 begin
@@ -141,6 +142,41 @@ begin
   finally
     SB.Free;
   end;
+end;
+
+function TToolErrorLogEntry.BuildInspectorHtml(ATheme: TThemeKind): string;
+var
+  SB: TStringBuilder;
+  Body: string;
+begin
+  SB := TStringBuilder.Create;
+  try
+    AppendHtmlSectionHeader(SB, 'Tool error');
+    SB.Append('<p>');
+    SB.Append(ExecDetailEscapeHtml(FormatDateTime('yyyy-mm-dd hh:nn:ss', Timestamp)));
+    SB.Append('</p>');
+    SB.Append('<div class="tool-call"><span class="tool-name">');
+    SB.Append(ExecDetailEscapeHtml(ToolName));
+    SB.Append('</span>');
+    if WasException then
+      AppendHtmlFailBadge(SB);
+    SB.Append('</div>');
+    if WasException and (ExceptionClass <> '') then
+      SB.Append('<p class="prose-empty">Class: ' + ExecDetailEscapeHtml(ExceptionClass) +
+        '</p>');
+    AppendHtmlSectionHeader(SB, 'Summary');
+    SB.Append(ProseTextToHtmlBlock(Summary));
+    AppendHtmlSectionHeader(SB, 'Input (arguments)');
+    SB.Append(JsonTextToHtmlBlock(ToolArgsJson));
+    AppendHtmlSectionHeader(SB, 'Output');
+    SB.Append(JsonTextToHtmlBlock(ToolOutputJson));
+    AppendHtmlSectionHeader(SB, 'On-disk log');
+    SB.Append(ProseTextToHtmlBlock(ToolErrorLogFilePath));
+    Body := SB.ToString;
+  finally
+    SB.Free;
+  end;
+  Result := WrapExecDetailHtmlDocument(Body, ATheme);
 end;
 
 { TAgentToolErrorLog }

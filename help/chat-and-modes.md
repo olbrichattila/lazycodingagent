@@ -26,11 +26,20 @@ Pick **Ask**, **Plan**, or **Agent** from the **mode** combo at the left of the 
 
 The **model** combo lists models you configured in Settings. The choice is kept with the workspace and shown on the status bar when relevant.
 
-## Debugging mode
+## Debugging mode vs live trace
 
-In **Settings → Agent Behavior**, enable **Debugging mode** to show **full tool results** in the chat transcript. When disabled, successful tool calls are hidden in chat; **errors** still appear.
+In **Settings → Agent Behavior**, enable **Debugging mode** to show **full tool results** in the chat transcript. When disabled, successful tool JSON stays out of chat; **errors** still appear.
 
-For a step-by-step trace of LLM requests and tool calls, use execution / utility views when available in your build.
+With debugging off, you still get a readable run in chat:
+
+- **Activity** lines such as `Calling read_file` when each tool starts (not part of saved conversation history).
+- **Tools & Logs** in the nav rail plus **Execution Detail** in the utility panel for full prompts, tool arguments, and outputs.
+
+Click an older log row to **pin** the inspector on that step; click the **latest** row to follow the live trace again.
+
+## Step limit
+
+**Max steps** in Settings caps how many LLM round-trips one send can take (default 20). The status bar shows the current step during a run. If the cap is hit while the model still requested tools, the assistant adds a brief step-limit message instead of ending silently.
 
 ## Cancel and exit
 

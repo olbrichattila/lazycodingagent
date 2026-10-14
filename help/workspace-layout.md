@@ -10,7 +10,7 @@ The narrow left **activity bar** switches views:
 - **Projects** — file tree for the workspace.
 - **Sessions** — chat session list (active and archived).
 - **Bots** — agent presets and prompt setups.
-- **Tools & Logs** — per-step tool execution log for the active session (click a row to open detail in the utility panel).
+- **Tools & Logs** — per-step execution log for the active session: user prompts, model steps (`Step N/M · Model:`), and each tool’s input/output (`Step N/M · tool_name(...)`). Click a row to open **Execution Detail**; during an active run new rows follow into that panel until you select an older row.
 - **Tasks & Plans** — session task list from the todo tool.
 - **Tool Errors** — failed tool calls for the active session (click a row for full arguments and output). The subtitle shows the on-disk log path; hover for the full path.
 
@@ -42,7 +42,7 @@ There is **no** session tab strip and **no** per-file editor tabs. Switch sessio
 ## Right and utility panels
 
 - **Guidelines / instructions** — workspace context on the right when enabled.
-- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**.
+- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** renders formatted HTML: accent section headers, highlighted tool names, shaded JSON blocks (pretty-printed), and prose blocks for long prompt text.
 
 ## Panel visibility and detach
 

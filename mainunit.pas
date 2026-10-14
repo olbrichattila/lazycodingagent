@@ -16,6 +16,8 @@ uses
   frmOpenMarkdown, frmHelp, uMarkdownHtmlView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
 
 type
+  TExecDetailSource = (edsNone, edsExecLog, edsToolError);
+
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
     btnChatSend: TButton;
@@ -91,7 +93,7 @@ type
     tsUtilityScratch: TTabSheet;
     memUtilityScratch: TMemo;
     tsUtilityExecDetail: TTabSheet;
-    memUtilityExecDetail: TMemo;
+    pnlUtilityExecDetailHost: TPanel;
     tsUtilityPlan: TTabSheet;
     pnlPlanHeader: TPanel;
     lblPlanPath: TLabel;
@@ -186,10 +188,16 @@ type
     FFileEditor: TMainFileEditor;
     FPlanView: TPlanView;
     FMarkdownPreview: TMarkdownHtmlView;
+    FExecDetailView: TMarkdownHtmlView;
+    FExecDetailSource: TExecDetailSource;
+    FExecDetailIndex: Integer;
     FPanelDetach: TPanelDetachManager;
     FMarkdownPath: string;
     FCurrentRunMode: TWorkspaceMode;
     FPlanSavedThisRun: Boolean;
+    FExecutionLogFollowLive: Boolean;
+    FStatusRunStep: Integer;
+    FStatusRunMaxSteps: Integer;
 
     FRegistry: TWorkspaceRegistry;
     FCurrentSessionId: string;
@@ -280,7 +288,7 @@ type
     procedure ChatCancel(Sender: TObject);
 
     procedure HubStateChange(Sender: TObject; const ASessionId: string;
-      AOldState, ANewState: TAgentState);
+      AOldState, ANewState: TAgentState; AStep, AMaxSteps: Integer);
     procedure HubMessageAdded(Sender: TObject; const ASessionId: string; const AMsg: TChatMessage);
     procedure HubToolCall(Sender: TObject; const ASessionId: string; const AToolName, AArgs: string);
     procedure HubToolResult(Sender: TObject; const ASessionId: string; const AToolName,
@@ -293,6 +301,13 @@ type
     procedure NavClearToolErrorLog(Sender: TObject);
     procedure BindExecutionLogToNav(const ASessionId: string);
     procedure BindToolErrorLogToNav(const ASessionId: string);
+    procedure DetachNavSessionLogs;
+    procedure ShowExecutionLogDetail(AIndex: Integer);
+    procedure ShowToolErrorDetail(AIndex: Integer);
+    procedure ClearExecDetailView;
+    procedure RefreshExecDetailView;
+    procedure OpenUtilityExecutionDetailTab;
+    function FormatSessionStatusLabel(AState: TAgentState): string;
     procedure RefreshNavTaskList;
     procedure NavTasksRefresh(Sender: TObject);
     procedure SyncHubClientSettings(AHub: TChatSessionHub);
@@ -309,6 +324,9 @@ var
   LazyCodingAgentForm: TLazyCodingAgentForm;
 
 implementation
+
+uses
+  uExecutionDetailHtml;
 
 {$R *.lfm}
 
@@ -395,7 +413,7 @@ begin
   BindExecutionLogToNav(ASessionId);
   BindToolErrorLogToNav(ASessionId);
   RefreshNavTaskList;
-  memUtilityExecDetail.Clear;
+  ClearExecDetailView;
 end;
 
 procedure TLazyCodingAgentForm.BindExecutionLogToNav(const ASessionId: string);
@@ -539,6 +557,12 @@ begin
   FNavSessionIds := TStringList.Create;
   FNavSessionArchived := TStringList.Create;
   FCurrentSessionId := '';
+  FExecutionLogFollowLive := True;
+  FStatusRunStep := 0;
+  FStatusRunMaxSteps := 0;
+  FExecDetailView := nil;
+  FExecDetailSource := edsNone;
+  FExecDetailIndex := -1;
 
   FSyntaxSchemes := TSyntaxSchemeRegistry.Create;
   FSyntaxSchemes.Load;
@@ -613,6 +637,8 @@ begin
       Exit;
     end;
     FSessionHubs.ShutdownAll(True);
+    FActiveHub := nil;
+    DetachNavSessionLogs;
   end;
   if not Assigned(FState) then Exit;
   if Assigned(FSessionHubs) then
@@ -632,6 +658,7 @@ var
   I: Integer;
 begin
   FreeAndNil(FPanelDetach);
+  FreeAndNil(FExecDetailView);
   FreeAndNil(FMarkdownPreview);
   FreeAndNil(FFileEditor);
   if Assigned(FSessionHubs) then begin
@@ -643,6 +670,8 @@ begin
     FRegistry.Save;
     FreeAndNil(FRegistry);
   end;
+  DetachNavSessionLogs;
+  FActiveHub := nil;
   FreeAndNil(FSessionHubs);
   FreeAndNil(FNavWorkCaptions);
   FreeAndNil(FNavWorkIds);
@@ -858,7 +887,9 @@ begin
   FTerminalPanel.OnTerminalStatus := @TerminalStatus;
 
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
-  ConfigureThemedMemo(memUtilityExecDetail, FState.Theme, 'Consolas');
+  if not Assigned(FExecDetailView) then
+    FExecDetailView := TMarkdownHtmlView.Create(Self, pnlUtilityExecDetailHost);
+  FExecDetailView.ApplyTheme(FState.Theme);
   if not Assigned(FMarkdownPreview) then
     FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
   FMarkdownPreview.ApplyTheme(FState.Theme);
@@ -1124,7 +1155,8 @@ begin
       WsLabel := '(none)';
     if Assigned(ActiveAgent) then
       StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s  |  Status: %s',
-        [WsLabel, WorkspaceModeCaption(FState.Mode), FState.Model, AgentStateToString(ActiveAgent.State)])
+        [WsLabel, WorkspaceModeCaption(FState.Mode), FState.Model,
+          FormatSessionStatusLabel(ActiveAgent.State)])
     else
       StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s',
         [WsLabel, WorkspaceModeCaption(FState.Mode), FState.Model]);
@@ -1189,6 +1221,11 @@ begin
   FMarkdownPreview.ApplyTheme(FState.Theme);
   ApplyEditorTheme;
 
+  if Assigned(FExecDetailView) then begin
+    RefreshExecDetailView;
+    FExecDetailView.ApplyTheme(FState.Theme);
+  end;
+
   UpdateNavRailSelection;
   ApplyPlatformChromeThemes;
   Invalidate;
@@ -1236,6 +1273,8 @@ begin
   FPlanSavedThisRun := False;
   Eng := ActiveAgent;
   if not Assigned(Eng) then Exit;
+  FExecutionLogFollowLive := True;
+  OpenUtilityExecutionDetailTab;
   FChatPanel.SetRunning(True);
   if not Eng.StartRunAsync(APrompt, AMode, AModel) then
     FChatPanel.SetRunning(False);
@@ -1263,11 +1302,14 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.HubStateChange(Sender: TObject; const ASessionId: string;
-  AOldState, ANewState: TAgentState);
+  AOldState, ANewState: TAgentState; AStep, AMaxSteps: Integer);
 begin
   if SameText(ASessionId, FCurrentSessionId) then begin
+    FStatusRunStep := AStep;
+    FStatusRunMaxSteps := AMaxSteps;
     StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s  |  Status: %s',
-      [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model, AgentStateToString(ANewState)]);
+      [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model,
+        FormatAgentStateLabel(ANewState, AStep, AMaxSteps)]);
     if (ANewState = asFinished) and (FCurrentRunMode = wmPlan) and not FPlanSavedThisRun then
       TrySaveProposedPlanFromChat;
     if (ANewState in [asIdle, asFinished, asError]) and Assigned(FChatPanel) then
@@ -1291,7 +1333,9 @@ end;
 procedure TLazyCodingAgentForm.HubToolCall(Sender: TObject; const ASessionId: string;
   const AToolName, AArgs: string);
 begin
-  // Tool lines are recorded in execution log on tool result (combined input/output).
+  if not SameText(ASessionId, FCurrentSessionId) then Exit;
+  if Assigned(FChatPanel) and (Trim(AToolName) <> '') then
+    FChatPanel.AppendTraceLine('Calling ' + AToolName);
 end;
 
 procedure TLazyCodingAgentForm.HubToolResult(Sender: TObject; const ASessionId: string;
@@ -1354,15 +1398,66 @@ begin
   end;
 end;
 
+procedure TLazyCodingAgentForm.DetachNavSessionLogs;
+begin
+  if Assigned(FNavContent) then begin
+    FNavContent.BindExecutionLog(nil);
+    FNavContent.BindToolErrorLog(nil);
+  end;
+end;
+
 procedure TLazyCodingAgentForm.HubExecutionLogAdded(Sender: TObject; const ASessionId: string;
   AEntryIndex: Integer);
 begin
+  if csDestroying in ComponentState then Exit;
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FNavContent) then
     FNavContent.AppendExecutionLogEntry(AEntryIndex);
+  if FExecutionLogFollowLive then
+    ShowExecutionLogDetail(AEntryIndex);
 end;
 
-procedure TLazyCodingAgentForm.NavLogEntrySelected(Sender: TObject; AIndex: Integer);
+procedure TLazyCodingAgentForm.OpenUtilityExecutionDetailTab;
+begin
+  FState.SetPanelVisible(piUtility, True);
+  ApplyDockPanelsLayout;
+  if Assigned(pgcUtility) then
+    pgcUtility.ActivePage := tsUtilityExecDetail;
+end;
+
+function TLazyCodingAgentForm.FormatSessionStatusLabel(AState: TAgentState): string;
+begin
+  Result := FormatAgentStateLabel(AState, FStatusRunStep, FStatusRunMaxSteps);
+end;
+
+procedure TLazyCodingAgentForm.ClearExecDetailView;
+begin
+  FExecDetailSource := edsNone;
+  FExecDetailIndex := -1;
+  if Assigned(FExecDetailView) then
+    FExecDetailView.SetHtmlBody(WrapExecDetailHtmlDocument('', FState.Theme));
+end;
+
+procedure TLazyCodingAgentForm.RefreshExecDetailView;
+begin
+  if not Assigned(FExecDetailView) then Exit;
+  case FExecDetailSource of
+    edsExecLog:
+      if FExecDetailIndex >= 0 then
+        ShowExecutionLogDetail(FExecDetailIndex)
+      else
+        ClearExecDetailView;
+    edsToolError:
+      if FExecDetailIndex >= 0 then
+        ShowToolErrorDetail(FExecDetailIndex)
+      else
+        ClearExecDetailView;
+  else
+    ClearExecDetailView;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.ShowExecutionLogDetail(AIndex: Integer);
 var
   Log: TAgentExecutionLog;
   Entry: TExecutionLogEntry;
@@ -1372,11 +1467,44 @@ begin
     Log := FActiveHub.ExecutionLogFor(FCurrentSessionId);
   if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
   Entry := Log.Entry(AIndex);
-  memUtilityExecDetail.Lines.Text := Entry.BuildInspectorText;
-  FState.SetPanelVisible(piUtility, True);
-  ApplyDockPanelsLayout;
-  if Assigned(pgcUtility) then
-    pgcUtility.ActivePage := tsUtilityExecDetail;
+  FExecDetailSource := edsExecLog;
+  FExecDetailIndex := AIndex;
+  if Assigned(FExecDetailView) then
+    FExecDetailView.SetHtmlBody(Entry.BuildInspectorHtml(FState.Theme));
+  OpenUtilityExecutionDetailTab;
+end;
+
+procedure TLazyCodingAgentForm.ShowToolErrorDetail(AIndex: Integer);
+var
+  Log: TAgentToolErrorLog;
+  Entry: TToolErrorLogEntry;
+begin
+  Log := nil;
+  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+    Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
+  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
+  Entry := Log.Entry(AIndex);
+  FExecDetailSource := edsToolError;
+  FExecDetailIndex := AIndex;
+  if Assigned(FExecDetailView) then
+    FExecDetailView.SetHtmlBody(Entry.BuildInspectorHtml(FState.Theme));
+  OpenUtilityExecutionDetailTab;
+end;
+
+procedure TLazyCodingAgentForm.NavLogEntrySelected(Sender: TObject; AIndex: Integer);
+var
+  Log: TAgentExecutionLog;
+begin
+  Log := nil;
+  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+    Log := FActiveHub.ExecutionLogFor(FCurrentSessionId);
+  if Log <> nil then begin
+    if AIndex = Log.Count - 1 then
+      FExecutionLogFollowLive := True
+    else
+      FExecutionLogFollowLive := False;
+  end;
+  ShowExecutionLogDetail(AIndex);
 end;
 
 procedure TLazyCodingAgentForm.NavClearExecutionLog(Sender: TObject);
@@ -1389,32 +1517,21 @@ begin
     Log.Clear;
   if Assigned(FNavContent) then
     FNavContent.RefreshExecutionLogList;
-  memUtilityExecDetail.Clear;
+  ClearExecDetailView;
 end;
 
 procedure TLazyCodingAgentForm.HubToolErrorAdded(Sender: TObject; const ASessionId: string;
   AEntryIndex: Integer);
 begin
+  if csDestroying in ComponentState then Exit;
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FNavContent) then
     FNavContent.AppendToolErrorLogEntry(AEntryIndex);
 end;
 
 procedure TLazyCodingAgentForm.NavToolErrorEntrySelected(Sender: TObject; AIndex: Integer);
-var
-  Log: TAgentToolErrorLog;
-  Entry: TToolErrorLogEntry;
 begin
-  Log := nil;
-  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
-    Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
-  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
-  Entry := Log.Entry(AIndex);
-  memUtilityExecDetail.Lines.Text := Entry.BuildInspectorText;
-  FState.SetPanelVisible(piUtility, True);
-  ApplyDockPanelsLayout;
-  if Assigned(pgcUtility) then
-    pgcUtility.ActivePage := tsUtilityExecDetail;
+  ShowToolErrorDetail(AIndex);
 end;
 
 procedure TLazyCodingAgentForm.NavClearToolErrorLog(Sender: TObject);
@@ -1427,7 +1544,8 @@ begin
     Log.Clear;
   if Assigned(FNavContent) then
     FNavContent.RefreshToolErrorLogList;
-  memUtilityExecDetail.Clear;
+  if FExecDetailSource = edsToolError then
+    ClearExecDetailView;
 end;
 
 function TLazyCodingAgentForm.ParsePlanToolSuccess(const AResult: TToolExecutionResult;

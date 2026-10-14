@@ -439,16 +439,14 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Caption = 'Execution Detail'
             ClientHeight = 917
             ClientWidth = 412
-            object memUtilityExecDetail: TMemo
+            object pnlUtilityExecDetailHost: TPanel
               Left = 0
               Height = 917
               Top = 0
               Width = 412
               Align = alClient
-              ReadOnly = True
-              ScrollBars = ssBoth
+              BevelOuter = bvNone
               TabOrder = 0
-              WordWrap = False
             end
           end
           object tsUtilityPlan: TTabSheet

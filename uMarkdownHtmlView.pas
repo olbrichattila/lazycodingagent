@@ -16,12 +16,15 @@ type
     FHtmlPanel: TControl;
     FTheme: TThemeKind;
     FMarkdown: string;
+    FRawHtml: string;
+    FUseRawHtml: Boolean;
     procedure EnsureViewer;
     procedure Render;
   public
     constructor Create(AOwner: TComponent; AHost: TPanel);
     destructor Destroy; override;
     procedure SetMarkdown(const AMarkdown: string);
+    procedure SetHtmlBody(const AFullHtml: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     property Host: TPanel read FHost;
   end;
@@ -229,6 +232,8 @@ begin
   FHtmlPanel := nil;
   FTheme := tkDark;
   FMarkdown := '';
+  FRawHtml := '';
+  FUseRawHtml := False;
   EnsureViewer;
 end;
 
@@ -261,7 +266,10 @@ begin
   EnsureViewer;
   if not Assigned(FHtmlPanel) then Exit;
   if csDestroying in FHtmlPanel.ComponentState then Exit;
-  Html := WrapThemedHtmlDocument(MarkdownSubsetToHtml(FMarkdown), FTheme);
+  if FUseRawHtml then
+    Html := FRawHtml
+  else
+    Html := WrapThemedHtmlDocument(MarkdownSubsetToHtml(FMarkdown), FTheme);
   TIpHtmlPanel(FHtmlPanel).BgColor := ThemePalette(FTheme).Background;
   TIpHtmlPanel(FHtmlPanel).TextColor := ThemePalette(FTheme).Text;
   TIpHtmlPanel(FHtmlPanel).SetHtmlFromStr(Html);
@@ -269,14 +277,26 @@ end;
 
 procedure TMarkdownHtmlView.SetMarkdown(const AMarkdown: string);
 begin
+  FUseRawHtml := False;
+  FRawHtml := '';
   FMarkdown := AMarkdown;
+  Render;
+end;
+
+procedure TMarkdownHtmlView.SetHtmlBody(const AFullHtml: string);
+begin
+  FUseRawHtml := True;
+  FMarkdown := '';
+  FRawHtml := AFullHtml;
   Render;
 end;
 
 procedure TMarkdownHtmlView.ApplyTheme(ATheme: TThemeKind);
 begin
   FTheme := ATheme;
-  if FMarkdown <> '' then
+  if FUseRawHtml and (FRawHtml <> '') then
+    Render
+  else if FMarkdown <> '' then
     Render;
   EnsureViewer;
   if Assigned(FHtmlPanel) and (FHtmlPanel is TWinControl) and

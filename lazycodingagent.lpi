@@ -289,6 +289,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uExecutionDetailHtml.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uAgentToolErrorLog.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

@@ -10,7 +10,8 @@ uses
 
 type
   { Event types for UI notification }
-  TAgentStateChangeEvent = procedure(Sender: TObject; AOldState, ANewState: TAgentState) of object;
+  TAgentStateChangeEvent = procedure(Sender: TObject; AOldState, ANewState: TAgentState;
+    AStep, AMaxSteps: Integer) of object;
   TAgentMessageEvent = procedure(Sender: TObject; const AMessage: TChatMessage) of object;
   TAgentToolCallEvent = procedure(Sender: TObject; const AToolName, AArgs: string) of object;
   TAgentToolResultEvent = procedure(Sender: TObject; const AToolName, AArgsJson: string;
@@ -46,6 +47,8 @@ type
 
     FSyncOldState: TAgentState;
     FSyncNewState: TAgentState;
+    FSyncRunStep: Integer;
+    FSyncRunMaxSteps: Integer;
     FSyncMessage: TChatMessage;
     FSyncToolName: string;
     FSyncToolArgs: string;
@@ -62,6 +65,7 @@ type
     FRunSnapMaxTokens: Integer;
     FRunSnapTimeoutMs: Integer;
 
+    procedure SetRunProgress(AStep: Integer);
     procedure SetState(ANewState: TAgentState);
     procedure AppendMessage(const AMsg: TChatMessage);
     procedure ApplySystemPrompt(AMode: TWorkspaceMode);
@@ -165,9 +169,15 @@ destructor TAgentEngine.Destroy;
 begin
   RequestCancel;
   WaitForRunComplete;
+  FDestroying := True;
+  FOnStateChange := nil;
+  FOnMessageAdded := nil;
+  FOnToolCall := nil;
+  FOnToolResult := nil;
+  FOnExecutionLogAdded := nil;
+  FOnToolErrorAdded := nil;
   if Assigned(Application) then
     Application.ProcessMessages;
-  FDestroying := True;
   FTools.Free;
   FContext.Free;
   FClient.Free;
@@ -212,7 +222,7 @@ procedure TAgentEngine.SyncStateChange;
 begin
   if FDestroying then Exit;
   if Assigned(FOnStateChange) then
-    FOnStateChange(Self, FSyncOldState, FSyncNewState);
+    FOnStateChange(Self, FSyncOldState, FSyncNewState, FSyncRunStep, FSyncRunMaxSteps);
 end;
 
 procedure TAgentEngine.SyncMessageAdded;
@@ -301,6 +311,12 @@ begin
   NotifyRunFailure('❌ ' + Msg);
 end;
 
+procedure TAgentEngine.SetRunProgress(AStep: Integer);
+begin
+  FSyncRunStep := AStep;
+  FSyncRunMaxSteps := FMaxSteps;
+end;
+
 procedure TAgentEngine.SetState(ANewState: TAgentState);
 var
   Old: TAgentState;
@@ -319,7 +335,7 @@ begin
     FSyncNewState := ANewState;
     TThread.Queue(nil, @SyncStateChange);
   end else if Assigned(FOnStateChange) then
-    FOnStateChange(Self, Old, ANewState);
+    FOnStateChange(Self, Old, ANewState, FSyncRunStep, FSyncRunMaxSteps);
 end;
 
 procedure TAgentEngine.AppendMessage(const AMsg: TChatMessage);
@@ -589,10 +605,14 @@ var
   StepCount, I: Integer;
   ToolResult: TToolExecutionResult;
   HadToolCalls: Boolean;
+  LastResponseHadTools: Boolean;
   MessagesCopy: array of TChatMessage;
   RequestContext: string;
 begin
   FInWorkerRun := True;
+  FSyncRunStep := 0;
+  FSyncRunMaxSteps := FMaxSteps;
+  LastResponseHadTools := False;
   try
     ApplyClientSnapshot;
     if Trim(AModel) <> '' then
@@ -621,6 +641,7 @@ begin
 
     while (StepCount < FMaxSteps) and not GetCancelRequested do begin
       Inc(StepCount);
+      SetRunProgress(StepCount);
       SetState(asThinking);
 
       FDataLock.Enter;
@@ -655,13 +676,14 @@ begin
 
       if Assigned(FExecutionLog) then
         NotifyExecutionLogAdded(FExecutionLog.AddAssistant(Resp.Content, RequestContext,
-          Length(Resp.ToolCalls)));
+          Resp.ToolCalls, StepCount, FMaxSteps));
 
       if Length(Resp.ToolCalls) = 0 then begin
         SetState(asFinished);
         Exit;
       end;
 
+      LastResponseHadTools := True;
       HadToolCalls := False;
       SetState(asExecutingTool);
       for I := Low(Resp.ToolCalls) to High(Resp.ToolCalls) do begin
@@ -690,7 +712,7 @@ begin
         if Assigned(FExecutionLog) then
           NotifyExecutionLogAdded(FExecutionLog.AddTool(Resp.ToolCalls[I].Name,
             Resp.ToolCalls[I].ArgumentsJson, ToolResult.Output, ToolResult.Summary,
-            ToolResult.Success));
+            ToolResult.Success, StepCount, FMaxSteps));
 
         if (not ToolResult.Success) and Assigned(FToolErrorLog) then
           NotifyToolErrorAdded(FToolErrorLog.Add(Resp.ToolCalls[I].Name,
@@ -709,10 +731,20 @@ begin
 
     if GetCancelRequested then
       SetState(asIdle)
-    else
+    else begin
+      if LastResponseHadTools and (StepCount >= FMaxSteps) then begin
+        AssistantMsg := StringToChatRole('assistant');
+        AssistantMsg.Content := Format(
+          'Stopped: reached the step limit (%d) before the model finished without tool calls.',
+          [FMaxSteps]);
+        AppendMessage(AssistantMsg);
+      end;
       SetState(asFinished);
+    end;
   finally
     FInWorkerRun := False;
+    FSyncRunStep := 0;
+    FSyncRunMaxSteps := FMaxSteps;
   end;
 end;
 
