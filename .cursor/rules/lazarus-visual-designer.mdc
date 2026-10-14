@@ -50,7 +50,7 @@ Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
 - **Nav body:** title/subtitle labels, `TListBox` / `TTreeView`, log list boxes, action buttons — visibility and captions only in code.
 - **Center `TPageControl`:** Chat (history + composer + mode/model combos), Editor (`TSynEdit`), Markdown preview (`TPanel` host). One open file at a time; no per-file tab strip. Session name on the chat sheet; session list in **Sessions** nav.
 - **Utility `TPageControl`:** Scratchpad, Execution Detail, Plan — fixed sheets.
-- **Terminal:** chrome and status label on the bottom host in `.lfm`; `TTerminalLCLView` added at runtime. Panel **hide** (✕) only; no floating detach.
+- **Terminal:** chrome (⧉ detach, ✕ hide) and status label on the bottom host in `.lfm`; `TTerminalLCLView` added at runtime via [`uTerminalPanel.pas`](uTerminalPanel.pas). Content detaches like other panels (`uPanelDetach`).
 
 Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) when adding rail items or large structural changes; preserve the `MainMenu1` tail.
 

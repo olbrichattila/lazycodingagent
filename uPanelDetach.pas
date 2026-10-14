@@ -39,7 +39,6 @@ implementation
 
 procedure TPanelDetachManager.Bind(AId: TPanelId; ADockHost: TPanel; AContent: TWinControl);
 begin
-  if AId = piTerminal then Exit;
   FDockHost[AId] := ADockHost;
   FContent[AId] := AContent;
   FBound[AId] := Assigned(ADockHost) and Assigned(AContent);
@@ -69,13 +68,29 @@ end;
 
 function TPanelDetachManager.DefaultFloatBounds(AId: TPanelId; out ALeft, ATop, AWidth,
   AHeight: Integer): Boolean;
+var
+  DockW, DockH: Integer;
 begin
   Result := False;
   if not FBound[AId] then Exit;
-  AWidth := FDockHost[AId].Width;
-  AHeight := FDockHost[AId].Height;
-  if AWidth < 280 then AWidth := 420;
-  if AHeight < 200 then AHeight := 480;
+  DockW := FDockHost[AId].Width;
+  DockH := FDockHost[AId].Height;
+  if AId = piTerminal then begin
+    AWidth := 960;
+    AHeight := DockH;
+    if AHeight < 360 then
+      AHeight := 360;
+    if DockW >= FMainForm.Width - 48 then begin
+      { Full-width bottom dock: avoid opening a strip-sized float window. }
+      if AHeight < 360 then
+        AHeight := 360;
+    end;
+  end else begin
+    AWidth := DockW;
+    AHeight := DockH;
+    if AWidth < 280 then AWidth := 420;
+    if AHeight < 200 then AHeight := 480;
+  end;
   ALeft := FMainForm.Left + FMainForm.Width + 12;
   ATop := FMainForm.Top;
   Result := True;
@@ -103,7 +118,6 @@ begin
   if not (Sender is TForm) then Exit;
   FF := TForm(Sender);
   Id := TPanelId(FF.Tag);
-  if Id = piTerminal then Exit;
   FState.SetPanelBounds(Id, FF.Left, FF.Top, FF.Width, FF.Height);
 end;
 
@@ -123,7 +137,6 @@ var
   L, T, W, H: Integer;
   FF: TForm;
 begin
-  if AId = piTerminal then Exit;
   if not FBound[AId] then Exit;
   if not FState.IsPanelVisible(AId) then
     FState.SetPanelVisible(AId, True);
@@ -152,7 +165,6 @@ procedure TPanelDetachManager.AttachPanel(AId: TPanelId);
 var
   FF: TForm;
 begin
-  if AId = piTerminal then Exit;
   if not FBound[AId] then Exit;
   if not Assigned(FMainForm) or (csDestroying in FMainForm.ComponentState) then Exit;
   if not FState.IsPanelFloating(AId) then Exit;
@@ -175,7 +187,6 @@ end;
 
 procedure TPanelDetachManager.ToggleDetach(AId: TPanelId);
 begin
-  if AId = piTerminal then Exit;
   if FState.IsPanelFloating(AId) then
     AttachPanel(AId)
   else
@@ -188,7 +199,6 @@ var
   FF: TForm;
 begin
   for P := Low(TPanelId) to High(TPanelId) do begin
-    if P = piTerminal then Continue;
     if not FBound[P] then Continue;
 
     if FState.IsPanelVisible(P) and FState.IsPanelFloating(P) then begin
@@ -214,7 +224,6 @@ var
 begin
   Pal := ThemePalette(ATheme);
   for P := Low(TPanelId) to High(TPanelId) do begin
-    if P = piTerminal then Continue;
     FF := FFloatForm[P];
     if not Assigned(FF) then Continue;
     FF.Color := Pal.Background;
@@ -228,7 +237,6 @@ var
   P: TPanelId;
 begin
   for P := Low(TPanelId) to High(TPanelId) do begin
-    if P = piTerminal then Continue;
     if not FBound[P] then Continue;
     if FState.IsPanelVisible(P) and FState.IsPanelFloating(P) then
       DetachPanel(P);

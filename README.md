@@ -188,7 +188,7 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 - `uNavigationPanel.pas` — `TNavContentControl` binds to streamed nav controls on the main form
 - `uChatPanel.pas` — Binds composer memos/combos/buttons; Markdown HTML history on `pnlChatHistoryHost`
 - `uMarkdownHtmlView.pas` — Shared Markdown subset renderer for chat, center preview, and Help
-- `uPanelDetach.pas` — Detach navigation, chat, guidelines, and utility panels to floating windows
+- `uPanelDetach.pas` — Detach navigation, chat, guidelines, utility, and terminal panels to floating windows
 - `uThemeHooks.pas` — Custom control hooks for recursive theming (tab bar, SynEdit, terminal view)
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown

@@ -622,6 +622,17 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 114
         Caption = 'Terminal'
       end
+      object btnTerminalDetach: TButton
+        Tag = 4
+        Left = 2736
+        Height = 50
+        Top = 8
+        Width = 64
+        Anchors = [akTop, akRight]
+        Caption = '⧉'
+        TabOrder = 0
+        OnClick = PanelDetachClick
+      end
       object btnTerminalHide: TButton
         Tag = 4
         Left = 2808
@@ -630,7 +641,7 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 64
         Anchors = [akTop, akRight]
         Caption = '✕'
-        TabOrder = 0
+        TabOrder = 1
         OnClick = PanelHideClick
       end
     end

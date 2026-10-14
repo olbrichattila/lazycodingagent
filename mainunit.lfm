@@ -1,7 +1,7 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 30
+  Left = 658
   Height = 1350
-  Top = 178
+  Top = 238
   Width = 2160
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 1350
@@ -936,6 +936,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 65
         Caption = 'Terminal'
       end
+      object btnTerminalDetach: TButton
+        Tag = 4
+        Left = 2052
+        Height = 38
+        Top = 6
+        Width = 48
+        Anchors = [akTop, akRight]
+        Caption = '⧉'
+        TabOrder = 0
+        OnClick = PanelDetachClick
+      end
       object btnTerminalHide: TButton
         Tag = 4
         Left = 2106
@@ -944,7 +955,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 48
         Anchors = [akTop, akRight]
         Caption = '✕'
-        TabOrder = 0
+        TabOrder = 1
         OnClick = PanelHideClick
       end
     end

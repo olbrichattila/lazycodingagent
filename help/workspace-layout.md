@@ -48,7 +48,7 @@ There are **no** per-file editor tabs. Switch sessions from the Chat session tab
 
 Use **✕** on navigation, guidelines, utility, or terminal panel headers, or **Window → Panels**, to show or hide those areas. The **center (chat / editor / markdown)** area has **⧉ detach** on its header but no **✕** — hide the chat panel from **Window → Panels** only. Layout and visibility persist when you restart the app.
 
-Use **⧉** on navigation, chat, guidelines, and utility headers to **detach** the panel into a floating window (position and size are saved). Close the float window or click **⧉** again to re-dock. The **terminal** panel supports **hide** only — it does not detach.
+Use **⧉** on navigation, chat, guidelines, utility, and terminal headers to **detach** the panel into a floating window (position and size are saved). Close the float window or click **⧉** again to re-dock.
 
 ## Terminal
 

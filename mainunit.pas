@@ -133,6 +133,7 @@ type
     pnlTerminalHost: TPanel;
     pnlTerminalChrome: TPanel;
     lblTerminalTitle: TLabel;
+    btnTerminalDetach: TButton;
     btnTerminalHide: TButton;
     pnlTerminalContent: TPanel;
     lblTerminalStatus: TLabel;
@@ -496,21 +497,13 @@ end;
 procedure TLazyCodingAgentForm.ApplyInitialWindowSize;
 var
   R: TRect;
-  W, H, MaxW, MaxH: Integer;
+  W, H: Integer;
 const
-  IDEAL_W = 1440;
-  IDEAL_H = 900;
-  MAX_PCT = 92;
+  TARGET_PCT = 67;
 begin
   R := Screen.PrimaryMonitor.WorkareaRect;
-  MaxW := (R.Width * MAX_PCT) div 100;
-  MaxH := (R.Height * MAX_PCT) div 100;
-  W := IDEAL_W;
-  if W > MaxW then
-    W := MaxW;
-  H := IDEAL_H;
-  if H > MaxH then
-    H := MaxH;
+  W := (R.Width * TARGET_PCT) div 100;
+  H := (R.Height * TARGET_PCT) div 100;
   if Constraints.MinWidth > R.Width then
     Constraints.MinWidth := R.Width;
   if Constraints.MinHeight > R.Height then
@@ -586,6 +579,7 @@ begin
   FPanelDetach.Bind(piChat, pnlChatHost, pgcCenter);
   FPanelDetach.Bind(piReserved, pnlReservedHost, pnlReservedContent);
   FPanelDetach.Bind(piUtility, pnlUtilityHost, pnlUtilityContent);
+  FPanelDetach.Bind(piTerminal, pnlTerminalHost, pnlTerminalContent);
   PopulateMenusAndCombos;
 end;
 
@@ -761,10 +755,18 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.PanelDetachClick(Sender: TObject);
+var
+  Id: TPanelId;
+  WasFloating: Boolean;
 begin
   if not Assigned(FPanelDetach) then Exit;
-  if Sender is TControl then
-    FPanelDetach.ToggleDetach(TPanelId(TControl(Sender).Tag));
+  if not (Sender is TControl) then Exit;
+  Id := TPanelId(TControl(Sender).Tag);
+  WasFloating := FState.IsPanelFloating(Id);
+  FPanelDetach.ToggleDetach(Id);
+  if (Id = piTerminal) and not WasFloating and FState.IsPanelFloating(piTerminal) and
+     Assigned(FTerminalPanel) then
+    FTerminalPanel.FocusTerminal;
 end;
 
 
@@ -981,19 +983,28 @@ end;
 
 procedure TLazyCodingAgentForm.LayoutTerminalChromeControls;
 const
-  HIDE_MARGIN = 6;
+  CHROME_MARGIN = 6;
 var
-  NewLeft: Integer;
+  HideLeft, DetachLeft: Integer;
+  BtnW: Integer;
 begin
   if FTerminalChromeLayout then Exit;
   if not Assigned(btnTerminalHide) or not Assigned(pnlTerminalChrome) then Exit;
   FTerminalChromeLayout := True;
   try
-    NewLeft := pnlTerminalChrome.ClientWidth - btnTerminalHide.Width - HIDE_MARGIN;
-    if NewLeft < 0 then
-      NewLeft := 0;
-    if btnTerminalHide.Left <> NewLeft then
-      btnTerminalHide.Left := NewLeft;
+    BtnW := btnTerminalHide.Width;
+    HideLeft := pnlTerminalChrome.ClientWidth - BtnW - CHROME_MARGIN;
+    if HideLeft < 0 then
+      HideLeft := 0;
+    if btnTerminalHide.Left <> HideLeft then
+      btnTerminalHide.Left := HideLeft;
+    if Assigned(btnTerminalDetach) then begin
+      DetachLeft := HideLeft - BtnW - CHROME_MARGIN;
+      if DetachLeft < 0 then
+        DetachLeft := 0;
+      if btnTerminalDetach.Left <> DetachLeft then
+        btnTerminalDetach.Left := DetachLeft;
+    end;
   finally
     FTerminalChromeLayout := False;
   end;
@@ -1023,7 +1034,8 @@ begin
     not FState.IsPanelFloating(piUtility);
   splUtility.Visible := pnlUtilityHost.Visible;
 
-  pnlTerminalHost.Visible := FState.IsPanelVisible(piTerminal);
+  pnlTerminalHost.Visible := FState.IsPanelVisible(piTerminal) and
+    not FState.IsPanelFloating(piTerminal);
   splTerminal.Visible := pnlTerminalHost.Visible;
   if Assigned(FPanelDetach) then
     FPanelDetach.ApplyLayout;
@@ -1084,7 +1096,10 @@ begin
     Exit(False);
   if not Assigned(FTerminalPanel) then
     Exit(False);
-  Result := pnlTerminalHost.Visible;
+  if FState.IsPanelFloating(piTerminal) then
+    Result := FTerminalPanel.Visible
+  else
+    Result := pnlTerminalHost.Visible;
 end;
 
 procedure TLazyCodingAgentForm.ScheduleTerminalStartRetry;
@@ -1240,6 +1255,7 @@ begin
   StyleCancelButton(btnReservedHide, FState.Theme);
   StyleCancelButton(btnUtilityDetach, FState.Theme);
   StyleCancelButton(btnUtilityHide, FState.Theme);
+  StyleCancelButton(btnTerminalDetach, FState.Theme);
   StyleCancelButton(btnTerminalHide, FState.Theme);
   if Assigned(FPanelDetach) then
     FPanelDetach.ApplyThemes(FState.Theme);
