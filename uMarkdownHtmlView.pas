@@ -7,6 +7,9 @@ interface
 uses
   Classes, SysUtils, Controls, ExtCtrls, Graphics, uAppTypes, uTheme;
 
+const
+  MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
+
 type
   { Subset Markdown renderer on a streamed TPanel host (TurboPower IpHtml at runtime). }
   TMarkdownHtmlView = class
@@ -18,7 +21,12 @@ type
     FMarkdown: string;
     FRawHtml: string;
     FUseRawHtml: Boolean;
+    FRenderDeferRetries: Integer;
+    FRenderDeferQueued: Boolean;
+    function HostReadyForRender: Boolean;
     procedure EnsureViewer;
+    procedure ScheduleDeferredRender;
+    procedure DeferredRender(Data: PtrInt);
     procedure Render;
   public
     constructor Create(AOwner: TComponent; AHost: TPanel);
@@ -35,7 +43,7 @@ function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): st
 implementation
 
 uses
-  IpHtml;
+  Forms, IpHtml;
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -234,14 +242,42 @@ begin
   FMarkdown := '';
   FRawHtml := '';
   FUseRawHtml := False;
+  FRenderDeferRetries := 0;
+  FRenderDeferQueued := False;
   EnsureViewer;
 end;
 
 destructor TMarkdownHtmlView.Destroy;
 begin
+  Application.RemoveAsyncCalls(Self);
   { IpHtmlPanel is owned by FHost (LCL); freeing here double-frees on form close. }
   FHtmlPanel := nil;
   inherited Destroy;
+end;
+
+function TMarkdownHtmlView.HostReadyForRender: Boolean;
+begin
+  Result := Assigned(FHost)
+    and FHost.HandleAllocated
+    and FHost.Showing
+    and (FHost.ClientWidth > 0)
+    and (FHost.ClientHeight > 0);
+end;
+
+procedure TMarkdownHtmlView.ScheduleDeferredRender;
+begin
+  if FRenderDeferQueued then Exit;
+  if FRenderDeferRetries >= MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then Exit;
+  Inc(FRenderDeferRetries);
+  FRenderDeferQueued := True;
+  Application.QueueAsyncCall(@DeferredRender, PtrInt(Self));
+end;
+
+procedure TMarkdownHtmlView.DeferredRender(Data: PtrInt);
+begin
+  FRenderDeferQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  Render;
 end;
 
 procedure TMarkdownHtmlView.EnsureViewer;
@@ -263,8 +299,15 @@ var
   Html: string;
 begin
   if Assigned(FHost) and (csDestroying in FHost.ComponentState) then Exit;
+  if not HostReadyForRender then begin
+    ScheduleDeferredRender;
+    Exit;
+  end;
   EnsureViewer;
-  if not Assigned(FHtmlPanel) then Exit;
+  if not Assigned(FHtmlPanel) then begin
+    ScheduleDeferredRender;
+    Exit;
+  end;
   if csDestroying in FHtmlPanel.ComponentState then Exit;
   if FUseRawHtml then
     Html := FRawHtml
@@ -273,6 +316,8 @@ begin
   TIpHtmlPanel(FHtmlPanel).BgColor := ThemePalette(FTheme).Background;
   TIpHtmlPanel(FHtmlPanel).TextColor := ThemePalette(FTheme).Text;
   TIpHtmlPanel(FHtmlPanel).SetHtmlFromStr(Html);
+  FHtmlPanel.Invalidate;
+  FRenderDeferRetries := 0;
 end;
 
 procedure TMarkdownHtmlView.SetMarkdown(const AMarkdown: string);

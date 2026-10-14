@@ -58,7 +58,7 @@ function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 
-// Helper to configure ComboBox for sleek theme owner-drawing
+// Owner-draw colors/font for ComboBox; preserves Height/ItemHeight from the form resource.
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
 // Read-only row height estimate for panels around a combo (do not pass to SetBounds height).
 function EffectiveThemedComboBoxHeight(ACombo: TComboBox): Integer;
@@ -460,12 +460,33 @@ begin
     Result := ThemedComboBoxHeight;
 end;
 
+function ThemedComboItemHeightForControl(ADesignHeight,
+  ADesignItemHeight: Integer): Integer;
+const
+  MIN_ITEM_H = 8;
+begin
+  if ADesignItemHeight > 0 then
+    Exit(ADesignItemHeight);
+  if ADesignHeight > 0 then
+    Exit(Max(MIN_ITEM_H, ADesignHeight - 6));
+  Result := ThemedComboBoxItemHeight;
+end;
+
+procedure RestoreComboDesignerBounds(ACombo: TComboBox; ASavedH: Integer);
+begin
+  if Assigned(ACombo) and (ACombo.Height <> ASavedH) then
+    ACombo.Height := ASavedH;
+end;
+
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
 var
   P: TThemePalette;
   Changed: Boolean;
+  SavedH, SavedItemH, TargetItemH: Integer;
 begin
   if not Assigned(ACombo) then Exit;
+  SavedH := ACombo.Height;
+  SavedItemH := ACombo.ItemHeight;
   P := ThemePalette(ATheme);
   Changed := False;
 
@@ -473,8 +494,9 @@ begin
     ACombo.Style := csOwnerDrawFixed;
     Changed := True;
   end;
-  if ACombo.ItemHeight <> ThemedComboBoxItemHeight then begin
-    ACombo.ItemHeight := ThemedComboBoxItemHeight;
+  TargetItemH := ThemedComboItemHeightForControl(SavedH, SavedItemH);
+  if ACombo.ItemHeight <> TargetItemH then begin
+    ACombo.ItemHeight := TargetItemH;
     Changed := True;
   end;
   if ACombo.Color <> P.SurfaceAlt then begin
@@ -491,6 +513,10 @@ begin
   end;
   if ACombo.Font.Size <> 9 then begin
     ACombo.Font.Size := 9;
+    Changed := True;
+  end;
+  if ACombo.Height <> SavedH then begin
+    RestoreComboDesignerBounds(ACombo, SavedH);
     Changed := True;
   end;
   if Changed then

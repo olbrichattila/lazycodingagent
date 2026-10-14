@@ -11,8 +11,12 @@ type
   TThemedTabCloseEvent = procedure(Sender: TObject; TabSheet: TTabSheet;
     var AllowClose: Boolean) of object;
   TThemedAddTabEvent = procedure(Sender: TObject) of object;
+  TThemedManualTabSelectEvent = procedure(Sender: TObject; ATabIndex: Integer) of object;
+  TThemedManualTabCloseEvent = procedure(Sender: TObject; ATabIndex: Integer;
+    var AllowClose: Boolean) of object;
 
-  { Themed tab strip for a PageControl with ShowTabs = False. }
+  { Themed tab strip for a PageControl with ShowTabs = False, or manual captions when
+    PageControl is nil. }
   TThemedPageTabBar = class(TPanel)
   private
     FPageControl: TPageControl;
@@ -23,9 +27,18 @@ type
     FHoverCloseIndex: Integer;
     FOnTabClose: TThemedTabCloseEvent;
     FOnAddTab: TThemedAddTabEvent;
+    FOnManualTabSelect: TThemedManualTabSelectEvent;
+    FOnManualTabClose: TThemedManualTabCloseEvent;
     FTabRects: array of TRect;
     FAddTabRect: TRect;
+    FManualCaptions: TStringList;
+    FManualAllowClose: array of Boolean;
+    FManualSelectedIndex: Integer;
+    function IsManualMode: Boolean;
     function VisibleTabCount: Integer;
+    function TabCaptionAt(AVisibleIndex: Integer): string;
+    function TabAllowCloseAt(AVisibleIndex: Integer): Boolean;
+    function TabIsSelectedAt(AVisibleIndex: Integer): Boolean;
     function VisibleTabSheetAt(AVisibleIndex: Integer): TTabSheet;
     function IndexOfTabSheet(ASheet: TTabSheet): Integer;
     procedure LayoutTabs;
@@ -43,8 +56,11 @@ type
     procedure ChangeScale(M, D: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure RefreshFromPageControl;
+    procedure SetManualTabs(const ACaptions: array of string;
+      const AAllowClose: array of Boolean; ASelectedIndex: Integer);
     class procedure SetTabAllowsClose(ASheet: TTabSheet; AValue: Boolean); static;
     class procedure SetTabHidden(ASheet: TTabSheet; AValue: Boolean); static;
     class function TabIsHidden(ASheet: TTabSheet): Boolean; static;
@@ -54,6 +70,10 @@ type
     property AddTabCaption: string read FAddTabCaption write FAddTabCaption;
     property OnTabClose: TThemedTabCloseEvent read FOnTabClose write FOnTabClose;
     property OnAddTab: TThemedAddTabEvent read FOnAddTab write FOnAddTab;
+    property OnManualTabSelect: TThemedManualTabSelectEvent read FOnManualTabSelect
+      write FOnManualTabSelect;
+    property OnManualTabClose: TThemedManualTabCloseEvent read FOnManualTabClose
+      write FOnManualTabClose;
   end;
 
 implementation
@@ -151,15 +171,52 @@ begin
   FHoverCloseIndex := -1;
   FShowAddTab := False;
   FAddTabCaption := '+';
+  FManualSelectedIndex := -1;
+  FManualCaptions := TStringList.Create;
   if not UsesParentForHeight then
     Height := ScaledThemedTabBarHeight(Self);
   DoubleBuffered := True;
+end;
+
+destructor TThemedPageTabBar.Destroy;
+begin
+  FManualCaptions.Free;
+  inherited Destroy;
+end;
+
+function TThemedPageTabBar.IsManualMode: Boolean;
+begin
+  Result := not Assigned(FPageControl);
+end;
+
+procedure TThemedPageTabBar.SetManualTabs(const ACaptions: array of string;
+  const AAllowClose: array of Boolean; ASelectedIndex: Integer);
+var
+  I: Integer;
+begin
+  FManualCaptions.Clear;
+  SetLength(FManualAllowClose, Length(ACaptions));
+  for I := 0 to High(ACaptions) do begin
+    FManualCaptions.Add(ACaptions[I]);
+    if I <= High(AAllowClose) then
+      FManualAllowClose[I] := AAllowClose[I]
+    else
+      FManualAllowClose[I] := False;
+  end;
+  FManualSelectedIndex := ASelectedIndex;
+  LayoutTabs;
+  Invalidate;
 end;
 
 procedure TThemedPageTabBar.SetPageControl(AControl: TPageControl);
 begin
   if FPageControl = AControl then Exit;
   FPageControl := AControl;
+  if Assigned(FPageControl) then begin
+    FManualCaptions.Clear;
+    SetLength(FManualAllowClose, 0);
+    FManualSelectedIndex := -1;
+  end;
   RefreshFromPageControl;
 end;
 
@@ -179,6 +236,10 @@ var
   I: Integer;
   Sheet: TTabSheet;
 begin
+  if IsManualMode then begin
+    Result := FManualCaptions.Count;
+    Exit;
+  end;
   Result := 0;
   if not Assigned(FPageControl) then Exit;
   for I := 0 to FPageControl.PageCount - 1 do begin
@@ -186,6 +247,49 @@ begin
     if not TabIsHidden(Sheet) then
       Inc(Result);
   end;
+end;
+
+function TThemedPageTabBar.TabCaptionAt(AVisibleIndex: Integer): string;
+var
+  Sheet: TTabSheet;
+begin
+  if IsManualMode then begin
+    if (AVisibleIndex >= 0) and (AVisibleIndex < FManualCaptions.Count) then
+      Result := FManualCaptions[AVisibleIndex]
+    else
+      Result := '';
+    Exit;
+  end;
+  Sheet := VisibleTabSheetAt(AVisibleIndex);
+  if Assigned(Sheet) then
+    Result := Sheet.Caption
+  else
+    Result := '';
+end;
+
+function TThemedPageTabBar.TabAllowCloseAt(AVisibleIndex: Integer): Boolean;
+var
+  Sheet: TTabSheet;
+begin
+  if IsManualMode then begin
+    if (AVisibleIndex >= 0) and (AVisibleIndex <= High(FManualAllowClose)) then
+      Result := FManualAllowClose[AVisibleIndex]
+    else
+      Result := False;
+    Exit;
+  end;
+  Sheet := VisibleTabSheetAt(AVisibleIndex);
+  Result := TabAllowsClose(Sheet);
+end;
+
+function TThemedPageTabBar.TabIsSelectedAt(AVisibleIndex: Integer): Boolean;
+var
+  Sheet: TTabSheet;
+begin
+  if IsManualMode then
+    Exit(AVisibleIndex = FManualSelectedIndex);
+  Sheet := VisibleTabSheetAt(AVisibleIndex);
+  Result := Assigned(FPageControl) and Assigned(Sheet) and (FPageControl.ActivePage = Sheet);
 end;
 
 function TThemedPageTabBar.VisibleTabSheetAt(AVisibleIndex: Integer): TTabSheet;
@@ -239,7 +343,6 @@ end;
 procedure TThemedPageTabBar.LayoutTabs;
 var
   I, Count, TabW, X, Pad, MinW: Integer;
-  Sheet: TTabSheet;
   MeasureCanvas: TControlCanvas;
 begin
   SetLength(FTabRects, 0);
@@ -258,9 +361,8 @@ begin
     if Count > 0 then begin
       SetLength(FTabRects, Count);
       for I := 0 to Count - 1 do begin
-        Sheet := VisibleTabSheetAt(I);
-        TabW := MeasureCanvas.TextWidth(Sheet.Caption) + 28;
-        if TabAllowsClose(Sheet) then
+        TabW := MeasureCanvas.TextWidth(TabCaptionAt(I)) + 28;
+        if TabAllowCloseAt(I) then
           Inc(TabW, 16);
         if TabW < MinW then
           TabW := MinW;
@@ -286,18 +388,11 @@ end;
 procedure TThemedPageTabBar.PaintTabStrip;
 var
   I: Integer;
-  Sheet: TTabSheet;
-  ActiveSheet: TTabSheet;
 begin
   LayoutTabs;
-  if Assigned(FPageControl) then begin
-    ActiveSheet := FPageControl.ActivePage;
-    for I := 0 to High(FTabRects) do begin
-      Sheet := VisibleTabSheetAt(I);
-      PaintThemedTab(Canvas, FTabRects[I], Sheet.Caption, Sheet = ActiveSheet, FHoverTabIndex = I,
-        TabAllowsClose(Sheet), FHoverCloseIndex = I, FTheme);
-    end;
-  end;
+  for I := 0 to High(FTabRects) do
+    PaintThemedTab(Canvas, FTabRects[I], TabCaptionAt(I), TabIsSelectedAt(I),
+      FHoverTabIndex = I, TabAllowCloseAt(I), FHoverCloseIndex = I, FTheme);
   if FShowAddTab and (FAddTabRect.Right > FAddTabRect.Left) then
     PaintThemedTab(Canvas, FAddTabRect, FAddTabCaption, False, FHoverTabIndex = VisibleTabCount,
       False, False, FTheme);
@@ -314,7 +409,6 @@ var
   I, OldTab, OldClose: Integer;
   R: TRect;
   CloseR: TRect;
-  Sheet: TTabSheet;
 begin
   inherited MouseMove(Shift, X, Y);
   OldTab := FHoverTabIndex;
@@ -326,8 +420,7 @@ begin
     R := FTabRects[I];
     if PtInRect(R, Point(X, Y)) then begin
       FHoverTabIndex := I;
-      Sheet := VisibleTabSheetAt(I);
-      if TabAllowsClose(Sheet) then begin
+      if TabAllowCloseAt(I) then begin
         CloseR := R;
         CloseR.Left := CloseR.Right - 20;
         if PtInRect(CloseR, Point(X, Y)) then
@@ -361,22 +454,37 @@ begin
 
   for I := 0 to High(FTabRects) do begin
     if not PtInRect(FTabRects[I], Point(X, Y)) then Continue;
-    Sheet := VisibleTabSheetAt(I);
-    if TabAllowsClose(Sheet) then begin
+    if TabAllowCloseAt(I) then begin
       CloseR := FTabRects[I];
       CloseR.Left := CloseR.Right - 20;
       if PtInRect(CloseR, Point(X, Y)) then begin
         AllowClose := True;
-        if Assigned(FOnTabClose) then
-          FOnTabClose(Self, Sheet, AllowClose);
-        if AllowClose then
-          RefreshFromPageControl;
+        if IsManualMode then begin
+          if Assigned(FOnManualTabClose) then
+            FOnManualTabClose(Self, I, AllowClose);
+          if AllowClose then
+            Invalidate;
+        end else begin
+          Sheet := VisibleTabSheetAt(I);
+          if Assigned(FOnTabClose) then
+            FOnTabClose(Self, Sheet, AllowClose);
+          if AllowClose then
+            RefreshFromPageControl;
+        end;
         Exit;
       end;
     end;
-    if Assigned(FPageControl) then
-      FPageControl.ActivePage := Sheet;
-    RefreshFromPageControl;
+    if IsManualMode then begin
+      if Assigned(FOnManualTabSelect) then
+        FOnManualTabSelect(Self, I);
+      FManualSelectedIndex := I;
+      Invalidate;
+    end else begin
+      Sheet := VisibleTabSheetAt(I);
+      if Assigned(FPageControl) then
+        FPageControl.ActivePage := Sheet;
+      RefreshFromPageControl;
+    end;
     Exit;
   end;
 end;

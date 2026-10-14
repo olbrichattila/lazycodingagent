@@ -23,8 +23,6 @@ procedure PopulateFutureFeatureNavList(AItem: TNavigationItem; AList: TStrings);
 begin
   if not Assigned(AList) then Exit;
   AList.Clear;
-  AList.Add('Coming Soon');
-  AList.Add('');
 
   case AItem of
     niMultiAgent:

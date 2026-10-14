@@ -14,7 +14,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 ### 2. Modern Dark-First Design & Cohesive Dropdowns
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
-- **Stable cross-platform combo layout**: themed combo boxes use centralized metrics in `uTheme.pas` (`StyleComboBox`, `EffectiveThemedComboBoxHeight`, `ThemedComboBoxItemHeight`); manual footer layout in `TChatPanel` uses the effective widget height after styling, with `FUpdatingLayout` re-entrancy guards.
+- **Stable cross-platform combo layout**: combo **Height** and **ItemHeight** come from the form resource (`.lfm`); `StyleComboBox` in `uTheme.pas` applies owner-draw theming without resizing controls. `EffectiveThemedComboBoxHeight` is for layout estimates only.
 - **Designer-first layout**: the main window and dialogs stream **stock LCL** controls in `.lfm` files (`TPageControl`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout. The embedded terminal view (`TTerminalLCLView`) is created at runtime in [`uTerminalPanel.pas`](uTerminalPanel.pas) so the IDE does not need the ViewLCL design package on the palette.
 - **Native tabs and buttons** on Linux/macOS; on **Windows**, `Style*` helpers custom-paint primary/cancel/destructive `TButton` fills via [`uThemeWin32Buttons.pas`](uThemeWin32Buttons.pas).
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.

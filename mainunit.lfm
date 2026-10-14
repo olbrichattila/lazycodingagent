@@ -283,6 +283,21 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Caption = 'Select a workspace'
           Layout = tlCenter
         end
+        object lblNavComingSoon: TLabel
+          Left = 10
+          Height = 21
+          Top = 57
+          Width = 365
+          Align = alTop
+          BorderSpacing.Left = 10
+          BorderSpacing.Top = 4
+          Caption = 'COMING SOON'
+          Font.Height = -16
+          Font.Style = [fsBold]
+          Layout = tlCenter
+          ParentFont = False
+          Visible = False
+        end
         object btnNavPrimary: TButton
           Left = 0
           Height = 45
@@ -304,8 +319,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavFile: TListBox
           Left = 0
-          Height = 764
-          Top = 53
+          Height = 739
+          Top = 78
           Width = 375
           Align = alClient
           ItemHeight = 0
@@ -313,8 +328,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tvNavProjects: TTreeView
           Left = 0
-          Height = 764
-          Top = 53
+          Height = 739
+          Top = 78
           Width = 375
           Align = alClient
           ReadOnly = True
@@ -324,8 +339,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavLog: TListBox
           Left = 0
-          Height = 764
-          Top = 53
+          Height = 739
+          Top = 78
           Width = 375
           Align = alClient
           ItemHeight = 0
@@ -334,8 +349,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavErrors: TListBox
           Left = 10
-          Height = 764
-          Top = 53
+          Height = 739
+          Top = 78
           Width = 365
           Align = alClient
           BorderSpacing.Left = 10
@@ -656,6 +671,15 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Caption = 'Chat'
           ClientHeight = 902
           ClientWidth = 829
+          object pnlChatSessionTabStripHost: TPanel
+            Left = 0
+            Height = 51
+            Top = 0
+            Width = 829
+            Align = alTop
+            BevelOuter = bvNone
+            TabOrder = 1
+          end
           object lblChatHeading: TLabel
             Left = 12
             Height = 25
@@ -718,7 +742,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               object cboChatMode: TComboBox
                 Left = 8
                 Height = 33
-                Top = 6
+                Top = 30
                 Width = 105
                 ItemHeight = 25
                 Style = csDropDownList
@@ -727,7 +751,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               object cboChatModel: TComboBox
                 Left = 121
                 Height = 33
-                Top = 6
+                Top = 30
                 Width = 237
                 ItemHeight = 25
                 Style = csDropDownList
@@ -735,8 +759,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               end
               object btnChatStop: TButton
                 Left = 584
-                Height = 37
-                Top = 6
+                Height = 33
+                Top = 30
                 Width = 84
                 Anchors = [akTop, akRight]
                 Caption = 'Stop'
@@ -745,8 +769,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               end
               object btnChatSend: TButton
                 Left = 680
-                Height = 37
-                Top = 7
+                Height = 33
+                Top = 30
                 Width = 140
                 Anchors = [akTop, akRight]
                 Caption = 'Run Agent'
@@ -756,12 +780,12 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object pnlChatHistoryHost: TPanel
             Left = 0
-            Height = 692
-            Top = 0
+            Height = 641
+            Top = 51
             Width = 829
             Align = alClient
             BevelOuter = bvNone
-            TabOrder = 1
+            TabOrder = 2
           end
         end
         object tsEditor: TTabSheet

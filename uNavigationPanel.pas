@@ -31,6 +31,7 @@ type
 
     FTitleLabel: TLabel;
     FSubLabel: TLabel;
+    FComingSoonLabel: TLabel;
     FFileList: TListBox;
     FTreeView: TTreeView;
     FLogList: TListBox;
@@ -83,8 +84,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Bind(ATitle: TLabel; ASub: TLabel; AFileList: TListBox; ATree: TTreeView;
-      ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TButton);
+    procedure Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel; AFileList: TListBox;
+      ATree: TTreeView; ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -146,11 +147,13 @@ begin
   inherited Destroy;
 end;
 
-procedure TNavContentControl.Bind(ATitle: TLabel; ASub: TLabel; AFileList: TListBox;
-  ATree: TTreeView; ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TButton);
+procedure TNavContentControl.Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel;
+  AFileList: TListBox; ATree: TTreeView; ALogList, AErrorLogList: TListBox;
+  APrimaryBtn, ASecondaryBtn: TButton);
 begin
   FTitleLabel := ATitle;
   FSubLabel := ASub;
+  FComingSoonLabel := AComingSoon;
   FFileList := AFileList;
   FTreeView := ATree;
   FLogList := ALogList;
@@ -356,6 +359,10 @@ begin
     FTitleLabel.Font.Color := P.Text;
   if Assigned(FSubLabel) then
     FSubLabel.Font.Color := P.TextMuted;
+  if Assigned(FComingSoonLabel) then begin
+    FComingSoonLabel.Font.Style := [fsBold];
+    FComingSoonLabel.Font.Color := P.Accent;
+  end;
   ApplyNavListMetrics;
   if Assigned(FActionBtn) then
     StylePrimaryButton(FActionBtn, ATheme);
@@ -612,6 +619,8 @@ begin
     FSecondaryActionBtn.Visible := False;
   if Assigned(FActionBtn) then
     FActionBtn.Visible := True;
+  if Assigned(FComingSoonLabel) then
+    FComingSoonLabel.Visible := False;
 
   case FSelected of
     niHome:
@@ -699,6 +708,10 @@ begin
         FFileList.Visible := True;
         FTitleLabel.Caption := NavigationFutureFeatureTitle(FSelected);
         FSubLabel.Caption := 'Roadmap preview — functionality not available yet.';
+        if Assigned(FComingSoonLabel) then begin
+          FComingSoonLabel.Caption := 'COMING SOON';
+          FComingSoonLabel.Visible := True;
+        end;
         PopulateFutureFeatureNavList(FSelected, FFileList.Items);
         FActionBtn.Visible := False;
       end;

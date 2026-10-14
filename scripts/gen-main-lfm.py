@@ -125,6 +125,20 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
           Caption = 'Select a workspace'
           Layout = tlCenter
         end
+        object lblNavComingSoon: TLabel
+          Left = 12
+          Height = 32
+          Top = 62
+          Width = 476
+          Align = alTop
+          BorderSpacing.Top = 4
+          Caption = 'COMING SOON'
+          Font.Height = -16
+          Font.Style = [fsBold]
+          Layout = tlCenter
+          ParentFont = False
+          Visible = False
+        end
         object btnNavPrimary: TButton
           Left = 12
           Height = 40
@@ -434,6 +448,15 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         TabOrder = 1
         object tsChat: TTabSheet
           Caption = 'Chat'
+          object pnlChatSessionTabStripHost: TPanel
+            Left = 0
+            Height = 68
+            Top = 0
+            Width = 1100
+            Align = alTop
+            BevelOuter = bvNone
+            TabOrder = 0
+          end
           object lblChatHeading: TLabel
             Left = 16
             Height = 32

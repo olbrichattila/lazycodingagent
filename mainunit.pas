@@ -76,6 +76,7 @@ type
     pnlNavContent: TPanel;
     lblNavViewTitle: TLabel;
     lblNavViewSub: TLabel;
+    lblNavComingSoon: TLabel;
     btnNavPrimary: TButton;
     btnNavSecondary: TButton;
     lstNavFile: TListBox;
@@ -115,6 +116,7 @@ type
     btnChatDetach: TButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
+    pnlChatSessionTabStripHost: TPanel;
     lblChatHeading: TLabel;
     lblChatSession: TLabel;
     lblChatSub: TLabel;
@@ -164,7 +166,9 @@ type
     procedure NavRailBtnClick(Sender: TObject);
   private
     FCenterTabBar: TThemedPageTabBar;
+    FChatSessionTabBar: TThemedPageTabBar;
     FUtilityTabBar: TThemedPageTabBar;
+    FChatSessionTabIds: TStringList;
     FState: TWorkspaceState;
     FSessionHubs: TChatSessionHubManager;
     FActiveHub: TChatSessionHub;
@@ -221,6 +225,7 @@ type
     function AddOrActivateFolder(const ADisplayName, AFolderPath: string): Boolean;
     procedure RefreshWorkspaceNav;
     procedure RefreshSessionNav;
+    procedure RefreshChatSessionTabs;
     procedure NavWorkspaceSelect(Sender: TObject; const AWorkspaceId: string);
     procedure NavWorkspaceNew(Sender: TObject);
     procedure NavWorkspaceDelete(Sender: TObject; const AWorkspaceId: string);
@@ -266,6 +271,8 @@ type
     procedure InitCenterTabStrip;
     procedure TabBarCenterAddTab(Sender: TObject);
     procedure TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet; var AllowClose: Boolean);
+    procedure TabBarChatSessionSelect(Sender: TObject; ATabIndex: Integer);
+    procedure TabBarChatSessionClose(Sender: TObject; ATabIndex: Integer; var AllowClose: Boolean);
     procedure SyncTerminalWorkingDirectory;
     procedure ScheduleDeferredTerminalStart;
     procedure DeferredEnsureTerminal(Data: PtrInt);
@@ -554,6 +561,7 @@ begin
   FNavWorkCaptions := TStringList.Create;
   FNavWorkIds := TStringList.Create;
   FNavSessionCaptions := TStringList.Create;
+  FChatSessionTabIds := TStringList.Create;
   FNavSessionIds := TStringList.Create;
   FNavSessionArchived := TStringList.Create;
   FCurrentSessionId := '';
@@ -678,6 +686,7 @@ begin
   FreeAndNil(FNavSessionCaptions);
   FreeAndNil(FNavSessionIds);
   FreeAndNil(FNavSessionArchived);
+  FreeAndNil(FChatSessionTabIds);
   FreeAndNil(FSyntaxSchemes);
 
   if Assigned(FState) then begin
@@ -775,10 +784,18 @@ begin
     FCenterTabBar.Parent := pnlCenterTabStripHost;
     FCenterTabBar.Align := alClient;
     FCenterTabBar.PageControl := pgcCenter;
-    FCenterTabBar.ShowAddTab := True;
-    FCenterTabBar.AddTabCaption := '+';
-    FCenterTabBar.OnAddTab := @TabBarCenterAddTab;
+    FCenterTabBar.ShowAddTab := False;
     FCenterTabBar.OnTabClose := @TabBarCenterTabClose;
+  end;
+  if Assigned(pnlChatSessionTabStripHost) and not Assigned(FChatSessionTabBar) then begin
+    FChatSessionTabBar := TThemedPageTabBar.Create(Self);
+    FChatSessionTabBar.Parent := pnlChatSessionTabStripHost;
+    FChatSessionTabBar.Align := alClient;
+    FChatSessionTabBar.ShowAddTab := True;
+    FChatSessionTabBar.AddTabCaption := '+';
+    FChatSessionTabBar.OnAddTab := @TabBarCenterAddTab;
+    FChatSessionTabBar.OnManualTabSelect := @TabBarChatSessionSelect;
+    FChatSessionTabBar.OnManualTabClose := @TabBarChatSessionClose;
   end;
   if Assigned(pnlUtilityTabStripHost) and not Assigned(FUtilityTabBar) then begin
     FUtilityTabBar := TThemedPageTabBar.Create(Self);
@@ -807,6 +824,22 @@ end;
 procedure TLazyCodingAgentForm.TabBarCenterAddTab(Sender: TObject);
 begin
   CreateAndSelectNewSession;
+end;
+
+procedure TLazyCodingAgentForm.TabBarChatSessionSelect(Sender: TObject; ATabIndex: Integer);
+begin
+  if (ATabIndex < 0) or (ATabIndex >= FChatSessionTabIds.Count) then Exit;
+  SelectSession(FChatSessionTabIds[ATabIndex]);
+  StateChanged(Self);
+end;
+
+procedure TLazyCodingAgentForm.TabBarChatSessionClose(Sender: TObject; ATabIndex: Integer;
+  var AllowClose: Boolean);
+begin
+  AllowClose := False;
+  if (ATabIndex < 0) or (ATabIndex >= FChatSessionTabIds.Count) then Exit;
+  AllowClose := True;
+  DoArchiveSession(FChatSessionTabIds[ATabIndex]);
 end;
 
 procedure TLazyCodingAgentForm.TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet;
@@ -852,8 +885,8 @@ begin
   InitNavRailButtons;
 
   FNavContent := TNavContentControl.Create(Self);
-  FNavContent.Bind(lblNavViewTitle, lblNavViewSub, lstNavFile, tvNavProjects, lstNavLog,
-    lstNavErrors, btnNavPrimary, btnNavSecondary);
+  FNavContent.Bind(lblNavViewTitle, lblNavViewSub, lblNavComingSoon, lstNavFile, tvNavProjects,
+    lstNavLog, lstNavErrors, btnNavPrimary, btnNavSecondary);
   FNavContent.OnWorkspaceSelect := @NavWorkspaceSelect;
   FNavContent.OnWorkspaceNew := @NavWorkspaceNew;
   FNavContent.OnWorkspaceDelete := @NavWorkspaceDelete;
@@ -1125,6 +1158,7 @@ begin
     end;
 
     UpdateSessionCaption;
+    RefreshChatSessionTabs;
     ApplyWorkspaceChatVisibility;
 
     if Assigned(FChatPanel) then begin
@@ -1215,6 +1249,7 @@ begin
   if Assigned(FTerminalPanel) then FTerminalPanel.ApplyTheme(FState.Theme);
   if Assigned(FPlanView) then FPlanView.ApplyTheme(FState.Theme);
   if Assigned(FCenterTabBar) then FCenterTabBar.ApplyTheme(FState.Theme);
+  if Assigned(FChatSessionTabBar) then FChatSessionTabBar.ApplyTheme(FState.Theme);
   if Assigned(FUtilityTabBar) then FUtilityTabBar.ApplyTheme(FState.Theme);
   if not Assigned(FMarkdownPreview) then
     FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
@@ -1841,6 +1876,42 @@ begin
   end;
 end;
 
+procedure TLazyCodingAgentForm.RefreshChatSessionTabs;
+var
+  I, SelIdx: Integer;
+  S: TChatSessionInfo;
+  Cap: string;
+  Store: TChatSessionStore;
+  Caps: array of string;
+  Closable: array of Boolean;
+begin
+  if not Assigned(FChatSessionTabBar) then Exit;
+  FChatSessionTabIds.Clear;
+  SelIdx := -1;
+  SetLength(Caps, 0);
+  SetLength(Closable, 0);
+  if not FState.HasActiveWorkspace or not Assigned(ActiveStore) then begin
+    FChatSessionTabBar.SetManualTabs(Caps, Closable, -1);
+    Exit;
+  end;
+  Store := ActiveStore;
+  for I := 0 to Store.SessionCount - 1 do begin
+    S := Store.GetSessionInfo(I);
+    if S.Archived then Continue;
+    Cap := S.Title;
+    if Assigned(FActiveHub) and FActiveHub.IsSessionRunning(S.Id) then
+      Cap := Cap + ' ●';
+    SetLength(Caps, Length(Caps) + 1);
+    SetLength(Closable, Length(Closable) + 1);
+    Caps[High(Caps)] := Cap;
+    Closable[High(Closable)] := True;
+    FChatSessionTabIds.Add(S.Id);
+    if SameText(S.Id, FCurrentSessionId) then
+      SelIdx := FChatSessionTabIds.Count - 1;
+  end;
+  FChatSessionTabBar.SetManualTabs(Caps, Closable, SelIdx);
+end;
+
 procedure TLazyCodingAgentForm.RefreshSessionNav;
 var
   I: Integer;
@@ -2151,15 +2222,6 @@ begin
     Exit;
   end;
   FMarkdownPath := Path;
-  if Assigned(FMarkdownPreview) then begin
-    Lines := TStringList.Create;
-    try
-      Lines.LoadFromFile(Path);
-      FMarkdownPreview.SetMarkdown(Lines.Text);
-    finally
-      Lines.Free;
-    end;
-  end;
   tsMarkdown.Caption := ExtractFileName(Path) + ' [Preview]';
   TThemedPageTabBar.SetTabHidden(tsMarkdown, False);
   FState.SetPanelVisible(piChat, True);
@@ -2168,6 +2230,15 @@ begin
     pgcCenter.ActivePage := tsMarkdown;
   if Assigned(FCenterTabBar) then
     FCenterTabBar.RefreshFromPageControl;
+  if not Assigned(FMarkdownPreview) then
+    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  Lines := TStringList.Create;
+  try
+    Lines.LoadFromFile(Path);
+    FMarkdownPreview.SetMarkdown(Lines.Text);
+  finally
+    Lines.Free;
+  end;
 end;
 
 

@@ -14,7 +14,7 @@ The narrow left **activity bar** switches views:
 - **Tasks & Plans** — session task list from the todo tool.
 - **Tool Errors** — failed tool calls for the active session (click a row for full arguments and output). The subtitle shows the on-disk log path; hover for the full path.
 
-A horizontal rule on the rail separates **Future Features** (roadmap placeholders — **Coming Soon**, no backend yet):
+A horizontal rule on the rail separates **Future Features** (roadmap placeholders with no backend yet). Each opens a panel with a bold **COMING SOON** banner above the planned capabilities list:
 
 - **Multi-Agent Workspace** — specialised agents that collaborate on delivery.
 - **Execution Plans** — numbered plans, tasks, and progress tracking.
@@ -31,13 +31,13 @@ Failures are also appended to `tool-errors.log` under the same user config folde
 
 ## Center area
 
-The center uses a **PageControl** with three fixed tabs:
+The center header tab strip switches three **PageControl** pages (no **+** on this strip):
 
-- **Chat** — conversation history rendered as **Markdown** (headings, bold, code, lists — subset, not full GFM), current session label, composer, mode and model combos, Stop and Run.
+- **Chat** — a **session tab strip** under the page header lists every non-archived chat (**+** for new session, **✕** to archive). Below that: conversation history rendered as **Markdown** (headings, bold, code, lists — subset, not full GFM), current session label, composer, mode and model combos, Stop and Run.
 - **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing). Font size scales with display DPI.
 - **Markdown** — formatted preview when you open a `.md` file and choose **Preview** (same HTML renderer as chat). Choose **Source** to edit in the Editor tab.
 
-There is **no** session tab strip and **no** per-file editor tabs. Switch sessions from **Sessions** in the nav rail; open another file from **Projects**.
+There are **no** per-file editor tabs. Switch sessions from the Chat session tabs or **Sessions** in the nav rail; open another file from **Projects**.
 
 ## Right and utility panels
 
@@ -61,4 +61,4 @@ Use **⧉** on navigation, chat, guidelines, and utility headers to **detach** t
 ## Tips
 
 - Use splitters between panels to resize.
-- If a combo looks wrong after a resize, try toggling theme once; chat footer combos use fixed heights in the form resource to match theme metrics.
+- Combo **Height** is set in the Lazarus form (chat footer, plan header, Settings). Theme styling does not override that size; if a combo looks wrong after a resize, try toggling theme once.
