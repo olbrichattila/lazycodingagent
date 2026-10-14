@@ -9,6 +9,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
   ClientWidth = 504
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
+  OnShow = FormShow
   LCLVersion = '4.8.0.0'
   object lblDisplayName: TLabel
     Left = 16
@@ -40,7 +41,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
     Anchors = [akTop, akLeft, akRight]
     TabOrder = 1
   end
-  object btnBrowse: TThemedButton
+  object btnBrowse: TButton
     Left = 384
     Height = 28
     Top = 86
@@ -60,7 +61,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
     ClientHeight = 44
     ClientWidth = 504
     TabOrder = 4
-    object btnOK: TThemedButton
+    object btnOK: TButton
       Left = 320
       Height = 28
       Top = 8
@@ -70,7 +71,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TThemedButton
+    object btnCancel: TButton
       Left = 408
       Height = 28
       Top = 8

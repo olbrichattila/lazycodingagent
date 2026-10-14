@@ -1,6 +1,6 @@
 # Workspace layout and panels
 
-The main window is a dockable IDE-style layout: navigation on the left, chat in the center, optional side panels, and an optional bottom terminal.
+The main window is an IDE-style layout: navigation on the left, a tabbed center area, optional side panels, and an optional bottom terminal.
 
 ## Navigation rail
 
@@ -10,7 +10,7 @@ The narrow left **activity bar** switches views:
 - **Projects** — file tree for the workspace.
 - **Sessions** — chat session list (active and archived).
 - **Bots** — agent presets and prompt setups.
-- **Tools & Logs** — per-step tool execution log for the active session (click a row to open detail in the utility panel).
+- **Tools & Logs** — per-step execution log for the active session: user prompts, model steps (`Step N/M · Model:`), and each tool’s input/output (`Step N/M · tool_name(...)`). Click a row to open **Execution Detail**; during an active run new rows follow into that panel until you select an older row.
 - **Tasks & Plans** — session task list from the todo tool.
 - **Tool Errors** — failed tool calls for the active session (click a row for full arguments and output). The subtitle shows the on-disk log path; hover for the full path.
 
@@ -23,36 +23,42 @@ A horizontal rule on the rail separates **Future Features** (roadmap placeholder
 
 The same entries appear under **Workspace → Future Features** in the menu.
 
-Icons are tooltipped; the active item is highlighted.
+Icons are tooltipped; the active rail button stays **down** (speed-button group).
 
 ### Tool error log file
 
 Failures are also appended to `tool-errors.log` under the same user config folder as chat sessions (`lazycodingagent` beside session storage). The path is resolved at runtime on **Windows, Linux, and macOS** (see the Tool Errors panel subtitle). The file is JSONL (one JSON object per line). Clearing the panel only clears the in-memory list for the current session; delete the file manually if you want to reset the on-disk history.
 
-## Chat and center area
+## Center area
 
-The center hosts the chat panel with session tabs, message history, and the composer (mode + model + prompt).
+The center uses a **PageControl** with three fixed tabs:
+
+- **Chat** — conversation history rendered as **Markdown** (headings, bold, code, lists — subset, not full GFM), current session label, composer, mode and model combos, Stop and Run.
+- **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing). Font size scales with display DPI.
+- **Markdown** — formatted preview when you open a `.md` file and choose **Preview** (same HTML renderer as chat). Choose **Source** to edit in the Editor tab.
+
+There is **no** session tab strip and **no** per-file editor tabs. Switch sessions from **Sessions** in the nav rail; open another file from **Projects**.
 
 ## Right and utility panels
 
 - **Guidelines / instructions** — workspace context on the right when enabled.
-- **Utility panel** — extra tabbed area (plans, execution detail, etc.). Toggle via **Window → Panels → Utility Panel**. It can be detached like other panels.
+- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** renders formatted HTML: accent section headers, highlighted tool names, shaded JSON blocks (pretty-printed), and prose blocks for long prompt text.
 
-## Detachable panels
+## Panel visibility and detach
 
-Most panels can **detach** into floating windows (header **Detach** or **Window** menu) and **dock** back with **⇲ Dock**.
+Use **✕** on navigation, guidelines, utility, or terminal panel headers, or **Window → Panels**, to show or hide those areas. The **center (chat / editor / markdown)** area has **⧉ detach** on its header but no **✕** — hide the chat panel from **Window → Panels** only. Layout and visibility persist when you restart the app.
 
-Detached position and visibility persist when you restart the app.
+Use **⧉** on navigation, chat, guidelines, and utility headers to **detach** the panel into a floating window (position and size are saved). Close the float window or click **⧉** again to re-dock. The **terminal** panel supports **hide** only — it does not detach.
 
 ## Terminal
 
-**View → Terminal** opens a bottom dock with a real shell in the **workspace root**. Detach and resize like other panels. On Linux, the embedded terminal needs PTY support (see README).
+**View → Terminal** opens a bottom dock with a real shell in the **workspace root**. Resize with the splitter above the status bar. On Linux, the embedded terminal needs PTY support (see README).
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. Combo boxes, tabs, and lists follow the active theme.
+**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, combos, and HTML preview areas follow the active theme. On **Windows**, scrollbars on scrollable controls (lists, tree, memos, editor, chat HTML, terminal bar) use the same palette via `uThemeWin32ScrollBars.pas`. Primary, cancel, and destructive action buttons use the app palette on **Windows** (custom-painted `TButton` via `uThemeWin32Buttons.pas`). On **Linux and macOS**, buttons and scrollbars use the native widget set (`TButton.Color` from theme helpers for buttons); page-control tabs stay on the OS widget set.
 
 ## Tips
 
 - Use splitters between panels to resize.
-- If a combo or panel layout looks wrong after detach, try toggling theme once; the app guards against common LCL layout loops.
+- If a combo looks wrong after a resize, try toggling theme once; chat footer combos use fixed heights in the form resource to match theme metrics.

@@ -80,6 +80,7 @@ type
   function LlmProviderToString(AProv: TLlmProvider): string;
   function StringToLlmProvider(const S: string): TLlmProvider;
   function AgentStateToString(AState: TAgentState): string;
+  function FormatAgentStateLabel(AState: TAgentState; AStep, AMaxSteps: Integer): string;
 
 implementation
 
@@ -144,6 +145,13 @@ begin
     asFinished: Result := 'Completed';
     asError: Result := 'Error';
   end;
+end;
+
+function FormatAgentStateLabel(AState: TAgentState; AStep, AMaxSteps: Integer): string;
+begin
+  Result := AgentStateToString(AState);
+  if (AMaxSteps > 0) and (AStep > 0) and (AState in [asThinking, asExecutingTool]) then
+    Result := Result + Format(' (step %d/%d)', [AStep, AMaxSteps]);
 end;
 
 end.

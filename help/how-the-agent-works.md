@@ -50,10 +50,14 @@ Plan and Ask still use read/search/git tools to understand the tree.
 
 ## What you see in the UI
 
-- **Assistant messages** — model text and (in debugging mode) tool payloads.
-- **State** — idle, thinking, executing tool, finished, or error.
-- **Execution log** (navigation **Tools & Logs**) — deeper request context for learning and debugging.
+- **Assistant messages** — model text and (in debugging mode) full tool JSON in chat.
+- **Activity lines** — while a run is in progress, chat shows short **Calling …** lines when the model invokes a tool (display only; not sent back to the model). These lines are not kept when the transcript is reloaded from saved messages.
+- **State** — idle, thinking, executing tool, finished, or error. During a run the status bar includes **step N/M** (for example `Thinking... (step 2/20)`), where **M** is **Max steps** from Settings.
+- **Execution log** (navigation **Tools & Logs**) — per-step trace with plain captions (`User:`, `Step N/M · Model:`, `Step N/M · tool_name(...)`). Click a row to inspect it in the utility **Execution Detail** panel. While a run is active, new log rows **follow** into Execution Detail automatically unless you click an older row (click the latest row again to resume follow).
+- **Step limit** — if the loop uses all allowed steps and the model still wanted tools, the assistant posts a short note that the step limit was reached (configure **Max steps** in Settings).
 - **Tool Errors** — failed tools for the session, plus a shared `tool-errors.log` file under your user config folder.
+
+Sending a prompt opens the **utility panel** on **Execution Detail** so you can watch the enriched prompt and each step during a demo or debug session. The inspector uses themed HTML (section headers, tool-call highlights, JSON in distinct blocks) rather than a plain text dump.
 
 ## Safety and sandboxing
 

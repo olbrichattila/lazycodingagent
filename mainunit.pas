@@ -5,19 +5,25 @@ unit mainunit;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  ComCtrls, Menus, FileUtil, uAppTypes, uAgentTypes, uAgentTools, uTheme, uWorkspaceState,
-  uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uDockPanel, uNavigationPanel, uChatPanel,
-  uTerminalPanel,
-  uAppLogo, uAgentEngine, uCustomTabControl, uThemedButton, frmSettings, frmNewWorkspace, frmWorkspaceRules,
-  uUtilityPlanTab, uUtilityExecutionDetailTab, uAgentExecutionLog, uAgentToolErrorLog,
-  uFileEditorTab,
-  uFileMarkdownTab, uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, fpjson, jsonparser;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
+  ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes,
+  uAppTypes, uAgentTypes, uAgentTools, uTheme, uThemedPageTabBar, uWorkspaceState,
+  uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel, uChatPanel,
+  uTerminalPanel, uMainFileEditor, uPlanView,
+  uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
+  uAgentExecutionLog, uAgentToolErrorLog,
+  uSyntaxSchemeRegistry, frmSyntaxSchemes,
+  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
 
 type
+  TExecDetailSource = (edsNone, edsExecLog, edsToolError);
+
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
+    btnChatSend: TButton;
+    btnChatStop: TButton;
+    cboChatMode: TComboBox;
+    cboChatModel: TComboBox;
     MainMenu1: TMainMenu;
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
@@ -51,15 +57,86 @@ type
 
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
+    sbtnNavHome: TSpeedButton;
+    sbtnNavProjects: TSpeedButton;
+    sbtnNavSessions: TSpeedButton;
+    sbtnNavBots: TSpeedButton;
+    sbtnNavTools: TSpeedButton;
+    sbtnNavTasks: TSpeedButton;
+    sbtnNavToolErrors: TSpeedButton;
+    sbtnNavMultiAgent: TSpeedButton;
+    sbtnNavExecPlans: TSpeedButton;
+    sbtnNavKnowledge: TSpeedButton;
+    sbtnNavBrain: TSpeedButton;
     pnlNavHost: TPanel;
+    pnlNavChrome: TPanel;
+    lblNavTitle: TLabel;
+    btnNavDetach: TButton;
+    btnNavHide: TButton;
+    pnlNavContent: TPanel;
+    lblNavViewTitle: TLabel;
+    lblNavViewSub: TLabel;
+    btnNavPrimary: TButton;
+    btnNavSecondary: TButton;
+    lstNavFile: TListBox;
+    tvNavProjects: TTreeView;
+    lstNavLog: TListBox;
+    lstNavErrors: TListBox;
     splNav: TSplitter;
-    pnlChatHost: TPanel;
-    splReserved: TSplitter;
-    pnlReservedHost: TPanel;
-    splUtility: TSplitter;
     pnlUtilityHost: TPanel;
+    pnlUtilityChrome: TPanel;
+    pnlUtilityTabStripHost: TPanel;
+    btnUtilityDetach: TButton;
+    btnUtilityHide: TButton;
+    pnlUtilityContent: TPanel;
+    pgcUtility: TPageControl;
+    tsUtilityScratch: TTabSheet;
+    memUtilityScratch: TMemo;
+    tsUtilityExecDetail: TTabSheet;
+    pnlUtilityExecDetailHost: TPanel;
+    tsUtilityPlan: TTabSheet;
+    pnlPlanHeader: TPanel;
+    lblPlanPath: TLabel;
+    cboPlanModel: TComboBox;
+    btnPlanBuild: TButton;
+    memPlanBody: TMemo;
+    splUtility: TSplitter;
+    pnlReservedHost: TPanel;
+    pnlReservedChrome: TPanel;
+    lblReservedTitle: TLabel;
+    btnReservedDetach: TButton;
+    btnReservedHide: TButton;
+    pnlReservedContent: TPanel;
+    memReserved: TMemo;
+    splReserved: TSplitter;
+    pnlChatHost: TPanel;
+    pnlChatChrome: TPanel;
+    pnlCenterTabStripHost: TPanel;
+    btnChatDetach: TButton;
+    pgcCenter: TPageControl;
+    tsChat: TTabSheet;
+    lblChatHeading: TLabel;
+    lblChatSession: TLabel;
+    lblChatSub: TLabel;
+    pnlChatComposer: TPanel;
+    lblChatWorkspaceTag: TLabel;
+    memChatPrompt: TMemo;
+    pnlChatFooter: TPanel;
+    pnlChatHistoryHost: TPanel;
+    tsEditor: TTabSheet;
+    synEditor: TSynEdit;
+    tsMarkdown: TTabSheet;
+    pnlMarkdownPreviewHost: TPanel;
     splTerminal: TSplitter;
     pnlTerminalHost: TPanel;
+    pnlTerminalChrome: TPanel;
+    lblTerminalTitle: TLabel;
+    btnTerminalHide: TButton;
+    pnlTerminalContent: TPanel;
+    lblTerminalStatus: TLabel;
+
+    procedure PanelHideClick(Sender: TObject);
+    procedure PanelDetachClick(Sender: TObject);
 
     // Published Event Handlers (Form Designer connected)
     procedure FormCreate(Sender: TObject);
@@ -70,6 +147,8 @@ type
     procedure MnuViewResetLayoutClick(Sender: TObject);
     procedure MnuViewTerminalClick(Sender: TObject);
     procedure SplTerminalMoved(Sender: TObject);
+    procedure PnlTerminalHostResize(Sender: TObject);
+    procedure PnlTerminalChromeResize(Sender: TObject);
     procedure MnuFileNewClick(Sender: TObject);
     procedure MnuFileOpenClick(Sender: TObject);
     procedure MnuFileSaveClick(Sender: TObject);
@@ -82,13 +161,14 @@ type
     procedure MnuWorkspaceProjectRulesClick(Sender: TObject);
     procedure MnuHelpUserGuideClick(Sender: TObject);
     procedure MnuHelpAboutClick(Sender: TObject);
+    procedure NavRailBtnClick(Sender: TObject);
   private
+    FCenterTabBar: TThemedPageTabBar;
+    FUtilityTabBar: TThemedPageTabBar;
     FState: TWorkspaceState;
     FSessionHubs: TChatSessionHubManager;
     FActiveHub: TChatSessionHub;
     FUpdatingState: Boolean;
-    FSyncingChatTabs: Boolean;
-    FPendingTabArchiveSessionId: string;
     FPendingInitialDockLayout: Boolean;
     FPendingInitialWorkspaceUI: Boolean;
     FDeferThemesUntilShown: Boolean;
@@ -97,37 +177,27 @@ type
     FTerminalStartQueued: Boolean;
     FTerminalRetryTimer: TTimer;
     FTerminalRetryCount: Integer;
+    FTerminalChromeLayout: Boolean;
 
-    // Sub-components hosted inside visually designed panels
-    FNavRail: TNavRailControl;
-    FDockNav: TDockPanel;
+    FNavRailBtns: array[TNavigationItem] of TSpeedButton;
     FNavContent: TNavContentControl;
-
-    FPageControlCenter: TLazyTabControl;
-    FChatCenterPage: TLazyTabPage;
+    FChatPanel: TChatPanel;
     FSyntaxSchemes: TSyntaxSchemeRegistry;
 
-    FDockChat: TDockPanel;
-    FChatDockRoot: TPanel;
-    FChatSessionHeader: TPanel;
-    FChatSessionTabs: TLazyTabControl;
-    FChatNewSessionBtnHost: TPanel;
-    FChatNewSessionBtn: TThemedButton;
-    FChatTabSessionIds: TStringList;
-    FChatContent: TChatPanel;
-
-    FDockReserved: TDockPanel;
-    FReservedMemo: TMemo;
-
-    FDockUtility: TDockPanel;
-    FDockTerminal: TDockPanel;
     FTerminalPanel: TTerminalPanel;
-    FPageControlUtility: TLazyTabControl;
-    FTabSheetBlank: TLazyTabPage;
-    FUtilityExecDetailPage: TLazyTabPage;
-    FUtilityExecDetail: TUtilityExecutionDetailTab;
+    FFileEditor: TMainFileEditor;
+    FPlanView: TPlanView;
+    FMarkdownPreview: TMarkdownHtmlView;
+    FExecDetailView: TMarkdownHtmlView;
+    FExecDetailSource: TExecDetailSource;
+    FExecDetailIndex: Integer;
+    FPanelDetach: TPanelDetachManager;
+    FMarkdownPath: string;
     FCurrentRunMode: TWorkspaceMode;
     FPlanSavedThisRun: Boolean;
+    FExecutionLogFollowLive: Boolean;
+    FStatusRunStep: Integer;
+    FStatusRunMaxSteps: Integer;
 
     FRegistry: TWorkspaceRegistry;
     FCurrentSessionId: string;
@@ -143,8 +213,7 @@ type
     procedure SaveCurrentSession;
     procedure BindSessionToUI(const ASessionId: string);
     procedure SelectSession(const ASessionId: string);
-    procedure SyncChatSessionTabs;
-    procedure RefreshChatSessionRunningBadges;
+    procedure UpdateSessionCaption;
     function AgentStateIsRunning(AState: TAgentState): Boolean;
     procedure ApplySessionComposerState;
     procedure ActivateWorkspace(const AWorkspaceId: string);
@@ -163,12 +232,6 @@ type
     procedure NavSessionArchive(Sender: TObject; const ASessionId: string);
     procedure NavSessionRestore(Sender: TObject; const ASessionId: string);
     procedure NavSessionDelete(Sender: TObject; const ASessionId: string);
-    procedure ChatSessionTabChange(Sender: TObject);
-    procedure ChatSessionTabClose(Sender: TObject);
-    procedure DeferredTabArchiveClose(Data: PtrInt);
-    procedure ChatNewSessionBtnClick(Sender: TObject);
-    procedure ChatNewSessionBtnHostResize(Sender: TObject);
-    procedure LayoutChatNewSessionBtn;
     procedure ApplyWorkspaceChatVisibility;
 
     function ParsePlanToolSuccess(const AResult: TToolExecutionResult;
@@ -177,32 +240,32 @@ type
     procedure TrySaveProposedPlanFromChat;
     procedure PlanBuildRequested(Sender: TObject; const APlanPath, APlanContent,
       AModelId: string);
-    procedure ApplyUtilityPlanTabThemes;
-    procedure RefreshUtilityPlanTabModels(const AModels: array of TSavedModel);
+    procedure RefreshPlanViewModels(const AModels: array of TSavedModel);
 
-    function GetChatDockHost: TWinControl;
     function IsMarkdownFile(const APath: string): Boolean;
-    function FindEditorTabByPath(const APath: string): TFileEditorTab;
-    function FindMarkdownTabByPath(const APath: string): TFileMarkdownTab;
-    function ActiveFileEditorTab: TFileEditorTab;
     procedure OpenFileInCenterTab(const APath: string);
     procedure OpenMarkdownInCenterTab(const APath: string);
-    function CenterEditorTabCloseAllow(Sender: TObject): Boolean;
-    procedure ApplyCenterEditorThemes;
-    procedure RefreshAllEditorSchemes;
+    procedure ShowChatCenterTab;
+    procedure ApplyEditorTheme;
+    procedure RefreshEditorScheme;
     function SaveActiveEditorFile: Boolean;
-    function PromptAllDirtyEditors: Boolean;
+    function PromptDirtyEditor: Boolean;
     procedure RebuildActiveSchemeMenu;
     procedure MenuSelectSyntaxScheme(Sender: TObject);
     procedure NavFileOpen(Sender: TObject; const AFilePath: string);
 
     procedure ApplyInitialWindowSize;
-    procedure RaiseDetachedFloatingForms;
-    procedure SyncLazyTabLayouts;
     procedure InitWorkspaceSubControls;
+    procedure InitNavRailButtons;
+    procedure UpdateNavRailSelection;
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
     procedure ApplyDockPanelsLayout;
+    procedure SyncCenterAddTabNav;
+    procedure CreateThemedTabBars;
+    procedure InitCenterTabStrip;
+    procedure TabBarCenterAddTab(Sender: TObject);
+    procedure TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet; var AllowClose: Boolean);
     procedure SyncTerminalWorkingDirectory;
     procedure ScheduleDeferredTerminalStart;
     procedure DeferredEnsureTerminal(Data: PtrInt);
@@ -211,21 +274,21 @@ type
     procedure TerminalStatus(Sender: TObject; const AMessage: string);
     function IsTerminalSurfaceVisible: Boolean;
     function EffectiveTerminalDockHeight: Integer;
+    procedure LayoutTerminalChromeControls;
     procedure ApplyAllThemes;
     procedure ApplyPlatformChromeThemes;
     procedure SchedulePostShowStartup;
     procedure PostShowStartup(Sender: TObject);
     procedure RebuildWindowMenu;
 
-    procedure NavRailSelect(Sender: TObject);
-    procedure DockPanelAction(Sender: TObject; AId: TPanelId; AAction: TDockPanelAction);
+    procedure PanelHideClickAction(AId: TPanelId);
     procedure ChatPrompt(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string);
     procedure ChatModeChange(Sender: TObject; AMode: TWorkspaceMode);
     procedure ChatModelChange(Sender: TObject; const AModel: string);
     procedure ChatCancel(Sender: TObject);
 
     procedure HubStateChange(Sender: TObject; const ASessionId: string;
-      AOldState, ANewState: TAgentState);
+      AOldState, ANewState: TAgentState; AStep, AMaxSteps: Integer);
     procedure HubMessageAdded(Sender: TObject; const ASessionId: string; const AMsg: TChatMessage);
     procedure HubToolCall(Sender: TObject; const ASessionId: string; const AToolName, AArgs: string);
     procedure HubToolResult(Sender: TObject; const ASessionId: string; const AToolName,
@@ -238,6 +301,13 @@ type
     procedure NavClearToolErrorLog(Sender: TObject);
     procedure BindExecutionLogToNav(const ASessionId: string);
     procedure BindToolErrorLogToNav(const ASessionId: string);
+    procedure DetachNavSessionLogs;
+    procedure ShowExecutionLogDetail(AIndex: Integer);
+    procedure ShowToolErrorDetail(AIndex: Integer);
+    procedure ClearExecDetailView;
+    procedure RefreshExecDetailView;
+    procedure OpenUtilityExecutionDetailTab;
+    function FormatSessionStatusLabel(AState: TAgentState): string;
     procedure RefreshNavTaskList;
     procedure NavTasksRefresh(Sender: TObject);
     procedure SyncHubClientSettings(AHub: TChatSessionHub);
@@ -245,9 +315,6 @@ type
     procedure MenuSelectNav(Sender: TObject);
     procedure MenuSelectMode(Sender: TObject);
     procedure MenuTogglePanel(Sender: TObject);
-    procedure MenuDetachPanel(Sender: TObject);
-    procedure MenuAttachPanel(Sender: TObject);
-    procedure FinalizeDockPanelForClose(ADock: TDockPanel; AId: TPanelId);
   public
     property State: TWorkspaceState read FState;
     property Agent: TAgentEngine read ActiveAgent;
@@ -257,6 +324,9 @@ var
   LazyCodingAgentForm: TLazyCodingAgentForm;
 
 implementation
+
+uses
+  uExecutionDetailHtml;
 
 {$R *.lfm}
 
@@ -310,14 +380,14 @@ var
   Info: TChatSessionInfo;
   Archived: Boolean;
 begin
-  if not Assigned(FChatContent) then Exit;
+  if not Assigned(FChatPanel) then Exit;
   Archived := False;
   if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(FCurrentSessionId, Info) then
     Archived := Info.Archived;
   if Archived then
-    FChatContent.SetComposerEnabled(False)
+    FChatPanel.SetComposerEnabled(False)
   else
-    FChatContent.SetComposerEnabled(True);
+    FChatPanel.SetComposerEnabled(True);
 end;
 
 procedure TLazyCodingAgentForm.BindSessionToUI(const ASessionId: string);
@@ -335,16 +405,15 @@ begin
   for I := 0 to E.GetMessageCount - 1 do
     Msgs[I] := E.GetMessage(I);
 
-  if Assigned(FChatContent) then begin
-    FChatContent.ReloadFromMessages(Msgs, FState.DebuggingMode);
-    FChatContent.SetRunning(E.IsRunActive);
+  if Assigned(FChatPanel) then begin
+    FChatPanel.ReloadFromMessages(Msgs, FState.DebuggingMode);
+    FChatPanel.SetRunning(E.IsRunActive);
   end;
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
   BindToolErrorLogToNav(ASessionId);
   RefreshNavTaskList;
-  if Assigned(FUtilityExecDetail) then
-    FUtilityExecDetail.ClearDetail;
+  ClearExecDetailView;
 end;
 
 procedure TLazyCodingAgentForm.BindExecutionLogToNav(const ASessionId: string);
@@ -390,52 +459,24 @@ begin
   if FState.HasActiveWorkspace then
     FRegistry.SetLastSessionId(FState.ActiveWorkspaceId, ASessionId);
   BindSessionToUI(ASessionId);
-  SyncChatSessionTabs;
+  UpdateSessionCaption;
 end;
 
-procedure TLazyCodingAgentForm.SyncChatSessionTabs;
-var
-  I, TabIdx, ActiveTab: Integer;
-  S: TChatSessionInfo;
-  Page: TLazyTabPage;
-  Cap: string;
-  Store: TChatSessionStore;
-  Hub: TChatSessionHub;
-begin
-  if not Assigned(FChatSessionTabs) or not Assigned(FChatTabSessionIds) then Exit;
-  if not FState.HasActiveWorkspace or not Assigned(FActiveHub) then begin
-    FChatSessionTabs.Clear;
-    FChatTabSessionIds.Clear;
-    Exit;
-  end;
 
-  FSyncingChatTabs := True;
-  try
-    Store := FActiveHub.Store;
-    Hub := FActiveHub;
-    FChatSessionTabs.Clear;
-    FChatTabSessionIds.Clear;
-    ActiveTab := -1;
-    for I := 0 to Store.SessionCount - 1 do begin
-      S := Store.GetSessionInfo(I);
-      if S.Archived then Continue;
-      Cap := S.Title;
-      if Hub.IsSessionRunning(S.Id) then
-        Cap := Cap + ' ⏳';
-      Page := FChatSessionTabs.AddPage(Cap);
-      Page.CanClose := True;
-      if Hub.IsSessionRunning(S.Id) then
-        Page.BadgeText := '●';
-      FChatTabSessionIds.Add(S.Id);
-      TabIdx := FChatTabSessionIds.Count - 1;
-      if SameText(S.Id, FCurrentSessionId) then
-        ActiveTab := TabIdx;
-    end;
-    if ActiveTab >= 0 then
-      FChatSessionTabs.ActivePageIndex := ActiveTab;
-  finally
-    FSyncingChatTabs := False;
+
+procedure TLazyCodingAgentForm.UpdateSessionCaption;
+var
+  S: TChatSessionInfo;
+  Cap: string;
+begin
+  if not Assigned(FChatPanel) then Exit;
+  Cap := '(no session)';
+  if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(FCurrentSessionId, S) then begin
+    Cap := S.Title;
+    if Assigned(FActiveHub) and FActiveHub.IsSessionRunning(FCurrentSessionId) then
+      Cap := Cap + ' ●';
   end;
+  FChatPanel.SetSessionCaption('Session: ' + Cap);
 end;
 
 function TLazyCodingAgentForm.AgentStateIsRunning(AState: TAgentState): Boolean;
@@ -443,98 +484,7 @@ begin
   Result := not (AState in [asIdle, asFinished, asError]);
 end;
 
-procedure TLazyCodingAgentForm.RefreshChatSessionRunningBadges;
-var
-  I: Integer;
-  Sid: string;
-  S: TChatSessionInfo;
-  Cap: string;
-  Page: TLazyTabPage;
-  Store: TChatSessionStore;
-begin
-  if not Assigned(FChatSessionTabs) or not Assigned(FChatTabSessionIds) then Exit;
-  if not Assigned(FActiveHub) then Exit;
-  Store := FActiveHub.Store;
-  for I := 0 to FChatTabSessionIds.Count - 1 do begin
-    if I >= FChatSessionTabs.PageCount then Break;
-    Sid := FChatTabSessionIds[I];
-    Page := FChatSessionTabs.Pages[I];
-    if not Store.FindSessionInfo(Sid, S) then Continue;
-    Cap := S.Title;
-    if FActiveHub.IsSessionRunning(Sid) then
-      Cap := Cap + ' ⏳';
-    Page.Caption := Cap;
-    if FActiveHub.IsSessionRunning(Sid) then
-      Page.BadgeText := '●'
-    else
-      Page.BadgeText := '';
-  end;
-  FChatSessionTabs.Invalidate;
-end;
 
-procedure TLazyCodingAgentForm.ChatSessionTabChange(Sender: TObject);
-var
-  Idx: Integer;
-begin
-  if FSyncingChatTabs then Exit;
-  if not Assigned(FChatSessionTabs) then Exit;
-  Idx := FChatSessionTabs.ActivePageIndex;
-  if (Idx < 0) or (Idx >= FChatTabSessionIds.Count) then Exit;
-  if SameText(FChatTabSessionIds[Idx], FCurrentSessionId) then Exit;
-  SelectSession(FChatTabSessionIds[Idx]);
-  StateChanged(Self);
-end;
-
-procedure TLazyCodingAgentForm.ChatSessionTabClose(Sender: TObject);
-var
-  Page: TLazyTabPage;
-  I: Integer;
-begin
-  if not (Sender is TLazyTabPage) then Exit;
-  Page := TLazyTabPage(Sender);
-  I := FChatSessionTabs.IndexOf(Page);
-  if (I < 0) or (I >= FChatTabSessionIds.Count) then Exit;
-  FPendingTabArchiveSessionId := FChatTabSessionIds[I];
-  Application.QueueAsyncCall(@DeferredTabArchiveClose, 0);
-end;
-
-procedure TLazyCodingAgentForm.DeferredTabArchiveClose(Data: PtrInt);
-var
-  Sid: string;
-begin
-  Sid := FPendingTabArchiveSessionId;
-  FPendingTabArchiveSessionId := '';
-  if Sid = '' then Exit;
-  DoArchiveSession(Sid);
-end;
-
-procedure TLazyCodingAgentForm.ChatNewSessionBtnClick(Sender: TObject);
-begin
-  CreateAndSelectNewSession;
-end;
-
-procedure TLazyCodingAgentForm.LayoutChatNewSessionBtn;
-const
-  BtnSize = 28;
-var
-  HostW, HostH, LeftPos, TopPos: Integer;
-begin
-  if not Assigned(FChatNewSessionBtnHost) or not Assigned(FChatNewSessionBtn) then Exit;
-  HostW := FChatNewSessionBtnHost.ClientWidth;
-  HostH := FChatNewSessionBtnHost.ClientHeight;
-  LeftPos := HostW - BtnSize - FChatNewSessionBtn.BorderSpacing.Right;
-  if LeftPos < 0 then LeftPos := 0;
-  TopPos := (HostH - BtnSize) div 2;
-  if TopPos < 0 then TopPos := 0;
-  if (FChatNewSessionBtn.Left <> LeftPos) or (FChatNewSessionBtn.Top <> TopPos) or
-     (FChatNewSessionBtn.Width <> BtnSize) or (FChatNewSessionBtn.Height <> BtnSize) then
-    FChatNewSessionBtn.SetBounds(LeftPos, TopPos, BtnSize, BtnSize);
-end;
-
-procedure TLazyCodingAgentForm.ChatNewSessionBtnHostResize(Sender: TObject);
-begin
-  LayoutChatNewSessionBtn;
-end;
 
 procedure TLazyCodingAgentForm.ApplyInitialWindowSize;
 var
@@ -574,29 +524,6 @@ begin
   end;
 end;
 
-procedure TLazyCodingAgentForm.SyncLazyTabLayouts;
-begin
-  if Assigned(FPageControlCenter) then
-    FPageControlCenter.SyncPageLayout;
-  if Assigned(FChatSessionTabs) then
-    FChatSessionTabs.SyncPageLayout;
-  if Assigned(FPageControlUtility) then
-    FPageControlUtility.SyncPageLayout;
-end;
-
-procedure TLazyCodingAgentForm.RaiseDetachedFloatingForms;
-begin
-  if Assigned(FDockNav) and FDockNav.IsDetached and Assigned(FDockNav.FloatingForm) then
-    FDockNav.FloatingForm.BringToFront;
-  if Assigned(FDockChat) and FDockChat.IsDetached and Assigned(FDockChat.FloatingForm) then
-    FDockChat.FloatingForm.BringToFront;
-  if Assigned(FDockReserved) and FDockReserved.IsDetached and Assigned(FDockReserved.FloatingForm) then
-    FDockReserved.FloatingForm.BringToFront;
-  if Assigned(FDockUtility) and FDockUtility.IsDetached and Assigned(FDockUtility.FloatingForm) then
-    FDockUtility.FloatingForm.BringToFront;
-  if Assigned(FDockTerminal) and FDockTerminal.IsDetached and Assigned(FDockTerminal.FloatingForm) then
-    FDockTerminal.FloatingForm.BringToFront;
-end;
 
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
@@ -624,14 +551,18 @@ begin
 
   FSessionHubs := TChatSessionHubManager.Create;
   FActiveHub := nil;
-  FSyncingChatTabs := False;
   FNavWorkCaptions := TStringList.Create;
   FNavWorkIds := TStringList.Create;
   FNavSessionCaptions := TStringList.Create;
   FNavSessionIds := TStringList.Create;
   FNavSessionArchived := TStringList.Create;
-  FChatTabSessionIds := TStringList.Create;
   FCurrentSessionId := '';
+  FExecutionLogFollowLive := True;
+  FStatusRunStep := 0;
+  FStatusRunMaxSteps := 0;
+  FExecDetailView := nil;
+  FExecDetailSource := edsNone;
+  FExecDetailIndex := -1;
 
   FSyntaxSchemes := TSyntaxSchemeRegistry.Create;
   FSyntaxSchemes.Load;
@@ -639,7 +570,14 @@ begin
   mnuWorkspaceSepRules.Tag := -1;
   mnuWorkspaceProjectRules.Tag := -1;
 
+  RegisterThemeCustomHooks;
+  CreateThemedTabBars;
   InitWorkspaceSubControls;
+  FPanelDetach := TPanelDetachManager.Create(Self, Self, FState);
+  FPanelDetach.Bind(piNavigation, pnlNavHost, pnlNavContent);
+  FPanelDetach.Bind(piChat, pnlChatHost, pgcCenter);
+  FPanelDetach.Bind(piReserved, pnlReservedHost, pnlReservedContent);
+  FPanelDetach.Bind(piUtility, pnlUtilityHost, pnlUtilityContent);
   PopulateMenusAndCombos;
 end;
 
@@ -648,9 +586,9 @@ begin
   if FPendingInitialDockLayout then begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
-    RaiseDetachedFloatingForms;
-    SyncLazyTabLayouts;
   end;
+  if Assigned(FPanelDetach) then
+    FPanelDetach.RaiseFloatingForms;
   SchedulePostShowStartup;
 end;
 
@@ -664,6 +602,13 @@ end;
 procedure TLazyCodingAgentForm.PostShowStartup(Sender: TObject);
 begin
   FPostShowStartupTimer.Enabled := False;
+  if csDestroying in ComponentState then Exit;
+  if not HandleAllocated then Exit;
+
+  if FDeferThemesUntilShown then begin
+    FDeferThemesUntilShown := False;
+    ApplyAllThemes;
+  end;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
     if Trim(FRegistry.ActiveWorkspaceId) <> '' then
@@ -671,29 +616,17 @@ begin
     else
       DeactivateWorkspace;
   end;
-  if FDeferThemesUntilShown then begin
-    FDeferThemesUntilShown := False;
-    ApplyAllThemes;
-    ApplyPlatformChromeThemes;
-  end;
-  if Assigned(FChatContent) then
-    FChatContent.EnsureLayout;
+  if FState.IsPanelVisible(piTerminal) then
+    ScheduleDeferredTerminalStart;
 end;
 
-procedure TLazyCodingAgentForm.FinalizeDockPanelForClose(ADock: TDockPanel; AId: TPanelId);
-begin
-  if not Assigned(ADock) or not Assigned(ADock.FloatingForm) then Exit;
-  with ADock.FloatingForm do
-    FState.SetPanelBounds(AId, Left, Top, Width, Height);
-  ADock.PrepareForApplicationClose;
-end;
 
 procedure TLazyCodingAgentForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 var
   I: Integer;
 begin
   CanClose := True;
-  if not PromptAllDirtyEditors then begin
+  if not PromptDirtyEditor then begin
     CanClose := False;
     Exit;
   end;
@@ -704,6 +637,8 @@ begin
       Exit;
     end;
     FSessionHubs.ShutdownAll(True);
+    FActiveHub := nil;
+    DetachNavSessionLogs;
   end;
   if not Assigned(FState) then Exit;
   if Assigned(FSessionHubs) then
@@ -712,19 +647,20 @@ begin
   SaveCurrentSession;
   if Assigned(FRegistry) then
     FRegistry.Save;
-  FinalizeDockPanelForClose(FDockNav, piNavigation);
-  FinalizeDockPanelForClose(FDockChat, piChat);
-  FinalizeDockPanelForClose(FDockReserved, piReserved);
-  FinalizeDockPanelForClose(FDockUtility, piUtility);
-  FinalizeDockPanelForClose(FDockTerminal, piTerminal);
   if Assigned(FTerminalPanel) then
     FTerminalPanel.Stop;
+  if Assigned(FPanelDetach) then
+    FPanelDetach.FinalizeOnClose;
 end;
 
 procedure TLazyCodingAgentForm.FormDestroy(Sender: TObject);
 var
   I: Integer;
 begin
+  FreeAndNil(FPanelDetach);
+  FreeAndNil(FExecDetailView);
+  FreeAndNil(FMarkdownPreview);
+  FreeAndNil(FFileEditor);
   if Assigned(FSessionHubs) then begin
     for I := 0 to FSessionHubs.Count - 1 do
       FSessionHubs.HubAt(I).SaveAll;
@@ -734,14 +670,14 @@ begin
     FRegistry.Save;
     FreeAndNil(FRegistry);
   end;
+  DetachNavSessionLogs;
+  FActiveHub := nil;
   FreeAndNil(FSessionHubs);
   FreeAndNil(FNavWorkCaptions);
   FreeAndNil(FNavWorkIds);
   FreeAndNil(FNavSessionCaptions);
   FreeAndNil(FNavSessionIds);
   FreeAndNil(FNavSessionArchived);
-  FreeAndNil(FChatTabSessionIds);
-
   FreeAndNil(FSyntaxSchemes);
 
   if Assigned(FState) then begin
@@ -750,88 +686,174 @@ begin
   end;
 end;
 
+
+
+
+procedure TLazyCodingAgentForm.InitNavRailButtons;
+var
+  Nav: TNavigationItem;
+  Btn: TSpeedButton;
+begin
+  FNavRailBtns[niHome] := sbtnNavHome;
+  FNavRailBtns[niProjects] := sbtnNavProjects;
+  FNavRailBtns[niSessions] := sbtnNavSessions;
+  FNavRailBtns[niBots] := sbtnNavBots;
+  FNavRailBtns[niTools] := sbtnNavTools;
+  FNavRailBtns[niTasks] := sbtnNavTasks;
+  FNavRailBtns[niToolErrors] := sbtnNavToolErrors;
+  FNavRailBtns[niMultiAgent] := sbtnNavMultiAgent;
+  FNavRailBtns[niExecutionPlans] := sbtnNavExecPlans;
+  FNavRailBtns[niKnowledgeBase] := sbtnNavKnowledge;
+  FNavRailBtns[niTheBrain] := sbtnNavBrain;
+  for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
+    Btn := FNavRailBtns[Nav];
+    if not Assigned(Btn) then Continue;
+    Btn.Hint := NavigationHint(Nav);
+    Btn.ShowHint := True;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.NavRailBtnClick(Sender: TObject);
+begin
+  if Sender is TSpeedButton then
+    FState.SetNavigation(TNavigationItem(TSpeedButton(Sender).Tag));
+end;
+
+procedure TLazyCodingAgentForm.UpdateNavRailSelection;
+var
+  Nav: TNavigationItem;
+  Btn: TSpeedButton;
+  P: TThemePalette;
+begin
+  P := ThemePalette(FState.Theme);
+  for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
+    Btn := FNavRailBtns[Nav];
+    if not Assigned(Btn) then Continue;
+    Btn.Down := Nav = FState.Navigation;
+    if Nav = FState.Navigation then
+      Btn.Font.Color := P.Accent
+    else
+      Btn.Font.Color := P.TextMuted;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.PanelHideClickAction(AId: TPanelId);
+begin
+  if Assigned(FPanelDetach) and FState.IsPanelFloating(AId) then
+    FPanelDetach.AttachPanel(AId);
+  FState.SetPanelVisible(AId, False);
+  StateChanged(Self);
+end;
+
+procedure TLazyCodingAgentForm.PanelHideClick(Sender: TObject);
+begin
+  if Sender is TControl then
+    PanelHideClickAction(TPanelId(TControl(Sender).Tag));
+end;
+
+procedure TLazyCodingAgentForm.PanelDetachClick(Sender: TObject);
+begin
+  if not Assigned(FPanelDetach) then Exit;
+  if Sender is TControl then
+    FPanelDetach.ToggleDetach(TPanelId(TControl(Sender).Tag));
+end;
+
+
+
+
+
+procedure TLazyCodingAgentForm.ShowChatCenterTab;
+begin
+  if Assigned(pgcCenter) then
+    pgcCenter.ActivePage := tsChat;
+end;
+
+procedure TLazyCodingAgentForm.CreateThemedTabBars;
+begin
+  if Assigned(pnlCenterTabStripHost) and not Assigned(FCenterTabBar) then begin
+    FCenterTabBar := TThemedPageTabBar.Create(Self);
+    FCenterTabBar.Parent := pnlCenterTabStripHost;
+    FCenterTabBar.Align := alClient;
+    FCenterTabBar.PageControl := pgcCenter;
+    FCenterTabBar.ShowAddTab := True;
+    FCenterTabBar.AddTabCaption := '+';
+    FCenterTabBar.OnAddTab := @TabBarCenterAddTab;
+    FCenterTabBar.OnTabClose := @TabBarCenterTabClose;
+  end;
+  if Assigned(pnlUtilityTabStripHost) and not Assigned(FUtilityTabBar) then begin
+    FUtilityTabBar := TThemedPageTabBar.Create(Self);
+    FUtilityTabBar.Parent := pnlUtilityTabStripHost;
+    FUtilityTabBar.Align := alClient;
+    FUtilityTabBar.PageControl := pgcUtility;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.InitCenterTabStrip;
+begin
+  TThemedPageTabBar.SetTabAllowsClose(tsEditor, True);
+  TThemedPageTabBar.SetTabAllowsClose(tsMarkdown, True);
+  TThemedPageTabBar.SetTabHidden(tsEditor, True);
+  TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
+end;
+
+procedure TLazyCodingAgentForm.SyncCenterAddTabNav;
+begin
+  if Assigned(FNavContent) then
+    FNavContent.SetCenterAddTabAvailable(FState.IsPanelVisible(piChat));
+end;
+
+procedure TLazyCodingAgentForm.TabBarCenterAddTab(Sender: TObject);
+begin
+  CreateAndSelectNewSession;
+end;
+
+procedure TLazyCodingAgentForm.TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet;
+  var AllowClose: Boolean);
+begin
+  AllowClose := False;
+  if TabSheet = tsEditor then begin
+    if not PromptDirtyEditor then Exit;
+    if Assigned(FFileEditor) then
+      FFileEditor.Clear;
+    TThemedPageTabBar.SetTabHidden(tsEditor, True);
+    AllowClose := True;
+    ShowChatCenterTab;
+  end else if TabSheet = tsMarkdown then begin
+    FMarkdownPath := '';
+    if Assigned(FMarkdownPreview) then
+      FMarkdownPreview.SetMarkdown('');
+    TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
+    AllowClose := True;
+    ShowChatCenterTab;
+  end;
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
+end;
+
 procedure TLazyCodingAgentForm.InitWorkspaceSubControls;
 begin
-  // 1. Navigation Rail hosted inside pnlNavRailHost
-  FNavRail := TNavRailControl.Create(pnlNavRailHost);
-  FNavRail.Parent := pnlNavRailHost;
-  FNavRail.Align := alClient;
-  FNavRail.OnSelect := @NavRailSelect;
+  lblNavTitle.Caption := PanelCaption(piNavigation);
+  lblReservedTitle.Caption := PanelCaption(piReserved);
+  lblTerminalTitle.Caption := PanelCaption(piTerminal);
+  InitCenterTabStrip;
 
-  // 2. Navigation Content inside Dock Panel
-  FDockNav := TDockPanel.Create(pnlNavHost);
-  FDockNav.Parent := pnlNavHost;
-  FDockNav.Align := alClient;
-  FDockNav.Configure(piNavigation, PanelCaption(piNavigation), @DockPanelAction);
+  if memReserved.Lines.Count = 0 then begin
+    memReserved.Lines.Add('=== Workspace Context & Guidelines ===');
+    memReserved.Lines.Add('');
+    memReserved.Lines.Add('• Follow single responsibility principles.');
+    memReserved.Lines.Add('• Visual Form Designer first with modern styling.');
+    memReserved.Lines.Add('• Dark-first modern design across all platforms.');
+    memReserved.Lines.Add('• Cross-platform Free Pascal / LCL target.');
+    memReserved.Lines.Add('• Autonomous tool execution with live logging.');
+  end;
 
-  FNavContent := TNavContentControl.Create(FDockNav);
-  FDockNav.Content := FNavContent;
+  InitNavRailButtons;
 
-  // 3. Center tabbed host (Chat + file editors)
-  FPageControlCenter := TLazyTabControl.Create(pnlChatHost);
-  FPageControlCenter.Parent := pnlChatHost;
-  FPageControlCenter.Align := alClient;
-  FPageControlCenter.OnTabCloseAllow := @CenterEditorTabCloseAllow;
-
-  FChatCenterPage := FPageControlCenter.AddPage('Chat');
-  FChatCenterPage.CanClose := False;
-
-  FDockChat := TDockPanel.Create(FChatCenterPage);
-  FDockChat.Parent := FChatCenterPage;
-  FDockChat.Align := alClient;
-  FDockChat.Configure(piChat, PanelCaption(piChat), @DockPanelAction);
-
-  FChatDockRoot := TPanel.Create(FDockChat);
-  FChatDockRoot.BevelOuter := bvNone;
-  FChatDockRoot.Parent := FDockChat;
-  FChatDockRoot.Align := alClient;
-
-  FChatSessionHeader := TPanel.Create(FChatDockRoot);
-  FChatSessionHeader.BevelOuter := bvNone;
-  FChatSessionHeader.Parent := FChatDockRoot;
-  FChatSessionHeader.Align := alTop;
-  FChatSessionHeader.Height := 38;
-
-  FChatNewSessionBtnHost := TPanel.Create(FChatSessionHeader);
-  FChatNewSessionBtnHost.Parent := FChatSessionHeader;
-  FChatNewSessionBtnHost.Align := alRight;
-  FChatNewSessionBtnHost.Width := 40;
-  FChatNewSessionBtnHost.BevelOuter := bvNone;
-  FChatNewSessionBtnHost.OnResize := @ChatNewSessionBtnHostResize;
-
-  FChatNewSessionBtn := TThemedButton.Create(FChatNewSessionBtnHost);
-  FChatNewSessionBtn.Parent := FChatNewSessionBtnHost;
-  FChatNewSessionBtn.Align := alNone;
-  FChatNewSessionBtn.Anchors := [akTop, akRight];
-  FChatNewSessionBtn.BorderSpacing.Right := 6;
-  FChatNewSessionBtn.Width := 28;
-  FChatNewSessionBtn.Height := 28;
-  FChatNewSessionBtn.ButtonRole := tbrCancel;
-  FChatNewSessionBtn.Caption := '+';
-  FChatNewSessionBtn.Hint := 'New chat session';
-  FChatNewSessionBtn.ShowHint := True;
-  FChatNewSessionBtn.OnClick := @ChatNewSessionBtnClick;
-  LayoutChatNewSessionBtn;
-
-  FChatSessionTabs := TLazyTabControl.Create(FChatSessionHeader);
-  FChatSessionTabs.Parent := FChatSessionHeader;
-  FChatSessionTabs.Align := alClient;
-  FChatSessionTabs.HeaderHeight := 38;
-  FChatSessionTabs.HeaderOnly := True;
-  FChatSessionTabs.Constraints.MinHeight := 38;
-  FChatSessionTabs.Constraints.MaxHeight := 38;
-  FChatSessionTabs.OnChange := @ChatSessionTabChange;
-  FChatSessionTabs.OnTabClose := @ChatSessionTabClose;
-
-  FChatContent := TChatPanel.Create(FChatDockRoot);
-  FChatContent.Parent := FChatDockRoot;
-  FChatContent.Align := alClient;
-  FChatContent.OnPrompt := @ChatPrompt;
-  FChatContent.OnModeChange := @ChatModeChange;
-  FChatContent.OnModelChange := @ChatModelChange;
-  FChatContent.OnCancel := @ChatCancel;
-  FDockChat.Content := FChatDockRoot;
-
+  FNavContent := TNavContentControl.Create(Self);
+  FNavContent.Bind(lblNavViewTitle, lblNavViewSub, lstNavFile, tvNavProjects, lstNavLog,
+    lstNavErrors, btnNavPrimary, btnNavSecondary);
   FNavContent.OnWorkspaceSelect := @NavWorkspaceSelect;
   FNavContent.OnWorkspaceNew := @NavWorkspaceNew;
   FNavContent.OnWorkspaceDelete := @NavWorkspaceDelete;
@@ -847,49 +869,30 @@ begin
   FNavContent.OnClearToolErrorLog := @NavClearToolErrorLog;
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
 
-  // 4. Instructions / Reserved panel inside Dock Panel
-  FDockReserved := TDockPanel.Create(pnlReservedHost);
-  FDockReserved.Parent := pnlReservedHost;
-  FDockReserved.Align := alClient;
-  FDockReserved.Configure(piReserved, PanelCaption(piReserved), @DockPanelAction);
+  FChatPanel := TChatPanel.Create(Self);
+  FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
+    lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop);
+  FChatPanel.OnPrompt := @ChatPrompt;
+  FChatPanel.OnModeChange := @ChatModeChange;
+  FChatPanel.OnModelChange := @ChatModelChange;
+  FChatPanel.OnCancel := @ChatCancel;
 
-  FReservedMemo := TMemo.Create(FDockReserved);
-  FReservedMemo.BorderStyle := bsNone;
-  FReservedMemo.ScrollBars := ssVertical;
-  FReservedMemo.Lines.Add('=== Workspace Context & Guidelines ===');
-  FReservedMemo.Lines.Add('');
-  FReservedMemo.Lines.Add('• Follow single responsibility principles.');
-  FReservedMemo.Lines.Add('• Visual Form Designer first with modern styling.');
-  FReservedMemo.Lines.Add('• Dark-first modern design across all platforms.');
-  FReservedMemo.Lines.Add('• Detachable windows work across multi-monitors.');
-  FReservedMemo.Lines.Add('• Cross-platform Free Pascal / LCL target.');
-  FReservedMemo.Lines.Add('• Autonomous tool execution with live logging.');
-  FDockReserved.Content := FReservedMemo;
+  FFileEditor := TMainFileEditor.Create(synEditor, Self);
+  FPlanView := TPlanView.Create(Self);
+  FPlanView.Bind(lblPlanPath, cboPlanModel, btnPlanBuild, memPlanBody);
+  FPlanView.OnBuild := @PlanBuildRequested;
 
-  // 5. Utility / TabPage panel inside Dock Panel (Right corner)
-  FDockUtility := TDockPanel.Create(pnlUtilityHost);
-  FDockUtility.Parent := pnlUtilityHost;
-  FDockUtility.Align := alClient;
-  FDockUtility.Configure(piUtility, PanelCaption(piUtility), @DockPanelAction);
-
-  FPageControlUtility := TLazyTabControl.Create(FDockUtility);
-  FTabSheetBlank := FPageControlUtility.AddPage('Workspace Scratchpad');
-  FTabSheetBlank.CanClose := False;
-  FUtilityExecDetailPage := FPageControlUtility.AddPage('Execution Detail');
-  FUtilityExecDetailPage.CanClose := False;
-  FUtilityExecDetail := TUtilityExecutionDetailTab.Create(FUtilityExecDetailPage);
-  FUtilityExecDetail.Parent := FUtilityExecDetailPage;
-  FUtilityExecDetail.Align := alClient;
-  FDockUtility.Content := FPageControlUtility;
-
-  FDockTerminal := TDockPanel.Create(pnlTerminalHost);
-  FDockTerminal.Parent := pnlTerminalHost;
-  FDockTerminal.Align := alClient;
-  FDockTerminal.Configure(piTerminal, PanelCaption(piTerminal), @DockPanelAction);
-
-  FTerminalPanel := TTerminalPanel.Create(FDockTerminal);
+  FTerminalPanel := TTerminalPanel.Create(Self);
+  FTerminalPanel.Bind(pnlTerminalContent, lblTerminalStatus);
   FTerminalPanel.OnTerminalStatus := @TerminalStatus;
-  FDockTerminal.Content := FTerminalPanel;
+
+  ConfigureThemedMemo(memUtilityScratch, FState.Theme);
+  if not Assigned(FExecDetailView) then
+    FExecDetailView := TMarkdownHtmlView.Create(Self, pnlUtilityExecDetailHost);
+  FExecDetailView.ApplyTheme(FState.Theme);
+  if not Assigned(FMarkdownPreview) then
+    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  FMarkdownPreview.ApplyTheme(FState.Theme);
 
   FTerminalRetryTimer := TTimer.Create(Self);
   FTerminalRetryTimer.Enabled := False;
@@ -898,6 +901,7 @@ begin
 
   FCurrentRunMode := wmAgent;
   FPlanSavedThisRun := False;
+  FMarkdownPath := '';
 end;
 
 procedure TLazyCodingAgentForm.PopulateMenusAndCombos;
@@ -941,80 +945,64 @@ begin
   RebuildActiveSchemeMenu;
 end;
 
-procedure TLazyCodingAgentForm.ApplyDockPanelsLayout;
+
+procedure TLazyCodingAgentForm.LayoutTerminalChromeControls;
+const
+  HIDE_MARGIN = 6;
 var
-  L, T, W, H: Integer;
+  NewLeft: Integer;
 begin
-  // Navigation Dock Panel
-  pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and not FState.IsPanelFloating(piNavigation);
+  if FTerminalChromeLayout then Exit;
+  if not Assigned(btnTerminalHide) or not Assigned(pnlTerminalChrome) then Exit;
+  FTerminalChromeLayout := True;
+  try
+    NewLeft := pnlTerminalChrome.ClientWidth - btnTerminalHide.Width - HIDE_MARGIN;
+    if NewLeft < 0 then
+      NewLeft := 0;
+    if btnTerminalHide.Left <> NewLeft then
+      btnTerminalHide.Left := NewLeft;
+  finally
+    FTerminalChromeLayout := False;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.PnlTerminalHostResize(Sender: TObject);
+begin
+  LayoutTerminalChromeControls;
+end;
+
+procedure TLazyCodingAgentForm.PnlTerminalChromeResize(Sender: TObject);
+begin
+  LayoutTerminalChromeControls;
+end;
+
+procedure TLazyCodingAgentForm.ApplyDockPanelsLayout;
+begin
+  pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and
+    not FState.IsPanelFloating(piNavigation);
   splNav.Visible := pnlNavHost.Visible;
-  if FState.IsPanelFloating(piNavigation) then begin
-    if FState.GetPanelBounds(piNavigation, L, T, W, H) then
-      FDockNav.DetachToWindow(L, T, W, H);
-  end else begin
-    if FDockNav.IsDetached then
-      FDockNav.AttachToHost(pnlNavHost);
-    if not FState.IsPanelVisible(piNavigation) and Assigned(FDockNav.FloatingForm) then
-      FDockNav.FloatingForm.Hide;
-  end;
-
-  // Chat Dock Panel
-  pnlChatHost.Visible := FState.IsPanelVisible(piChat) and not FState.IsPanelFloating(piChat);
-  if FState.IsPanelFloating(piChat) then begin
-    if FState.GetPanelBounds(piChat, L, T, W, H) then
-      FDockChat.DetachToWindow(L, T, W, H);
-  end else begin
-    if FDockChat.IsDetached then
-      FDockChat.AttachToHost(GetChatDockHost);
-    if not FState.IsPanelVisible(piChat) and Assigned(FDockChat.FloatingForm) then
-      FDockChat.FloatingForm.Hide;
-  end;
-
-  // Reserved Dock Panel
-  pnlReservedHost.Visible := FState.IsPanelVisible(piReserved) and not FState.IsPanelFloating(piReserved);
+  pnlChatHost.Visible := FState.IsPanelVisible(piChat) and
+    not FState.IsPanelFloating(piChat);
+  pnlReservedHost.Visible := FState.IsPanelVisible(piReserved) and
+    not FState.IsPanelFloating(piReserved);
   splReserved.Visible := pnlReservedHost.Visible;
-  if FState.IsPanelFloating(piReserved) then begin
-    if FState.GetPanelBounds(piReserved, L, T, W, H) then
-      FDockReserved.DetachToWindow(L, T, W, H);
-  end else begin
-    if FDockReserved.IsDetached then
-      FDockReserved.AttachToHost(pnlReservedHost);
-    if not FState.IsPanelVisible(piReserved) and Assigned(FDockReserved.FloatingForm) then
-      FDockReserved.FloatingForm.Hide;
-  end;
-
-  // Utility Dock Panel
-  pnlUtilityHost.Visible := FState.IsPanelVisible(piUtility) and not FState.IsPanelFloating(piUtility);
+  pnlUtilityHost.Visible := FState.IsPanelVisible(piUtility) and
+    not FState.IsPanelFloating(piUtility);
   splUtility.Visible := pnlUtilityHost.Visible;
-  if FState.IsPanelFloating(piUtility) then begin
-    if FState.GetPanelBounds(piUtility, L, T, W, H) then
-      FDockUtility.DetachToWindow(L, T, W, H);
-  end else begin
-    if FDockUtility.IsDetached then
-      FDockUtility.AttachToHost(pnlUtilityHost);
-    if not FState.IsPanelVisible(piUtility) and Assigned(FDockUtility.FloatingForm) then
-      FDockUtility.FloatingForm.Hide;
-  end;
 
-  // Terminal Dock Panel (full-width bottom)
-  pnlTerminalHost.Visible := FState.IsPanelVisible(piTerminal) and not FState.IsPanelFloating(piTerminal);
+  pnlTerminalHost.Visible := FState.IsPanelVisible(piTerminal);
   splTerminal.Visible := pnlTerminalHost.Visible;
-  if pnlTerminalHost.Visible then
+  if Assigned(FPanelDetach) then
+    FPanelDetach.ApplyLayout;
+  if pnlTerminalHost.Visible then begin
     pnlTerminalHost.Height := EffectiveTerminalDockHeight;
-  if FState.IsPanelFloating(piTerminal) then begin
-    if FState.GetPanelBounds(piTerminal, L, T, W, H) then
-      FDockTerminal.DetachToWindow(L, T, W, H);
-  end else begin
-    if FDockTerminal.IsDetached then
-      FDockTerminal.AttachToHost(pnlTerminalHost);
-    if not FState.IsPanelVisible(piTerminal) and Assigned(FDockTerminal.FloatingForm) then
-      FDockTerminal.FloatingForm.Hide;
+    LayoutTerminalChromeControls;
   end;
 
-  if FState.IsPanelVisible(piTerminal) then
+  if FState.IsPanelVisible(piTerminal) and not FDeferThemesUntilShown
+     and not FPendingInitialWorkspaceUI then
     ScheduleDeferredTerminalStart;
-
-  RaiseDetachedFloatingForms;
+  SyncCenterAddTabNav;
 end;
 
 function TLazyCodingAgentForm.EffectiveTerminalDockHeight: Integer;
@@ -1061,12 +1049,9 @@ function TLazyCodingAgentForm.IsTerminalSurfaceVisible: Boolean;
 begin
   if not FState.IsPanelVisible(piTerminal) then
     Exit(False);
-  if not Assigned(FTerminalPanel) or not FTerminalPanel.Visible then
+  if not Assigned(FTerminalPanel) then
     Exit(False);
-  if FState.IsPanelFloating(piTerminal) then
-    Result := Assigned(FDockTerminal) and FDockTerminal.IsDetached
-  else
-    Result := pnlTerminalHost.Visible;
+  Result := pnlTerminalHost.Visible;
 end;
 
 procedure TLazyCodingAgentForm.ScheduleTerminalStartRetry;
@@ -1109,6 +1094,7 @@ begin
     FTerminalPanel.SetWorkingDirectory('');
 end;
 
+
 procedure TLazyCodingAgentForm.StateChanged(Sender: TObject);
 var
   I, N: Integer;
@@ -1123,11 +1109,12 @@ begin
       EnsureActiveHub;
     if Assigned(FActiveHub) then
       SyncHubClientSettings(FActiveHub);
-    for I := 0 to FSessionHubs.Count - 1 do
-      SyncHubClientSettings(FSessionHubs.HubAt(I));
+    for I := 0 to FSessionHubs.Count - 1 do begin
+      if Assigned(FSessionHubs.HubAt(I)) then
+        SyncHubClientSettings(FSessionHubs.HubAt(I));
+    end;
 
-    if Assigned(FNavRail) then
-      FNavRail.SetSelected(FState.Navigation);
+    UpdateNavRailSelection;
     if Assigned(FNavContent) then begin
       RefreshWorkspaceNav;
       RefreshSessionNav;
@@ -1137,20 +1124,20 @@ begin
         FCurrentSessionId);
     end;
 
-    SyncChatSessionTabs;
+    UpdateSessionCaption;
     ApplyWorkspaceChatVisibility;
 
-    if Assigned(FChatContent) then begin
+    if Assigned(FChatPanel) then begin
       N := FState.SavedModelCount(FState.Provider);
       SetLength(Models, N);
       for I := 0 to N - 1 do
         Models[I] := FState.GetSavedModel(FState.Provider, I);
-      FChatContent.SetAvailableModels(Models);
-      FChatContent.SetWorkspace(FState.WorkspaceName);
-      FChatContent.SetMode(FState.Mode);
-      FChatContent.SetModel(FState.Model);
+      FChatPanel.SetAvailableModels(Models);
+      FChatPanel.SetWorkspace(FState.WorkspaceName);
+      FChatPanel.SetMode(FState.Mode);
+      FChatPanel.SetModel(FState.Model);
       ApplySessionComposerState;
-      RefreshUtilityPlanTabModels(Models);
+      RefreshPlanViewModels(Models);
     end;
 
     if not FPendingInitialDockLayout then
@@ -1168,7 +1155,8 @@ begin
       WsLabel := '(none)';
     if Assigned(ActiveAgent) then
       StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s  |  Status: %s',
-        [WsLabel, WorkspaceModeCaption(FState.Mode), FState.Model, AgentStateToString(ActiveAgent.State)])
+        [WsLabel, WorkspaceModeCaption(FState.Mode), FState.Model,
+          FormatSessionStatusLabel(ActiveAgent.State)])
     else
       StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s',
         [WsLabel, WorkspaceModeCaption(FState.Mode), FState.Model]);
@@ -1203,35 +1191,42 @@ begin
   StatusBar1.Color := P.Surface;
   StatusBar1.Font.Color := P.TextMuted;
 
-  if Assigned(FNavRail) then FNavRail.ApplyTheme(FState.Theme);
-  if Assigned(FDockNav) then FDockNav.ApplyTheme(FState.Theme);
+  pnlNavChrome.Color := P.HeaderBg;
+  pnlNavChrome.Font.Color := P.Text;
+  pnlChatChrome.Color := P.HeaderBg;
+  pnlReservedChrome.Color := P.HeaderBg;
+  pnlUtilityChrome.Color := P.HeaderBg;
+  pnlTerminalChrome.Color := P.HeaderBg;
+
+  ApplyThemedControlTree(pnlMainContainer, FState.Theme);
+  StyleCancelButton(btnNavDetach, FState.Theme);
+  StyleCancelButton(btnNavHide, FState.Theme);
+  StyleCancelButton(btnChatDetach, FState.Theme);
+  StyleCancelButton(btnReservedDetach, FState.Theme);
+  StyleCancelButton(btnReservedHide, FState.Theme);
+  StyleCancelButton(btnUtilityDetach, FState.Theme);
+  StyleCancelButton(btnUtilityHide, FState.Theme);
+  StyleCancelButton(btnTerminalHide, FState.Theme);
+  if Assigned(FPanelDetach) then
+    FPanelDetach.ApplyThemes(FState.Theme);
+
   if Assigned(FNavContent) then FNavContent.ApplyTheme(FState.Theme);
-
-  if Assigned(FDockChat) then FDockChat.ApplyTheme(FState.Theme);
-  if Assigned(FChatSessionHeader) then FChatSessionHeader.Color := P.HeaderBg;
-  if Assigned(FChatNewSessionBtnHost) then FChatNewSessionBtnHost.Color := P.HeaderBg;
-  if Assigned(FChatSessionTabs) then FChatSessionTabs.ApplyTheme(FState.Theme);
-  if Assigned(FChatNewSessionBtn) then FChatNewSessionBtn.ApplyTheme(FState.Theme);
-  if Assigned(FChatContent) then FChatContent.ApplyTheme(FState.Theme);
-
-  if Assigned(FDockReserved) then FDockReserved.ApplyTheme(FState.Theme);
-  if Assigned(FReservedMemo) then
-    ConfigureThemedMemo(FReservedMemo, FState.Theme, 'Segoe UI', P.Surface);
-
-  if Assigned(FDockUtility) then FDockUtility.ApplyTheme(FState.Theme);
-  if Assigned(FDockTerminal) then FDockTerminal.ApplyTheme(FState.Theme);
+  if Assigned(FChatPanel) then FChatPanel.ApplyTheme(FState.Theme);
   if Assigned(FTerminalPanel) then FTerminalPanel.ApplyTheme(FState.Theme);
-  if Assigned(FPageControlUtility) then begin
-    FPageControlUtility.ApplyTheme(FState.Theme);
-    ApplyUtilityPlanTabThemes;
-    if Assigned(FUtilityExecDetail) then
-      FUtilityExecDetail.ApplyTheme(FState.Theme);
+  if Assigned(FPlanView) then FPlanView.ApplyTheme(FState.Theme);
+  if Assigned(FCenterTabBar) then FCenterTabBar.ApplyTheme(FState.Theme);
+  if Assigned(FUtilityTabBar) then FUtilityTabBar.ApplyTheme(FState.Theme);
+  if not Assigned(FMarkdownPreview) then
+    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  FMarkdownPreview.ApplyTheme(FState.Theme);
+  ApplyEditorTheme;
+
+  if Assigned(FExecDetailView) then begin
+    RefreshExecDetailView;
+    FExecDetailView.ApplyTheme(FState.Theme);
   end;
 
-  if Assigned(FPageControlCenter) then
-    FPageControlCenter.ApplyTheme(FState.Theme);
-  ApplyCenterEditorThemes;
-
+  UpdateNavRailSelection;
   ApplyPlatformChromeThemes;
   Invalidate;
 end;
@@ -1240,12 +1235,11 @@ procedure TLazyCodingAgentForm.ApplyPlatformChromeThemes;
 begin
   if not HandleAllocated then Exit;
   ApplyPlatformChrome(Self, FState.Theme);
-  if Assigned(FReservedMemo) then
-    ApplyPlatformScrollableTheme(FReservedMemo, FState.Theme);
+  ApplyPlatformScrollableThemeRecursive(Self, FState.Theme);
   if Assigned(FNavContent) then
     FNavContent.ApplyPlatformChrome(FState.Theme);
-  if Assigned(FChatContent) then
-    FChatContent.ApplyPlatformChrome(FState.Theme);
+  if Assigned(FChatPanel) then
+    FChatPanel.ApplyPlatformChrome(FState.Theme);
 end;
 
 procedure TLazyCodingAgentForm.RebuildWindowMenu;
@@ -1263,56 +1257,9 @@ begin
     mnuPanelsVisibility.Add(Item);
   end;
 
-  while mnuWindow.Count > 1 do
-    mnuWindow.Delete(1);
-
-  Item := TMenuItem.Create(mnuWindow);
-  Item.Caption := '-';
-  mnuWindow.Add(Item);
-
-  for P := Low(TPanelId) to High(TPanelId) do begin
-    if not FState.IsPanelFloating(P) then begin
-      SubItem := TMenuItem.Create(mnuWindow);
-      SubItem.Caption := Format('Detach %s to Window', [PanelCaption(P)]);
-      SubItem.Tag := Ord(P);
-      SubItem.OnClick := @MenuDetachPanel;
-      mnuWindow.Add(SubItem);
-    end else begin
-      SubItem := TMenuItem.Create(mnuWindow);
-      SubItem.Caption := Format('Dock %s to Main Window', [PanelCaption(P)]);
-      SubItem.Tag := Ord(P);
-      SubItem.OnClick := @MenuAttachPanel;
-      mnuWindow.Add(SubItem);
-    end;
-  end;
-
   ApplyPlatformChrome(Self, FState.Theme);
 end;
 
-procedure TLazyCodingAgentForm.NavRailSelect(Sender: TObject);
-begin
-  FState.SetNavigation(FNavRail.Selected);
-end;
-
-procedure TLazyCodingAgentForm.DockPanelAction(Sender: TObject; AId: TPanelId; AAction: TDockPanelAction);
-begin
-  case AAction of
-    dpaHide:
-      FState.SetPanelVisible(AId, False);
-    dpaDetach:
-      begin
-        FState.SetPanelFloating(AId, True);
-        FState.SetPanelVisible(AId, True);
-        StateChanged(Self);
-      end;
-    dpaAttach:
-      begin
-        FState.SetPanelFloating(AId, False);
-        FState.SetPanelVisible(AId, True);
-        StateChanged(Self);
-      end;
-  end;
-end;
 
 procedure TLazyCodingAgentForm.ChatPrompt(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string);
 var
@@ -1326,9 +1273,11 @@ begin
   FPlanSavedThisRun := False;
   Eng := ActiveAgent;
   if not Assigned(Eng) then Exit;
-  FChatContent.SetRunning(True);
+  FExecutionLogFollowLive := True;
+  OpenUtilityExecutionDetailTab;
+  FChatPanel.SetRunning(True);
   if not Eng.StartRunAsync(APrompt, AMode, AModel) then
-    FChatContent.SetRunning(False);
+    FChatPanel.SetRunning(False);
 end;
 
 procedure TLazyCodingAgentForm.ChatModeChange(Sender: TObject; AMode: TWorkspaceMode);
@@ -1353,35 +1302,40 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.HubStateChange(Sender: TObject; const ASessionId: string;
-  AOldState, ANewState: TAgentState);
+  AOldState, ANewState: TAgentState; AStep, AMaxSteps: Integer);
 begin
   if SameText(ASessionId, FCurrentSessionId) then begin
+    FStatusRunStep := AStep;
+    FStatusRunMaxSteps := AMaxSteps;
     StatusBar1.SimpleText := Format('⚡ Workspace: %s  |  🎯 Mode: %s  |  🤖 Model: %s  |  Status: %s',
-      [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model, AgentStateToString(ANewState)]);
+      [FState.WorkspaceName, WorkspaceModeCaption(FState.Mode), FState.Model,
+        FormatAgentStateLabel(ANewState, AStep, AMaxSteps)]);
     if (ANewState = asFinished) and (FCurrentRunMode = wmPlan) and not FPlanSavedThisRun then
       TrySaveProposedPlanFromChat;
-    if (ANewState in [asIdle, asFinished, asError]) and Assigned(FChatContent) then
-      FChatContent.SetRunning(False);
+    if (ANewState in [asIdle, asFinished, asError]) and Assigned(FChatPanel) then
+      FChatPanel.SetRunning(False);
   end;
   if AgentStateIsRunning(AOldState) <> AgentStateIsRunning(ANewState) then
-    RefreshChatSessionRunningBadges;
+    UpdateSessionCaption;
 end;
 
 procedure TLazyCodingAgentForm.HubMessageAdded(Sender: TObject; const ASessionId: string;
   const AMsg: TChatMessage);
 begin
-  if SameText(ASessionId, FCurrentSessionId) and Assigned(FChatContent) then begin
+  if SameText(ASessionId, FCurrentSessionId) and Assigned(FChatPanel) then begin
     if AMsg.Role = crTool then
-      FChatContent.AppendToolMessage(AMsg, FState.DebuggingMode)
+      FChatPanel.AppendToolMessage(AMsg, FState.DebuggingMode)
     else
-      FChatContent.AppendMessage(AMsg);
+      FChatPanel.AppendMessage(AMsg);
   end;
 end;
 
 procedure TLazyCodingAgentForm.HubToolCall(Sender: TObject; const ASessionId: string;
   const AToolName, AArgs: string);
 begin
-  // Tool lines are recorded in execution log on tool result (combined input/output).
+  if not SameText(ASessionId, FCurrentSessionId) then Exit;
+  if Assigned(FChatPanel) and (Trim(AToolName) <> '') then
+    FChatPanel.AppendTraceLine('Calling ' + AToolName);
 end;
 
 procedure TLazyCodingAgentForm.HubToolResult(Sender: TObject; const ASessionId: string;
@@ -1444,30 +1398,113 @@ begin
   end;
 end;
 
+procedure TLazyCodingAgentForm.DetachNavSessionLogs;
+begin
+  if Assigned(FNavContent) then begin
+    FNavContent.BindExecutionLog(nil);
+    FNavContent.BindToolErrorLog(nil);
+  end;
+end;
+
 procedure TLazyCodingAgentForm.HubExecutionLogAdded(Sender: TObject; const ASessionId: string;
   AEntryIndex: Integer);
 begin
+  if csDestroying in ComponentState then Exit;
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FNavContent) then
     FNavContent.AppendExecutionLogEntry(AEntryIndex);
+  if FExecutionLogFollowLive then
+    ShowExecutionLogDetail(AEntryIndex);
 end;
 
-procedure TLazyCodingAgentForm.NavLogEntrySelected(Sender: TObject; AIndex: Integer);
+procedure TLazyCodingAgentForm.OpenUtilityExecutionDetailTab;
+begin
+  FState.SetPanelVisible(piUtility, True);
+  ApplyDockPanelsLayout;
+  if Assigned(pgcUtility) then
+    pgcUtility.ActivePage := tsUtilityExecDetail;
+end;
+
+function TLazyCodingAgentForm.FormatSessionStatusLabel(AState: TAgentState): string;
+begin
+  Result := FormatAgentStateLabel(AState, FStatusRunStep, FStatusRunMaxSteps);
+end;
+
+procedure TLazyCodingAgentForm.ClearExecDetailView;
+begin
+  FExecDetailSource := edsNone;
+  FExecDetailIndex := -1;
+  if Assigned(FExecDetailView) then
+    FExecDetailView.SetHtmlBody(WrapExecDetailHtmlDocument('', FState.Theme));
+end;
+
+procedure TLazyCodingAgentForm.RefreshExecDetailView;
+begin
+  if not Assigned(FExecDetailView) then Exit;
+  case FExecDetailSource of
+    edsExecLog:
+      if FExecDetailIndex >= 0 then
+        ShowExecutionLogDetail(FExecDetailIndex)
+      else
+        ClearExecDetailView;
+    edsToolError:
+      if FExecDetailIndex >= 0 then
+        ShowToolErrorDetail(FExecDetailIndex)
+      else
+        ClearExecDetailView;
+  else
+    ClearExecDetailView;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.ShowExecutionLogDetail(AIndex: Integer);
 var
   Log: TAgentExecutionLog;
   Entry: TExecutionLogEntry;
 begin
-  if not Assigned(FUtilityExecDetail) then Exit;
   Log := nil;
   if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
     Log := FActiveHub.ExecutionLogFor(FCurrentSessionId);
   if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
   Entry := Log.Entry(AIndex);
-  FUtilityExecDetail.ShowEntry(Entry);
-  FState.SetPanelVisible(piUtility, True);
-  ApplyDockPanelsLayout;
-  if Assigned(FPageControlUtility) and Assigned(FUtilityExecDetailPage) then
-    FPageControlUtility.ActivePage := FUtilityExecDetailPage;
+  FExecDetailSource := edsExecLog;
+  FExecDetailIndex := AIndex;
+  if Assigned(FExecDetailView) then
+    FExecDetailView.SetHtmlBody(Entry.BuildInspectorHtml(FState.Theme));
+  OpenUtilityExecutionDetailTab;
+end;
+
+procedure TLazyCodingAgentForm.ShowToolErrorDetail(AIndex: Integer);
+var
+  Log: TAgentToolErrorLog;
+  Entry: TToolErrorLogEntry;
+begin
+  Log := nil;
+  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+    Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
+  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
+  Entry := Log.Entry(AIndex);
+  FExecDetailSource := edsToolError;
+  FExecDetailIndex := AIndex;
+  if Assigned(FExecDetailView) then
+    FExecDetailView.SetHtmlBody(Entry.BuildInspectorHtml(FState.Theme));
+  OpenUtilityExecutionDetailTab;
+end;
+
+procedure TLazyCodingAgentForm.NavLogEntrySelected(Sender: TObject; AIndex: Integer);
+var
+  Log: TAgentExecutionLog;
+begin
+  Log := nil;
+  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+    Log := FActiveHub.ExecutionLogFor(FCurrentSessionId);
+  if Log <> nil then begin
+    if AIndex = Log.Count - 1 then
+      FExecutionLogFollowLive := True
+    else
+      FExecutionLogFollowLive := False;
+  end;
+  ShowExecutionLogDetail(AIndex);
 end;
 
 procedure TLazyCodingAgentForm.NavClearExecutionLog(Sender: TObject);
@@ -1480,34 +1517,21 @@ begin
     Log.Clear;
   if Assigned(FNavContent) then
     FNavContent.RefreshExecutionLogList;
-  if Assigned(FUtilityExecDetail) then
-    FUtilityExecDetail.ClearDetail;
+  ClearExecDetailView;
 end;
 
 procedure TLazyCodingAgentForm.HubToolErrorAdded(Sender: TObject; const ASessionId: string;
   AEntryIndex: Integer);
 begin
+  if csDestroying in ComponentState then Exit;
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FNavContent) then
     FNavContent.AppendToolErrorLogEntry(AEntryIndex);
 end;
 
 procedure TLazyCodingAgentForm.NavToolErrorEntrySelected(Sender: TObject; AIndex: Integer);
-var
-  Log: TAgentToolErrorLog;
-  Entry: TToolErrorLogEntry;
 begin
-  if not Assigned(FUtilityExecDetail) then Exit;
-  Log := nil;
-  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
-    Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
-  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
-  Entry := Log.Entry(AIndex);
-  FUtilityExecDetail.ShowToolError(Entry);
-  FState.SetPanelVisible(piUtility, True);
-  ApplyDockPanelsLayout;
-  if Assigned(FPageControlUtility) and Assigned(FUtilityExecDetailPage) then
-    FPageControlUtility.ActivePage := FUtilityExecDetailPage;
+  ShowToolErrorDetail(AIndex);
 end;
 
 procedure TLazyCodingAgentForm.NavClearToolErrorLog(Sender: TObject);
@@ -1520,8 +1544,8 @@ begin
     Log.Clear;
   if Assigned(FNavContent) then
     FNavContent.RefreshToolErrorLogList;
-  if Assigned(FUtilityExecDetail) then
-    FUtilityExecDetail.ClearDetail;
+  if FExecDetailSource = edsToolError then
+    ClearExecDetailView;
 end;
 
 function TLazyCodingAgentForm.ParsePlanToolSuccess(const AResult: TToolExecutionResult;
@@ -1556,35 +1580,23 @@ end;
 procedure TLazyCodingAgentForm.OpenPlanInUtilityTab(const APath, AContent: string);
 var
   I: Integer;
-  Page: TLazyTabPage;
-  Tab: TUtilityPlanTab;
-  Cap: string;
   Models: array of TSavedModel;
 begin
-  if not Assigned(FPageControlUtility) then Exit;
+  if not Assigned(FPlanView) then Exit;
   FState.SetPanelVisible(piUtility, True);
   ApplyDockPanelsLayout;
-
-  Cap := ExtractFileName(APath);
-  if Cap = '' then
-    Cap := 'Plan';
-  Page := FPageControlUtility.AddPage(Cap);
-  Page.CanClose := True;
-  Tab := TUtilityPlanTab.Create(Page);
-  Tab.Parent := Page;
-  Tab.Align := alClient;
-  Tab.OnBuild := @PlanBuildRequested;
-  Tab.LoadPlan(APath, AContent);
+  FPlanView.LoadPlan(APath, AContent);
   SetLength(Models, FState.SavedModelCount(FState.Provider));
   for I := 0 to High(Models) do
     Models[I] := FState.GetSavedModel(FState.Provider, I);
-  Tab.SetAvailableModels(Models);
-  if Assigned(FChatContent) and (FChatContent.Model <> '') then
-    Tab.SetModel(FChatContent.Model)
+  FPlanView.SetAvailableModels(Models);
+  if Assigned(FChatPanel) and (FChatPanel.Model <> '') then
+    FPlanView.SetModel(FChatPanel.Model)
   else
-    Tab.SetModel(FState.Model);
-  Tab.ApplyTheme(FState.Theme);
-  FPageControlUtility.ActivePage := Page;
+    FPlanView.SetModel(FState.Model);
+  FPlanView.ApplyTheme(FState.Theme);
+  if Assigned(pgcUtility) then
+    pgcUtility.ActivePage := tsUtilityPlan;
 end;
 
 procedure TLazyCodingAgentForm.TrySaveProposedPlanFromChat;
@@ -1627,7 +1639,7 @@ var
   Prompt, Sid, Title: string;
 begin
   if not FState.HasActiveWorkspace then Exit;
-  if not Assigned(FChatContent) then Exit;
+  if not Assigned(FChatPanel) then Exit;
   if Trim(AModelId) = '' then Exit;
 
   FState.SetModel(AModelId);
@@ -1645,53 +1657,27 @@ begin
   ActiveStore.SetLastSessionId(Sid);
   FActiveHub.GetOrCreateEngine(Sid);
   BindSessionToUI(Sid);
-  SyncChatSessionTabs;
+  UpdateSessionCaption;
 
-  if Assigned(FPageControlCenter) and Assigned(FChatCenterPage) then
-    FPageControlCenter.ActivePage := FChatCenterPage;
+  ShowChatCenterTab;
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
 
-  FChatContent.SetMode(wmAgent);
-  FChatContent.SetModel(AModelId);
+  FChatPanel.SetMode(wmAgent);
+  FChatPanel.SetModel(AModelId);
 
   Prompt := 'Implement the plan saved at ' + APlanPath +
     '. First inspect the project files, then carry out the plan completely.' +
     LineEnding + LineEnding + APlanContent;
-  FChatContent.SubmitPrompt(Prompt);
+  FChatPanel.SubmitPrompt(Prompt);
   StateChanged(Self);
 end;
 
-procedure TLazyCodingAgentForm.ApplyUtilityPlanTabThemes;
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TUtilityPlanTab;
-begin
-  if not Assigned(FPageControlUtility) then Exit;
-  for I := 0 to FPageControlUtility.PageCount - 1 do begin
-    Page := FPageControlUtility.Pages[I];
-    if (Page.ControlCount > 0) and (Page.Controls[0] is TUtilityPlanTab) then begin
-      Tab := TUtilityPlanTab(Page.Controls[0]);
-      Tab.ApplyTheme(FState.Theme);
-    end;
-  end;
-end;
 
-procedure TLazyCodingAgentForm.RefreshUtilityPlanTabModels(const AModels: array of TSavedModel);
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TUtilityPlanTab;
+procedure TLazyCodingAgentForm.RefreshPlanViewModels(const AModels: array of TSavedModel);
 begin
-  if not Assigned(FPageControlUtility) then Exit;
-  for I := 0 to FPageControlUtility.PageCount - 1 do begin
-    Page := FPageControlUtility.Pages[I];
-    if (Page.ControlCount > 0) and (Page.Controls[0] is TUtilityPlanTab) then begin
-      Tab := TUtilityPlanTab(Page.Controls[0]);
-      Tab.SetAvailableModels(AModels);
-    end;
-  end;
+  if Assigned(FPlanView) then
+    FPlanView.SetAvailableModels(AModels);
 end;
 
 procedure TLazyCodingAgentForm.MenuSelectNav(Sender: TObject);
@@ -1716,17 +1702,7 @@ begin
   end;
 end;
 
-procedure TLazyCodingAgentForm.MenuDetachPanel(Sender: TObject);
-begin
-  if Sender is TMenuItem then
-    DockPanelAction(Self, TPanelId(TMenuItem(Sender).Tag), dpaDetach);
-end;
 
-procedure TLazyCodingAgentForm.MenuAttachPanel(Sender: TObject);
-begin
-  if Sender is TMenuItem then
-    DockPanelAction(Self, TPanelId(TMenuItem(Sender).Tag), dpaAttach);
-end;
 
 procedure TLazyCodingAgentForm.MnuViewToggleThemeClick(Sender: TObject);
 begin
@@ -1748,7 +1724,7 @@ end;
 
 procedure TLazyCodingAgentForm.SplTerminalMoved(Sender: TObject);
 begin
-  if FState.IsPanelVisible(piTerminal) and not FState.IsPanelFloating(piTerminal) then
+  if FState.IsPanelVisible(piTerminal) then
     FState.SetPanelDockedHeight(piTerminal, pnlTerminalHost.Height);
 end;
 
@@ -1795,8 +1771,8 @@ begin
   Eng := ActiveAgent;
   if Assigned(Eng) then
     Eng.ClearConversation;
-  if Assigned(FChatContent) then
-    FChatContent.ClearHistory;
+  if Assigned(FChatPanel) then
+    FChatPanel.ClearHistory;
   SaveCurrentSession;
 end;
 
@@ -2001,8 +1977,8 @@ begin
   FCurrentSessionId := '';
   FRegistry.ActiveWorkspaceId := '';
   FRegistry.Save;
-  if Assigned(FChatContent) then
-    FChatContent.ClearHistory;
+  if Assigned(FChatPanel) then
+    FChatPanel.ClearHistory;
   FState.SetPanelVisible(piChat, False);
   StateChanged(Self);
 end;
@@ -2052,8 +2028,7 @@ end;
 
 procedure TLazyCodingAgentForm.CreateAndSelectNewSession;
 begin
-  if Assigned(FPageControlCenter) and Assigned(FChatCenterPage) then
-    FPageControlCenter.ActivePage := FChatCenterPage;
+  ShowChatCenterTab;
   NavSessionNew(Self);
 end;
 
@@ -2163,102 +2138,38 @@ begin
   StateChanged(Self);
 end;
 
-function TLazyCodingAgentForm.GetChatDockHost: TWinControl;
-begin
-  if Assigned(FChatCenterPage) then
-    Result := FChatCenterPage
-  else
-    Result := pnlChatHost;
-end;
 
-function TLazyCodingAgentForm.FindEditorTabByPath(const APath: string): TFileEditorTab;
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TFileEditorTab;
-  Norm: string;
-begin
-  Result := nil;
-  if not Assigned(FPageControlCenter) then Exit;
-  Norm := ExpandFileName(APath);
-  for I := 0 to FPageControlCenter.PageCount - 1 do begin
-    Page := FPageControlCenter.Pages[I];
-    if (Page.ControlCount > 0) and (Page.Controls[0] is TFileEditorTab) then begin
-      Tab := TFileEditorTab(Page.Controls[0]);
-      if SameText(ExpandFileName(Tab.FilePath), Norm) then
-        Exit(Tab);
-    end;
-  end;
-end;
-
-function TLazyCodingAgentForm.FindMarkdownTabByPath(const APath: string): TFileMarkdownTab;
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TFileMarkdownTab;
-  Norm: string;
-begin
-  Result := nil;
-  if not Assigned(FPageControlCenter) then Exit;
-  Norm := ExpandFileName(APath);
-  for I := 0 to FPageControlCenter.PageCount - 1 do begin
-    Page := FPageControlCenter.Pages[I];
-    if (Page.ControlCount > 0) and (Page.Controls[0] is TFileMarkdownTab) then begin
-      Tab := TFileMarkdownTab(Page.Controls[0]);
-      if SameText(ExpandFileName(Tab.FilePath), Norm) then
-        Exit(Tab);
-    end;
-  end;
-end;
 
 procedure TLazyCodingAgentForm.OpenMarkdownInCenterTab(const APath: string);
 var
-  Path, Cap: string;
-  Tab: TFileMarkdownTab;
-  Page: TLazyTabPage;
-  I: Integer;
+  Path: string;
+  Lines: TStringList;
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
     ShowMessage('File not found.');
     Exit;
   end;
-  Tab := FindMarkdownTabByPath(Path);
-  if Tab <> nil then begin
-    for I := 0 to FPageControlCenter.PageCount - 1 do
-      if FPageControlCenter.Pages[I] = Tab.Parent then begin
-        FPageControlCenter.ActivePageIndex := I;
-        Break;
-      end;
-    Exit;
+  FMarkdownPath := Path;
+  if Assigned(FMarkdownPreview) then begin
+    Lines := TStringList.Create;
+    try
+      Lines.LoadFromFile(Path);
+      FMarkdownPreview.SetMarkdown(Lines.Text);
+    finally
+      Lines.Free;
+    end;
   end;
-  Cap := ExtractFileName(Path) + ' [Preview]';
-  Page := FPageControlCenter.AddPage(Cap);
-  Page.CanClose := True;
-  Tab := TFileMarkdownTab.Create(Page);
-  Tab.Parent := Page;
-  Tab.Align := alClient;
-  if not Tab.LoadFile(Path) then begin
-    FPageControlCenter.RemovePage(Page);
-    ShowMessage('Could not open file.');
-    Exit;
-  end;
+  tsMarkdown.Caption := ExtractFileName(Path) + ' [Preview]';
+  TThemedPageTabBar.SetTabHidden(tsMarkdown, False);
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
-  Tab.ApplyTheme(FState.Theme);
-  FPageControlCenter.ActivePage := Page;
+  if Assigned(pgcCenter) then
+    pgcCenter.ActivePage := tsMarkdown;
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
 end;
 
-function TLazyCodingAgentForm.ActiveFileEditorTab: TFileEditorTab;
-var
-  Page: TLazyTabPage;
-begin
-  Result := nil;
-  if not Assigned(FPageControlCenter) then Exit;
-  Page := FPageControlCenter.ActivePage;
-  if (Page <> nil) and (Page.ControlCount > 0) and (Page.Controls[0] is TFileEditorTab) then
-    Result := TFileEditorTab(Page.Controls[0]);
-end;
 
 procedure TLazyCodingAgentForm.NavFileOpen(Sender: TObject; const AFilePath: string);
 var
@@ -2281,131 +2192,69 @@ end;
 
 procedure TLazyCodingAgentForm.OpenFileInCenterTab(const APath: string);
 var
-  Path, Cap: string;
-  Tab: TFileEditorTab;
-  Page: TLazyTabPage;
-  I: Integer;
+  Path: string;
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
     ShowMessage('File not found.');
     Exit;
   end;
-  Tab := FindEditorTabByPath(Path);
-  if Tab <> nil then begin
-    for I := 0 to FPageControlCenter.PageCount - 1 do
-      if FPageControlCenter.Pages[I] = Tab.Parent then begin
-        FPageControlCenter.ActivePageIndex := I;
-        Break;
-      end;
-    Exit;
-  end;
-  Cap := ExtractFileName(Path);
-  Page := FPageControlCenter.AddPage(Cap);
-  Page.CanClose := True;
-  Tab := TFileEditorTab.Create(Page);
-  Tab.Parent := Page;
-  Tab.Align := alClient;
-  if not Tab.LoadFile(Path) then begin
-    FPageControlCenter.RemovePage(Page);
+  if Assigned(FFileEditor) and FFileEditor.Modified and
+     (FFileEditor.FilePath <> '') and not SameText(FFileEditor.FilePath, Path) then
+    if not FFileEditor.PromptSaveIfModified then
+      Exit;
+  if not Assigned(FFileEditor) then Exit;
+  if not FFileEditor.LoadFile(Path) then begin
     ShowMessage('Could not open file.');
     Exit;
   end;
+  tsEditor.Caption := ExtractFileName(Path);
+  TThemedPageTabBar.SetTabHidden(tsEditor, False);
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
-  Tab.ApplyTheme(FState.Theme);
-  if Assigned(FSyntaxSchemes) then
-    Tab.ApplySyntaxScheme(FSyntaxSchemes.ActiveScheme);
-  FPageControlCenter.ActivePage := Page;
+  ApplyEditorTheme;
+  RefreshEditorScheme;
+  if Assigned(pgcCenter) then
+    pgcCenter.ActivePage := tsEditor;
+  if Assigned(FCenterTabBar) then
+    FCenterTabBar.RefreshFromPageControl;
 end;
 
-function TLazyCodingAgentForm.CenterEditorTabCloseAllow(Sender: TObject): Boolean;
-var
-  Page: TLazyTabPage;
-  Tab: TFileEditorTab;
+procedure TLazyCodingAgentForm.ApplyEditorTheme;
 begin
-  if not (Sender is TLazyTabPage) then
+  if Assigned(FFileEditor) then
+    FFileEditor.ApplyTheme(FState.Theme);
+end;
+
+procedure TLazyCodingAgentForm.RefreshEditorScheme;
+begin
+  if Assigned(FFileEditor) and Assigned(FSyntaxSchemes) then
+    FFileEditor.ApplySyntaxScheme(FSyntaxSchemes.ActiveScheme);
+end;
+
+function TLazyCodingAgentForm.PromptDirtyEditor: Boolean;
+begin
+  if not Assigned(FFileEditor) then
     Exit(True);
-  Page := TLazyTabPage(Sender);
-  if Page = FChatCenterPage then
-    Exit(False);
-  if (Page.ControlCount > 0) and (Page.Controls[0] is TFileEditorTab) then begin
-    Tab := TFileEditorTab(Page.Controls[0]);
-    Exit(Tab.PromptSaveIfModified);
-  end;
-  Result := True;
-end;
-
-procedure TLazyCodingAgentForm.ApplyCenterEditorThemes;
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TFileEditorTab;
-  MdTab: TFileMarkdownTab;
-begin
-  if not Assigned(FPageControlCenter) then Exit;
-  for I := 0 to FPageControlCenter.PageCount - 1 do begin
-    Page := FPageControlCenter.Pages[I];
-    if Page.ControlCount = 0 then Continue;
-    if Page.Controls[0] is TFileEditorTab then begin
-      Tab := TFileEditorTab(Page.Controls[0]);
-      Tab.ApplyTheme(FState.Theme);
-    end else if Page.Controls[0] is TFileMarkdownTab then begin
-      MdTab := TFileMarkdownTab(Page.Controls[0]);
-      MdTab.ApplyTheme(FState.Theme);
-    end;
-  end;
-end;
-
-procedure TLazyCodingAgentForm.RefreshAllEditorSchemes;
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TFileEditorTab;
-begin
-  if not Assigned(FPageControlCenter) or not Assigned(FSyntaxSchemes) then Exit;
-  for I := 0 to FPageControlCenter.PageCount - 1 do begin
-    Page := FPageControlCenter.Pages[I];
-    if (Page.ControlCount > 0) and (Page.Controls[0] is TFileEditorTab) then begin
-      Tab := TFileEditorTab(Page.Controls[0]);
-      Tab.ApplySyntaxScheme(FSyntaxSchemes.ActiveScheme);
-    end;
-  end;
+  if (pgcCenter = nil) or (pgcCenter.ActivePage <> tsEditor) then
+    Exit(True);
+  Result := FFileEditor.PromptSaveIfModified;
 end;
 
 function TLazyCodingAgentForm.SaveActiveEditorFile: Boolean;
-var
-  Tab: TFileEditorTab;
-  Page: TLazyTabPage;
 begin
-  Tab := ActiveFileEditorTab;
-  if Tab = nil then
+  if not Assigned(FFileEditor) or (FFileEditor.FilePath = '') then
     Exit(False);
-  Result := Tab.SaveFile;
-  if Result and (Tab.Parent is TLazyTabPage) then begin
-    Page := TLazyTabPage(Tab.Parent);
-    Page.Caption := ExtractFileName(Tab.FilePath);
+  if (pgcCenter = nil) or (pgcCenter.ActivePage <> tsEditor) then
+    Exit(False);
+  Result := FFileEditor.SaveFile;
+  if Result then begin
+    tsEditor.Caption := ExtractFileName(FFileEditor.FilePath);
+    if Assigned(FCenterTabBar) then
+      FCenterTabBar.RefreshFromPageControl;
   end;
 end;
 
-function TLazyCodingAgentForm.PromptAllDirtyEditors: Boolean;
-var
-  I: Integer;
-  Page: TLazyTabPage;
-  Tab: TFileEditorTab;
-begin
-  if not Assigned(FPageControlCenter) then
-    Exit(True);
-  for I := 0 to FPageControlCenter.PageCount - 1 do begin
-    Page := FPageControlCenter.Pages[I];
-    if (Page.ControlCount > 0) and (Page.Controls[0] is TFileEditorTab) then begin
-      Tab := TFileEditorTab(Page.Controls[0]);
-      if Tab.Modified and not Tab.PromptSaveIfModified then
-        Exit(False);
-    end;
-  end;
-  Result := True;
-end;
 
 procedure TLazyCodingAgentForm.RebuildActiveSchemeMenu;
 var
@@ -2438,7 +2287,7 @@ begin
   if (Idx < 0) or (Idx >= FSyntaxSchemes.Count) then Exit;
   E := FSyntaxSchemes.GetEntry(Idx);
   FSyntaxSchemes.SetActive(E.Id);
-  RefreshAllEditorSchemes;
+  RefreshEditorScheme;
   RebuildActiveSchemeMenu;
 end;
 
@@ -2449,7 +2298,7 @@ begin
   if not Assigned(FSyntaxSchemes) then Exit;
   TSyntaxSchemesForm.Execute(Self, FState.Theme, FSyntaxSchemes, SchemesChanged);
   if SchemesChanged then begin
-    RefreshAllEditorSchemes;
+    RefreshEditorScheme;
     RebuildActiveSchemeMenu;
   end;
 end;

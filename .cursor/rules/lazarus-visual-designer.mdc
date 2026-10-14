@@ -1,32 +1,66 @@
 ---
-description: Lazarus LCL forms — Visual Form Designer first, theme at runtime
+description: Lazarus IDE + LCL — designer-editable .lfm, standard palette only, theme at runtime
 alwaysApply: true
 ---
 
-# Lazarus Visual Form Designer (preferred)
+# Lazarus IDE-first UI
 
-## Forms and resources
+## Project stack
 
-- Use **paired `.pas` + `.lfm`** with `{$R *.lfm}` and normal `TForm.Create(Application)` (or `Create(AOwner)` for modal dialogs).
-- Do **not** use `CreateNew` + manual `BuildForm` for user-facing dialogs; those cannot be edited in the Lazarus Form Designer.
-- Declare **published** components and event handlers on the form class. Wire `OnCreate`, `OnClick`, and similar in `.lfm` when the designer supports it.
-- Reference: [mainunit.pas](mainunit.pas) / [mainunit.lfm](mainunit.lfm), [frmSettings.pas](frmSettings.pas) / [frmSettings.lfm](frmSettings.lfm), [frmModelSearch.pas](frmModelSearch.pas), [frmEditSavedModel.pas](frmEditSavedModel.pas).
+- **LazyCodingAgent** is a **Lazarus + LCL** desktop application (Free Pascal compiler under the hood).
+- Default workflow: open `lazycodingagent.lpi` in the **Lazarus IDE**, edit forms in the **Form Designer**, build with the IDE or `lazbuild`.
+- **No custom component package:** every visible control is a **stock LCL** type streamed in the form **`.lfm`** (`TPageControl`, `TTabSheet`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab. **Runtime-only (not in `.lfm`):** `TTerminalLCLView` (ViewLCL) via [`uTerminalPanel.pas`](uTerminalPanel.pas); **`TThemedPageTabBar`** on streamed **`TPanel`** tab-strip hosts via [`uThemedPageTabBar.pas`](uThemedPageTabBar.pas); **`TMarkdownHtmlView`** (TurboPower IpHtml) on streamed **`TPanel`** hosts for chat history, Markdown preview, and Help—via [`uMarkdownHtmlView.pas`](uMarkdownHtmlView.pas)—so the IDE needs no ViewLCL or custom tab design package.
+- Do **not** treat this repo as a console-only or “code-only UI” FPC project. The main window and dialogs must remain **editable in Lazarus** for layout.
 
-## Layout conventions
+## Lazarus IDE contract (hard requirements)
 
-- See [`lazarus-lcl-layout.mdc`](lazarus-lcl-layout.mdc) for **ChangeBounds** / dual-layout rules (`Align` vs `SetBounds`, combos, tabs, detach).
-- Prefer `Align`, `Anchors`, and `BevelOuter = bvNone` on panels.
-- Place **host `TPanel`s** on the main form in the designer; create complex custom controls at runtime **inside** those hosts (e.g. `InitWorkspaceSubControls` in mainunit).
-- **Exceptions (code-built only):** dock/chat/nav internals (`TDockPanel`, `TChatPanel`, …), dynamic `TDetachedPanelForm` in [uDockPanel.pas](uDockPanel.pas).
+### Layout lives in `.lfm`
+
+- **`TForm`** uses paired **`.pas` + `.lfm`**, `{$R *.lfm}`, designer **`published`** fields, and `inherited` in constructors where applicable.
+- Use normal **`TForm.Create(Application)`** or **`Create(AOwner)`** for modal dialogs—not `CreateNew` + manual `BuildForm` for user-facing UI.
+- **Geometry and hierarchy** belong in the **`.lfm`** (`Align`, `Anchors`, tab order, captions). The **`.pas`** file holds **published** components and **event handlers** wired from the `.lfm`, plus business logic in `private` / `implementation`.
+- Do **not** build designer-owned layout with **`TXXX.Create(Self)`** + manual **`SetBounds`** / parent assignment for new UI. Use the palette on the form instead.
+
+### Standard LCL component palette only
+
+- Use stock LCL controls from the component palette only.
+- **Buttons:** designer **`TButton`**; optional `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from [`uTheme.pas`](uTheme.pas). On **Windows**, [`uThemeWin32Buttons.pas`](uThemeWin32Buttons.pas) custom-paints those fills via `SetWindowSubclass` + `PaintThemedButton` (stock `TButton` in `.lfm` only). Linux/macOS use native widget colors (`TButton.Color`).
+- **Tabs:** keep **`TPageControl`** / **`TTabSheet`** in **`.lfm`** with **`ShowTabs = False`**; use a stock **`TPanel`** tab-strip host in chrome; create **`TThemedPageTabBar`** at runtime in `FormCreate` (themed headers, optional **✕**, optional **`[+]`**).
+- Apply look-and-feel at runtime via [`uTheme.pas`](uTheme.pas)—not other custom tab or button frame subclasses.
+- **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, `fraThemedButton`, `fraThemedPicker`, `uMarkdownView`, or a Lazarus design package under `components/`. **`uPanelDetach`** is allowed for floating panels; detach controls are stock **`TButton`** (`⧉`) on panel chrome in `.lfm`.
+
+### Published events and designer wiring
+
+- Declare **published** components and event methods on the form class. Wire `OnCreate`, `OnClick`, `OnChange`, and similar in **`.lfm`** when the designer supports it.
+- Any handler named in a `.lfm` must appear in the class **`published`** section (before `private`).
+
+### Non-visual helpers (not layout owners)
+
+- [`uNavigationPanel.pas`](uNavigationPanel.pas) — `TNavContentControl` binds to streamed nav labels, lists, tree, and buttons on `mainunit`.
+- [`uChatPanel.pas`](uChatPanel.pas) — `TChatPanel` binds to streamed chat labels, `pnlChatHistoryHost`, prompt memo, combos, and buttons; creates **`TMarkdownHtmlView`** on the history host at runtime.
+- [`uTerminalPanel.pas`](uTerminalPanel.pas) — PTY controller; creates **`TTerminalLCLView`** on the streamed `pnlTerminalContent` host at runtime.
+- [`uThemedPageTabBar.pas`](uThemedPageTabBar.pas) — themed tab strip; created on streamed `pnl*TabStripHost` panels in [`mainunit.pas`](mainunit.pas) / [`frmSettings.pas`](frmSettings.pas) at runtime (not streamed).
+- [`uMainFileEditor.pas`](uMainFileEditor.pas) / [`uPlanView.pas`](uPlanView.pas) — logic for streamed `TSynEdit` and plan utility controls.
+
+Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
+
+## Main form layout ([`mainunit.lfm`](mainunit.lfm))
+
+- **Nav rail:** one `TSpeedButton` per navigation item, `Align = alTop`, shared `GroupIndex`, `OnClick` in `.lfm`.
+- **Nav body:** title/subtitle labels, `TListBox` / `TTreeView`, log list boxes, action buttons — visibility and captions only in code.
+- **Center `TPageControl`:** Chat (history + composer + mode/model combos), Editor (`TSynEdit`), Markdown preview (`TPanel` host). One open file at a time; no per-file tab strip. Session name on the chat sheet; session list in **Sessions** nav.
+- **Utility `TPageControl`:** Scratchpad, Execution Detail, Plan — fixed sheets.
+- **Terminal:** chrome and status label on the bottom host in `.lfm`; `TTerminalLCLView` added at runtime. Panel **hide** (✕) only; no floating detach.
+
+Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) when adding rail items or large structural changes; preserve the `MainMenu1` tail.
 
 ## Theming (dark and light)
 
-- Do **not** hardcode theme colors or fonts in `.lfm` (e.g. `clGray`, fixed `Color`). Use designer-neutral defaults; runtime applies [uTheme.pas](uTheme.pas).
-- On show and on theme toggle: `ApplyAllThemes` / `ApplyTheme`, `ThemePalette`, `ApplyControlTheme`, `TThemedButton.ApplyTheme`, `TLazyTabControl.ApplyTheme`, `ConfigureThemedListBox`, `StyleComboBox` + `StyleComboBoxDrawItem`, `ApplyPlatformChrome`.
-- Custom palette components: `TLazyTabControl`, `TLazyTabPage` ([uCustomTabControl.pas](uCustomTabControl.pas)), `TThemedButton` ([uThemedButton.pas](uThemedButton.pas)) — place on forms in the designer like Settings.
+- Do **not** hardcode theme colors or fonts in `.lfm`. Runtime applies [`uTheme.pas`](uTheme.pas): `ApplyAllThemes`, `ApplyThemedControlTree`, `ApplyThemedForm`, `ThemePalette`, `StyleComboBox`, `ConfigureThemedListBox`, `ApplyPlatformChrome`; custom hooks via [`uThemeHooks.pas`](uThemeHooks.pas).
+- Chat history, Markdown file preview, and Help topics use **`TMarkdownHtmlView`** on streamed **`TPanel`** hosts (rendered Markdown subset).
 
 ## When adding UI
 
-1. Add or extend layout in the **Form Designer** (`.lfm`).
-2. Keep business logic in `.pas`; call theme helpers from `FormCreate` / `ApplyTheme`, not from fixed LFM colors.
-3. After changes, verify **dark and light** via `View > Toggle Light / Dark Theme` on the main form and reopen dialogs.
+1. Add or extend layout in the **Form Designer** (`.lfm`), usually [`mainunit.lfm`](mainunit.lfm) or a `frm*.lfm` dialog.
+2. Wire events in `.lfm`; implement handlers in `.pas`.
+3. After changes, verify **dark and light** via **View → Toggle Light / Dark Theme** and `lazbuild lazycodingagent.lpi`.

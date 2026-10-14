@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil,
-  uAppTypes, uTheme, uThemedButton, uWorkspaceRegistry;
+  uAppTypes, uTheme, uWorkspaceRegistry;
 
 type
   TNewWorkspaceForm = class(TForm)
@@ -14,10 +14,11 @@ type
     edtDisplayName: TEdit;
     lblFolder: TLabel;
     edtFolder: TEdit;
-    btnBrowse: TThemedButton;
+    btnBrowse: TButton;
     pnlBottom: TPanel;
-    btnOK: TThemedButton;
-    btnCancel: TThemedButton;
+    btnOK: TButton;
+    btnCancel: TButton;
+    procedure FormShow(Sender: TObject);
     procedure btnBrowseClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
@@ -55,6 +56,11 @@ begin
   end;
 end;
 
+procedure TNewWorkspaceForm.FormShow(Sender: TObject);
+begin
+  ApplyFormPlatformThemes(Self, FTheme);
+end;
+
 procedure TNewWorkspaceForm.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -64,17 +70,14 @@ begin
   Color := P.Background;
   Font.Color := P.Text;
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
   edtDisplayName.Color := P.SurfaceAlt;
   edtDisplayName.Font.Color := P.Text;
   edtFolder.Color := P.SurfaceAlt;
   edtFolder.Font.Color := P.Text;
-  btnBrowse.ButtonRole := tbrPrimary;
-  btnOK.ButtonRole := tbrPrimary;
-  btnCancel.ButtonRole := tbrCancel;
-  btnBrowse.ApplyTheme(ATheme);
-  btnOK.ApplyTheme(ATheme);
-  btnCancel.ApplyTheme(ATheme);
+  StyleCancelButton(btnBrowse, ATheme);
+  StylePrimaryButton(btnOK, ATheme);
+  StyleCancelButton(btnCancel, ATheme);
   ApplyPlatformChrome(Self, ATheme);
 end;
 

@@ -22,6 +22,16 @@
     </PublishOptions>
     <RunParams>
       <FormatVersion Value="2"/>
+      <Modes>
+        <Mode Name="default">
+          <environment>
+            <UserOverrides Count="1">
+              <Variable0 Name="QT_QPA_PLATFORM" Value="xcb"/>
+            </UserOverrides>
+            <IncludeSystemVariables Value="True"/>
+          </environment>
+        </Mode>
+      </Modes>
     </RunParams>
     <RequiredPackages>
       <Item>
@@ -54,6 +64,30 @@
       </Unit>
       <Unit>
         <Filename Value="uAppTypes.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uTheme.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uThemeWin32Buttons.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uThemedPageTabBar.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uMarkdownHtmlView.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uPanelDetach.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uThemeHooks.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -219,23 +253,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uAppLogo.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uTheme.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uThemedButton.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="uWorkspaceState.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uDockPanel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -251,19 +269,15 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uMarkdownView.pas"/>
+        <Filename Value="uMainFileEditor.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="uPlanView.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uMainWorkspace.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uCustomTabControl.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uUtilityPlanTab.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -272,10 +286,6 @@
       </Unit>
       <Unit>
         <Filename Value="uAgentToolErrorLog.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uUtilityExecutionDetailTab.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
@@ -291,10 +301,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uFileEditorTab.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="frmSyntaxSchemes.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="SyntaxSchemesForm"/>
@@ -307,10 +313,6 @@
         <ComponentName Value="OpenMarkdownForm"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uFileMarkdownTab.pas"/>
-        <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uHelpContent.pas"/>

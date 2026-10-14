@@ -20,15 +20,15 @@ Save settings before starting a long agent run.
 
 ## Your first chat
 
-1. In the left rail, open **Sessions** and choose **+ New Chat Session**, or use **+** in the chat header.
-2. Pick a **mode** in the composer (Ask, Plan, or Agent).
-3. Choose a **model** from the dropdown.
+1. In the left rail, open **Sessions** and choose **+ New Chat Session**.
+2. Pick a **mode** in the composer footer (Ask, Plan, or Agent).
+3. Choose a **model** from the combo beside it.
 4. Type a prompt and send.
 
 Use **Ask** for questions without file writes. Use **Agent** when you want the assistant to edit the project.
 
 ## Where to learn more
 
-- **Workspace layout and panels** — navigation, detachable windows, terminal.
+- **Workspace layout and panels** — navigation, center tabs, utility panel, terminal.
 - **Chat, sessions, and modes** — parallel sessions, archive, mode differences.
 - **How the agent works** — what happens after you press Send (educational overview).

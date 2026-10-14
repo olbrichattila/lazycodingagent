@@ -6,9 +6,9 @@ Each workspace can run **several chat sessions** in parallel:
 
 - Every session has its own conversation and **agent engine**.
 - Switching sessions or workspaces does **not** stop a run in another session; it continues in the background.
-- Session tabs above the chat switch quickly; closing a tab **archives** the session (not a permanent delete unless you delete from the archive list).
+- Switch sessions from **Sessions** in the nav rail; the active session name appears on the **Chat** tab.
 
-Create sessions from **Sessions** in the nav rail (**+ New Chat Session**) or **+** in the chat header.
+Create sessions from **Sessions** (**+ New Chat Session**) or click **+** on the center tab strip above the Chat panel (same action). Archive, restore, or delete from the same view (archiving is not a permanent delete until you delete from the archive list).
 
 ## Composer modes
 
@@ -20,15 +20,26 @@ Create sessions from **Sessions** in the nav rail (**+ New Chat Session**) or **
 
 The mode applies to the **next run** and is sent with the system prompt so the model knows which tools exist.
 
+Pick **Ask**, **Plan**, or **Agent** from the **mode** combo at the left of the composer footer.
+
 ## Model selection
 
-The model dropdown lists models you configured in Settings. The choice is per composer state and shown on the status bar when relevant.
+The **model** combo lists models you configured in Settings. The choice is kept with the workspace and shown on the status bar when relevant.
 
-## Debugging mode
+## Debugging mode vs live trace
 
-In **Settings → Agent Behavior**, enable **Debugging mode** to show **full tool results** in the chat transcript. When disabled, successful tool calls are hidden in chat; **errors** still appear.
+In **Settings → Agent Behavior**, enable **Debugging mode** to show **full tool results** in the chat transcript. When disabled, successful tool JSON stays out of chat; **errors** still appear.
 
-For a step-by-step trace of LLM requests and tool calls, use execution / utility views when available in your build.
+With debugging off, you still get a readable run in chat:
+
+- **Activity** lines such as `Calling read_file` when each tool starts (not part of saved conversation history).
+- **Tools & Logs** in the nav rail plus **Execution Detail** in the utility panel for full prompts, tool arguments, and outputs.
+
+Click an older log row to **pin** the inspector on that step; click the **latest** row to follow the live trace again.
+
+## Step limit
+
+**Max steps** in Settings caps how many LLM round-trips one send can take (default 20). The status bar shows the current step during a run. If the cap is hit while the model still requested tools, the assistant adds a brief step-limit message instead of ending silently.
 
 ## Cancel and exit
 

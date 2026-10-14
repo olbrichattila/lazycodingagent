@@ -5,21 +5,25 @@ unit frmSettings;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, LCLType,
-  uAppTypes, uAgentTypes, uTheme, uThemedButton, uWorkspaceState, uWorkspaceRegistry,
-  uCustomTabControl,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType,
+  uAppTypes, uAgentTypes, uTheme, uWorkspaceState, uWorkspaceRegistry,
+  
   uLlmClient, frmModelSearch, frmEditSavedModel;
 
 type
   { TSettingsForm }
   TSettingsForm = class(TForm)
     pnlBottom: TPanel;
-    btnOK: TThemedButton;
-    btnCancel: TThemedButton;
-    PageControl1: TLazyTabControl;
-    tabProvider: TLazyTabPage;
-    tabAgent: TLazyTabPage;
-    tabWorkspace: TLazyTabPage;
+    btnOK: TButton;
+    btnCancel: TButton;
+    pnlSettingsTabsHost: TPanel;
+    pgcSettings: TPageControl;
+    tsProvider: TTabSheet;
+    pnlTabProvider: TPanel;
+    tsAgent: TTabSheet;
+    pnlTabAgent: TPanel;
+    tsWorkspace: TTabSheet;
+    pnlTabWorkspace: TPanel;
 
     lblProvider: TLabel;
     cboProvider: TComboBox;
@@ -29,9 +33,9 @@ type
     edtBaseUrl: TEdit;
     lblModels: TLabel;
     lstModels: TListBox;
-    btnFetchModels: TThemedButton;
-    btnEditModel: TThemedButton;
-    btnDeleteModel: TThemedButton;
+    btnFetchModels: TButton;
+    btnEditModel: TButton;
+    btnDeleteModel: TButton;
     lblNotice: TLabel;
 
     lblTemp: TLabel;
@@ -45,11 +49,12 @@ type
 
     lblWorkspaceRoot: TLabel;
     edtWorkspaceRoot: TEdit;
-    btnBrowseWorkspace: TThemedButton;
+    btnBrowseWorkspace: TButton;
     lblWorkspaceName: TLabel;
     edtWorkspaceName: TEdit;
 
     procedure FormCreate(Sender: TObject);
+    procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure cboProviderDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
@@ -120,6 +125,11 @@ begin
   end;
 end;
 
+procedure TSettingsForm.FormShow(Sender: TObject);
+begin
+  ApplyFormPlatformThemes(Self, FCurrentTheme);
+end;
+
 procedure TSettingsForm.FormCreate(Sender: TObject);
 begin
   Caption := 'LazyCodingAgent Settings';
@@ -159,9 +169,9 @@ begin
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
 
-  PageControl1.ApplyTheme(ATheme);
   StyleComboBox(cboProvider, ATheme);
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
+  pnlBottom.Color := P.Surface;
 
   edtApiKey.Color := P.SurfaceAlt;
   edtApiKey.Font.Color := P.Text;
@@ -190,20 +200,13 @@ begin
   if Assigned(lblDebuggingHint) then
     lblDebuggingHint.Font.Color := P.TextMuted;
 
-  btnOK.ButtonRole := tbrPrimary;
-  btnCancel.ButtonRole := tbrCancel;
-  btnBrowseWorkspace.ButtonRole := tbrPrimary;
-  btnFetchModels.ButtonRole := tbrPrimary;
-  btnEditModel.ButtonRole := tbrPrimary;
-  btnDeleteModel.ButtonRole := tbrDestructive;
-  btnOK.ApplyTheme(ATheme);
-  btnCancel.ApplyTheme(ATheme);
-  btnBrowseWorkspace.ApplyTheme(ATheme);
-  btnFetchModels.ApplyTheme(ATheme);
-  btnEditModel.ApplyTheme(ATheme);
-  btnDeleteModel.ApplyTheme(ATheme);
+  StylePrimaryButton(btnOK, ATheme);
+  StyleCancelButton(btnCancel, ATheme);
+  StyleCancelButton(btnBrowseWorkspace, ATheme);
+  StylePrimaryButton(btnFetchModels, ATheme);
+  StyleCancelButton(btnEditModel, ATheme);
+  StyleDestructiveButton(btnDeleteModel, ATheme);
 
-  PageControl1.Invalidate;
   Invalidate;
 end;
 
@@ -276,7 +279,8 @@ begin
   edtWorkspaceRoot.Text := FState.WorkspaceRoot;
   edtWorkspaceName.Text := FState.WorkspaceName;
 
-  PageControl1.ActivePage := tabProvider;
+  if Assigned(pgcSettings) then
+    pgcSettings.ActivePageIndex := 0;
 end;
 
 procedure TSettingsForm.SaveToState;

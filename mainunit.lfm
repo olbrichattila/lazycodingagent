@@ -1,7 +1,7 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 1891
+  Left = 30
   Height = 1350
-  Top = 141
+  Top = 178
   Width = 2160
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 1350
@@ -30,22 +30,319 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Left = 0
       Height = 976
       Top = 0
-      Width = 84
+      Width = 76
       Align = alLeft
       BevelOuter = bvNone
+      ClientHeight = 976
+      ClientWidth = 76
       TabOrder = 0
+      object sbtnNavBrain: TSpeedButton
+        Tag = 10
+        Left = 0
+        Height = 40
+        Top = 496
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '◉'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavKnowledge: TSpeedButton
+        Tag = 9
+        Left = 0
+        Height = 40
+        Top = 448
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '📖'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavExecPlans: TSpeedButton
+        Tag = 8
+        Left = 0
+        Height = 40
+        Top = 400
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '☑'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavMultiAgent: TSpeedButton
+        Tag = 7
+        Left = 0
+        Height = 40
+        Top = 352
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 16
+        Caption = '⬡'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavToolErrors: TSpeedButton
+        Tag = 6
+        Left = 0
+        Height = 40
+        Top = 296
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '⚠'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavTasks: TSpeedButton
+        Tag = 5
+        Left = 0
+        Height = 40
+        Top = 248
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '☰'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavTools: TSpeedButton
+        Tag = 4
+        Left = 0
+        Height = 40
+        Top = 200
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '◈'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavBots: TSpeedButton
+        Tag = 3
+        Left = 0
+        Height = 40
+        Top = 152
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '✦'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavSessions: TSpeedButton
+        Tag = 2
+        Left = 0
+        Height = 40
+        Top = 104
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '✉'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavProjects: TSpeedButton
+        Tag = 1
+        Left = 0
+        Height = 40
+        Top = 56
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '◫'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
+      object sbtnNavHome: TSpeedButton
+        Left = 0
+        Height = 40
+        Top = 8
+        Width = 76
+        Align = alTop
+        BorderSpacing.Top = 8
+        Caption = '⌂'
+        Flat = True
+        Font.Height = -24
+        GroupIndex = 1
+        ParentFont = False
+        OnClick = NavRailBtnClick
+      end
     end
     object pnlNavHost: TPanel
-      Left = 84
+      Left = 76
       Height = 976
       Top = 0
       Width = 375
       Align = alLeft
       BevelOuter = bvNone
+      ClientHeight = 976
+      ClientWidth = 375
       TabOrder = 1
+      object pnlNavChrome: TPanel
+        Left = 0
+        Height = 51
+        Top = 0
+        Width = 375
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 51
+        ClientWidth = 375
+        TabOrder = 0
+        object lblNavTitle: TLabel
+          Left = 12
+          Height = 25
+          Top = 14
+          Width = 86
+          Caption = 'Navigation'
+        end
+        object btnNavDetach: TButton
+          Left = 267
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
+        object btnNavHide: TButton
+          Left = 321
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '✕'
+          TabOrder = 1
+          OnClick = PanelHideClick
+        end
+      end
+      object pnlNavContent: TPanel
+        Left = 0
+        Height = 925
+        Top = 51
+        Width = 375
+        Align = alClient
+        BevelOuter = bvNone
+        ClientHeight = 925
+        ClientWidth = 375
+        TabOrder = 1
+        object lblNavViewTitle: TLabel
+          Left = 10
+          Height = 25
+          Top = 0
+          Width = 365
+          Align = alTop
+          BorderSpacing.Left = 10
+          Caption = 'Workspaces'
+          Layout = tlCenter
+        end
+        object lblNavViewSub: TLabel
+          Left = 10
+          Height = 25
+          Top = 25
+          Width = 365
+          Align = alTop
+          BorderSpacing.Left = 10
+          Caption = 'Select a workspace'
+          Layout = tlCenter
+        end
+        object btnNavPrimary: TButton
+          Left = 0
+          Height = 45
+          Top = 880
+          Width = 375
+          Align = alBottom
+          Caption = 'Action'
+          TabOrder = 0
+        end
+        object btnNavSecondary: TButton
+          Left = 0
+          Height = 48
+          Top = 832
+          Width = 375
+          Align = alBottom
+          Caption = 'Secondary'
+          TabOrder = 1
+          Visible = False
+        end
+        object lstNavFile: TListBox
+          Left = 0
+          Height = 782
+          Top = 50
+          Width = 375
+          Align = alClient
+          ItemHeight = 0
+          TabOrder = 2
+        end
+        object tvNavProjects: TTreeView
+          Left = 0
+          Height = 782
+          Top = 50
+          Width = 375
+          Align = alClient
+          ReadOnly = True
+          TabOrder = 3
+          Visible = False
+          Options = [tvoAutoItemHeight, tvoHideSelection, tvoKeepCollapsedNodes, tvoReadOnly, tvoShowButtons, tvoShowLines, tvoShowRoot, tvoToolTips, tvoThemedDraw]
+        end
+        object lstNavLog: TListBox
+          Left = 0
+          Height = 782
+          Top = 50
+          Width = 375
+          Align = alClient
+          ItemHeight = 0
+          TabOrder = 4
+          Visible = False
+        end
+        object lstNavErrors: TListBox
+          Left = 10
+          Height = 782
+          Top = 50
+          Width = 365
+          Align = alClient
+          BorderSpacing.Left = 10
+          ItemHeight = 0
+          TabOrder = 5
+          Visible = False
+        end
+      end
     end
     object splNav: TSplitter
-      Left = 459
+      Left = 451
       Height = 976
       Top = 0
       Width = 8
@@ -58,8 +355,154 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Width = 420
       Align = alRight
       BevelOuter = bvNone
+      ClientHeight = 976
+      ClientWidth = 420
       TabOrder = 2
       Visible = False
+      object pnlUtilityChrome: TPanel
+        Left = 0
+        Height = 51
+        Top = 0
+        Width = 420
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 51
+        ClientWidth = 420
+        TabOrder = 0
+        object pnlUtilityTabStripHost: TPanel
+          Left = 0
+          Height = 51
+          Top = 0
+          Width = 420
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
+        end
+        object btnUtilityDetach: TButton
+          Tag = 3
+          Left = 312
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 1
+          OnClick = PanelDetachClick
+        end
+        object btnUtilityHide: TButton
+          Tag = 3
+          Left = 366
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '✕'
+          TabOrder = 2
+          OnClick = PanelHideClick
+        end
+      end
+      object pnlUtilityContent: TPanel
+        Left = 0
+        Height = 925
+        Top = 51
+        Width = 420
+        Align = alClient
+        BevelOuter = bvNone
+        ClientHeight = 925
+        ClientWidth = 420
+        TabOrder = 1
+        object pgcUtility: TPageControl
+          Left = 0
+          Height = 925
+          Top = 0
+          Width = 420
+          ActivePage = tsUtilityScratch
+          Align = alClient
+          ShowTabs = False
+          TabIndex = 0
+          TabOrder = 0
+          object tsUtilityScratch: TTabSheet
+            Caption = 'Scratchpad'
+            ClientHeight = 917
+            ClientWidth = 412
+            object memUtilityScratch: TMemo
+              Left = 0
+              Height = 917
+              Top = 0
+              Width = 412
+              Align = alClient
+              ScrollBars = ssVertical
+              TabOrder = 0
+            end
+          end
+          object tsUtilityExecDetail: TTabSheet
+            Caption = 'Execution Detail'
+            ClientHeight = 917
+            ClientWidth = 412
+            object pnlUtilityExecDetailHost: TPanel
+              Left = 0
+              Height = 917
+              Top = 0
+              Width = 412
+              Align = alClient
+              BevelOuter = bvNone
+              TabOrder = 0
+            end
+          end
+          object tsUtilityPlan: TTabSheet
+            Caption = 'Plan'
+            ClientHeight = 917
+            ClientWidth = 412
+            object pnlPlanHeader: TPanel
+              Left = 0
+              Height = 27
+              Top = 0
+              Width = 412
+              Align = alTop
+              BevelOuter = bvNone
+              ClientHeight = 27
+              ClientWidth = 412
+              TabOrder = 0
+              object lblPlanPath: TLabel
+                Left = 6
+                Height = 25
+                Top = 8
+                Width = 65
+                Caption = 'Plan file:'
+              end
+              object cboPlanModel: TComboBox
+                Left = 208
+                Height = 33
+                Top = 3
+                Width = 135
+                Anchors = [akTop, akRight]
+                ItemHeight = 25
+                Style = csDropDownList
+                TabOrder = 0
+              end
+              object btnPlanBuild: TButton
+                Left = 349
+                Height = 21
+                Top = 3
+                Width = 54
+                Anchors = [akTop, akRight]
+                Caption = 'Build'
+                TabOrder = 1
+              end
+            end
+            object memPlanBody: TMemo
+              Left = 0
+              Height = 890
+              Top = 27
+              Width = 412
+              Align = alClient
+              ReadOnly = True
+              ScrollBars = ssVertical
+              TabOrder = 1
+            end
+          end
+        end
+      end
     end
     object splUtility: TSplitter
       Left = 1732
@@ -78,8 +521,71 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Width = 428
       Align = alRight
       BevelOuter = bvNone
+      ClientHeight = 976
+      ClientWidth = 428
       TabOrder = 3
       Visible = False
+      object pnlReservedChrome: TPanel
+        Left = 0
+        Height = 51
+        Top = 0
+        Width = 428
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 51
+        ClientWidth = 428
+        TabOrder = 0
+        object lblReservedTitle: TLabel
+          Left = 12
+          Height = 25
+          Top = 14
+          Width = 81
+          Caption = 'Guidelines'
+        end
+        object btnReservedDetach: TButton
+          Tag = 2
+          Left = 318
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 0
+          OnClick = PanelDetachClick
+        end
+        object btnReservedHide: TButton
+          Tag = 2
+          Left = 374
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '✕'
+          TabOrder = 1
+          OnClick = PanelHideClick
+        end
+      end
+      object pnlReservedContent: TPanel
+        Left = 0
+        Height = 925
+        Top = 51
+        Width = 428
+        Align = alClient
+        BevelOuter = bvNone
+        ClientHeight = 925
+        ClientWidth = 428
+        TabOrder = 1
+        object memReserved: TMemo
+          Left = 0
+          Height = 925
+          Top = 0
+          Width = 428
+          Align = alClient
+          BorderStyle = bsNone
+          ScrollBars = ssVertical
+          TabOrder = 0
+        end
+      end
     end
     object splReserved: TSplitter
       Left = 1296
@@ -92,13 +598,272 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Visible = False
     end
     object pnlChatHost: TPanel
-      Left = 467
+      Left = 459
       Height = 976
       Top = 0
-      Width = 829
+      Width = 837
       Align = alClient
       BevelOuter = bvNone
+      ClientHeight = 976
+      ClientWidth = 837
       TabOrder = 5
+      object pnlChatChrome: TPanel
+        Left = 0
+        Height = 51
+        Top = 0
+        Width = 837
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 51
+        ClientWidth = 837
+        TabOrder = 0
+        object pnlCenterTabStripHost: TPanel
+          Left = 0
+          Height = 51
+          Top = 0
+          Width = 837
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
+        end
+        object btnChatDetach: TButton
+          Tag = 1
+          Left = 773
+          Height = 38
+          Top = 6
+          Width = 48
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 1
+          OnClick = PanelDetachClick
+        end
+      end
+      object pgcCenter: TPageControl
+        Left = 0
+        Height = 925
+        Top = 51
+        Width = 837
+        ActivePage = tsChat
+        Align = alClient
+        ShowTabs = False
+        TabIndex = 0
+        TabOrder = 1
+        object tsChat: TTabSheet
+          Caption = 'Chat'
+          ClientHeight = 917
+          ClientWidth = 829
+          object lblChatHeading: TLabel
+            Left = 12
+            Height = 25
+            Top = 6
+            Width = 181
+            Caption = 'What should we build?'
+          end
+          object lblChatSession: TLabel
+            Left = 12
+            Height = 25
+            Top = 33
+            Width = 64
+            Caption = 'Session:'
+          end
+          object lblChatSub: TLabel
+            Left = 12
+            Height = 25
+            Top = 51
+            Width = 266
+            Caption = 'Autonomous AI agent workspace'
+          end
+          object pnlChatComposer: TPanel
+            Left = 0
+            Height = 210
+            Top = 707
+            Width = 829
+            Align = alBottom
+            BevelOuter = bvNone
+            ClientHeight = 210
+            ClientWidth = 829
+            TabOrder = 0
+            object lblChatWorkspaceTag: TLabel
+              Left = 0
+              Height = 33
+              Top = 0
+              Width = 829
+              Align = alTop
+              AutoSize = False
+              Caption = 'PROJECT'
+            end
+            object memChatPrompt: TMemo
+              Left = 0
+              Height = 79
+              Top = 33
+              Width = 829
+              Align = alClient
+              ScrollBars = ssVertical
+              TabOrder = 0
+            end
+            object pnlChatFooter: TPanel
+              Left = 0
+              Height = 98
+              Top = 112
+              Width = 829
+              Align = alBottom
+              BevelOuter = bvNone
+              ClientHeight = 98
+              ClientWidth = 829
+              TabOrder = 1
+              object cboChatMode: TComboBox
+                Left = 8
+                Height = 33
+                Top = 6
+                Width = 105
+                ItemHeight = 25
+                Style = csDropDownList
+                TabOrder = 0
+              end
+              object cboChatModel: TComboBox
+                Left = 121
+                Height = 33
+                Top = 6
+                Width = 237
+                ItemHeight = 25
+                Style = csDropDownList
+                TabOrder = 1
+              end
+              object btnChatStop: TButton
+                Left = 584
+                Height = 37
+                Top = 6
+                Width = 84
+                Anchors = [akTop, akRight]
+                Caption = 'Stop'
+                TabOrder = 2
+                Visible = False
+              end
+              object btnChatSend: TButton
+                Left = 680
+                Height = 37
+                Top = 7
+                Width = 140
+                Anchors = [akTop, akRight]
+                Caption = 'Run Agent'
+                TabOrder = 3
+              end
+            end
+          end
+          object pnlChatHistoryHost: TPanel
+            Left = 0
+            Height = 707
+            Top = 0
+            Width = 829
+            Align = alClient
+            BevelOuter = bvNone
+            TabOrder = 1
+          end
+        end
+        object tsEditor: TTabSheet
+          Caption = 'Editor'
+          ClientHeight = 917
+          ClientWidth = 829
+          inline synEditor: TSynEdit
+            Left = 0
+            Height = 917
+            Top = 0
+            Width = 829
+            Align = alClient
+            Font.Height = 11
+            Font.Name = 'DejaVu Sans Mono'
+            Font.Pitch = fpFixed
+            Font.Quality = fqNonAntialiased
+            ParentColor = False
+            ParentFont = False
+            TabOrder = 0
+            Gutter.Width = 71
+            Gutter.MouseActions = <>
+            RightGutter.Width = 0
+            RightGutter.MouseActions = <>
+            Keystrokes = <>
+            MouseActions = <>
+            MouseTextActions = <>
+            MouseSelActions = <>
+            VisibleSpecialChars = [vscSpace, vscTabAtLast]
+            SelectedColor.BackPriority = 50
+            SelectedColor.ForePriority = 50
+            SelectedColor.FramePriority = 50
+            SelectedColor.BoldPriority = 50
+            SelectedColor.ItalicPriority = 50
+            SelectedColor.UnderlinePriority = 50
+            SelectedColor.StrikeOutPriority = 50
+            BracketHighlightStyle = sbhsBoth
+            BracketMatchColor.Background = clNone
+            BracketMatchColor.Foreground = clNone
+            BracketMatchColor.Style = [fsBold]
+            FoldedCodeColor.Background = clNone
+            FoldedCodeColor.Foreground = clGray
+            FoldedCodeColor.FrameColor = clGray
+            MouseLinkColor.Background = clNone
+            MouseLinkColor.Foreground = clBlue
+            LineHighlightColor.Background = clNone
+            LineHighlightColor.Foreground = clNone
+            inline SynLeftGutterPartList1: TSynGutterPartList
+              object SynGutterMarks1: TSynGutterMarks
+                Width = 36
+                MouseActions = <>
+                MaxExtraMarksColums = 0
+                Options = [sgmoDeDuplicateMarksOnOverflow]
+                MarkupInfo.Background = clBtnFace
+                MarkupInfo.Foreground = clNone
+              end
+              object SynGutterLineNumber1: TSynGutterLineNumber
+                Width = 11
+                MouseActions = <>
+                MarkupInfo.Background = clBtnFace
+                MarkupInfo.Foreground = clNone
+                DigitCount = 2
+                ShowOnlyLineNumbersMultiplesOf = 1
+                ZeroStart = False
+                LeadingZeros = False
+              end
+              object SynGutterChanges1: TSynGutterChanges
+                Width = 6
+                MouseActions = <>
+                ModifiedColor = 59900
+                SavedColor = clGreen
+                MarkupInfo.Background = clNone
+                MarkupInfo.Foreground = clGreen
+                MarkupInfo.FrameColor = 59900
+              end
+              object SynGutterSeparator1: TSynGutterSeparator
+                Width = 3
+                MouseActions = <>
+                MarkupInfo.Background = clWhite
+                MarkupInfo.Foreground = clGray
+              end
+              object SynGutterCodeFolding1: TSynGutterCodeFolding
+                Width = 15
+                MouseActions = <>
+                MarkupInfo.Background = clNone
+                MarkupInfo.Foreground = clGray
+                MouseActionsExpanded = <>
+                MouseActionsCollapsed = <>
+              end
+            end
+          end
+        end
+        object tsMarkdown: TTabSheet
+          Caption = 'Markdown'
+          ClientHeight = 917
+          ClientWidth = 829
+          object pnlMarkdownPreviewHost: TPanel
+            Left = 0
+            Height = 917
+            Top = 0
+            Width = 829
+            Align = alClient
+            BevelOuter = bvNone
+            TabOrder = 0
+          end
+        end
+      end
     end
   end
   object splTerminal: TSplitter
@@ -120,8 +885,60 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     Width = 2160
     Align = alBottom
     BevelOuter = bvNone
+    ClientHeight = 330
+    ClientWidth = 2160
     TabOrder = 2
     Visible = False
+    OnResize = PnlTerminalHostResize
+    object pnlTerminalChrome: TPanel
+      Left = 0
+      Height = 51
+      Top = 0
+      Width = 2160
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 51
+      ClientWidth = 2160
+      TabOrder = 0
+      OnResize = PnlTerminalChromeResize
+      object lblTerminalTitle: TLabel
+        Left = 12
+        Height = 25
+        Top = 14
+        Width = 65
+        Caption = 'Terminal'
+      end
+      object btnTerminalHide: TButton
+        Tag = 4
+        Left = 2106
+        Height = 38
+        Top = 6
+        Width = 48
+        Anchors = [akTop, akRight]
+        Caption = '✕'
+        TabOrder = 0
+        OnClick = PanelHideClick
+      end
+    end
+    object pnlTerminalContent: TPanel
+      Left = 0
+      Height = 279
+      Top = 51
+      Width = 2160
+      Align = alClient
+      BevelOuter = bvNone
+      ClientHeight = 279
+      ClientWidth = 2160
+      TabOrder = 1
+      object lblTerminalStatus: TLabel
+        Left = 0
+        Height = 1
+        Top = 0
+        Width = 2160
+        Align = alTop
+        WordWrap = True
+      end
+    end
   end
   object StatusBar1: TStatusBar
     Left = 0

@@ -9,13 +9,13 @@
     "id": "workspace-layout",
     "title": "Workspace layout and panels",
     "file": "workspace-layout.md",
-    "keywords": ["navigation", "dock", "detach", "terminal", "utility", "splitter", "theme", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon"]
+    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "editor", "markdown", "html preview", "detach", "floating panel", "execution detail", "json"]
   },
   {
     "id": "chat-and-modes",
     "title": "Chat, sessions, and modes",
     "file": "chat-and-modes.md",
-    "keywords": ["session", "archive", "ask", "plan", "agent", "model", "debugging"]
+    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "tab strip", "+", "calling", "activity", "step limit", "max steps"]
   },
   {
     "id": "project-rules",
@@ -27,7 +27,7 @@
     "id": "how-the-agent-works",
     "title": "How the agent works",
     "file": "how-the-agent-works.md",
-    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger"]
+    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger", "execution log", "step limit", "max steps", "calling", "follow"]
   },
   {
     "id": "tools-reference",

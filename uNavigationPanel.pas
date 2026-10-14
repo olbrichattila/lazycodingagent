@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
-  ComCtrls, LCLType, uAppTypes, uTheme, uThemedButton, uAppLogo, uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, uDockPanel;
+  ComCtrls, LCLType, uAppTypes, uTheme, uCodingAgentPresets,
+  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -21,42 +21,14 @@ type
   TNavExecutionLogClearEvent = procedure(Sender: TObject) of object;
   TNavToolErrorLogClearEvent = procedure(Sender: TObject) of object;
 
-type
-  { TNavRailControl - Left sleek icon bar }
-  TNavRailControl = class(TCustomControl)
-  private
-    FSelected: TNavigationItem;
-    FHovered: Integer;
-    FPressedIndex: Integer;
-    FTheme: TThemeKind;
-    FOnSelect: TNotifyEvent;
-    function GetItemTopY(AIndex: Integer): Integer;
-    function GetItemRect(AIndex: Integer): TRect;
-    function HitTestItemIndex(X, Y: Integer): Integer;
-    function FutureFeatureSeparatorY: Integer;
-  protected
-    procedure Paint; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseLeave; override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure ApplyTheme(ATheme: TThemeKind);
-    procedure SetSelected(AItem: TNavigationItem);
-    property Selected: TNavigationItem read FSelected write SetSelected;
-    property OnSelect: TNotifyEvent read FOnSelect write FOnSelect;
-  end;
-
-  { TNavContentControl - Content panel hosting views inside the Nav Dock Host }
-  TNavContentControl = class(TCustomControl)
+  { Binds designer-placed nav controls; does not create visual children. }
+  TNavContentControl = class(TComponent)
   private
     FSelected: TNavigationItem;
     FTheme: TThemeKind;
     FWorkspaceName: string;
     FWorkspaceRoot: string;
 
-    // Sub-controls
     FTitleLabel: TLabel;
     FSubLabel: TLabel;
     FFileList: TListBox;
@@ -65,8 +37,8 @@ type
     FErrorLogList: TListBox;
     FExecutionLog: TAgentExecutionLog;
     FToolErrorLog: TAgentToolErrorLog;
-    FActionBtn: TThemedButton;
-    FSecondaryActionBtn: TThemedButton;
+    FActionBtn: TButton;
+    FSecondaryActionBtn: TButton;
     FWorkspaceIds: TStringList;
     FSessionIds: TStringList;
     FSessionArchived: TStringList;
@@ -107,12 +79,12 @@ type
     procedure TryOpenSelectedTreeFile;
     procedure RebuildView;
     procedure MaybePopulateProjectsTree;
-    procedure UpdateLayout;
-  protected
-    procedure CreateWnd; override;
-    procedure Resize; override;
+    procedure ApplyNavListMetrics;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Bind(ATitle: TLabel; ASub: TLabel; AFileList: TListBox; ATree: TTreeView;
+      ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -125,7 +97,7 @@ type
     procedure RefreshToolErrorLogList;
     procedure AppendToolErrorLogEntry(AIndex: Integer);
     procedure UpdateSessionTasks(const ACaptions: TStrings);
-    destructor Destroy; override;
+    procedure SetCenterAddTabAvailable(AAvailable: Boolean);
 
     property OnWorkspaceSelect: TNavWorkspaceSelectEvent read FOnWorkspaceSelect write FOnWorkspaceSelect;
     property OnWorkspaceNew: TNavWorkspaceActionEvent read FOnWorkspaceNew write FOnWorkspaceNew;
@@ -150,329 +122,18 @@ type
 implementation
 
 const
-  NavSidePad = 12;
-  NavTitleTop = 20;
-  NavTitleH = 28;
-  NavSubGap = 4;
-  NavSubH = 20;
-  NavListGap = 8;
-  NavDockHeaderReserve = 36;
-  NavBottomSingleBtn = 50;
-  NavBottomDualBtn = 88;
-  NavBottomCompact = 12;
-  NavActionBtnH = 28;
-  NavActionSidePad = 12;
-
-function MaxLayoutDim(V, MinV: Integer): Integer;
-begin
-  if V < MinV then
-    Result := MinV
-  else
-    Result := V;
-end;
-
-procedure SetBoundsIfChanged(AControl: TControl; AL, AT, AW, AH: Integer);
-begin
-  if not Assigned(AControl) then Exit;
-  if (AControl.Left = AL) and (AControl.Top = AT) and
-     (AControl.Width = AW) and (AControl.Height = AH) then Exit;
-  AControl.SetBounds(AL, AT, AW, AH);
-end;
-
-procedure GetRailItemStyle(P: TThemePalette; ASelected, AHover, APressed: Boolean;
-  out DrawEdgeMarker: Boolean; out IconColor: TColor);
-begin
-  DrawEdgeMarker := False;
-  if ASelected then begin
-    DrawEdgeMarker := True;
-    IconColor := P.Accent;
-    if APressed then
-      IconColor := P.AccentHover;
-  end else if AHover or APressed then
-    IconColor := P.Text
-  else
-    IconColor := P.TextMuted;
-end;
-
-{ TNavRailControl }
-
-constructor TNavRailControl.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque];
-  DoubleBuffered := True;
-  Width := 56;
-  FSelected := niHome;
-  FHovered := -1;
-  FPressedIndex := -1;
-  FTheme := tkDark;
-  ShowHint := True;
-end;
-
-procedure TNavRailControl.ApplyTheme(ATheme: TThemeKind);
-begin
-  FTheme := ATheme;
-  Invalidate;
-end;
-
-procedure TNavRailControl.SetSelected(AItem: TNavigationItem);
-begin
-  if FSelected <> AItem then begin
-    FSelected := AItem;
-    Invalidate;
-  end;
-end;
-
-function TNavRailControl.GetItemTopY(AIndex: Integer): Integer;
-const
-  ItemH = 40;
-  ItemGap = 2;
-  SepGap = 10;
-var
-  I, TopY: Integer;
-  Item: TNavigationItem;
-begin
-  TopY := 48;
-  I := 0;
-  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
-    if I = AIndex then
-      Exit(TopY);
-    Inc(TopY, ItemH + ItemGap);
-    if Item = Pred(NavigationFutureFeatureFirst) then
-      Inc(TopY, SepGap);
-    Inc(I);
-  end;
-  Result := TopY;
-end;
-
-function TNavRailControl.GetItemRect(AIndex: Integer): TRect;
-const
-  ItemH = 40;
-var
-  TopY: Integer;
-begin
-  TopY := GetItemTopY(AIndex);
-  Result := Rect(6, TopY, Width - 6, TopY + ItemH);
-end;
-
-function TNavRailControl.FutureFeatureSeparatorY: Integer;
-const
-  SepGap = 10;
-var
-  ToolErrorsIdx: Integer;
-  R: TRect;
-begin
-  ToolErrorsIdx := Ord(niToolErrors);
-  R := GetItemRect(ToolErrorsIdx);
-  Result := R.Bottom + SepGap div 2;
-end;
-
-function TNavRailControl.HitTestItemIndex(X, Y: Integer): Integer;
-var
-  I: Integer;
-  Item: TNavigationItem;
-begin
-  Result := -1;
-  I := 0;
-  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
-    if GetItemRect(I).Contains(Point(X, Y)) then
-      Exit(I);
-    Inc(I);
-  end;
-end;
-
-procedure TNavRailControl.Paint;
-var
-  P: TThemePalette;
-  Item: TNavigationItem;
-  I: Integer;
-  R, MarkerR: TRect;
-  Sym: string;
-  DrawEdgeMarker: Boolean;
-  IconColor: TColor;
-  IsSelected, IsHover, IsPressed: Boolean;
-  IconY: Integer;
-begin
-  P := ThemePalette(FTheme);
-
-  Canvas.Brush.Color := P.RailBg;
-  Canvas.FillRect(ClientRect);
-
-  Canvas.Pen.Color := P.Border;
-  Canvas.Line(Width - 1, 0, Width - 1, Height);
-
-  DrawLazyAgentLogo(Canvas, Rect(12, 10, 44, 42), FTheme = tkDark);
-
-  I := 0;
-  for Item := Low(TNavigationItem) to High(TNavigationItem) do begin
-    R := GetItemRect(I);
-    Sym := NavigationIconSymbol(Item);
-
-    IsSelected := Item = FSelected;
-    IsHover := I = FHovered;
-    IsPressed := I = FPressedIndex;
-    GetRailItemStyle(P, IsSelected, IsHover, IsPressed, DrawEdgeMarker, IconColor);
-
-    if DrawEdgeMarker then begin
-      Canvas.Brush.Color := P.Accent;
-      MarkerR := Rect(0, R.Top + 8, 2, R.Bottom - 8);
-      Canvas.FillRect(MarkerR);
-    end;
-
-    Canvas.Font.Style := [];
-    Canvas.Font.Size := 16;
-    Canvas.Font.Name := 'Segoe UI Symbol';
-    Canvas.Font.Color := IconColor;
-    IconY := R.Top + (R.Height - Canvas.TextHeight(Sym)) div 2;
-    Canvas.Brush.Color := P.RailBg;
-    Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(R.Left + (R.Width - Canvas.TextWidth(Sym)) div 2, IconY, Sym);
-
-    Inc(I);
-  end;
-
-  Canvas.Pen.Color := P.Border;
-  Canvas.MoveTo(10, FutureFeatureSeparatorY);
-  Canvas.LineTo(Width - 10, FutureFeatureSeparatorY);
-
-  Canvas.Brush.Style := bsSolid;
-end;
-
-procedure TNavRailControl.MouseMove(Shift: TShiftState; X, Y: Integer);
-var
-  NewHover: Integer;
-begin
-  inherited MouseMove(Shift, X, Y);
-  NewHover := HitTestItemIndex(X, Y);
-  if NewHover >= 0 then
-    Hint := NavigationHint(TNavigationItem(NewHover));
-
-  if NewHover <> FHovered then begin
-    FHovered := NewHover;
-    Invalidate;
-  end;
-end;
-
-procedure TNavRailControl.MouseLeave;
-begin
-  inherited MouseLeave;
-  if FHovered <> -1 then begin
-    FHovered := -1;
-    Invalidate;
-  end;
-end;
-
-procedure TNavRailControl.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-var
-  HitIndex: Integer;
-  Item: TNavigationItem;
-begin
-  inherited MouseDown(Button, Shift, X, Y);
-  if Button <> mbLeft then Exit;
-
-  HitIndex := HitTestItemIndex(X, Y);
-  if HitIndex < 0 then Exit;
-
-  FPressedIndex := HitIndex;
-  MouseCapture := True;
-  Invalidate;
-
-  Item := TNavigationItem(HitIndex);
-  SetSelected(Item);
-  if Assigned(FOnSelect) then
-    FOnSelect(Self);
-end;
-
-procedure TNavRailControl.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-begin
-  inherited MouseUp(Button, Shift, X, Y);
-  if Button <> mbLeft then Exit;
-
-  if FPressedIndex <> -1 then begin
-    FPressedIndex := -1;
-    MouseCapture := False;
-    Invalidate;
-  end;
-end;
-
-{ TNavContentControl }
+  NavListFontSize = 11;
+  NavListItemHeight = 32;
 
 constructor TNavContentControl.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque];
-  DoubleBuffered := True;
   FTheme := tkDark;
   FSelected := niHome;
-  FWorkspaceName := '';
-  FWorkspaceRoot := '';
   FWorkspaceIds := TStringList.Create;
   FSessionIds := TStringList.Create;
   FSessionArchived := TStringList.Create;
-  FActiveWorkspaceId := '';
-  FActiveSessionId := '';
-  FLastPopulatedRoot := '';
   FSessionTaskCaptions := TStringList.Create;
-
-  FTitleLabel := TLabel.Create(Self);
-  FTitleLabel.Parent := Self;
-  FTitleLabel.AutoSize := False;
-  FTitleLabel.Font.Size := 11;
-  FTitleLabel.Font.Style := [fsBold];
-  FTitleLabel.Layout := tlCenter;
-
-  FSubLabel := TLabel.Create(Self);
-  FSubLabel.Parent := Self;
-  FSubLabel.AutoSize := False;
-  FSubLabel.Font.Size := 8;
-  FSubLabel.Layout := tlCenter;
-
-  FFileList := TListBox.Create(Self);
-  FFileList.Parent := Self;
-  FFileList.OnDrawItem := @FileListDrawItem;
-  FFileList.OnClick := @FileListClick;
-  FFileList.OnKeyDown := @FileListKeyDown;
-  ConfigureThemedListBox(FFileList, FTheme);
-
-  FTreeView := TTreeView.Create(Self);
-  FTreeView.Parent := Self;
-  FTreeView.ReadOnly := True;
-  FTreeView.Visible := False;
-  FTreeView.OnDblClick := @TreeViewDblClick;
-  FTreeView.OnKeyDown := @TreeViewKeyDown;
-  ConfigureThemedTreeView(FTreeView, FTheme);
-
-  FLogList := TListBox.Create(Self);
-  FLogList.Parent := Self;
-  FLogList.Visible := False;
-  FLogList.OnClick := @LogListClick;
-  FLogList.OnDrawItem := @FileListDrawItem;
-  ConfigureThemedListBox(FLogList, FTheme);
-  FExecutionLog := nil;
-
-  FErrorLogList := TListBox.Create(Self);
-  FErrorLogList.Parent := Self;
-  FErrorLogList.Visible := False;
-  FErrorLogList.OnClick := @ErrorLogListClick;
-  FErrorLogList.OnDrawItem := @FileListDrawItem;
-  ConfigureThemedListBox(FErrorLogList, FTheme);
-  FToolErrorLog := nil;
-
-  FActionBtn := TThemedButton.Create(Self);
-  FActionBtn.Parent := Self;
-  FActionBtn.Height := 28;
-  FActionBtn.ButtonRole := tbrPrimary;
-  FActionBtn.OnClick := @ActionBtnClick;
-
-  FSecondaryActionBtn := TThemedButton.Create(Self);
-  FSecondaryActionBtn.Parent := Self;
-  FSecondaryActionBtn.Height := 28;
-  FSecondaryActionBtn.ButtonRole := tbrCancel;
-  FSecondaryActionBtn.Visible := False;
-  FSecondaryActionBtn.OnClick := @SecondaryActionBtnClick;
-
-  UpdateLayout;
-  RebuildView;
 end;
 
 destructor TNavContentControl.Destroy;
@@ -483,6 +144,44 @@ begin
   FSessionArchived.Free;
   FSessionTaskCaptions.Free;
   inherited Destroy;
+end;
+
+procedure TNavContentControl.Bind(ATitle: TLabel; ASub: TLabel; AFileList: TListBox;
+  ATree: TTreeView; ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TButton);
+begin
+  FTitleLabel := ATitle;
+  FSubLabel := ASub;
+  FFileList := AFileList;
+  FTreeView := ATree;
+  FLogList := ALogList;
+  FErrorLogList := AErrorLogList;
+  FActionBtn := APrimaryBtn;
+  FSecondaryActionBtn := ASecondaryBtn;
+
+  if Assigned(FFileList) then begin
+    FFileList.OnDrawItem := @FileListDrawItem;
+    FFileList.OnClick := @FileListClick;
+    FFileList.OnKeyDown := @FileListKeyDown;
+  end;
+  if Assigned(FTreeView) then begin
+    FTreeView.OnDblClick := @TreeViewDblClick;
+    FTreeView.OnKeyDown := @TreeViewKeyDown;
+  end;
+  if Assigned(FLogList) then begin
+    FLogList.OnClick := @LogListClick;
+    FLogList.OnDrawItem := @FileListDrawItem;
+  end;
+  if Assigned(FErrorLogList) then begin
+    FErrorLogList.OnClick := @ErrorLogListClick;
+    FErrorLogList.OnDrawItem := @FileListDrawItem;
+  end;
+  if Assigned(FActionBtn) then
+    FActionBtn.OnClick := @ActionBtnClick;
+  if Assigned(FSecondaryActionBtn) then
+    FSecondaryActionBtn.OnClick := @SecondaryActionBtnClick;
+
+  ApplyNavListMetrics;
+  RebuildView;
 end;
 
 procedure TNavContentControl.SetWorkspaceList(const ACaptions, AIds: TStrings; const AActiveId: string);
@@ -499,18 +198,21 @@ begin
   end;
   if FSelected <> niHome then Exit;
 
-  FFileList.Items.Clear;
-  SelIdx := -1;
-  if Assigned(ACaptions) and Assigned(AIds) then begin
-    for I := 0 to ACaptions.Count - 1 do begin
-      if I >= AIds.Count then Break;
-      FFileList.Items.Add(ACaptions[I]);
-      if SameText(AIds[I], AActiveId) then
+  FFileList.Items.BeginUpdate;
+  try
+    FFileList.Items.Clear;
+    if Assigned(ACaptions) then
+      FFileList.Items.Assign(ACaptions);
+    SelIdx := -1;
+    for I := 0 to FWorkspaceIds.Count - 1 do
+      if SameText(FWorkspaceIds[I], AActiveId) then begin
         SelIdx := I;
-    end;
-  end;
-  if (SelIdx >= 0) and (SelIdx < FFileList.Items.Count) then
+        Break;
+      end;
     FFileList.ItemIndex := SelIdx;
+  finally
+    FFileList.Items.EndUpdate;
+  end;
 end;
 
 procedure TNavContentControl.SetSessionList(const ACaptions, AIds, AArchived: TStrings;
@@ -521,31 +223,27 @@ begin
   FActiveSessionId := AActiveId;
   FSessionIds.Clear;
   FSessionArchived.Clear;
-  if Assigned(ACaptions) and Assigned(AIds) then begin
-    for I := 0 to ACaptions.Count - 1 do begin
-      if I >= AIds.Count then Break;
-      FSessionIds.Add(AIds[I]);
-      if Assigned(AArchived) and (I < AArchived.Count) then
-        FSessionArchived.Add(AArchived[I])
-      else
-        FSessionArchived.Add('0');
-    end;
-  end;
+  if Assigned(AIds) then
+    FSessionIds.Assign(AIds);
+  if Assigned(AArchived) then
+    FSessionArchived.Assign(AArchived);
   if FSelected <> niSessions then Exit;
 
-  FFileList.Items.Clear;
-  SelIdx := -1;
-  if Assigned(ACaptions) and Assigned(AIds) then begin
-    for I := 0 to ACaptions.Count - 1 do begin
-      if I >= AIds.Count then Break;
-      FFileList.Items.Add(ACaptions[I]);
-      if (AIds[I] <> '') and SameText(AIds[I], AActiveId) then
+  FFileList.Items.BeginUpdate;
+  try
+    FFileList.Items.Clear;
+    if Assigned(ACaptions) then
+      FFileList.Items.Assign(ACaptions);
+    SelIdx := -1;
+    for I := 0 to FSessionIds.Count - 1 do
+      if SameText(FSessionIds[I], AActiveId) then begin
         SelIdx := I;
-    end;
-  end;
-  if (SelIdx >= 0) and (SelIdx < FFileList.Items.Count) then
+        Break;
+      end;
     FFileList.ItemIndex := SelIdx;
-  FSecondaryActionBtn.Visible := True;
+  finally
+    FFileList.Items.EndUpdate;
+  end;
   UpdateSessionSecondaryAction;
 end;
 
@@ -554,63 +252,49 @@ var
   Idx: Integer;
   Archived: Boolean;
 begin
-  if FSelected <> niSessions then begin
-    FSecondaryActionBtn.Visible := False;
-    Exit;
-  end;
-  FSecondaryActionBtn.Visible := True;
+  if not Assigned(FSecondaryActionBtn) then Exit;
   Idx := FFileList.ItemIndex;
-  if (Idx < 0) or (Idx >= FSessionIds.Count) or (FSessionIds[Idx] = '') then begin
+  Archived := False;
+  if (Idx >= 0) and (Idx < FSessionArchived.Count) then
+    Archived := SameText(FSessionArchived[Idx], '1');
+  if Archived then
+    FSecondaryActionBtn.Caption := 'Restore Session'
+  else
     FSecondaryActionBtn.Caption := 'Archive Session';
-    FSecondaryActionBtn.Enabled := False;
-    Exit;
-  end;
-  Archived := (Idx < FSessionArchived.Count) and (FSessionArchived[Idx] = '1');
-  FSecondaryActionBtn.Enabled := True;
-  if Archived then begin
-    FSecondaryActionBtn.Caption := 'Restore Session';
-    FSecondaryActionBtn.ButtonRole := tbrCancel;
-  end else begin
-    FSecondaryActionBtn.Caption := 'Archive Session';
-    FSecondaryActionBtn.ButtonRole := tbrCancel;
-  end;
 end;
 
 procedure TNavContentControl.SecondaryActionBtnClick(Sender: TObject);
 var
   Idx: Integer;
-  Sid: string;
   Archived: Boolean;
 begin
   if FSelected <> niSessions then Exit;
   Idx := FFileList.ItemIndex;
   if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
-  Sid := FSessionIds[Idx];
-  if Sid = '' then Exit;
-  Archived := (Idx < FSessionArchived.Count) and (FSessionArchived[Idx] = '1');
+  Archived := (Idx < FSessionArchived.Count) and SameText(FSessionArchived[Idx], '1');
   if Archived then begin
     if Assigned(FOnSessionRestore) then
-      FOnSessionRestore(Self, Sid);
+      FOnSessionRestore(Self, FSessionIds[Idx]);
   end else if Assigned(FOnSessionArchive) then
-    FOnSessionArchive(Self, Sid);
+    FOnSessionArchive(Self, FSessionIds[Idx]);
 end;
 
 procedure TNavContentControl.FileListClick(Sender: TObject);
 var
   Idx: Integer;
 begin
-  Idx := FFileList.ItemIndex;
-  if Idx < 0 then Exit;
-  case FSelected of
-    niHome:
-      if (Idx < FWorkspaceIds.Count) and Assigned(FOnWorkspaceSelect) then
-        FOnWorkspaceSelect(Self, FWorkspaceIds[Idx]);
-    niSessions:
-      if (Idx < FSessionIds.Count) and (FSessionIds[Idx] <> '') and Assigned(FOnSessionSelect) then
-        FOnSessionSelect(Self, FSessionIds[Idx]);
-  end;
-  if FSelected = niSessions then
+  if FSelected = niHome then begin
+    Idx := FFileList.ItemIndex;
+    if (Idx < 0) or (Idx >= FWorkspaceIds.Count) then Exit;
+    if Assigned(FOnWorkspaceSelect) then
+      FOnWorkspaceSelect(Self, FWorkspaceIds[Idx]);
+  end else if FSelected = niSessions then begin
+    Idx := FFileList.ItemIndex;
+    if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
+    if Assigned(FOnSessionSelect) then
+      FOnSessionSelect(Self, FSessionIds[Idx]);
     UpdateSessionSecondaryAction;
+  end;
 end;
 
 procedure TNavContentControl.FileListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -618,77 +302,17 @@ var
   Idx: Integer;
 begin
   if Key <> VK_DELETE then Exit;
-  Idx := FFileList.ItemIndex;
-  if Idx < 0 then Exit;
   if FSelected = niHome then begin
-    if (Idx < FWorkspaceIds.Count) and Assigned(FOnWorkspaceDelete) then
+    Idx := FFileList.ItemIndex;
+    if (Idx < 0) or (Idx >= FWorkspaceIds.Count) then Exit;
+    if Assigned(FOnWorkspaceDelete) then
       FOnWorkspaceDelete(Self, FWorkspaceIds[Idx]);
-    Exit;
+  end else if FSelected = niSessions then begin
+    Idx := FFileList.ItemIndex;
+    if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
+    if Assigned(FOnSessionDelete) then
+      FOnSessionDelete(Self, FSessionIds[Idx]);
   end;
-  if FSelected <> niSessions then Exit;
-  if (Idx >= FSessionIds.Count) or (FSessionIds[Idx] = '') then Exit;
-  if ssShift in Shift then begin
-    if Assigned(FOnSessionDelete) then
-      FOnSessionDelete(Self, FSessionIds[Idx]);
-  end else if (Idx < FSessionArchived.Count) and (FSessionArchived[Idx] = '1') then begin
-    if Assigned(FOnSessionDelete) then
-      FOnSessionDelete(Self, FSessionIds[Idx]);
-  end else if Assigned(FOnSessionArchive) then
-    FOnSessionArchive(Self, FSessionIds[Idx]);
-end;
-
-procedure TNavContentControl.CreateWnd;
-begin
-  inherited CreateWnd;
-  UpdateLayout;
-end;
-
-procedure TNavContentControl.UpdateLayout;
-var
-  W, H, ListH, TitleTop, SubTop, ListTop, BtnW: Integer;
-begin
-  if not ParentFormHandlesReady(Self) then Exit;
-  W := MaxLayoutDim(Width - NavSidePad * 2, 8);
-  H := Height;
-  BtnW := MaxLayoutDim(W - NavActionSidePad * 2, 8);
-
-  TitleTop := NavTitleTop;
-  if Assigned(Parent) and (Parent is TDockPanel) and (Top < NavDockHeaderReserve) then
-    Inc(TitleTop, NavDockHeaderReserve - Top);
-  SubTop := TitleTop + NavTitleH + NavSubGap;
-  ListTop := SubTop + NavSubH + NavListGap;
-
-  if (FSelected = niSessions) and FSecondaryActionBtn.Visible then
-    ListH := MaxLayoutDim(H - ListTop - NavBottomDualBtn, 8)
-  else if NavigationIsFutureFeature(FSelected) or not FActionBtn.Visible then
-    ListH := MaxLayoutDim(H - ListTop - NavBottomCompact, 8)
-  else
-    ListH := MaxLayoutDim(H - ListTop - NavBottomSingleBtn, 8);
-
-  SetBoundsIfChanged(FTitleLabel, NavSidePad, TitleTop, W, NavTitleH);
-  SetBoundsIfChanged(FSubLabel, NavSidePad, SubTop, W, NavSubH);
-  SetBoundsIfChanged(FFileList, NavSidePad, ListTop, W, ListH);
-  SetBoundsIfChanged(FTreeView, NavSidePad, ListTop, W, ListH);
-  SetBoundsIfChanged(FLogList, NavSidePad, ListTop, W, ListH);
-  SetBoundsIfChanged(FErrorLogList, NavSidePad, ListTop, W, ListH);
-
-  if H > 80 then begin
-    if (FSelected = niSessions) and FSecondaryActionBtn.Visible then begin
-      SetBoundsIfChanged(FSecondaryActionBtn, NavSidePad + NavActionSidePad, H - 76,
-        BtnW, NavActionBtnH);
-      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, NavActionBtnH);
-    end else begin
-      SetBoundsIfChanged(FSecondaryActionBtn, NavSidePad + NavActionSidePad, H - 76, BtnW, 0);
-      SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, H - 40, BtnW, NavActionBtnH);
-    end;
-  end else
-    SetBoundsIfChanged(FActionBtn, NavSidePad + NavActionSidePad, 10, BtnW, NavActionBtnH);
-end;
-
-procedure TNavContentControl.Resize;
-begin
-  inherited Resize;
-  UpdateLayout;
 end;
 
 procedure TNavContentControl.FileListDrawItem(Control: TWinControl; Index: Integer;
@@ -697,46 +321,68 @@ begin
   ThemedListBoxDrawItem(Control, Index, ARect, State, FTheme);
 end;
 
+procedure TNavContentControl.ApplyNavListMetrics;
+begin
+  if Assigned(FFileList) then begin
+    ConfigureThemedListBox(FFileList, FTheme);
+    FFileList.Font.Size := NavListFontSize;
+    FFileList.ItemHeight := NavListItemHeight;
+  end;
+  if Assigned(FLogList) then begin
+    ConfigureThemedListBox(FLogList, FTheme);
+    FLogList.Font.Size := NavListFontSize;
+    FLogList.ItemHeight := NavListItemHeight;
+  end;
+  if Assigned(FErrorLogList) then begin
+    ConfigureThemedListBox(FErrorLogList, FTheme);
+    FErrorLogList.Font.Size := NavListFontSize;
+    FErrorLogList.ItemHeight := NavListItemHeight;
+  end;
+  if Assigned(FTreeView) then begin
+    ConfigureThemedTreeView(FTreeView, FTheme);
+    FTreeView.Font.Size := NavListFontSize;
+    FTreeView.Options := FTreeView.Options - [tvoAutoItemHeight];
+    FTreeView.DefaultItemHeight := NavListItemHeight;
+  end;
+end;
+
 procedure TNavContentControl.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
 begin
   FTheme := ATheme;
   P := ThemePalette(FTheme);
-  Color := P.Surface;
-  FTitleLabel.Font.Color := P.Text;
-  FSubLabel.Font.Color := P.TextMuted;
-
-  ConfigureThemedListBox(FFileList, FTheme);
-  ConfigureThemedTreeView(FTreeView, FTheme);
-
-  ConfigureThemedListBox(FLogList, FTheme);
-  ConfigureThemedListBox(FErrorLogList, FTheme);
-
+  if Assigned(FTitleLabel) then
+    FTitleLabel.Font.Color := P.Text;
+  if Assigned(FSubLabel) then
+    FSubLabel.Font.Color := P.TextMuted;
+  ApplyNavListMetrics;
   if Assigned(FActionBtn) then
-    FActionBtn.ApplyTheme(FTheme);
+    StylePrimaryButton(FActionBtn, ATheme);
   if Assigned(FSecondaryActionBtn) then
-    FSecondaryActionBtn.ApplyTheme(FTheme);
-
-  Invalidate;
+    StyleCancelButton(FSecondaryActionBtn, ATheme);
 end;
 
 procedure TNavContentControl.ApplyPlatformChrome(ATheme: TThemeKind);
 begin
-  ApplyPlatformScrollableTheme(FFileList, ATheme);
-  ApplyPlatformScrollableTheme(FTreeView, ATheme);
-  ApplyPlatformScrollableTheme(FLogList, ATheme);
-  ApplyPlatformScrollableTheme(FErrorLogList, ATheme);
+  if Assigned(FFileList) then
+    ApplyPlatformScrollableTheme(FFileList, ATheme);
+  if Assigned(FTreeView) then
+    ApplyPlatformScrollableTheme(FTreeView, ATheme);
+  if Assigned(FLogList) then
+    ApplyPlatformScrollableTheme(FLogList, ATheme);
+  if Assigned(FErrorLogList) then
+    ApplyPlatformScrollableTheme(FErrorLogList, ATheme);
 end;
 
-procedure TNavContentControl.SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
+procedure TNavContentControl.SetSelected(AItem: TNavigationItem; const AWorkspaceName,
+  AWorkspaceRoot: string);
 begin
   FSelected := AItem;
   FWorkspaceName := AWorkspaceName;
   if Trim(AWorkspaceRoot) <> '' then
     FWorkspaceRoot := AWorkspaceRoot;
   RebuildView;
-  Invalidate;
 end;
 
 procedure TNavContentControl.BindExecutionLog(ALog: TAgentExecutionLog);
@@ -863,7 +509,8 @@ var
   begin
     if FindFirst(IncludeTrailingPathDelimiter(ADir) + '*', faAnyFile, Rec) = 0 then begin
       repeat
-        if (Rec.Name = '.') or (Rec.Name = '..') or (Rec.Name = '.git') or (Rec.Name = 'lib') or (Rec.Name = 'backup') then
+        if (Rec.Name = '.') or (Rec.Name = '..') or (Rec.Name = '.git') or (Rec.Name = 'lib') or
+           (Rec.Name = 'backup') then
           Continue;
 
         if (Rec.Attr and faDirectory) <> 0 then begin
@@ -888,8 +535,6 @@ begin
 end;
 
 procedure TNavContentControl.ActionBtnClick(Sender: TObject);
-var
-  Dir: string;
 begin
   case FSelected of
     niHome:
@@ -958,13 +603,15 @@ var
   I: Integer;
   Preset: TCodingAgentPreset;
 begin
+  if not Assigned(FFileList) then Exit;
   FFileList.Visible := False;
-  FTreeView.Visible := False;
-  FLogList.Visible := False;
-  FErrorLogList.Visible := False;
-  if FSelected <> niSessions then
+  if Assigned(FTreeView) then FTreeView.Visible := False;
+  if Assigned(FLogList) then FLogList.Visible := False;
+  if Assigned(FErrorLogList) then FErrorLogList.Visible := False;
+  if (FSelected <> niSessions) and Assigned(FSecondaryActionBtn) then
     FSecondaryActionBtn.Visible := False;
-  FActionBtn.Visible := True;
+  if Assigned(FActionBtn) then
+    FActionBtn.Visible := True;
 
   case FSelected of
     niHome:
@@ -986,7 +633,6 @@ begin
         else
           FSubLabel.Caption := 'Workspace Tree';
         MaybePopulateProjectsTree;
-        ConfigureThemedTreeView(FTreeView, FTheme);
         FTreeView.Invalidate;
         FActionBtn.Caption := '↻ Refresh Tree';
       end;
@@ -1057,7 +703,14 @@ begin
         FActionBtn.Visible := False;
       end;
   end;
-  UpdateLayout;
+end;
+
+procedure TNavContentControl.SetCenterAddTabAvailable(AAvailable: Boolean);
+begin
+  { Reserved: center tab [+] mirrors new-session when chat panel is visible. }
+  if not Assigned(FActionBtn) then Exit;
+  if FSelected = niSessions then
+    FActionBtn.Enabled := AAvailable;
 end;
 
 end.

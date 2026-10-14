@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uTheme, uThemedButton, uMarkdownView, uHelpContent;
+  uAppTypes, uTheme, uHelpContent, uMarkdownHtmlView;
 
 type
   { THelpForm }
@@ -19,7 +19,7 @@ type
     lstTopics: TListBox;
     pnlPreviewHost: TPanel;
     pnlBottom: TPanel;
-    btnClose: TThemedButton;
+    btnClose: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure edtSearchChange(Sender: TObject);
@@ -30,8 +30,9 @@ type
   private
     FTheme: TThemeKind;
     FCatalog: THelpCatalog;
-    FMarkdown: TMarkdownView;
-    FFilteredIndices: array of Integer;
+    FPreview: TMarkdownHtmlView;
+    FFilteredIndices: THelpTopicIndexArray;
+    procedure EnsurePreview;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure RebuildFilteredList;
     procedure ShowTopicAtListIndex(AListIndex: Integer);
@@ -63,21 +64,27 @@ end;
 
 destructor THelpForm.Destroy;
 begin
+  FreeAndNil(FPreview);
   FCatalog.Free;
   inherited Destroy;
+end;
+
+procedure THelpForm.EnsurePreview;
+begin
+  if Assigned(FPreview) then Exit;
+  if not Assigned(pnlPreviewHost) then Exit;
+  FPreview := TMarkdownHtmlView.Create(Self, pnlPreviewHost);
 end;
 
 procedure THelpForm.FormCreate(Sender: TObject);
 begin
   FCatalog := nil;
-  FMarkdown := TMarkdownView.Create(Self);
-  FMarkdown.Parent := pnlPreviewHost;
-  FMarkdown.Align := alClient;
   KeyPreview := True;
 end;
 
 procedure THelpForm.FormShow(Sender: TObject);
 begin
+  ApplyFormPlatformThemes(Self, FTheme);
   pnlBottom.BringToFront;
   if lstTopics.ItemIndex < 0 then
     RebuildFilteredList;
@@ -95,7 +102,11 @@ begin
   pnlTopics.Color := P.Surface;
   pnlPreviewHost.Color := P.Background;
   pnlBottom.Color := P.Surface;
-  ApplyControlTheme(Self, ATheme);
+  ApplyThemedForm(Self, ATheme);
+  pnlTop.Color := P.Surface;
+  pnlTopics.Color := P.Surface;
+  pnlPreviewHost.Color := P.Background;
+  pnlBottom.Color := P.Surface;
   lblSearch.Font.Color := P.TextMuted;
   edtSearch.Color := P.SurfaceAlt;
   edtSearch.Font.Color := P.Text;
@@ -103,10 +114,10 @@ begin
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstTopics, ATheme);
   lstTopics.OnDrawItem := @lstTopicsDrawItem;
-  btnClose.ButtonRole := tbrCancel;
-  btnClose.ApplyTheme(ATheme);
-  if Assigned(FMarkdown) then
-    FMarkdown.ApplyTheme(ATheme);
+  EnsurePreview;
+  if Assigned(FPreview) then
+    FPreview.ApplyTheme(ATheme);
+  StyleCancelButton(btnClose, ATheme);
   lstTopics.Invalidate;
 end;
 
@@ -120,20 +131,20 @@ begin
   lstTopics.Items.BeginUpdate;
   try
     lstTopics.Items.Clear;
-    for I := 0 to High(FFilteredIndices) do
-    begin
+    for I := 0 to High(FFilteredIndices) do begin
       TopicIdx := FFilteredIndices[I];
       Topic := FCatalog.GetTopic(TopicIdx);
       lstTopics.Items.AddObject(Topic.Title, TObject(PtrUInt(TopicIdx)));
     end;
-    if lstTopics.Items.Count > 0 then
-    begin
+    if lstTopics.Items.Count > 0 then begin
       lstTopics.ItemIndex := 0;
       ShowTopicAtListIndex(0);
-    end
-    else if Assigned(FMarkdown) then
-      FMarkdown.SetMarkdown('# No matching topics' + LineEnding + LineEnding +
-        'Try a different search term.');
+    end else begin
+      EnsurePreview;
+      if Assigned(FPreview) then
+        FPreview.SetMarkdown('# No matching topics' + LineEnding + LineEnding +
+          'Try a different search term.');
+    end;
   finally
     lstTopics.Items.EndUpdate;
   end;
@@ -144,11 +155,13 @@ var
   TopicIdx: Integer;
   Topic: THelpTopic;
 begin
-  if (FCatalog = nil) or not Assigned(FMarkdown) then Exit;
+  if FCatalog = nil then Exit;
   if (AListIndex < 0) or (AListIndex >= lstTopics.Items.Count) then Exit;
   TopicIdx := Integer(PtrUInt(lstTopics.Items.Objects[AListIndex]));
   Topic := FCatalog.GetTopic(TopicIdx);
-  FMarkdown.SetMarkdown(Topic.Body);
+  EnsurePreview;
+  if Assigned(FPreview) then
+    FPreview.SetMarkdown(Topic.Body);
 end;
 
 procedure THelpForm.edtSearchChange(Sender: TObject);

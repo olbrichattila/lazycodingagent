@@ -28,7 +28,7 @@ Update help whenever you change **user-visible** behavior, including:
 ## Style
 
 - English, concise, educational tone (this project is meant to teach how agents and tools work).
-- Use markdown features supported by [`uMarkdownView.pas`](uMarkdownView.pas) (headings, lists, fenced code). No mermaid in help bodies.
+- Use plain Markdown in topic files (headings, lists, fenced code). The in-app Help preview is a read-only `TMemo` (raw text). No mermaid in help bodies.
 - Do not duplicate the full README; the guide is for end users and learners.
 
 ## Loader

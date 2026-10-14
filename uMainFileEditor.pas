@@ -1,16 +1,16 @@
-unit uFileEditorTab;
+unit uMainFileEditor;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, Graphics, Dialogs, LCLType,
+  Classes, SysUtils, Controls, Graphics, Dialogs, LCLType,
   SynEdit, SynEditTypes, SynHighlighterAny,
-  uAppTypes, uTheme, uSyntaxScheme, uSynGenericClike;
+  uAppTypes, uTheme, uThemeHooks, uSyntaxScheme, uSynGenericClike;
 
 type
-  TFileEditorTab = class(TPanel)
+  TMainFileEditor = class
   private
     FEditor: TSynEdit;
     FHighlighter: TSynAnySyn;
@@ -21,12 +21,14 @@ type
     procedure EditorChange(Sender: TObject);
     procedure EditorKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
   public
-    constructor Create(AOwner: TComponent); override;
+    constructor Create(AEditor: TSynEdit; AOwner: TComponent);
+    destructor Destroy; override;
     function LoadFile(const APath: string): Boolean;
     function SaveFile: Boolean;
     function PromptSaveIfModified: Boolean;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplySyntaxScheme(const AScheme: TSyntaxScheme);
+    procedure Clear;
     property FilePath: string read FFilePath;
     property Modified: Boolean read FModified;
     property Editor: TSynEdit read FEditor;
@@ -34,37 +36,42 @@ type
 
 implementation
 
-constructor TFileEditorTab.Create(AOwner: TComponent);
+constructor TMainFileEditor.Create(AEditor: TSynEdit; AOwner: TComponent);
 begin
-  inherited Create(AOwner);
-  BevelOuter := bvNone;
+  inherited Create;
+  FEditor := AEditor;
   FTheme := tkDark;
   FScheme := DefaultGenericClikeScheme;
   FModified := False;
+  FFilePath := '';
 
-  FHighlighter := CreateGenericClikeHighlighter(Self);
-
-  FEditor := TSynEdit.Create(Self);
-  FEditor.Parent := Self;
-  FEditor.Align := alClient;
-  FEditor.BorderStyle := bsNone;
-  FEditor.Gutter.Visible := False;
-  FEditor.Options := FEditor.Options + [eoScrollPastEol, eoTabsToSpaces];
-  FEditor.TabWidth := 2;
-  FEditor.Font.Name := 'Consolas';
-  FEditor.Font.Size := 10;
-  FEditor.Highlighter := FHighlighter;
-  FEditor.OnChange := @EditorChange;
-  FEditor.OnKeyDown := @EditorKeyDown;
+  FHighlighter := CreateGenericClikeHighlighter(AOwner);
+  if Assigned(FEditor) then begin
+    FEditor.Highlighter := FHighlighter;
+    FEditor.OnChange := @EditorChange;
+    FEditor.OnKeyDown := @EditorKeyDown;
+    FEditor.Options := FEditor.Options + [eoScrollPastEol, eoTabsToSpaces];
+    FEditor.TabWidth := 2;
+    if FEditor.Font.Name = '' then
+      FEditor.Font.Name := 'Consolas';
+    if FEditor.Font.Size = 0 then
+      FEditor.Font.Size := ScaledEditorFontSize(FEditor);
+  end;
 end;
 
-procedure TFileEditorTab.EditorChange(Sender: TObject);
+destructor TMainFileEditor.Destroy;
+begin
+  FHighlighter.Free;
+  inherited Destroy;
+end;
+
+procedure TMainFileEditor.EditorChange(Sender: TObject);
 begin
   if not FModified then
     FModified := True;
 end;
 
-procedure TFileEditorTab.EditorKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TMainFileEditor.EditorKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   if (Key = Ord('S')) and (ssCtrl in Shift) then begin
     Key := 0;
@@ -72,7 +79,7 @@ begin
   end;
 end;
 
-function TFileEditorTab.LoadFile(const APath: string): Boolean;
+function TMainFileEditor.LoadFile(const APath: string): Boolean;
 begin
   FFilePath := ExpandFileName(APath);
   if not FileExists(FFilePath) then
@@ -82,7 +89,7 @@ begin
   Result := True;
 end;
 
-function TFileEditorTab.SaveFile: Boolean;
+function TMainFileEditor.SaveFile: Boolean;
 begin
   if FFilePath = '' then
     Exit(False);
@@ -98,7 +105,7 @@ begin
   end;
 end;
 
-function TFileEditorTab.PromptSaveIfModified: Boolean;
+function TMainFileEditor.PromptSaveIfModified: Boolean;
 var
   R: Integer;
 begin
@@ -113,24 +120,36 @@ begin
   Result := True;
 end;
 
-procedure TFileEditorTab.ApplySyntaxScheme(const AScheme: TSyntaxScheme);
+procedure TMainFileEditor.Clear;
+begin
+  FFilePath := '';
+  FModified := False;
+  if Assigned(FEditor) then
+    FEditor.Clear;
+end;
+
+procedure TMainFileEditor.ApplySyntaxScheme(const AScheme: TSyntaxScheme);
 begin
   FScheme := AScheme;
   ApplySchemeToSynAnyHighlighter(FHighlighter, FScheme);
-  FEditor.Invalidate;
+  if Assigned(FEditor) then
+    FEditor.Invalidate;
 end;
 
-procedure TFileEditorTab.ApplyTheme(ATheme: TThemeKind);
+procedure TMainFileEditor.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
 begin
   FTheme := ATheme;
   P := ThemePalette(ATheme);
-  Color := P.Surface;
-  FEditor.Color := P.SurfaceAlt;
-  FEditor.Font.Color := P.Text;
+  if Assigned(FEditor) then begin
+    FEditor.Color := P.SurfaceAlt;
+    FEditor.Font.Color := P.Text;
+    FEditor.Font.Size := ScaledEditorFontSize(FEditor);
+    ApplySynEditGutterTheme(FEditor, ATheme);
+    ApplyPlatformScrollableTheme(FEditor, ATheme);
+  end;
   ApplySyntaxScheme(FScheme);
-  ApplyPlatformScrollableTheme(FEditor, ATheme);
 end;
 
 end.
