@@ -12,6 +12,8 @@ procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
 
 implementation
 
+{$IFDEF WINDOWS}
+
 uses
   Graphics, LCLIntf, LMessages, Windows;
 
@@ -295,5 +297,14 @@ begin
     Helper := TWin32ThemedButtonPaint.Create(ABtn);
   Helper.Apply(ATheme, ARole);
 end;
+
+{$ELSE}
+
+procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
+  ARole: TThemedButtonRole);
+begin
+end;
+
+{$ENDIF}
 
 end.

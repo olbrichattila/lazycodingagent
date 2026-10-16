@@ -28,6 +28,7 @@
 
 # Lazarus IDE session and local state
 *.lps
+packagefiles.xml
 
 # Temporary and backup files
 /temp/

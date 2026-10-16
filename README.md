@@ -8,23 +8,23 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ### 1. Lazarus Visual Form Designer Architecture
 - Designed directly with Lazarus Visual Designer (`mainunit.lfm` and `mainunit.pas`).
-- Visually inspect, arrange, and drop new LCL components directly onto the form in the IDE.
-- Published event handlers hooked cleanly into the state management and theme engine.
+- **LCA Design** palette ([`packages/LcaDesignSystem/`](packages/LcaDesignSystem/)): themed tab bars, buttons, combos, markdown view, terminal panel, and surfaces stream on `.lfm` forms after running [`scripts/install-lca-lazarus`](scripts/install-lca-lazarus.sh) (or `.bat` on Windows).
+- Published event handlers hooked cleanly into the state management and theme engine ([`LcaTheme`](packages/LcaDesignSystem/src/LcaTheme.pas), [`uThemeHooks.pas`](uThemeHooks.pas)).
 
 ### 2. Modern Dark-First Design & Cohesive Dropdowns
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
 - **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
-- **Stable cross-platform combo layout**: combo **Height** and **ItemHeight** come from the form resource (`.lfm`); `StyleComboBox` in `uTheme.pas` applies owner-draw theming without resizing controls. `EffectiveThemedComboBoxHeight` is for layout estimates only.
-- **Designer-first layout**: the main window and dialogs stream **stock LCL** controls in `.lfm` files (`TPageControl`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout. The embedded terminal view (`TTerminalLCLView`) is created at runtime in [`uTerminalPanel.pas`](uTerminalPanel.pas) so the IDE does not need the ViewLCL design package on the palette.
-- **Native tabs and buttons** on Linux/macOS; on **Windows**, `Style*` helpers custom-paint primary/cancel/destructive `TButton` fills via [`uThemeWin32Buttons.pas`](uThemeWin32Buttons.pas).
+- **Stable cross-platform combo layout**: combo **Height** and **ItemHeight** come from the form resource (`.lfm`); `StyleComboBox` in [`LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas) applies owner-draw theming without resizing controls. `EffectiveThemedComboBoxHeight` is for layout estimates only.
+- **Designer-first layout**: the main window streams **LCA Design** and stock LCL controls in `.lfm` files (`TLcaThemedPageTabBar`, `TLcaThemedButton`, `TLcaThemedComboBox`, `TLcaMarkdownView`, `TLcaTerminalPanel`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout.
+- **Native tabs and buttons** on Linux/macOS; on **Windows**, `Style*` helpers custom-paint primary/cancel/destructive button fills via [`LcaThemeWin32Buttons.pas`](packages/LcaDesignSystem/src/LcaThemeWin32Buttons.pas).
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
 - **Navigation rail** built from `TSpeedButton` controls on the main form (icon captions, tooltips, accent selection indicator).
 - **Accent text selection** on chat and navigation lists (owner-drawn rows — blue text, no OS highlight band).
-- **Themed action buttons**: standard `TButton` controls styled with `StylePrimaryButton`, `StyleCancelButton`, and `StyleDestructiveButton` in `uTheme.pas`. On **Windows**, fills are drawn by `PaintThemedButton` through a Win32 paint subclass in `uThemeWin32Buttons.pas`. On **Linux (GTK)** and **macOS (Cocoa)**, `TButton.Color` tints the native widget; no custom paint hook.
+- **Themed action buttons**: `TLcaThemedButton` and stock `TButton` controls styled with `StyleThemedButtonRole` / `StylePrimaryButton` in [`LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas). On **Windows**, fills are drawn by `PaintThemedButton` through a Win32 paint subclass in [`LcaThemeWin32Buttons.pas`](packages/LcaDesignSystem/src/LcaThemeWin32Buttons.pas). On **Linux (GTK)** and **macOS (Cocoa)**, `TButton.Color` tints the native widget; no custom paint hook.
 - **Cross-platform UI**: icon-only nav rail, owner-draw list accent selection, and theme tokens apply on all LCL targets.
-- **Scrollbars / title chrome**: on **Windows**, scrollbars on lists, memos, the editor, HTML preview, and similar controls are painted from the app palette via `uThemeWin32ScrollBars.pas` (immersive dark title bar via `ApplyPlatformChrome`); combo/edit fields still use Explorer subthemes where needed. On **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
-- **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme.
+- **Scrollbars / title chrome**: on **Windows**, scrollbars on lists, memos, the editor, markdown preview, and similar controls are painted from the app palette via [`LcaThemeWin32ScrollBars.pas`](packages/LcaDesignSystem/src/LcaThemeWin32ScrollBars.pas) (immersive dark title bar via `ApplyPlatformChrome`); combo/edit fields still use Explorer subthemes where needed. On **Linux and macOS**, scrollbars and window chrome follow the **OS widget theme** (align the system GTK/Cocoa dark mode with the in-app dark theme for best results).
+- **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme. **macOS** uses the native menu bar (no in-app menubar sync).
 - Clean splitters allowing custom width resizing between all panels.
 
 #### Platform verification checklist
@@ -33,8 +33,8 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 |-------|---------|-------------|---------------|
 | Nav rail icons + accent selection | Yes | Yes | Yes |
 | List rows: accent text, no blue band | Yes | Yes | Yes |
-| Primary / Cancel / Stop buttons (`TButton` + `uTheme`) | Custom-painted via `uThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
-| Scrollbars matching app light/dark palette | Custom-painted (`uThemeWin32ScrollBars`) | OS GTK theme | OS AppKit theme |
+| Primary / Cancel / Stop buttons (`TLcaThemedButton` / `TButton` + `LcaTheme`) | Custom-painted via `LcaThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
+| Scrollbars matching app light/dark palette | Custom-painted (`LcaThemeWin32ScrollBars`) | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
 | Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |
 
@@ -66,7 +66,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ### 6. In-app User Guide
 - **Help → User Guide…** (F1) opens a searchable help browser with topics under [`help/`](help/), including how the agent and tools work.
-- After `lazbuild`, the build copies `help/` next to the executable; when developing from the IDE, topics also resolve from the project `help/` folder.
+- After `lazbuild`, run [`scripts/post-build.sh`](scripts/post-build.sh) (or [`scripts/post-build.cmd`](scripts/post-build.cmd) on Windows) to copy `help/` and `assets/` next to the executable; when developing from the IDE, topics also resolve from the project `help/` folder.
 
 ### 7. Debugging mode and project rules
 - **Debugging Mode** (Settings → Agent Behavior): when enabled, full tool JSON results appear in the chat history; when disabled, only tool errors are shown (successful tool calls stay hidden in chat).
@@ -81,7 +81,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ### 10. Integrated terminal (bottom panel)
 - **View → Terminal** toggles a full-width bottom dock (above the status bar) with a real PTY shell (`$SHELL` / `/bin/bash` on Unix, `%COMSPEC%` on Windows).
-- Terminal chrome is on the main form; [`uTerminalPanel.pas`](uTerminalPanel.pas) creates **`TTerminalLCLView`** at runtime and drives the PTY controller.
+- Terminal chrome is on the main form via **`TLcaTerminalPanel`** ([`LcaTerminalPanel.pas`](packages/LcaDesignSystem/src/LcaTerminalPanel.pas)); [`uTerminalPanel.pas`](uTerminalPanel.pas) is a thin alias type for app code.
 - Docked height defaults to about **one quarter** of the client area (resizable splitter); floating window size is stored separately from docked height.
 - When you open the panel with an active workspace, the shell starts in the **workspace root** (`pwd` / `cd`); switching workspaces restarts the shell in the new folder if the terminal is already visible.
 - Powered by the [TerminalEmulator](https://github.com/andrewd207/TerminalEmulator) submodule (`third_party/TerminalEmulator`). **Windows** requires Windows 10 1809+ (ConPTY).
@@ -160,16 +160,20 @@ Open `lazycodingagent.lpi` in Lazarus, or build from the command line:
 ```bash
 ./scripts/install-lca-lazarus.sh --link-only
 lazbuild lazycodingagent.lpi
+./scripts/post-build.sh
 ```
 
-The project pins **Qt5** in `lazycodingagent.lpi` (`LCLWidgetType`). After opening the project in Lazarus, run **Run → Build** (Ctrl+F9) once so the toolbar Run button turns green; Messages should show `-dLCLqt5` on the compile line.
+On **Linux**, prefer the **Qt5** LCL widgetset in Lazarus (Project → Project Options → Compiler Options → Config and Target) so menubar and memo styling hooks in `LcaTheme` apply; GTK2/GTK3 are also supported with GTK menubar sync.
 
 **Windows:**
 
 ```bat
 scripts\install-lca-lazarus.cmd --link-only
 lazbuild lazycodingagent.lpi
+scripts\post-build.cmd
 ```
+
+**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild).
 
 **Manual IDE install:** compile `LcaDesignSystem.lpk` (runtime), then `LcaDesignSystemDesign.lpk` → **Use → Install** (after terminal packages). Do not install the runtime package into the IDE.
 
@@ -192,19 +196,20 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 
 - `lazycodingagent.lpr` — Application entry point
 - `mainunit.pas` / `mainunit.lfm` — Main form: nav rail, nav body, center `TPageControl`, utility `TPageControl`, terminal view, menus, splitters, status bar
-- `uTerminalPanel.pas` — PTY controller; runtime `TTerminalLCLView` on designer-placed host panel
+- `packages/LcaDesignSystem/` — **LcaDesignSystem** runtime package (`LcaTheme`, LCA palette components, Win32 paint helpers)
+- `uTerminalPanel.pas` — Alias for `TLcaTerminalPanel` (PTY + `TTerminalLCLView` inside the design-system component)
 - `uMainFileEditor.pas` — Single `TSynEdit` load/save/highlighter
 - `uPlanView.pas` — Plan utility tab (path, build, memo)
 - `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages
 - `uNavigationPanel.pas` — `TNavContentControl` binds to streamed nav controls on the main form
-- `uChatPanel.pas` — Binds composer memos/combos/buttons; Markdown HTML history on `pnlChatHistoryHost`
-- `uMarkdownHtmlView.pas` — Shared Markdown subset renderer for chat, center preview, and Help
+- `uChatPanel.pas` — Binds composer memos/combos/buttons; chat history on `TLcaMarkdownView`
+- `packages/LcaDesignSystem/src/LcaMarkdownView.pas` — Markdown subset preview (TurboPower IPro) for chat, center preview, and Help
 - `uPanelDetach.pas` — Detach navigation, chat, guidelines, utility, and terminal panels to floating windows
-- `uThemeHooks.pas` — Custom control hooks for recursive theming (tab bar, SynEdit, terminal view)
+- `uThemeHooks.pas` — App hooks (SynEdit gutter); registers [`LcaThemeHooks`](packages/LcaDesignSystem/src/LcaThemeHooks.pas) for LCA components and terminal view
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
 - `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes
-- `uTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw; on Windows, `uThemeWin32Buttons.pas` and `uThemeWin32ScrollBars.pas` custom-paint buttons and scrollbars
+- `packages/LcaDesignSystem/src/LcaTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw; on Windows, `LcaThemeWin32Buttons.pas` and `LcaThemeWin32ScrollBars.pas` custom-paint buttons and scrollbars
 - `uAppTypes.pas` — Shared enumerations, modes, and helpers
 - `uAgentTypes.pas` — Chat roles, LLM providers, tool schemas, and token usage records
 - `uAgentEngine.pas` — Autonomous ReAct execution loop, state management, and LLM communication

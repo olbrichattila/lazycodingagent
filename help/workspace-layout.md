@@ -56,7 +56,7 @@ Use **⧉** on navigation, chat, guidelines, utility, and terminal headers to **
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, combos, and HTML preview areas follow the active theme. On **Windows**, scrollbars on scrollable controls (lists, tree, memos, editor, chat HTML, terminal bar) use the same palette via `uThemeWin32ScrollBars.pas`. Primary, cancel, and destructive action buttons use the app palette on **Windows** (custom-painted `TButton` via `uThemeWin32Buttons.pas`). On **Linux and macOS**, buttons and scrollbars use the native widget set (`TButton.Color` from theme helpers for buttons); page-control tabs stay on the OS widget set.
+**View → Toggle Light / Dark Theme** switches the in-app palette. Lists, memos, combos, and markdown preview areas follow the active theme (`LcaTheme` in the LCA Design package). On **Windows**, scrollbars on scrollable controls (lists, tree, memos, editor, chat history, terminal bar) use the same palette via `LcaThemeWin32ScrollBars.pas`. Primary, cancel, and destructive action buttons use the app palette on **Windows** (custom-painted buttons via `LcaThemeWin32Buttons.pas`). On **Linux**, the top menu bar can sync with the in-app dark/light theme when using Qt5 or GTK; **macOS** keeps the native menu bar. On **Linux and macOS**, buttons and scrollbars otherwise use the native widget set; custom tab strips (`TLcaThemedPageTabBar`) are painted by the app.
 
 ## Tips
 

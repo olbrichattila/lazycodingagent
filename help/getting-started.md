@@ -20,6 +20,17 @@ Open **Settings** from the menu (or when prompted):
 
 Save settings before starting a long agent run.
 
+## Building from source (developers)
+
+From the repository root, install Lazarus packages once per machine (`scripts/install-lca-lazarus` on your OS), then:
+
+```bash
+lazbuild lazycodingagent.lpi
+./scripts/post-build.sh
+```
+
+That copies **help/** and **assets/** (splash image) next to the executable so **Help → User Guide** and the startup splash work outside the IDE. See the project **README** for Windows commands and CI details.
+
 ## Your first chat
 
 1. In the left rail, open **Agents** and choose **+ New Chat Session** (or use **+** on the chat session tab strip).

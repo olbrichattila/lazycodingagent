@@ -11,6 +11,8 @@ procedure ApplyWin32ThemedComboPaint(ACombo: TComboBox; ATheme: TThemeKind);
 
 implementation
 
+{$IFDEF WINDOWS}
+
 uses
   Graphics, LCLIntf, LMessages, Windows, LcaThemedComboBox;
 
@@ -259,5 +261,13 @@ begin
   SetWindowTheme(ACombo.Handle, '', '');
   ACombo.Invalidate;
 end;
+
+{$ELSE}
+
+procedure ApplyWin32ThemedComboPaint(ACombo: TComboBox; ATheme: TThemeKind);
+begin
+end;
+
+{$ENDIF}
 
 end.

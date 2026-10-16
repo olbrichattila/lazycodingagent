@@ -33,4 +33,4 @@ Update help whenever you change **user-visible** behavior, including:
 
 ## Loader
 
-[`uHelpContent.pas`](uHelpContent.pas) loads `help/index.json` from beside the executable (post-build copy via [`scripts/copy-help.sh`](scripts/copy-help.sh)). If behavior of resolution or search changes, update this rule and README building notes.
+[`uHelpContent.pas`](uHelpContent.pas) loads `help/index.json` from beside the executable (post-build copy via [`scripts/post-build.sh`](scripts/post-build.sh) / [`scripts/post-build.ps1`](scripts/post-build.ps1), which call [`scripts/copy-help.sh`](scripts/copy-help.sh)). If behavior of resolution or search changes, update this rule and README building notes.

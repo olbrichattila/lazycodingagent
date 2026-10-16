@@ -13,6 +13,8 @@ function ControlUsesThemedScrollBars(AControl: TWinControl): Boolean;
 
 implementation
 
+{$IFDEF WINDOWS}
+
 uses
   Graphics, Forms, LCLIntf, LMessages, SysUtils, Windows;
 
@@ -1113,5 +1115,18 @@ begin
     Helper := TWin32ThemedScrollBarPaint.Create(AControl);
   Helper.Apply(ATheme);
 end;
+
+{$ELSE}
+
+function ControlUsesThemedScrollBars(AControl: TWinControl): Boolean;
+begin
+  Result := False;
+end;
+
+procedure ApplyWin32ThemedScrollBars(AControl: TWinControl; ATheme: TThemeKind);
+begin
+end;
+
+{$ENDIF}
 
 end.
