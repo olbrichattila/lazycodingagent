@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, Menus, Forms, Graphics, LCLType,
-  LcaTheme, LcaThemedMainMenu, LcaThemedMenuFlyout;
+  LcaTheme, LcaThemedMainMenu, LcaThemedMenuFlyout, LcaFormChrome;
 
 type
   TLcaThemedMenuBar = class(TPanel)
@@ -37,6 +37,7 @@ type
     destructor Destroy; override;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure RefreshFromMainMenu;
+    function PreferredWidth: Integer;
   published
     property ThemeKind: TThemeKind read FTheme write SetThemeKind default tkDark;
     property MainMenu: TLcaThemedMainMenu read FMainMenu write SetMainMenu;
@@ -159,7 +160,8 @@ begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
   ControlStyle := ControlStyle + [csOpaque];
-  Align := alTop;
+  if not (Assigned(AOwner) and (CompareText(AOwner.ClassName, 'TLcaThemedTitleBar') = 0)) then
+    Align := alTop;
   FTheme := tkDark;
   FHoverIndex := -1;
   FBarFontSize := ThemedMenuBarFontSizeBase;
@@ -193,6 +195,19 @@ procedure TLcaThemedMenuBar.RefreshFromMainMenu;
 begin
   LayoutTopLevelItems;
   Invalidate;
+end;
+
+function TLcaThemedMenuBar.PreferredWidth: Integer;
+var
+  I: Integer;
+begin
+  LayoutTopLevelItems;
+  Result := 0;
+  for I := 0 to High(FItemRects) do
+    if FItemRects[I].Right > Result then
+      Result := FItemRects[I].Right;
+  if Result = 0 then
+    Result := ScaledThemedTabMetric(Self, 8);
 end;
 
 procedure TLcaThemedMenuBar.Paint;
@@ -238,7 +253,10 @@ begin
   inherited MouseDown(Button, Shift, X, Y);
   if Button <> mbLeft then Exit;
   Slot := VisibleBarSlotAt(X, Y);
-  if Slot < 0 then Exit;
+  if Slot < 0 then begin
+    TLcaFormChrome.BeginMove(HostForm);
+    Exit;
+  end;
   MenuIdx := MenuIndexForBarSlot(Slot);
   if MenuIdx >= 0 then
     ShowPopupForMenuIndex(MenuIdx);

@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes, SynGutterBase,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedMenuBar,
+  LcaThemedComboBox, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
   uChatPanel, uMainFileEditor, uPlanView,
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
@@ -25,7 +25,7 @@ type
     btnChatStop: TLcaThemedButton;
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
-    lcaMenuBar: TLcaThemedMenuBar;
+    lcaTitleBar: TLcaThemedTitleBar;
     lcaMainMenu: TLcaThemedMainMenu;
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
@@ -187,6 +187,7 @@ type
     FTerminalRetryTimer: TTimer;
     FTerminalRetryCount: Integer;
     FTerminalChromeLayout: Boolean;
+    FFormChrome: TLcaFormChrome;
 
     FNavRailBtns: array[TNavigationItem] of TSpeedButton;
     FNavContent: TNavContentControl;
@@ -590,6 +591,7 @@ begin
   FPanelDetach.Bind(piUtility, pnlUtilityHost, pnlUtilityContent);
   FPanelDetach.Bind(piTerminal, pnlTerminalHost, pnlTerminalContent);
   PopulateMenusAndCombos;
+  FFormChrome := AttachLcaFormChrome(Self);
   ReportSplashLoadProgress(90);
 end;
 
@@ -990,8 +992,8 @@ begin
 
   RebuildWindowMenu;
   RebuildActiveSchemeMenu;
-  if Assigned(lcaMenuBar) then
-    lcaMenuBar.RefreshFromMainMenu;
+  if Assigned(lcaTitleBar) then
+    lcaTitleBar.RefreshFromMainMenu;
 end;
 
 
@@ -1274,7 +1276,7 @@ begin
   if Assigned(lcaCenterTabBar) then lcaCenterTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaChatSessionTabBar) then lcaChatSessionTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaUtilityTabBar) then lcaUtilityTabBar.ApplyTheme(FState.Theme);
-  if Assigned(lcaMenuBar) then lcaMenuBar.ApplyTheme(FState.Theme);
+  if Assigned(lcaTitleBar) then lcaTitleBar.ApplyTheme(FState.Theme);
   if not Assigned(FMarkdownPreview) then begin
     FMarkdownPreview := TLcaMarkdownView.Create(Self);
     FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
@@ -1320,8 +1322,8 @@ begin
   end;
 
   ApplyPlatformChrome(Self, FState.Theme);
-  if Assigned(lcaMenuBar) then
-    lcaMenuBar.RefreshFromMainMenu;
+  if Assigned(lcaTitleBar) then
+    lcaTitleBar.RefreshFromMainMenu;
 end;
 
 
@@ -2378,8 +2380,8 @@ begin
     Item.OnClick := @MenuSelectSyntaxScheme;
     mnuViewActiveSchemes.Add(Item);
   end;
-  if Assigned(lcaMenuBar) then
-    lcaMenuBar.RefreshFromMainMenu;
+  if Assigned(lcaTitleBar) then
+    lcaTitleBar.RefreshFromMainMenu;
 end;
 
 procedure TLazyCodingAgentForm.MenuSelectSyntaxScheme(Sender: TObject);

@@ -74,6 +74,22 @@
         <Filename Value="src\LcaThemedMenuFlyout.pas"/>
         <UnitName Value="LcaThemedMenuFlyout"/>
       </Item>
+      <Item>
+        <Filename Value="src\LcaOwlIconRes.pas"/>
+        <UnitName Value="LcaOwlIconRes"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaThemedWindowButton.pas"/>
+        <UnitName Value="LcaThemedWindowButton"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaFormChrome.pas"/>
+        <UnitName Value="LcaFormChrome"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaThemedTitleBar.pas"/>
+        <UnitName Value="LcaThemedTitleBar"/>
+      </Item>
     </Files>
     <RequiredPkgs>
       <Item>

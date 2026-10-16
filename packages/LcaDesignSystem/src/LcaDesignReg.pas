@@ -14,7 +14,7 @@ implementation
 uses
   TypInfo, PropEdits, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
   LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel,
-  LcaThemedMainMenu, LcaThemedMenuBar;
+  LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedTitleBar;
 
 procedure Register;
 begin
@@ -27,7 +27,8 @@ begin
     TLcaMarkdownView,
     TLcaTerminalPanel,
     TLcaThemedMainMenu,
-    TLcaThemedMenuBar
+    TLcaThemedMenuBar,
+    TLcaThemedTitleBar
   ]);
   RegisterPropertyEditor(TypeInfo(TThemeKind), nil, '', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemedButtonRole), nil, '', TEnumPropertyEditor);
@@ -40,6 +41,7 @@ begin
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaMarkdownView, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaTerminalPanel, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaThemedMenuBar, 'ThemeKind', TEnumPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaThemedTitleBar, 'ThemeKind', TEnumPropertyEditor);
 end;
 
 end.

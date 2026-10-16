@@ -6,6 +6,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   Caption = 'LazyCodingAgent — AI Workspace'
   ClientHeight = 1350
   ClientWidth = 2160
+  BorderStyle = bsNone
   Constraints.MinHeight = 900
   Constraints.MinWidth = 1350
   DesignTimePPI = 144
@@ -16,7 +17,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  object lcaMenuBar: TLcaThemedMenuBar
+  object lcaTitleBar: TLcaThemedTitleBar
     Left = 0
     Height = 32
     Top = 0

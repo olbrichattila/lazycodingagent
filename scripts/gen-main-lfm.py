@@ -48,7 +48,8 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
-  object lcaMenuBar: TLcaThemedMenuBar
+  BorderStyle = bsNone
+  object lcaTitleBar: TLcaThemedTitleBar
     Left = 0
     Height = 32
     Top = 0
