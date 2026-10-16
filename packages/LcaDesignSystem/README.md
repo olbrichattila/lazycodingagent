@@ -13,8 +13,25 @@ Lazy Coding Agent **design system** for Lazarus: theme tokens and palette compon
 | `TLcaSurfacePanel` | Card surface with optional accent border |
 | `TLcaMarkdownView` | Markdown subset preview (TurboPower IPro) |
 | `TLcaTerminalPanel` | Embedded PTY terminal (requires TerminalEmulator packages) |
+| `TLcaThemedMainMenu` | In-window main menu (pairs with `TLcaThemedTitleBar` / menu bar) |
+| `TLcaThemedMenuBar` | Top menu strip inside the custom title bar |
+| `TLcaThemedTitleBar` | Frameless window chrome: logo, menu, drag region, min/max/close |
 
 Theme API lives in **`LcaTheme`** (`TThemeKind`, `ThemePalette`, `ApplyThemedForm`, etc.).
+
+## Opening in Lazarus (Form Designer)
+
+`lazbuild` only needs the **runtime** package (`LcaDesignSystem.lpk`). The **Form Designer** also needs **`LcaDesignSystemDesign`** compiled, installed into the IDE, and a rebuilt `lazarus.exe` (see install below).
+
+If opening **`mainunit.pas`** (F12) shows **Unable to find component class 'TLcaThemedMainMenu'** (or another `TLca*` type):
+
+1. **Quit Lazarus completely** (no `lazarus.exe` in Task Manager).
+2. From the repo root, run **`scripts\install-lca-lazarus.bat`** (or `.sh` on Linux/macOS).
+3. Start **`C:\lazarus\lazarus.exe`** (or the Lazarus tree your `lazbuild` uses — check **Tools → Configure Build Lazarus**).
+4. Confirm **Component → LCA Design** lists `TLcaThemedMainMenu`, `TLcaThemedTitleBar`, etc.
+5. Open **`lazycodingagent.lpi`**, then **`mainunit.pas`**. Prefer **Retry** if prompted; avoid **Cancel loading this component** (that can strip `.lfm` nodes). Restore **`mainunit.lfm`** from git if you already cancelled and saved.
+
+Do **not** add `LcaDesignSystemDesign` to the application `.lpi` `RequiredPackages`; design-time packages belong in the IDE only.
 
 ## Install (Windows)
 

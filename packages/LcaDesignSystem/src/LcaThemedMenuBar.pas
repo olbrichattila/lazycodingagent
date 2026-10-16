@@ -254,7 +254,7 @@ begin
   if Button <> mbLeft then Exit;
   Slot := VisibleBarSlotAt(X, Y);
   if Slot < 0 then begin
-    TLcaFormChrome.BeginMove(HostForm);
+    TLcaFormChrome.BeginMove(HostForm, Button, ClientToScreen(Types.Point(X, Y)));
     Exit;
   end;
   MenuIdx := MenuIndexForBarSlot(Slot);

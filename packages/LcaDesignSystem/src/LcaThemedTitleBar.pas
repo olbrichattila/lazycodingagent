@@ -5,7 +5,7 @@ unit LcaThemedTitleBar;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, Menus,
+  Classes, SysUtils, Types, Controls, ExtCtrls, Graphics, Forms, LCLType, Menus,
   LcaTheme, LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedWindowButton, LcaFormChrome;
 
 type
@@ -33,7 +33,7 @@ type
       Shift: TShiftState; X, Y: Integer);
     procedure FormWindowStateChanged(Sender: TObject);
     procedure SyncMaximizeButton;
-    procedure BeginDragIfLeft(Button: TMouseButton);
+    procedure BeginDragIfLeft(Sender: TObject; Button: TMouseButton; X, Y: Integer);
     function HostForm: TCustomForm;
     procedure LoadOwlPicture;
   protected
@@ -112,17 +112,10 @@ begin
 end;
 
 procedure TLcaThemedTitleBar.LoadOwlPicture;
-var
-  RS: TResourceStream;
 begin
   if not Assigned(FImgLogo) then Exit;
   try
-    RS := TResourceStream.Create(HInstance, 'OWL_ICON', PChar('PNG'));
-    try
-      FImgLogo.Picture.LoadFromStream(RS);
-    finally
-      RS.Free;
-    end;
+    LoadOwlIconInto(FImgLogo.Picture);
   except
     on E: Exception do
       FImgLogo.Picture.Clear;
@@ -249,22 +242,32 @@ begin
   SyncMaximizeButton;
 end;
 
-procedure TLcaThemedTitleBar.BeginDragIfLeft(Button: TMouseButton);
+procedure TLcaThemedTitleBar.BeginDragIfLeft(Sender: TObject; Button: TMouseButton;
+  X, Y: Integer);
+var
+  S: TPoint;
+  F: TCustomForm;
 begin
   if Button <> mbLeft then Exit;
-  TLcaFormChrome.BeginMove(HostForm);
+  F := HostForm;
+  if F = nil then Exit;
+  if Sender is TControl then begin
+    S := TControl(Sender).ClientToScreen(Types.Point(X, Y));
+  end else
+    S := Mouse.CursorPos;
+  TLcaFormChrome.BeginMove(F, Button, S);
 end;
 
 procedure TLcaThemedTitleBar.TitleBarMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  BeginDragIfLeft(Button);
+  BeginDragIfLeft(Sender, Button, X, Y);
 end;
 
 procedure TLcaThemedTitleBar.DragPanelMouseDown(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
-  BeginDragIfLeft(Button);
+  BeginDragIfLeft(Sender, Button, X, Y);
 end;
 
 procedure TLcaThemedTitleBar.DragPanelDblClick(Sender: TObject);
@@ -291,7 +294,7 @@ begin
     H := ClientHeight;
     LogoW := 0;
     if FShowLogo then
-      LogoW := ScaledTitleBarLogoWidth(Self);
+      LogoW := H;
     BtnW := ScaledWindowChromeButtonWidth(Self);
     TotalBtnW := BtnW * 3;
 

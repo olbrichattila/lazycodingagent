@@ -13,6 +13,9 @@ uses
   Forms, mainunit, frmSplash, uWorkspaceState
   { you can add units after this };
 
+{$IFDEF WINDOWS}
+{$R lazycodingagent_appicon.res}
+{$ENDIF}
 {$R *.res}
 
 var
