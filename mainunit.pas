@@ -324,6 +324,7 @@ type
     procedure MenuSelectMode(Sender: TObject);
     procedure MenuTogglePanel(Sender: TObject);
   public
+    procedure PrepareVisibleStartup;
     property State: TWorkspaceState read FState;
     property Agent: TAgentEngine read ActiveAgent;
   end;
@@ -334,7 +335,7 @@ var
 implementation
 
 uses
-  uExecutionDetailHtml;
+  uExecutionDetailHtml, frmSplash;
 
 {$R *.lfm}
 
@@ -527,6 +528,7 @@ end;
 
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
+  ReportSplashLoadProgress(5);
   ApplyInitialWindowSize;
   Caption := 'LazyCodingAgent — AI Workspace';
   FUpdatingState := False;
@@ -544,10 +546,12 @@ begin
   FState := TWorkspaceState.Create;
   FState.Load;
   FState.OnChange := @StateChanged;
+  ReportSplashLoadProgress(20);
 
   FRegistry := TWorkspaceRegistry.Create;
   FRegistry.Load;
   FRegistry.MigrateFromLegacyIni(FState.WorkspaceName, FState.WorkspaceRoot);
+  ReportSplashLoadProgress(35);
 
   FSessionHubs := TChatSessionHubManager.Create;
   FActiveHub := nil;
@@ -567,6 +571,7 @@ begin
 
   FSyntaxSchemes := TSyntaxSchemeRegistry.Create;
   FSyntaxSchemes.Load;
+  ReportSplashLoadProgress(55);
 
   mnuWorkspaceSepRules.Tag := -1;
   mnuWorkspaceProjectRules.Tag := -1;
@@ -574,6 +579,7 @@ begin
   RegisterThemeCustomHooks;
   CreateThemedTabBars;
   InitWorkspaceSubControls;
+  ReportSplashLoadProgress(75);
   FPanelDetach := TPanelDetachManager.Create(Self, Self, FState);
   FPanelDetach.Bind(piNavigation, pnlNavHost, pnlNavContent);
   FPanelDetach.Bind(piChat, pnlChatHost, pgcCenter);
@@ -581,6 +587,22 @@ begin
   FPanelDetach.Bind(piUtility, pnlUtilityHost, pnlUtilityContent);
   FPanelDetach.Bind(piTerminal, pnlTerminalHost, pnlTerminalContent);
   PopulateMenusAndCombos;
+  ReportSplashLoadProgress(90);
+end;
+
+procedure TLazyCodingAgentForm.PrepareVisibleStartup;
+begin
+  if not HandleAllocated then
+    HandleNeeded;
+  if FPendingInitialDockLayout then begin
+    FPendingInitialDockLayout := False;
+    ApplyDockPanelsLayout;
+  end;
+  if FDeferThemesUntilShown then begin
+    FDeferThemesUntilShown := False;
+    ApplyAllThemes;
+  end;
+  ReportSplashLoadProgress(100);
 end;
 
 procedure TLazyCodingAgentForm.FormShow(Sender: TObject);

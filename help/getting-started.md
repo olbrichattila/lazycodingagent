@@ -2,6 +2,8 @@
 
 LazyCodingAgent is a desktop AI coding workspace. You open a **project folder** as a workspace, chat with an LLM in multiple **sessions**, and (in Agent mode) let the assistant read and change files under that folder using **tools**.
 
+On launch, a **branded splash image** appears while the workspace starts (about one second after loading finishes). Window chrome follows your saved theme (dark by default, or light if you chose **View → Toggle Light / Dark Theme** last time).
+
 ## Open or create a workspace
 
 1. Use **File → Open Project Folder** to point at an existing code tree, or create a workspace from the home flow when offered.

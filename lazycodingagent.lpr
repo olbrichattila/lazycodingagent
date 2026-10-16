@@ -10,10 +10,13 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, mainunit
+  Forms, mainunit, frmSplash, uWorkspaceState
   { you can add units after this };
 
 {$R *.res}
+
+var
+  Splash: TSplashForm;
 
 begin
   RequireDerivedFormResource:=True;
@@ -22,7 +25,22 @@ begin
   Application.MainFormOnTaskbar:=True;
   {$POP}
   Application.Initialize;
-  Application.CreateForm(TLazyCodingAgentForm, LazyCodingAgentForm);
+  Application.ShowMainForm := False;
+  Splash := TSplashForm.Create(Application);
+  try
+    SetActiveSplashForm(Splash);
+    Splash.ApplyTheme(LoadPersistedThemeKind);
+    Splash.SetLoadProgress(0);
+    Splash.Show;
+    Application.ProcessMessages;
+    Application.CreateForm(TLazyCodingAgentForm, LazyCodingAgentForm);
+    LazyCodingAgentForm.PrepareVisibleStartup;
+    Splash.HoldVisible(SplashPostLoadDelayMs);
+  finally
+    SetActiveSplashForm(nil);
+    Splash.Hide;
+    Splash.Free;
+  end;
+  LazyCodingAgentForm.Show;
   Application.Run;
 end.
-

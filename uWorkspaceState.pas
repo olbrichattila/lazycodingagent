@@ -109,6 +109,7 @@ type
   end;
 
 function DefaultBaseUrlForProvider(AProv: TLlmProvider): string;
+function LoadPersistedThemeKind: TThemeKind;
 
 implementation
 
@@ -119,6 +120,24 @@ const
 function SettingsFileName: string;
 begin
   Result := GetAppConfigFile(False);
+end;
+
+function LoadPersistedThemeKind: TThemeKind;
+var
+  I: TIniFile;
+  OrdVal: Integer;
+begin
+  Result := tkDark;
+  I := TIniFile.Create(SettingsFileName);
+  try
+    OrdVal := I.ReadInteger('Appearance', 'Theme', Ord(tkDark));
+    if (OrdVal >= Ord(Low(TThemeKind))) and (OrdVal <= Ord(High(TThemeKind))) then
+      Result := TThemeKind(OrdVal)
+    else
+      Result := tkDark;
+  finally
+    I.Free;
+  end;
 end;
 
 function DefaultBaseUrlForProvider(AProv: TLlmProvider): string;
