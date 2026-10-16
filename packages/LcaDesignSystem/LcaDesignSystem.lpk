@@ -62,6 +62,18 @@
         <Filename Value="src\LcaThemeHooks.pas"/>
         <UnitName Value="LcaThemeHooks"/>
       </Item>
+      <Item>
+        <Filename Value="src\LcaThemedMainMenu.pas"/>
+        <UnitName Value="LcaThemedMainMenu"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaThemedMenuBar.pas"/>
+        <UnitName Value="LcaThemedMenuBar"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaThemedMenuFlyout.pas"/>
+        <UnitName Value="LcaThemedMenuFlyout"/>
+      </Item>
     </Files>
     <RequiredPkgs>
       <Item>

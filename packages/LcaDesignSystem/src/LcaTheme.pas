@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, Controls, Graphics, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons,
-  LCLType;
+  Menus, LCLType;
 
 type
   TThemeKind = (tkDark, tkLight);
@@ -38,8 +38,17 @@ const
   ThemedComboBoxHeight = 25;
   ThemedComboBoxItemHeight = 22;
   ThemedTabBarBaseHeight = 38;
+  ThemedMenuBarBaseHeight = 32;
+  ThemedMenuPopupItemBaseHeight = 28;
+  { Menu bar caption — logical pt like ThemedTabFontSize (not PPI-scaled again). }
+  ThemedMenuBarFontSizeBase = 9;
   { Logical pt for combo/list metrics — do not PPI-scale ad hoc. }
   ThemedTabFontSize = 9;
+  { Close column and min tab width at 96 DPI — scaled via ScaledThemedTabMetric. }
+  ThemedTabCloseColumnBase = 28;
+  ThemedTabHorizPadBase = 8;
+  ThemedTabMinWidthBase = 72;
+  ThemedTabMinWidthClosableBase = 96;
   ThemedButtonCornerBase = 8;
   ThemedComboCornerBase = 6;
   ThemedComboChevronGutterBase = 22;
@@ -59,9 +68,20 @@ function ScaledThemedButtonHeight(AControl: TControl): Integer;
 function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
   ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
+function ThemedTabCloseColumn(AControl: TControl): Integer;
+function ThemedTabHorizPad(AControl: TControl): Integer;
+function ThemedTabCloseHitRect(const ARect: TRect; AControl: TControl): TRect;
+function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
+function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;
+function MenuItemDisplayCaption(const ACaption: string): string;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 function ThemedComboCornerRadius(AControl: TControl): Integer;
 function ThemedComboChevronGutter(AControl: TControl): Integer;
+
+procedure PaintThemedMenuBarItem(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
+  ASelected: Boolean; ATheme: TThemeKind; AFontSize: Integer);
+procedure ThemedMenuPopupDrawItem(ACanvas: TCanvas; const ARect: TRect;
+  State: TOwnerDrawState; ATheme: TThemeKind; ASource: TMenuItem);
 
 // Owner-draw colors/font for ComboBox; preserves Height/ItemHeight from the form resource.
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
@@ -75,7 +95,8 @@ procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
 procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
-  AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind);
+  AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind;
+  AMetricsControl: TControl = nil);
 
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
@@ -127,7 +148,7 @@ var
 implementation
 
 uses
-  Math, SysUtils, LCLIntf, LcaThemedButton, LcaThemedComboBox
+  Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox
   {$IFDEF WINDOWS}, LcaThemeWin32Buttons, LcaThemeWin32ScrollBars{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
@@ -165,6 +186,57 @@ end;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedTabBarBaseHeight);
+end;
+
+function ThemedTabCloseColumn(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedTabCloseColumnBase);
+end;
+
+function ThemedTabHorizPad(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedTabHorizPadBase);
+end;
+
+function ThemedTabCloseHitRect(const ARect: TRect; AControl: TControl): TRect;
+var
+  R: TRect;
+  CloseCol, EdgePad, VertPad: Integer;
+begin
+  R := ARect;
+  Dec(R.Right);
+  Dec(R.Bottom);
+  CloseCol := ThemedTabCloseColumn(AControl);
+  EdgePad := ScaledThemedTabMetric(AControl, 4);
+  VertPad := ScaledThemedTabMetric(AControl, 3);
+  Result.Left := R.Right - CloseCol;
+  Result.Top := R.Top + VertPad;
+  Result.Right := R.Right - EdgePad;
+  Result.Bottom := R.Bottom - VertPad;
+end;
+
+function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedMenuBarBaseHeight);
+end;
+
+function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedMenuPopupItemBaseHeight);
+end;
+
+function MenuItemDisplayCaption(const ACaption: string): string;
+var
+  I: Integer;
+begin
+  Result := ACaption;
+  I := 1;
+  while I <= Length(Result) do begin
+    if Result[I] = '&' then
+      Delete(Result, I, 1)
+    else
+      Inc(I);
+  end;
 end;
 
 function ScaledEditorFontSize(AControl: TControl): Integer;
@@ -403,6 +475,7 @@ begin
 end;
 {$ENDIF}
 
+{ Legacy LCL Form.Menu chrome (Qt/GTK). Main app uses TLcaThemedMenuBar instead. }
 procedure ApplyPlatformMenuChrome(AForm: TForm; ATheme: TThemeKind);
 begin
 {$IFDEF LCLQt5}
@@ -602,12 +675,13 @@ begin
 end;
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
-  AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind);
+  AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind;
+  AMetricsControl: TControl);
 var
   P: TThemePalette;
   R, TextR, CloseR: TRect;
   FillColor, TextColor: TColor;
-  TextTop, Rad: Integer;
+  TextTop, Rad, CloseCol, HorizPad, CloseW, CloseH, CloseX: Integer;
   CloseCaption: string;
 begin
   P := ThemePalette(ATheme);
@@ -643,18 +717,18 @@ begin
   Canvas.Font.Size := ThemedTabFontSize;
   Canvas.Font.Color := TextColor;
 
+  CloseCol := ThemedTabCloseColumn(AMetricsControl);
+  HorizPad := ThemedTabHorizPad(AMetricsControl);
+
   TextR := R;
   if AShowClose then
-    Dec(TextR.Right, 16);
-  Inc(TextR.Left, 8);
+    Dec(TextR.Right, CloseCol);
+  Inc(TextR.Left, HorizPad);
   TextTop := TextR.Top + ((TextR.Bottom - TextR.Top - Canvas.TextHeight(ACaption)) div 2);
   Canvas.TextRect(TextR, TextR.Left, TextTop, ACaption);
 
   if AShowClose then begin
-    CloseR.Left := R.Right - 20;
-    CloseR.Top := R.Top + 3;
-    CloseR.Right := R.Right - 2;
-    CloseR.Bottom := R.Bottom - 3;
+    CloseR := ThemedTabCloseHitRect(ARect, AMetricsControl);
     if ACloseHover then begin
       Canvas.Brush.Color := P.SurfaceAlt;
       Canvas.Pen.Color := P.Border;
@@ -668,8 +742,11 @@ begin
       Canvas.Font.Color := P.Text
     else
       Canvas.Font.Color := P.TextMuted;
-    TextTop := CloseR.Top + ((CloseR.Bottom - CloseR.Top - Canvas.TextHeight(CloseCaption)) div 2);
-    Canvas.TextRect(CloseR, CloseR.Left + 5, TextTop, CloseCaption);
+    CloseW := Canvas.TextWidth(CloseCaption);
+    CloseH := Canvas.TextHeight(CloseCaption);
+    CloseX := CloseR.Left + ((CloseR.Right - CloseR.Left - CloseW) div 2);
+    TextTop := CloseR.Top + ((CloseR.Bottom - CloseR.Top - CloseH) div 2);
+    Canvas.TextOut(CloseX, TextTop, CloseCaption);
   end;
 end;
 
@@ -1130,6 +1207,104 @@ begin
   ACombo.Invalidate;
 end;
 {$ENDIF}
+
+procedure PaintThemedMenuBarItem(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
+  ASelected: Boolean; ATheme: TThemeKind; AFontSize: Integer);
+var
+  P: TThemePalette;
+  R: TRect;
+  TextStr: string;
+  TextTop: Integer;
+begin
+  P := ThemePalette(ATheme);
+  R := ARect;
+  Canvas.Brush.Style := bsSolid;
+  if ASelected then begin
+    Canvas.Brush.Color := P.AccentActive;
+    Canvas.Pen.Color := P.AccentActive;
+  end else begin
+    Canvas.Brush.Color := P.HeaderBg;
+    Canvas.Pen.Color := P.HeaderBg;
+  end;
+  Canvas.FillRect(R);
+
+  TextStr := MenuItemDisplayCaption(ACaption);
+  if TextStr = '' then Exit;
+  Canvas.Font.Name := 'Segoe UI';
+  Canvas.Font.Size := AFontSize;
+  Canvas.Font.Color := P.Text;
+  TextTop := R.Top + ((R.Bottom - R.Top - Canvas.TextHeight(TextStr)) div 2);
+  Canvas.TextRect(R, R.Left + 10, TextTop, TextStr);
+end;
+
+procedure ThemedMenuPopupDrawItem(ACanvas: TCanvas; const ARect: TRect;
+  State: TOwnerDrawState; ATheme: TThemeKind; ASource: TMenuItem);
+var
+  P: TThemePalette;
+  TextStr, ShortStr: string;
+  TextTop, CheckLeft, SepY: Integer;
+  TextColor: TColor;
+  R: TRect;
+  CheckPad: Integer;
+begin
+  if not Assigned(ASource) then Exit;
+
+  P := ThemePalette(ATheme);
+  R := ARect;
+
+  ACanvas.Brush.Style := bsSolid;
+  if (odSelected in State) and ASource.Enabled then begin
+    ACanvas.Brush.Color := P.AccentActive;
+    ACanvas.Pen.Color := P.AccentActive;
+  end else begin
+    ACanvas.Brush.Color := P.Surface;
+    ACanvas.Pen.Color := P.Surface;
+  end;
+  ACanvas.FillRect(R);
+
+  if ASource.Caption = '-' then begin
+    SepY := R.Top + (R.Bottom - R.Top) div 2;
+    ACanvas.Pen.Color := P.Border;
+    ACanvas.MoveTo(R.Left + 8, SepY);
+    ACanvas.LineTo(R.Right - 8, SepY);
+    Exit;
+  end;
+
+  ACanvas.Font.Name := 'Segoe UI';
+  ACanvas.Font.Size := 9;
+
+  if ASource.Enabled then
+    TextColor := P.Text
+  else
+    TextColor := P.TextMuted;
+  ACanvas.Font.Color := TextColor;
+
+  CheckPad := ACanvas.TextWidth('✓') + 4;
+  CheckLeft := R.Left + 8;
+  TextStr := MenuItemDisplayCaption(ASource.Caption);
+  TextTop := R.Top + ((R.Bottom - R.Top - ACanvas.TextHeight(TextStr)) div 2);
+
+  if ASource.Checked then begin
+    ACanvas.Font.Color := P.Accent;
+    ACanvas.TextOut(CheckLeft, TextTop, '✓');
+    Inc(CheckLeft, CheckPad);
+  end else
+    Inc(CheckLeft, CheckPad);
+
+  ACanvas.Font.Color := TextColor;
+  ACanvas.TextRect(R, CheckLeft, TextTop, TextStr);
+
+  if ASource.ShortCut <> 0 then begin
+    ShortStr := ShortCutToText(ASource.ShortCut);
+    ACanvas.Font.Color := P.TextMuted;
+    ACanvas.TextOut(R.Right - ACanvas.TextWidth(ShortStr) - 12, TextTop, ShortStr);
+  end;
+
+  if ASource.Count > 0 then begin
+    ACanvas.Font.Color := P.TextMuted;
+    ACanvas.TextOut(R.Right - 20, TextTop, '›');
+  end;
+end;
 
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);

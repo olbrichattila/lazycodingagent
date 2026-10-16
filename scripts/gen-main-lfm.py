@@ -3,8 +3,8 @@
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-menu_tail = (ROOT / "mainunit.lfm").read_text().split("  object MainMenu1: TMainMenu", 1)[1]
-menu_tail = "  object MainMenu1: TMainMenu" + menu_tail
+menu_tail = (ROOT / "mainunit.lfm").read_text().split("  object lcaMainMenu: TLcaThemedMainMenu", 1)[1]
+menu_tail = "  object lcaMainMenu: TLcaThemedMainMenu" + menu_tail
 
 nav_items = [
     ("sbtnNavBrain", 10, "◉"), ("sbtnNavKnowledge", 9, "📖"), ("sbtnNavExecPlans", 8, "☑"),
@@ -42,13 +42,21 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
   Constraints.MinHeight = 1200
   Constraints.MinWidth = 1800
   DesignTimePPI = 192
-  Menu = MainMenu1
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
+  object lcaMenuBar: TLcaThemedMenuBar
+    Left = 0
+    Height = 32
+    Top = 0
+    Width = 2880
+    Align = alTop
+    MainMenu = lcaMainMenu
+    TabOrder = 0
+  end
   object pnlMainContainer: TPanel
     Left = 0
     Height = 1312
@@ -222,21 +230,47 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 560
         Align = alTop
         BevelOuter = bvNone
-        object lblUtilityTitle: TLabel
-          Left = 16
-          Height = 36
-          Top = 18
-          Width = 80
-          Caption = 'Utility'
+        object pnlUtilityTabStripHost: TPanel
+          Left = 0
+          Height = 68
+          Top = 0
+          Width = 560
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
+          object lcaUtilityTabBar: TLcaThemedPageTabBar
+            Left = 0
+            Height = 68
+            Top = 0
+            Width = 560
+            Align = alClient
+            BevelOuter = bvNone
+            PageControl = pgcUtility
+            TabOrder = 0
+          end
         end
-        object btnUtilityHide: TButton
+        object btnUtilityDetach: TLcaThemedButton
+          ButtonRole = tbrGhost
+          Tag = 3
+          Left = 416
+          Height = 50
+          Top = 8
+          Width = 64
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 1
+          OnClick = PanelDetachClick
+        end
+        object btnUtilityHide: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 3
           Left = 488
           Height = 50
           Top = 8
           Width = 64
+          Anchors = [akTop, akRight]
           Caption = '✕'
-          TabOrder = 0
+          TabOrder = 2
           OnClick = PanelHideClick
         end
       end
@@ -254,6 +288,7 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
           Top = 0
           Width = 560
           Align = alClient
+          ShowTabs = False
           TabOrder = 0
           object tsUtilityScratch: TTabSheet
             Caption = 'Scratchpad'
@@ -421,22 +456,36 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 1108
         Align = alTop
         BevelOuter = bvNone
-        object lblChatTitle: TLabel
-          Left = 16
-          Height = 36
-          Top = 18
-          Width = 62
-          Caption = 'Chat'
+        object pnlCenterTabStripHost: TPanel
+          Left = 0
+          Height = 68
+          Top = 0
+          Width = 1108
+          Align = alClient
+          BevelOuter = bvNone
+          TabOrder = 0
+          object lcaCenterTabBar: TLcaThemedPageTabBar
+            Left = 0
+            Height = 68
+            Top = 0
+            Width = 1108
+            Align = alClient
+            BevelOuter = bvNone
+            PageControl = pgcCenter
+            TabOrder = 0
+          end
         end
-        object btnChatHide: TButton
+        object btnChatDetach: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 1
           Left = 1020
           Height = 50
           Top = 8
           Width = 64
-          Caption = '✕'
-          TabOrder = 0
-          OnClick = PanelHideClick
+          Anchors = [akTop, akRight]
+          Caption = '⧉'
+          TabOrder = 1
+          OnClick = PanelDetachClick
         end
       end
       object pgcCenter: TPageControl
@@ -445,6 +494,7 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 68
         Width = 1108
         Align = alClient
+        ShowTabs = False
         TabOrder = 1
         object tsChat: TTabSheet
           Caption = 'Chat'
@@ -456,6 +506,17 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
             Align = alTop
             BevelOuter = bvNone
             TabOrder = 0
+            object lcaChatSessionTabBar: TLcaThemedPageTabBar
+              Left = 0
+              Height = 68
+              Top = 0
+              Width = 1100
+              Align = alClient
+              BevelOuter = bvNone
+              AddTabCaption = '+'
+              ShowAddTab = True
+              TabOrder = 0
+            end
           end
           object lblChatHeading: TLabel
             Left = 16

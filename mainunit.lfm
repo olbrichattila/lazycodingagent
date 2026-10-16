@@ -9,7 +9,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   Constraints.MinHeight = 900
   Constraints.MinWidth = 1350
   DesignTimePPI = 144
-  Menu = MainMenu1
   Position = poScreenCenter
   Visible = False
   LCLVersion = '4.8.0.0'
@@ -17,6 +16,15 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnShow = FormShow
+  object lcaMenuBar: TLcaThemedMenuBar
+    Left = 0
+    Height = 32
+    Top = 0
+    Width = 2160
+    Align = alTop
+    MainMenu = lcaMainMenu
+    TabOrder = 0
+  end
   object pnlMainContainer: TPanel
     Left = 0
     Height = 961
@@ -401,6 +409,16 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
+          object lcaUtilityTabBar: TLcaThemedPageTabBar
+            Left = 0
+            Height = 51
+            Top = 0
+            Width = 420
+            Align = alClient
+            BevelOuter = bvNone
+            PageControl = pgcUtility
+            TabOrder = 0
+          end
         end
         object btnUtilityDetach: TLcaThemedButton
           ButtonRole = tbrGhost
@@ -654,6 +672,16 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Align = alClient
           BevelOuter = bvNone
           TabOrder = 0
+          object lcaCenterTabBar: TLcaThemedPageTabBar
+            Left = 0
+            Height = 51
+            Top = 0
+            Width = 837
+            Align = alClient
+            BevelOuter = bvNone
+            PageControl = pgcCenter
+            TabOrder = 0
+          end
         end
         object btnChatDetach: TLcaThemedButton
           ButtonRole = tbrGhost
@@ -690,6 +718,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Align = alTop
             BevelOuter = bvNone
             TabOrder = 1
+            object lcaChatSessionTabBar: TLcaThemedPageTabBar
+              Left = 0
+              Height = 51
+              Top = 0
+              Width = 829
+              Align = alClient
+              BevelOuter = bvNone
+              AddTabCaption = '+'
+              ShowAddTab = True
+              TabOrder = 0
+            end
           end
           object lblChatHeading: TLabel
             Left = 12
@@ -958,7 +997,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     Width = 2160
     Panels = <>
   end
-  object MainMenu1: TMainMenu
+  object lcaMainMenu: TLcaThemedMainMenu
     Left = 540
     Top = 18
     object mnuFile: TMenuItem

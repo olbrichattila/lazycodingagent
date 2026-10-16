@@ -10,7 +10,8 @@ implementation
 
 uses
   Classes, SysUtils, Controls, Terminal.View.LCL, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel;
+  LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel,
+  LcaThemedMenuBar;
 
 type
   TLcaThemeHookRegistry = class
@@ -53,6 +54,10 @@ begin
   end;
   if AControl is TLcaTerminalPanel then begin
     TLcaTerminalPanel(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaThemedMenuBar then begin
+    TLcaThemedMenuBar(AControl).ApplyTheme(ATheme);
     Exit(True);
   end;
 end;

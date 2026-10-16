@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes, SynGutterBase,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaTerminalPanel,
+  LcaThemedComboBox, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedMenuBar,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
   uChatPanel, uMainFileEditor, uPlanView,
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
@@ -25,7 +25,8 @@ type
     btnChatStop: TLcaThemedButton;
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
-    MainMenu1: TMainMenu;
+    lcaMenuBar: TLcaThemedMenuBar;
+    lcaMainMenu: TLcaThemedMainMenu;
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
     mnuFileOpen: TMenuItem;
@@ -806,6 +807,7 @@ begin
   if Assigned(lcaCenterTabBar) then
     lcaCenterTabBar.OnTabClose := @TabBarCenterTabClose;
   if Assigned(lcaChatSessionTabBar) then begin
+    lcaChatSessionTabBar.ShowAddTab := True;
     lcaChatSessionTabBar.OnAddTab := @TabBarCenterAddTab;
     lcaChatSessionTabBar.OnManualTabSelect := @TabBarChatSessionSelect;
     lcaChatSessionTabBar.OnManualTabClose := @TabBarChatSessionClose;
@@ -988,6 +990,8 @@ begin
 
   RebuildWindowMenu;
   RebuildActiveSchemeMenu;
+  if Assigned(lcaMenuBar) then
+    lcaMenuBar.RefreshFromMainMenu;
 end;
 
 
@@ -1270,6 +1274,7 @@ begin
   if Assigned(lcaCenterTabBar) then lcaCenterTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaChatSessionTabBar) then lcaChatSessionTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaUtilityTabBar) then lcaUtilityTabBar.ApplyTheme(FState.Theme);
+  if Assigned(lcaMenuBar) then lcaMenuBar.ApplyTheme(FState.Theme);
   if not Assigned(FMarkdownPreview) then begin
     FMarkdownPreview := TLcaMarkdownView.Create(Self);
     FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
@@ -1315,6 +1320,8 @@ begin
   end;
 
   ApplyPlatformChrome(Self, FState.Theme);
+  if Assigned(lcaMenuBar) then
+    lcaMenuBar.RefreshFromMainMenu;
 end;
 
 
@@ -2371,6 +2378,8 @@ begin
     Item.OnClick := @MenuSelectSyntaxScheme;
     mnuViewActiveSchemes.Add(Item);
   end;
+  if Assigned(lcaMenuBar) then
+    lcaMenuBar.RefreshFromMainMenu;
 end;
 
 procedure TLazyCodingAgentForm.MenuSelectSyntaxScheme(Sender: TObject);

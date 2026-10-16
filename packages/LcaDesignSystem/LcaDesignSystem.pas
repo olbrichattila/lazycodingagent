@@ -10,7 +10,8 @@ interface
 uses
   LcaTheme, LcaThemeWin32Buttons, LcaThemeWin32Combo, LcaThemeWin32ScrollBars, 
   LcaThemedPageTabBar, LcaThemedButton, LcaThemedComboBox, LcaNavRailButton, 
-  LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks;
+  LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, LcaThemedMainMenu,
+  LcaThemedMenuBar, LcaThemedMenuFlyout;
 
 implementation
 

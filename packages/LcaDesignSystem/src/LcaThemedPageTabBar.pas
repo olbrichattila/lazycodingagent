@@ -351,7 +351,7 @@ end;
 
 procedure TLcaThemedPageTabBar.LayoutTabs;
 var
-  I, Count, TabW, X, Pad, MinW: Integer;
+  I, Count, TabW, X, Pad, MinW, MinWClose, HorizPad, CloseCol: Integer;
   MeasureCanvas: TControlCanvas;
 begin
   SetLength(FTabRects, 0);
@@ -364,16 +364,24 @@ begin
     MeasureCanvas.Control := Self;
     MeasureCanvas.Font.Name := 'Segoe UI';
     MeasureCanvas.Font.Size := ThemedTabFontSize;
-    Pad := 8;
-    MinW := 72;
+    Pad := ThemedTabHorizPad(Self);
+    HorizPad := Pad;
+    CloseCol := ThemedTabCloseColumn(Self);
+    MinW := ScaledThemedTabMetric(Self, ThemedTabMinWidthBase);
+    MinWClose := ScaledThemedTabMetric(Self, ThemedTabMinWidthClosableBase);
     X := Pad;
     if Count > 0 then begin
       SetLength(FTabRects, Count);
       for I := 0 to Count - 1 do begin
-        TabW := MeasureCanvas.TextWidth(TabCaptionAt(I)) + 28;
+        TabW := MeasureCanvas.TextWidth(TabCaptionAt(I)) + HorizPad * 2;
         if TabAllowCloseAt(I) then
-          Inc(TabW, 16);
-        if TabW < MinW then
+          Inc(TabW, CloseCol)
+        else
+          Inc(TabW, HorizPad);
+        if TabAllowCloseAt(I) then begin
+          if TabW < MinWClose then
+            TabW := MinWClose;
+        end else if TabW < MinW then
           TabW := MinW;
         FTabRects[I].Left := X;
         FTabRects[I].Top := 2;
@@ -401,10 +409,10 @@ begin
   LayoutTabs;
   for I := 0 to High(FTabRects) do
     PaintThemedTab(Canvas, FTabRects[I], TabCaptionAt(I), TabIsSelectedAt(I),
-      FHoverTabIndex = I, TabAllowCloseAt(I), FHoverCloseIndex = I, FTheme);
+      FHoverTabIndex = I, TabAllowCloseAt(I), FHoverCloseIndex = I, FTheme, Self);
   if FShowAddTab and (FAddTabRect.Right > FAddTabRect.Left) then
     PaintThemedTab(Canvas, FAddTabRect, FAddTabCaption, False, FHoverTabIndex = VisibleTabCount,
-      False, False, FTheme);
+      False, False, FTheme, Self);
 end;
 
 procedure TLcaThemedPageTabBar.Paint;
@@ -430,8 +438,7 @@ begin
     if PtInRect(R, Point(X, Y)) then begin
       FHoverTabIndex := I;
       if TabAllowCloseAt(I) then begin
-        CloseR := R;
-        CloseR.Left := CloseR.Right - 20;
+        CloseR := ThemedTabCloseHitRect(R, Self);
         if PtInRect(CloseR, Point(X, Y)) then
           FHoverCloseIndex := I;
       end;
@@ -464,8 +471,7 @@ begin
   for I := 0 to High(FTabRects) do begin
     if not PtInRect(FTabRects[I], Point(X, Y)) then Continue;
     if TabAllowCloseAt(I) then begin
-      CloseR := FTabRects[I];
-      CloseR.Left := CloseR.Right - 20;
+      CloseR := ThemedTabCloseHitRect(FTabRects[I], Self);
       if PtInRect(CloseR, Point(X, Y)) then begin
         AllowClose := True;
         if IsManualMode then begin
