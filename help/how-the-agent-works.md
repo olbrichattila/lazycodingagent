@@ -17,16 +17,17 @@ After you send a message, the engine roughly does:
 
 1. Build or refresh the **system prompt** (mode, workspace path, tool list, project rules).
 2. Append your message to the conversation.
-3. Call the **LLM** with the full message list and tool definitions.
-4. If the model returns **tool calls**, run each tool locally and append **tool result** messages (including JSON with an `error` field when a tool fails).
-5. Repeat step 3–4 until the model answers **without** tool calls, you **cancel**, or a **step limit** is reached (default 20 steps).
+3. Optionally **compact history** when auto-summarize is enabled and the prompt is near the configured context window (`uChatContextManager`).
+4. Call the **LLM** with the message list and tool definitions. If output is truncated by **Max Output Tokens**, the engine may retry with a higher temporary limit before continuing.
+5. If the model returns **tool calls**, run each tool locally and append **tool result** messages (including JSON with an `error` field when a tool fails).
+6. Repeat steps 3–5 until the model answers **without** tool calls, you **cancel**, or a **step limit** is reached (default 20 steps).
 
 Unexpected tool exceptions are caught at the tool boundary, converted to the same error JSON shape, and returned to the model so the loop can continue instead of stopping under the debugger.
 
 This pattern is often called **ReAct**: the model reasons in natural language, then acts via tools, then reasons again on the results.
 
 ```
-You → system + history → LLM → (optional) tools → LLM → … → final reply
+You → system + history → (optional summarize) → LLM → (optional tools) → LLM → … → final reply
 ```
 
 ## What goes into the system prompt

@@ -5,7 +5,8 @@ program tool_driver;
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Classes, SysUtils, fpjson, jsonparser,
-  uAppTypes, uAgentTypes, uAgentToolBase, uAgentTools, uBuildTargetResolver, uDiagnosticParse;
+  uAppTypes, uAgentTypes, uAgentToolBase, uAgentTools, uBuildTargetResolver, uDiagnosticParse,
+  uChatContextManager;
 
 function ParseMode(const S: string): TWorkspaceMode;
 begin
@@ -160,6 +161,26 @@ begin
               finally
                 CallObj.Free;
               end;
+            end;
+          end
+          else if Name = '_context_is_limit_error' then
+          begin
+            OutObj := TJSONObject.Create;
+            try
+              OutObj.Add('match', IsContextLengthError(A.Get('text', '')));
+              WriteLn(OutObj.AsJSON);
+            finally
+              OutObj.Free;
+            end;
+          end
+          else if Name = '_context_finish_truncated' then
+          begin
+            OutObj := TJSONObject.Create;
+            try
+              OutObj.Add('truncated', FinishReasonIndicatesTruncation(A.Get('reason', '')));
+              WriteLn(OutObj.AsJSON);
+            finally
+              OutObj.Free;
             end;
           end
           else if Name = '_json_wellformed' then

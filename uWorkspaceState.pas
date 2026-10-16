@@ -46,6 +46,9 @@ type
     FMaxTokens: Integer;
     FMaxSteps: Integer;
     FDebuggingMode: Boolean;
+    FAutoSummarizeContext: Boolean;
+    FContextWindowTokens: Integer;
+    FSummarizeThreshold: Double;
 
     FProviderCreds: array[TLlmProvider] of TProviderCredentials;
     FProviderModels: array[TLlmProvider] of array of TSavedModel;
@@ -104,6 +107,9 @@ type
     property MaxTokens: Integer read FMaxTokens write FMaxTokens;
     property MaxSteps: Integer read FMaxSteps write FMaxSteps;
     property DebuggingMode: Boolean read FDebuggingMode write FDebuggingMode;
+    property AutoSummarizeContext: Boolean read FAutoSummarizeContext write FAutoSummarizeContext;
+    property ContextWindowTokens: Integer read FContextWindowTokens write FContextWindowTokens;
+    property SummarizeThreshold: Double read FSummarizeThreshold write FSummarizeThreshold;
 
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
@@ -173,9 +179,12 @@ begin
   FApiKey := '';
   FBaseUrl := DefaultBaseUrlForProvider(lpOpenRouter);
   FTemperature := 0.2;
-  FMaxTokens := 4096;
+  FMaxTokens := DEFAULT_MAX_OUTPUT_TOKENS;
   FMaxSteps := 20;
   FDebuggingMode := False;
+  FAutoSummarizeContext := True;
+  FContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
+  FSummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;
 
   InitProviderDefaults;
   ResetLayout;
@@ -508,6 +517,9 @@ begin
     FMaxTokens := I.ReadInteger('LLM', 'MaxTokens', FMaxTokens);
     FMaxSteps := I.ReadInteger('LLM', 'MaxSteps', FMaxSteps);
     FDebuggingMode := I.ReadBool('General', 'DebuggingMode', FDebuggingMode);
+    FAutoSummarizeContext := I.ReadBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
+    FContextWindowTokens := I.ReadInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
+    FSummarizeThreshold := I.ReadFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
 
     ResetProviderStorage;
 
@@ -594,6 +606,9 @@ begin
     I.WriteInteger('LLM', 'MaxTokens', FMaxTokens);
     I.WriteInteger('LLM', 'MaxSteps', FMaxSteps);
     I.WriteBool('General', 'DebuggingMode', FDebuggingMode);
+    I.WriteBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
+    I.WriteInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
+    I.WriteFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
 
     for Prov := Low(TLlmProvider) to High(TLlmProvider) do begin
       Sec := 'Provider_' + IntToStr(Ord(Prov));

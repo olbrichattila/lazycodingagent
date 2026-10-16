@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
   uAppTypes, uAgentTypes, LcaTheme, uWorkspaceState, uWorkspaceRegistry,
   
-  uLlmClient, frmModelSearch, frmEditSavedModel;
+  uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager;
 
 type
   { TSettingsForm }
@@ -46,6 +46,13 @@ type
     edtMaxSteps: TEdit;
     chkDebuggingMode: TCheckBox;
     lblDebuggingHint: TLabel;
+    chkAutoSummarizeContext: TCheckBox;
+    lblAutoSummarizeHint: TLabel;
+    lblContextWindow: TLabel;
+    edtContextWindow: TEdit;
+    lblSummarizeThreshold: TLabel;
+    edtSummarizeThreshold: TEdit;
+    lblMaxTokensHint: TLabel;
 
     lblWorkspaceRoot: TLabel;
     edtWorkspaceRoot: TEdit;
@@ -78,6 +85,7 @@ type
     procedure LoadFromState;
     procedure SaveToState;
     procedure ApplyTheme(ATheme: TThemeKind);
+    procedure UpdateMaxTokensHint;
     procedure FlushCredentialsToState(AProv: TLlmProvider);
     procedure LoadProviderTab(AProv: TLlmProvider);
     procedure RefreshModelList;
@@ -179,6 +187,10 @@ begin
   edtMaxTokens.Font.Color := P.Text;
   edtMaxSteps.Color := P.SurfaceAlt;
   edtMaxSteps.Font.Color := P.Text;
+  edtContextWindow.Color := P.SurfaceAlt;
+  edtContextWindow.Font.Color := P.Text;
+  edtSummarizeThreshold.Color := P.SurfaceAlt;
+  edtSummarizeThreshold.Font.Color := P.Text;
 
   edtWorkspaceRoot.Color := P.SurfaceAlt;
   edtWorkspaceRoot.Font.Color := P.Text;
@@ -189,8 +201,25 @@ begin
     lblNotice.Font.Color := P.TextMuted;
   if Assigned(lblDebuggingHint) then
     lblDebuggingHint.Font.Color := P.TextMuted;
+  if Assigned(lblAutoSummarizeHint) then
+    lblAutoSummarizeHint.Font.Color := P.TextMuted;
+  if Assigned(lblMaxTokensHint) then
+    lblMaxTokensHint.Font.Color := P.TextMuted;
 
   Invalidate;
+end;
+
+procedure TSettingsForm.UpdateMaxTokensHint;
+var
+  V: Integer;
+begin
+  if not Assigned(lblMaxTokensHint) then Exit;
+  V := StrToIntDef(edtMaxTokens.Text, DEFAULT_MAX_OUTPUT_TOKENS);
+  if V < RECOMMENDED_MIN_OUTPUT_TOKENS then
+    lblMaxTokensHint.Caption :=
+      'Values below 2048 may truncate tool-call JSON and break agent steps.'
+  else
+    lblMaxTokensHint.Caption := '';
 end;
 
 procedure TSettingsForm.FlushCredentialsToState(AProv: TLlmProvider);
@@ -258,6 +287,10 @@ begin
   edtMaxTokens.Text := IntToStr(FState.MaxTokens);
   edtMaxSteps.Text := IntToStr(FState.MaxSteps);
   chkDebuggingMode.Checked := FState.DebuggingMode;
+  chkAutoSummarizeContext.Checked := FState.AutoSummarizeContext;
+  edtContextWindow.Text := IntToStr(FState.ContextWindowTokens);
+  edtSummarizeThreshold.Text := FloatToStr(FState.SummarizeThreshold);
+  UpdateMaxTokensHint;
 
   edtWorkspaceRoot.Text := FState.WorkspaceRoot;
   edtWorkspaceName.Text := FState.WorkspaceName;
@@ -281,9 +314,20 @@ begin
   FState.SetModel(FDefaultModelId);
 
   FState.Temperature := StrToFloatDef(edtTemp.Text, 0.2);
-  FState.MaxTokens := StrToIntDef(edtMaxTokens.Text, 4096);
+  FState.MaxTokens := ClampMaxOutputTokens(StrToIntDef(edtMaxTokens.Text, DEFAULT_MAX_OUTPUT_TOKENS));
+  edtMaxTokens.Text := IntToStr(FState.MaxTokens);
   FState.MaxSteps := StrToIntDef(edtMaxSteps.Text, 20);
   FState.DebuggingMode := chkDebuggingMode.Checked;
+  FState.AutoSummarizeContext := chkAutoSummarizeContext.Checked;
+  FState.ContextWindowTokens := StrToIntDef(edtContextWindow.Text, DEFAULT_CONTEXT_WINDOW_TOKENS);
+  if FState.ContextWindowTokens < 4096 then
+    FState.ContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
+  FState.SummarizeThreshold := StrToFloatDef(edtSummarizeThreshold.Text, DEFAULT_SUMMARIZE_THRESHOLD);
+  if FState.SummarizeThreshold <= 0 then
+    FState.SummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;
+  if FState.SummarizeThreshold > 0.98 then
+    FState.SummarizeThreshold := 0.98;
+  UpdateMaxTokensHint;
 
   FState.WorkspaceRoot := Trim(edtWorkspaceRoot.Text);
   FState.WorkspaceName := Trim(edtWorkspaceName.Text);

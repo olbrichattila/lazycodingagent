@@ -162,7 +162,7 @@ object SettingsForm: TSettingsForm
         Caption = 'Agent Behavior'
         object pnlTabAgent: TPanel
           Left = 0
-          Height = 392
+          Height = 480
           Top = 0
           Width = 528
           Align = alClient
@@ -196,7 +196,7 @@ object SettingsForm: TSettingsForm
         Top = 96
         Width = 200
         TabOrder = 1
-        Text = '4096'
+        Text = '16384'
       end
       object lblMaxSteps: TLabel
         Left = 16
@@ -228,6 +228,64 @@ object SettingsForm: TSettingsForm
         Width = 504
         AutoSize = False
         Caption = 'When enabled, full tool results appear in the chat history. When disabled, only tool errors are shown.'
+        WordWrap = True
+      end
+      object chkAutoSummarizeContext: TCheckBox
+        Left = 16
+        Height = 19
+        Top = 258
+        Width = 280
+        Caption = 'Auto-summarize when nearing context limit'
+        Checked = True
+        TabOrder = 4
+      end
+      object lblAutoSummarizeHint: TLabel
+        Left = 16
+        Height = 30
+        Top = 278
+        Width = 504
+        AutoSize = False
+        Caption = 'When enabled, older chat turns are compressed so long sessions can continue without hitting the model context window.'
+        WordWrap = True
+      end
+      object lblContextWindow: TLabel
+        Left = 16
+        Height = 15
+        Top = 316
+        Width = 130
+        Caption = 'Context window (tokens)'
+      end
+      object edtContextWindow: TEdit
+        Left = 16
+        Height = 23
+        Top = 336
+        Width = 200
+        TabOrder = 5
+        Text = '128000'
+      end
+      object lblSummarizeThreshold: TLabel
+        Left = 240
+        Height = 15
+        Top = 316
+        Width = 120
+        Caption = 'Summarize threshold'
+      end
+      object edtSummarizeThreshold: TEdit
+        Left = 240
+        Height = 23
+        Top = 336
+        Width = 120
+        TabOrder = 6
+        Text = '0.85'
+      end
+      object lblMaxTokensHint: TLabel
+        Left = 240
+        Height = 30
+        Top = 76
+        Width = 280
+        AutoSize = False
+        Caption = ''
+        Font.Color = clGray
         WordWrap = True
       end
         end

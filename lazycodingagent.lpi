@@ -185,6 +185,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uChatContextManager.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uAgentRunThread.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

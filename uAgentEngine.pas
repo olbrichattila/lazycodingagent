@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, SyncObjs, uAppTypes, uAgentTypes, uLlmClient, uAgentTools, uAgentRules,
-  uAgentExecutionLog, uAgentToolErrorLog;
+  uAgentExecutionLog, uAgentToolErrorLog, uChatContextManager;
 
 type
   { Event types for UI notification }
@@ -65,6 +65,18 @@ type
     FRunSnapMaxTokens: Integer;
     FRunSnapTimeoutMs: Integer;
 
+    FAutoSummarizeContext: Boolean;
+    FContextWindowTokens: Integer;
+    FSummarizeThreshold: Double;
+    FLastPromptTokens: Integer;
+    FSummarizeAttemptsThisRun: Integer;
+
+    function TryCompactConversationHistory(out ANote: string): Boolean;
+    function SendCompletionWithTruncationRetry(const AMessages: array of TChatMessage;
+      const AToolDefs: array of TToolDef; out AResp: TLlmResponse): Boolean;
+    procedure AppendTruncationNoticeIfNeeded(var AContent: string;
+      const AFinishReason: string; ATruncationRetriesExhausted: Boolean);
+
     procedure SetRunProgress(AStep: Integer);
     procedure SetState(ANewState: TAgentState);
     procedure AppendMessage(const AMsg: TChatMessage);
@@ -109,6 +121,9 @@ type
     property Client: TLlmClient read FClient;
     property Context: TAgentToolContext read FContext;
     property MaxSteps: Integer read FMaxSteps write FMaxSteps;
+    property AutoSummarizeContext: Boolean read FAutoSummarizeContext write FAutoSummarizeContext;
+    property ContextWindowTokens: Integer read FContextWindowTokens write FContextWindowTokens;
+    property SummarizeThreshold: Double read FSummarizeThreshold write FSummarizeThreshold;
 
     property OnStateChange: TAgentStateChangeEvent read FOnStateChange write FOnStateChange;
     property OnMessageAdded: TAgentMessageEvent read FOnMessageAdded write FOnMessageAdded;
@@ -128,14 +143,6 @@ implementation
 uses
   Forms, uAgentRunThread, uAgentToolBase;
 
-function FinishReasonIndicatesTruncation(const AReason: string): Boolean;
-var
-  R: string;
-begin
-  R := LowerCase(Trim(AReason));
-  Result := (R = 'length') or (R = 'max_tokens');
-end;
-
 function TruncationHintForFinishReason(const AReason: string): string;
 begin
   if FinishReasonIndicatesTruncation(AReason) then
@@ -149,6 +156,11 @@ begin
   inherited Create;
   FState := asIdle;
   FMaxSteps := 20;
+  FAutoSummarizeContext := True;
+  FContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
+  FSummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;
+  FLastPromptTokens := 0;
+  FSummarizeAttemptsThisRun := 0;
   FCancelRequested := False;
   FRunActive := False;
   FInWorkerRun := False;
@@ -570,6 +582,98 @@ begin
   end;
 end;
 
+procedure TAgentEngine.AppendTruncationNoticeIfNeeded(var AContent: string;
+  const AFinishReason: string; ATruncationRetriesExhausted: Boolean);
+var
+  Note: string;
+begin
+  if not FinishReasonIndicatesTruncation(AFinishReason) then Exit;
+  Note := LineEnding + LineEnding +
+    '*(Response may be incomplete: output hit Max Output Tokens';
+  if ATruncationRetriesExhausted then
+    Note := Note + ' even after automatic retry; raise the limit in Settings.)*'
+  else
+    Note := Note + '.)*';
+  if Pos('*(Response may be incomplete', AContent) = 0 then
+    AContent := AContent + Note;
+end;
+
+function TAgentEngine.TryCompactConversationHistory(out ANote: string): Boolean;
+var
+  Msgs: TChatMessageArray;
+  KeepFrom, MiddleFrom, MiddleTo: Integer;
+  Summary, Err: string;
+  NoteMsg: TChatMessage;
+begin
+  Result := False;
+  ANote := '';
+  if not FAutoSummarizeContext then Exit;
+  if FSummarizeAttemptsThisRun >= MAX_SUMMARIZE_ATTEMPTS_PER_RUN then Exit;
+
+  ExportMessages(Msgs);
+
+  if Length(Msgs) < 4 then Exit;
+
+  KeepFrom := FindSafeKeepFromIndex(Msgs, CONTEXT_KEEP_RECENT_MESSAGES);
+  MiddleFrom := 1;
+  if (Msgs[0].Role = crSystem) then
+    MiddleFrom := 1
+  else
+    MiddleFrom := 0;
+  MiddleTo := KeepFrom - 1;
+  if MiddleTo < MiddleFrom then Exit;
+
+  if not RunConversationSummary(FClient, Msgs, MiddleFrom, MiddleTo, Summary, Err) then begin
+    ANote := Err;
+    Exit;
+  end;
+
+  ApplySummaryToHistory(Msgs, Summary, MiddleFrom, MiddleTo);
+
+  FDataLock.Enter;
+  try
+    FMessages := Msgs;
+  finally
+    FDataLock.Leave;
+  end;
+
+  Inc(FSummarizeAttemptsThisRun);
+  FLastPromptTokens := 0;
+  NoteMsg := StringToChatRole('assistant');
+  NoteMsg.Content := 'Context summarized to continue the conversation.';
+  AppendMessage(NoteMsg);
+  ANote := NoteMsg.Content;
+  Result := True;
+end;
+
+function TAgentEngine.SendCompletionWithTruncationRetry(const AMessages: array of TChatMessage;
+  const AToolDefs: array of TToolDef; out AResp: TLlmResponse): Boolean;
+var
+  SavedMax, Attempt, UserMax: Integer;
+begin
+  Result := False;
+  UserMax := FClient.MaxTokens;
+  SavedMax := UserMax;
+  Attempt := 0;
+  repeat
+    AResp := FClient.SendChatCompletion(AMessages, AToolDefs);
+    if not AResp.Success then begin
+      FClient.MaxTokens := SavedMax;
+      Exit;
+    end;
+    if AResp.PromptTokens > 0 then
+      FLastPromptTokens := AResp.PromptTokens;
+    if ResponseNeedsTruncationRetry(AResp) and (Attempt < MAX_TRUNCATION_RETRIES) then begin
+      FClient.MaxTokens := RetryMaxTokensAfterTruncation(UserMax, Attempt);
+      Inc(Attempt);
+      Continue;
+    end;
+    Break;
+  until False;
+  FClient.MaxTokens := SavedMax;
+  Result := AResp.Success;
+end;
+
 function TAgentEngine.StartRunAsync(const AUserPrompt: string; AMode: TWorkspaceMode;
   const AModel: string): Boolean;
 begin
@@ -608,11 +712,16 @@ var
   LastResponseHadTools: Boolean;
   MessagesCopy: array of TChatMessage;
   RequestContext: string;
+  CompactNote: string;
+  ContextRetry: Boolean;
+  TruncationExhausted: Boolean;
 begin
   FInWorkerRun := True;
   FSyncRunStep := 0;
   FSyncRunMaxSteps := FMaxSteps;
   LastResponseHadTools := False;
+  FSummarizeAttemptsThisRun := 0;
+  FLastPromptTokens := 0;
   try
     ApplyClientSnapshot;
     if Trim(AModel) <> '' then
@@ -651,25 +760,62 @@ begin
         FDataLock.Leave;
       end;
 
-      RequestContext := FormatMessagesForDisplay(MessagesCopy, ToolDefs);
+      ContextRetry := True;
+      while ContextRetry do begin
+        ContextRetry := False;
 
-      Resp := FClient.SendChatCompletion(MessagesCopy, ToolDefs);
+        FDataLock.Enter;
+        try
+          MessagesCopy := FMessages;
+        finally
+          FDataLock.Leave;
+        end;
+
+        if FAutoSummarizeContext and (FSummarizeAttemptsThisRun < MAX_SUMMARIZE_ATTEMPTS_PER_RUN) and
+           ShouldProactivelySummarize(
+             EstimatePromptTokens(MessagesCopy, ToolDefs, FLastPromptTokens),
+             FContextWindowTokens, FClient.MaxTokens, FSummarizeThreshold, FLastPromptTokens) then begin
+          TryCompactConversationHistory(CompactNote);
+          FDataLock.Enter;
+          try
+            MessagesCopy := FMessages;
+          finally
+            FDataLock.Leave;
+          end;
+        end;
+
+        RequestContext := FormatMessagesForDisplay(MessagesCopy, ToolDefs);
+
+        if not SendCompletionWithTruncationRetry(MessagesCopy, ToolDefs, Resp) then begin
+          if GetCancelRequested then begin
+            SetState(asIdle);
+            Exit;
+          end;
+          if FAutoSummarizeContext and IsContextLengthError(Resp.ErrorMessage) and
+             TryCompactConversationHistory(CompactNote) then begin
+            ContextRetry := True;
+            Continue;
+          end;
+          AssistantMsg := StringToChatRole('assistant');
+          AssistantMsg.Content := '❌ LLM Request Error: ' + Resp.ErrorMessage;
+          AppendMessage(AssistantMsg);
+          SetState(asError);
+          Exit;
+        end;
+        Break;
+      end;
 
       if GetCancelRequested then begin
         SetState(asIdle);
         Exit;
       end;
 
-      if not Resp.Success then begin
-        AssistantMsg := StringToChatRole('assistant');
-        AssistantMsg.Content := '❌ LLM Request Error: ' + Resp.ErrorMessage;
-        AppendMessage(AssistantMsg);
-        SetState(asError);
-        Exit;
-      end;
+      TruncationExhausted := FinishReasonIndicatesTruncation(Resp.FinishReason);
 
       AssistantMsg := StringToChatRole('assistant');
       AssistantMsg.Content := Resp.Content;
+      AppendTruncationNoticeIfNeeded(AssistantMsg.Content, Resp.FinishReason,
+        TruncationExhausted);
       AssistantMsg.ToolCalls := Resp.ToolCalls;
       AssistantMsg.TokensUsed := Resp.TotalTokens;
       AppendMessage(AssistantMsg);

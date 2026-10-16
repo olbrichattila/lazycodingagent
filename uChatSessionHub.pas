@@ -62,7 +62,8 @@ type
 
     procedure SetWorkspaceRoot(const ARoot: string);
     procedure ApplyClientSettings(AProvider: TLlmProvider; const AApiKey, ABaseUrl, AModel: string;
-      ATemperature: Double; AMaxTokens, AMaxSteps: Integer);
+      ATemperature: Double; AMaxTokens, AMaxSteps: Integer; AAutoSummarizeContext: Boolean;
+      AContextWindowTokens: Integer; ASummarizeThreshold: Double);
 
     function EngineFor(const ASessionId: string): TAgentEngine;
     function ExecutionLogFor(const ASessionId: string): TAgentExecutionLog;
@@ -108,6 +109,9 @@ type
   end;
 
 implementation
+
+uses
+  uChatContextManager;
 
 { TSessionRuntime }
 
@@ -299,7 +303,8 @@ begin
 end;
 
 procedure TChatSessionHub.ApplyClientSettings(AProvider: TLlmProvider; const AApiKey, ABaseUrl, AModel: string;
-  ATemperature: Double; AMaxTokens, AMaxSteps: Integer);
+  ATemperature: Double; AMaxTokens, AMaxSteps: Integer; AAutoSummarizeContext: Boolean;
+  AContextWindowTokens: Integer; ASummarizeThreshold: Double);
 var
   I: Integer;
   E: TAgentEngine;
@@ -311,8 +316,11 @@ begin
     E.Client.BaseUrl := ABaseUrl;
     E.Client.Model := AModel;
     E.Client.Temperature := ATemperature;
-    E.Client.MaxTokens := AMaxTokens;
+    E.Client.MaxTokens := ClampMaxOutputTokens(AMaxTokens);
     E.MaxSteps := AMaxSteps;
+    E.AutoSummarizeContext := AAutoSummarizeContext;
+    E.ContextWindowTokens := AContextWindowTokens;
+    E.SummarizeThreshold := ASummarizeThreshold;
     E.Context.WorkspaceRoot := FWorkspaceRoot;
   end;
 end;

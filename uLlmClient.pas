@@ -164,7 +164,7 @@ begin
   FBaseUrl := 'https://openrouter.ai/api/v1';
   FModel := 'anthropic/claude-3.7-sonnet';
   FTemperature := 0.2;
-  FMaxTokens := 4096;
+  FMaxTokens := DEFAULT_MAX_OUTPUT_TOKENS;
   FTimeoutMs := 60000;
 end;
 

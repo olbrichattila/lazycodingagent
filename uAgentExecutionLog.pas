@@ -48,6 +48,7 @@ function PrettyJsonString(const S: string): string;
 function TruncateLogCaption(const S: string; AMaxLen: Integer = 72): string;
 function FormatMessagesForDisplay(const AMessages: array of TChatMessage;
   const ATools: array of TToolDef): string;
+function FormatMessageBodyForLog(const AMsg: TChatMessage): string;
 
 implementation
 
