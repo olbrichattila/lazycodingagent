@@ -35,6 +35,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="SynEditDsgn"/>
+      </Item>
+      <Item>
         <PackageName Value="LCL"/>
       </Item>
       <Item>
@@ -48,6 +51,9 @@
       </Item>
       <Item>
         <PackageName Value="ViewLCL"/>
+      </Item>
+      <Item>
+        <PackageName Value="LcaDesignSystem"/>
       </Item>
     </RequiredPackages>
     <Units>
@@ -64,26 +70,6 @@
       </Unit>
       <Unit>
         <Filename Value="uAppTypes.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uTheme.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uThemeWin32Buttons.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uThemeWin32ScrollBars.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uThemedPageTabBar.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uMarkdownHtmlView.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

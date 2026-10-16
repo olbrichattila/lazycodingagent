@@ -40,7 +40,8 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
     ClientHeight = 36
     ClientWidth = 472
     TabOrder = 1
-    object btnAdd: TButton
+    object btnAdd: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 0
       Height = 28
       Top = 4
@@ -49,7 +50,8 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
       OnClick = btnAddClick
       TabOrder = 0
     end
-    object btnRemove: TButton
+    object btnRemove: TLcaThemedButton
+      ButtonRole = tbrDestructive
       Left = 108
       Height = 28
       Top = 4
@@ -59,7 +61,8 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
       OnClick = btnRemoveClick
       TabOrder = 1
     end
-    object btnSetActive: TButton
+    object btnSetActive: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 216
       Height = 28
       Top = 4
@@ -80,7 +83,8 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
     ClientHeight = 44
     ClientWidth = 504
     TabOrder = 2
-    object btnClose: TButton
+    object btnClose: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 408
       Height = 28
       Top = 8

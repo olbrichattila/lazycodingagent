@@ -5,8 +5,8 @@ unit frmSyntaxSchemes;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme, uSyntaxSchemeRegistry;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme, uSyntaxSchemeRegistry;
 
 type
   { TSyntaxSchemesForm }
@@ -14,11 +14,11 @@ type
     lblHint: TLabel;
     lstSchemes: TListBox;
     pnlActions: TPanel;
-    btnAdd: TButton;
-    btnRemove: TButton;
-    btnSetActive: TButton;
+    btnAdd: TLcaThemedButton;
+    btnRemove: TLcaThemedButton;
+    btnSetActive: TLcaThemedButton;
     pnlBottom: TPanel;
-    btnClose: TButton;
+    btnClose: TLcaThemedButton;
     procedure btnAddClick(Sender: TObject);
     procedure btnRemoveClick(Sender: TObject);
     procedure btnSetActiveClick(Sender: TObject);
@@ -113,10 +113,7 @@ begin
   Color := P.Surface;
   lblHint.Font.Color := P.TextMuted;
   ConfigureThemedListBox(lstSchemes, ATheme);
-  StylePrimaryButton(btnAdd, ATheme);
-  StyleDestructiveButton(btnRemove, ATheme);
-  StylePrimaryButton(btnSetActive, ATheme);
-  StyleCancelButton(btnClose, ATheme);
+  ApplyThemedForm(Self, ATheme);
 end;
 
 procedure TSyntaxSchemesForm.btnAddClick(Sender: TObject);

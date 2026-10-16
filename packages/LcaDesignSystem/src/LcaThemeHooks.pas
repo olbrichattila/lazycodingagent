@@ -1,0 +1,89 @@
+unit LcaThemeHooks;
+
+{$mode objfpc}{$H+}
+
+interface
+
+procedure RegisterLcaThemeHooks;
+
+implementation
+
+uses
+  Classes, SysUtils, Controls, Terminal.View.LCL, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
+  LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel;
+
+type
+  TLcaThemeHookRegistry = class
+  public
+    function HookLcaControl(AControl: TControl; ATheme: TThemeKind): Boolean;
+    function HookTerminalView(AControl: TControl; ATheme: TThemeKind): Boolean;
+  end;
+
+var
+  LcaThemeHookRegistry: TLcaThemeHookRegistry;
+  GLcaThemeHooksRegistered: Boolean = False;
+
+function TLcaThemeHookRegistry.HookLcaControl(AControl: TControl; ATheme: TThemeKind): Boolean;
+begin
+  Result := False;
+  if not Assigned(AControl) then Exit;
+  if AControl is TLcaThemedPageTabBar then begin
+    TLcaThemedPageTabBar(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaThemedButton then begin
+    TLcaThemedButton(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaThemedComboBox then begin
+    TLcaThemedComboBox(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaNavRailButton then begin
+    TLcaNavRailButton(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaSurfacePanel then begin
+    TLcaSurfacePanel(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaMarkdownView then begin
+    TLcaMarkdownView(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaTerminalPanel then begin
+    TLcaTerminalPanel(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+end;
+
+function TLcaThemeHookRegistry.HookTerminalView(AControl: TControl; ATheme: TThemeKind): Boolean;
+var
+  P: TThemePalette;
+  View: TTerminalLCLView;
+begin
+  Result := False;
+  if not (AControl is TTerminalLCLView) then Exit;
+  View := TTerminalLCLView(AControl);
+  P := ThemePalette(ATheme);
+  View.Color := P.SurfaceAlt;
+  View.Font.Color := P.Text;
+  View.Invalidate;
+  Result := True;
+end;
+
+procedure RegisterLcaThemeHooks;
+begin
+  if GLcaThemeHooksRegistered then Exit;
+  GLcaThemeHooksRegistered := True;
+  RegisterThemeCustomApply(@LcaThemeHookRegistry.HookLcaControl);
+  RegisterThemeCustomApply(@LcaThemeHookRegistry.HookTerminalView);
+end;
+
+initialization
+  LcaThemeHookRegistry := TLcaThemeHookRegistry.Create;
+
+finalization
+  FreeAndNil(LcaThemeHookRegistry);
+
+end.

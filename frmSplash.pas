@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, ComCtrls,
-  uAppTypes, uTheme, LCLIntf;
+  uAppTypes, LcaTheme, LCLIntf;
 
 const
   SplashPostLoadDelayMs = 1000;

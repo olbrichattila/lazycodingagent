@@ -5,8 +5,8 @@ unit frmSettings;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType,
-  uAppTypes, uAgentTypes, uTheme, uWorkspaceState, uWorkspaceRegistry,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, uAgentTypes, LcaTheme, uWorkspaceState, uWorkspaceRegistry,
   
   uLlmClient, frmModelSearch, frmEditSavedModel;
 
@@ -14,8 +14,8 @@ type
   { TSettingsForm }
   TSettingsForm = class(TForm)
     pnlBottom: TPanel;
-    btnOK: TButton;
-    btnCancel: TButton;
+    btnOK: TLcaThemedButton;
+    btnCancel: TLcaThemedButton;
     pnlSettingsTabsHost: TPanel;
     pgcSettings: TPageControl;
     tsProvider: TTabSheet;
@@ -26,16 +26,16 @@ type
     pnlTabWorkspace: TPanel;
 
     lblProvider: TLabel;
-    cboProvider: TComboBox;
+    cboProvider: TLcaThemedComboBox;
     lblApiKey: TLabel;
     edtApiKey: TEdit;
     lblBaseUrl: TLabel;
     edtBaseUrl: TEdit;
     lblModels: TLabel;
     lstModels: TListBox;
-    btnFetchModels: TButton;
-    btnEditModel: TButton;
-    btnDeleteModel: TButton;
+    btnFetchModels: TLcaThemedButton;
+    btnEditModel: TLcaThemedButton;
+    btnDeleteModel: TLcaThemedButton;
     lblNotice: TLabel;
 
     lblTemp: TLabel;
@@ -49,15 +49,13 @@ type
 
     lblWorkspaceRoot: TLabel;
     edtWorkspaceRoot: TEdit;
-    btnBrowseWorkspace: TButton;
+    btnBrowseWorkspace: TLcaThemedButton;
     lblWorkspaceName: TLabel;
     edtWorkspaceName: TEdit;
 
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
-    procedure cboProviderDrawItem(Control: TWinControl; Index: Integer;
-      ARect: TRect; State: TOwnerDrawState);
     procedure cboProviderChange(Sender: TObject);
     procedure lstModelsClick(Sender: TObject);
     procedure lstModelsDrawItem(Control: TWinControl; Index: Integer;
@@ -136,7 +134,6 @@ begin
   FCurrentTheme := tkDark;
   KeyPreview := True;
   OnKeyDown := @FormKeyDown;
-  cboProvider.OnDrawItem := @cboProviderDrawItem;
 end;
 
 procedure TSettingsForm.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -152,12 +149,6 @@ begin
   end;
 end;
 
-procedure TSettingsForm.cboProviderDrawItem(Control: TWinControl; Index: Integer;
-  ARect: TRect; State: TOwnerDrawState);
-begin
-  StyleComboBoxDrawItem(Control, Index, ARect, State, FCurrentTheme);
-end;
-
 procedure TSettingsForm.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -169,7 +160,6 @@ begin
   Font.Name := 'Segoe UI';
   pnlBottom.Color := P.Surface;
 
-  StyleComboBox(cboProvider, ATheme);
   ApplyThemedForm(Self, ATheme);
   pnlBottom.Color := P.Surface;
 
@@ -199,13 +189,6 @@ begin
     lblNotice.Font.Color := P.TextMuted;
   if Assigned(lblDebuggingHint) then
     lblDebuggingHint.Font.Color := P.TextMuted;
-
-  StylePrimaryButton(btnOK, ATheme);
-  StyleCancelButton(btnCancel, ATheme);
-  StyleCancelButton(btnBrowseWorkspace, ATheme);
-  StylePrimaryButton(btnFetchModels, ATheme);
-  StyleCancelButton(btnEditModel, ATheme);
-  StyleDestructiveButton(btnDeleteModel, ATheme);
 
   Invalidate;
 end;

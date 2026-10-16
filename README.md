@@ -124,30 +124,41 @@ On Windows (PowerShell), the same init step:
 git submodule update --init third_party/TerminalEmulator
 ```
 
-Register and compile the terminal Lazarus packages once per machine (or after updating the submodule):
+Install **terminal packages**, **LcaDesignSystem** runtime, and (for the Form Designer) the **LCA Design** palette once per machine:
 
 **Linux / macOS:**
 
 ```bash
-./scripts/build-terminal-deps.sh
+chmod +x scripts/install-lca-lazarus.sh
+./scripts/install-lca-lazarus.sh
 ```
 
-**Windows:**
+**Windows** (use `.cmd` if PowerShell blocks `.ps1` scripts):
 
-```powershell
-.\scripts\build-terminal-deps.ps1
+```bat
+scripts\install-lca-lazarus.bat
 ```
+
+(Same as `install-lca-lazarus.cmd`.) Or: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-lca-lazarus.ps1`
+
+**Close Lazarus** before running the full install: the script installs **`LcaDesignSystemDesign`** (palette only) and runs **`lazbuild --build-ide`**. The **runtime** `LcaDesignSystem` package is linked for builds but not embedded in `lazarus.exe`.
+
+If Lazarus **hangs on startup** after an install, run **`scripts\recover-lazarus-ide.bat`**, then reinstall with **`install-lca-lazarus.bat`** (Lazarus closed). See [`packages/LcaDesignSystem/README.md`](packages/LcaDesignSystem/README.md).
+
+Use **`--link-only`** for CI/headless builds without IDE palette install or IDE rebuild.
+
+Legacy scripts [`scripts/build-terminal-deps.sh`](scripts/build-terminal-deps.sh) / [`.ps1`](scripts/build-terminal-deps.ps1) only link terminal packages; prefer `install-lca-lazarus.*`.
 
 If `lazbuild` is not on `PATH`, set `$env:LAZBUILD` to your `lazbuild.exe` (for example `C:\lazarus\lazbuild.exe`).
 
-**Form designer:** Dialogs and `mainunit` stream **stock LCL** types in `.lfm`. Regenerate the main shell with `python3 scripts/gen-main-lfm.py` when changing rail items or large structure. Edit forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12).
+**Form designer:** Chrome controls (`TLcaThemedPageTabBar`, `TLcaMarkdownView`, `TLcaTerminalPanel`, etc.) stream on **`mainunit.lfm`** from the **LCA Design** palette after running the install script. Regenerate the main shell with `python3 scripts/gen-main-lfm.py` when changing rail items or large structure. Edit forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12).
 
-Open `lazycodingagent.lpi` in Lazarus (install **TerminalFramework** and **ViewLCL** from `third_party/TerminalEmulator/` if the IDE still prompts after the script), or build from the command line:
+Open `lazycodingagent.lpi` in Lazarus, or build from the command line:
 
 **Linux / macOS:**
 
 ```bash
-./scripts/build-terminal-deps.sh
+./scripts/install-lca-lazarus.sh --link-only
 lazbuild lazycodingagent.lpi
 ```
 
@@ -155,14 +166,14 @@ The project pins **Qt5** in `lazycodingagent.lpi` (`LCLWidgetType`). After openi
 
 **Windows:**
 
-```powershell
-.\scripts\build-terminal-deps.ps1
+```bat
+scripts\install-lca-lazarus.cmd --link-only
 lazbuild lazycodingagent.lpi
 ```
 
-**IDE-only install (any OS):** Package → Open package file → `third_party/TerminalEmulator/TerminalFramework/TerminalFramework.lpk` → Compile → Use → Install; repeat for `ViewLCL/ViewLCL.lpk`; then reopen `lazycodingagent.lpi`.
+**Manual IDE install:** compile `LcaDesignSystem.lpk` (runtime), then `LcaDesignSystemDesign.lpk` → **Use → Install** (after terminal packages). Do not install the runtime package into the IDE.
 
-If the Lazarus IDE hangs when opening this project, quit Lazarus, rename or remove `lazycodingagent.lps` in the project directory (session file; regenerated on save), then open `lazycodingagent.lpi` again.
+If the Lazarus IDE hangs when opening this project, use **`recover-lazarus-ide`**, or quit Lazarus and remove `lazycodingagent.lps` (session file), then open `lazycodingagent.lpi` again.
 
 ### HTTPS for LLM providers (Fetch Models, chat, agent)
 

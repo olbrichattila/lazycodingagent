@@ -1,4 +1,4 @@
-unit uTheme;
+unit LcaTheme;
 
 {$mode objfpc}{$H+}
 
@@ -6,10 +6,11 @@ interface
 
 uses
   Classes, Controls, Graphics, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons,
-  LCLType, uAppTypes;
+  LCLType;
 
 type
-  TThemedButtonRole = (tbrPrimary, tbrCancel, tbrDestructive);
+  TThemeKind = (tkDark, tkLight);
+  TThemedButtonRole = (tbrPrimary, tbrCancel, tbrDestructive, tbrGhost);
 
   TThemePalette = record
     Background: TColor;      // Main background (e.g. deepest charcoal / soft light gray)
@@ -39,7 +40,9 @@ const
   ThemedTabBarBaseHeight = 38;
   { Logical pt for combo/list metrics — do not PPI-scale ad hoc. }
   ThemedTabFontSize = 9;
-  ThemedButtonCornerBase = 6;
+  ThemedButtonCornerBase = 8;
+  ThemedComboCornerBase = 6;
+  ThemedComboChevronGutterBase = 22;
   ThemedButtonFontSizeBase = 9;
   ThemedButtonHorizPadBase = 14;
   ThemedButtonHeightBase = 28;
@@ -57,6 +60,8 @@ function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
   ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 function ScaledEditorFontSize(AControl: TControl): Integer;
+function ThemedComboCornerRadius(AControl: TControl): Integer;
+function ThemedComboChevronGutter(AControl: TControl): Integer;
 
 // Owner-draw colors/font for ComboBox; preserves Height/ItemHeight from the form resource.
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
@@ -76,9 +81,15 @@ procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeK
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
   ACornerRadius, AFontSize, AHorizPad: Integer);
 
+procedure PaintThemedComboField(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
+  const AText: string; AEnabled, AFocused, ADropped, AShowFocusRing: Boolean;
+  ACornerRadius, AChevronGutter: Integer);
+
+procedure StyleThemedButtonRole(ABtn: TButton; ATheme: TThemeKind; ARole: TThemedButtonRole);
 procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
 procedure StyleCancelButton(ABtn: TButton; ATheme: TThemeKind);
 procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
+procedure StyleGhostButton(ABtn: TButton; ATheme: TThemeKind);
 
 procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
 procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
@@ -116,8 +127,8 @@ var
 implementation
 
 uses
-  Math, SysUtils, LCLIntf
-  {$IFDEF WINDOWS}, uThemeWin32Buttons, uThemeWin32ScrollBars{$ENDIF}
+  Math, SysUtils, LCLIntf, LcaThemedButton, LcaThemedComboBox
+  {$IFDEF WINDOWS}, LcaThemeWin32Buttons, LcaThemeWin32ScrollBars{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
@@ -159,6 +170,16 @@ end;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedEditorFontSizeBase);
+end;
+
+function ThemedComboCornerRadius(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedComboCornerBase);
+end;
+
+function ThemedComboChevronGutter(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedComboChevronGutterBase);
 end;
 
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
@@ -410,22 +431,22 @@ function DwmSetWindowAttribute(hwnd: TWinHwnd; dwAttribute: LongWord;
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
 begin
   if ATheme = tkDark then begin
-    // Modern sleek VSCode / Cursor dark theme tokens
-    Result.Background     := RGBToColor(24, 24, 28);      // #18181C
-    Result.Surface        := RGBToColor(30, 30, 36);      // #1E1E24
-    Result.SurfaceAlt     := RGBToColor(38, 38, 46);      // #26262E
-    Result.HeaderBg       := RGBToColor(34, 34, 42);      // #22222A
-    Result.RailBg         := RGBToColor(20, 20, 24);      // #141418
-    Result.Border         := RGBToColor(52, 53, 65);      // #343541
-    Result.BorderStrong   := RGBToColor(70, 72, 88);      // #464858
-    Result.Text           := RGBToColor(240, 243, 248);   // #F0F3F8
-    Result.TextMuted      := RGBToColor(160, 168, 185);   // #A0A8B9
-    Result.Accent         := RGBToColor(59, 130, 246);    // #3B82F6
-    Result.AccentHover    := RGBToColor(96, 165, 250);    // #60A5FA
-    Result.AccentActive   := RGBToColor(40, 60, 95);      // #283C5F
-    Result.AccentText     := clWhite;
-    Result.SplitterColor  := RGBToColor(45, 47, 58);      // #2D2F3A
-    Result.CardBg         := RGBToColor(34, 35, 43);      // #22232B
+    // Neon workspace — deep base with cyan / violet accents
+    Result.Background     := RGBToColor(8, 10, 18);       // #080A12
+    Result.Surface        := RGBToColor(14, 16, 28);      // #0E101C
+    Result.SurfaceAlt     := RGBToColor(22, 24, 40);      // #161828
+    Result.HeaderBg       := RGBToColor(12, 14, 24);      // #0C0E18
+    Result.RailBg         := RGBToColor(6, 8, 14);        // #06080E
+    Result.Border         := RGBToColor(45, 55, 90);      // #2D375A
+    Result.BorderStrong   := RGBToColor(0, 200, 255);     // cyan glow edge
+    Result.Text           := RGBToColor(240, 248, 255);   // #F0F8FF
+    Result.TextMuted      := RGBToColor(140, 160, 195);   // #8CA0C3
+    Result.Accent         := RGBToColor(0, 229, 255);     // #00E5FF
+    Result.AccentHover    := RGBToColor(56, 189, 248);    // #38BDF8
+    Result.AccentActive   := RGBToColor(30, 45, 85);       // selected rail/tab
+    Result.AccentText     := RGBToColor(8, 12, 22);
+    Result.SplitterColor  := RGBToColor(35, 45, 75);
+    Result.CardBg         := RGBToColor(16, 20, 36);       // glassy card
   end else begin
     // Modern sleek light theme tokens
     Result.Background     := RGBToColor(243, 244, 246);   // #F3F4F6
@@ -557,7 +578,7 @@ begin
       Combo.Canvas.Font.Color := P.Text;
 
     TextTop := ARect.Top + ((ARect.Bottom - ARect.Top - Combo.Canvas.TextHeight(TextStr)) div 2);
-    Combo.Canvas.TextRect(ARect, ARect.Left + 6, TextTop, TextStr);
+    Combo.Canvas.TextRect(ARect, ARect.Left + 8, TextTop, TextStr);
   end;
 end;
 
@@ -696,6 +717,10 @@ procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
   ARole: TThemedButtonRole);
 begin
 end;
+
+procedure ApplyWin32ThemedComboPaint(ACombo: TComboBox; ATheme: TThemeKind);
+begin
+end;
 {$ENDIF}
 
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
@@ -727,7 +752,7 @@ begin
         FillColor := P.Accent;
         TextColor := P.AccentText;
         if APressed and AEnabled then
-          FillColor := P.AccentActive
+          FillColor := P.AccentHover
         else if AHover and AEnabled then
           FillColor := P.AccentHover;
       end;
@@ -769,12 +794,27 @@ begin
             FillColor := RGBToColor(252, 210, 210);
         end;
       end;
+    tbrGhost:
+      begin
+        DrawBorder := False;
+        FillColor := P.HeaderBg;
+        TextColor := P.TextMuted;
+        if APressed and AEnabled then begin
+          FillColor := P.Border;
+          TextColor := P.Text;
+        end else if AHover and AEnabled then begin
+          FillColor := P.SurfaceAlt;
+          TextColor := P.Text;
+        end;
+      end;
   end;
 
   if not AEnabled then begin
     FillColor := P.SurfaceAlt;
     TextColor := P.TextMuted;
     DrawBorder := ARole = tbrCancel;
+    if ARole = tbrGhost then
+      DrawBorder := False;
   end;
 
   Canvas.Brush.Color := FillColor;
@@ -808,6 +848,86 @@ begin
     Canvas.TextOut(R.Left + (R.Width - Canvas.TextWidth(ACaption)) div 2, TextTop, ACaption);
 end;
 
+procedure PaintThemedComboChevron(Canvas: TCanvas; const ARect: TRect; AColor: TColor);
+var
+  CX, CY, HalfW, HalfH: Integer;
+  P1, P2, P3: TPoint;
+begin
+  CX := (ARect.Left + ARect.Right) div 2;
+  CY := (ARect.Top + ARect.Bottom) div 2;
+  HalfW := Max(3, (ARect.Right - ARect.Left) div 5);
+  HalfH := Max(2, (ARect.Bottom - ARect.Top) div 6);
+  P1 := Point(CX - HalfW, CY - HalfH div 2);
+  P2 := Point(CX + HalfW, CY - HalfH div 2);
+  P3 := Point(CX, CY + HalfH);
+  Canvas.Brush.Color := AColor;
+  Canvas.Pen.Color := AColor;
+  Canvas.Polygon([P1, P2, P3]);
+end;
+
+procedure PaintThemedComboField(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
+  const AText: string; AEnabled, AFocused, ADropped, AShowFocusRing: Boolean;
+  ACornerRadius, AChevronGutter: Integer);
+var
+  P: TThemePalette;
+  R, TextR, ChevR: TRect;
+  Rad, TextTop, PadLeft: Integer;
+  BorderColor, FillColor, TextColor, ChevColor: TColor;
+begin
+  P := ThemePalette(ATheme);
+  R := ARect;
+  Dec(R.Right);
+  Dec(R.Bottom);
+  if ACornerRadius < 2 then
+    Rad := 6
+  else
+    Rad := ACornerRadius;
+
+  FillColor := P.SurfaceAlt;
+  BorderColor := P.Border;
+  TextColor := P.Text;
+  ChevColor := P.TextMuted;
+  if ADropped and AEnabled then
+    BorderColor := P.Accent;
+  if AFocused and AEnabled and AShowFocusRing then
+    BorderColor := P.Accent;
+  if not AEnabled then begin
+    FillColor := P.Surface;
+    TextColor := P.TextMuted;
+    ChevColor := P.TextMuted;
+    BorderColor := P.Border;
+  end;
+
+  Canvas.Brush.Color := FillColor;
+  Canvas.Pen.Color := FillColor;
+  Canvas.Pen.Width := 1;
+  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Color := BorderColor;
+  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+  Canvas.Brush.Style := bsSolid;
+
+  if AFocused and AEnabled and AShowFocusRing then begin
+    Canvas.Pen.Color := P.Accent;
+    Canvas.RoundRect(R.Left + 1, R.Top + 1, R.Right, R.Bottom, Max(2, Rad - 1), Max(2, Rad - 1));
+  end;
+
+  ChevR := R;
+  ChevR.Left := ChevR.Right - AChevronGutter + 1;
+  TextR := R;
+  Dec(TextR.Right, AChevronGutter);
+  PadLeft := 10;
+  Canvas.Font.Name := 'Segoe UI';
+  Canvas.Font.Size := 9;
+  Canvas.Font.Color := TextColor;
+  if AText <> '' then begin
+    TextTop := TextR.Top + ((TextR.Bottom - TextR.Top - Canvas.TextHeight(AText)) div 2);
+    Canvas.TextRect(TextR, TextR.Left + PadLeft, TextTop, AText);
+  end;
+  PaintThemedComboChevron(Canvas, ChevR, ChevColor);
+end;
+
 procedure RestoreButtonDesignerBounds(ABtn: TButton; ASavedW, ASavedH: Integer);
 begin
   if (ABtn.Width <> ASavedW) or (ABtn.Height <> ASavedH) then begin
@@ -816,7 +936,7 @@ begin
   end;
 end;
 
-procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
+procedure StyleThemedButtonRole(ABtn: TButton; ATheme: TThemeKind; ARole: TThemedButtonRole);
 var
   P: TThemePalette;
   SavedW, SavedH: Integer;
@@ -825,57 +945,59 @@ begin
   SavedW := ABtn.Width;
   SavedH := ABtn.Height;
   P := ThemePalette(ATheme);
-  ABtn.Font.Color := P.AccentText;
-  ABtn.Color := P.Accent;
+  case ARole of
+    tbrPrimary:
+      begin
+        ABtn.Font.Color := P.AccentText;
+        ABtn.Color := P.Accent;
+      end;
+    tbrDestructive:
+      if ATheme = tkDark then begin
+        ABtn.Color := RGBToColor(72, 32, 36);
+        ABtn.Font.Color := RGBToColor(248, 113, 113);
+      end else begin
+        ABtn.Color := RGBToColor(254, 226, 226);
+        ABtn.Font.Color := RGBToColor(185, 28, 28);
+      end;
+    tbrGhost:
+      begin
+        ABtn.Color := P.HeaderBg;
+        ABtn.Font.Color := P.TextMuted;
+      end;
+  else
+    if ATheme = tkDark then begin
+      ABtn.Color := P.SurfaceAlt;
+      ABtn.Font.Color := P.TextMuted;
+    end else begin
+      ABtn.Color := P.Surface;
+      ABtn.Font.Color := P.TextMuted;
+    end;
+  end;
   RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ApplyWin32UnthemedButton(ABtn);
-  ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrPrimary);
+  ApplyWin32ThemedButtonPaint(ABtn, ATheme, ARole);
   RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ABtn.Invalidate;
+end;
+
+procedure StylePrimaryButton(ABtn: TButton; ATheme: TThemeKind);
+begin
+  StyleThemedButtonRole(ABtn, ATheme, tbrPrimary);
 end;
 
 procedure StyleCancelButton(ABtn: TButton; ATheme: TThemeKind);
-var
-  P: TThemePalette;
-  SavedW, SavedH: Integer;
 begin
-  if not Assigned(ABtn) then Exit;
-  SavedW := ABtn.Width;
-  SavedH := ABtn.Height;
-  P := ThemePalette(ATheme);
-  if ATheme = tkDark then begin
-    ABtn.Color := P.SurfaceAlt;
-    ABtn.Font.Color := P.TextMuted;
-  end else begin
-    ABtn.Color := P.Surface;
-    ABtn.Font.Color := P.TextMuted;
-  end;
-  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
-  ApplyWin32UnthemedButton(ABtn);
-  ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrCancel);
-  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
-  ABtn.Invalidate;
+  StyleThemedButtonRole(ABtn, ATheme, tbrCancel);
 end;
 
 procedure StyleDestructiveButton(ABtn: TButton; ATheme: TThemeKind);
-var
-  SavedW, SavedH: Integer;
 begin
-  if not Assigned(ABtn) then Exit;
-  SavedW := ABtn.Width;
-  SavedH := ABtn.Height;
-  if ATheme = tkDark then begin
-    ABtn.Color := RGBToColor(72, 32, 36);
-    ABtn.Font.Color := RGBToColor(248, 113, 113);
-  end else begin
-    ABtn.Color := RGBToColor(254, 226, 226);
-    ABtn.Font.Color := RGBToColor(185, 28, 28);
-  end;
-  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
-  ApplyWin32UnthemedButton(ABtn);
-  ApplyWin32ThemedButtonPaint(ABtn, ATheme, tbrDestructive);
-  RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
-  ABtn.Invalidate;
+  StyleThemedButtonRole(ABtn, ATheme, tbrDestructive);
+end;
+
+procedure StyleGhostButton(ABtn: TButton; ATheme: TThemeKind);
+begin
+  StyleThemedButtonRole(ABtn, ATheme, tbrGhost);
 end;
 
 procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
@@ -1197,15 +1319,22 @@ begin
   ThemedListBoxDrawItem(Control, Index, ARect, State, InternalThemeApplyContext);
 end;
 
+function ResolveThemedButtonRole(ABtn: TButton): TThemedButtonRole;
+begin
+  if ABtn is TLcaThemedButton then
+    Exit(TLcaThemedButton(ABtn).ButtonRole);
+  case ABtn.Tag of
+    1: Exit(tbrPrimary);
+    2: Exit(tbrDestructive);
+  else
+    Exit(tbrCancel);
+  end;
+end;
+
 procedure ApplyThemedButtonControl(ABtn: TButton; ATheme: TThemeKind);
 begin
   if not Assigned(ABtn) then Exit;
-  case ABtn.Tag of
-    1: StylePrimaryButton(ABtn, ATheme);
-    2: StyleDestructiveButton(ABtn, ATheme);
-  else
-    StyleCancelButton(ABtn, ATheme);
-  end;
+  StyleThemedButtonRole(ABtn, ATheme, ResolveThemedButtonRole(ABtn));
 end;
 
 procedure ApplyThemedControlTree(ARoot: TWinControl; ATheme: TThemeKind);
@@ -1224,8 +1353,12 @@ begin
     if TryThemeCustomApply(C, ATheme) then
       Continue;
 
-    if C is TButton then
+    if C is TLcaThemedButton then
+      TLcaThemedButton(C).ApplyTheme(ATheme)
+    else if C is TButton then
       ApplyThemedButtonControl(TButton(C), ATheme)
+    else if C is TLcaThemedComboBox then
+      TLcaThemedComboBox(C).ApplyTheme(ATheme)
     else if C is TComboBox then begin
       StyleComboBox(TComboBox(C), ATheme);
       TComboBox(C).OnDrawItem := @ThemedDrawHandlers.ComboDrawItem;

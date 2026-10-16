@@ -5,8 +5,8 @@ unit frmEditSavedModel;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme;
 
 type
   { TEditSavedModelForm }
@@ -16,8 +16,8 @@ type
     lblModelId: TLabel;
     edtModelId: TEdit;
     pnlBottom: TPanel;
-    btnOK: TButton;
-    btnCancel: TButton;
+    btnOK: TLcaThemedButton;
+    btnCancel: TLcaThemedButton;
     procedure FormShow(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
@@ -74,8 +74,6 @@ begin
   edtDisplayName.Font.Color := P.Text;
   edtModelId.Color := P.SurfaceAlt;
   edtModelId.Font.Color := P.Text;
-  StylePrimaryButton(btnOK, ATheme);
-  StyleCancelButton(btnCancel, ATheme);
   ApplyPlatformChrome(Self, ATheme);
 end;
 

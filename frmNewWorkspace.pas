@@ -5,8 +5,8 @@ unit frmNewWorkspace;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil,
-  uAppTypes, uTheme, uWorkspaceRegistry;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme, uWorkspaceRegistry;
 
 type
   TNewWorkspaceForm = class(TForm)
@@ -14,10 +14,10 @@ type
     edtDisplayName: TEdit;
     lblFolder: TLabel;
     edtFolder: TEdit;
-    btnBrowse: TButton;
+    btnBrowse: TLcaThemedButton;
     pnlBottom: TPanel;
-    btnOK: TButton;
-    btnCancel: TButton;
+    btnOK: TLcaThemedButton;
+    btnCancel: TLcaThemedButton;
     procedure FormShow(Sender: TObject);
     procedure btnBrowseClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
@@ -75,9 +75,6 @@ begin
   edtDisplayName.Font.Color := P.Text;
   edtFolder.Color := P.SurfaceAlt;
   edtFolder.Font.Color := P.Text;
-  StyleCancelButton(btnBrowse, ATheme);
-  StylePrimaryButton(btnOK, ATheme);
-  StyleCancelButton(btnCancel, ATheme);
   ApplyPlatformChrome(Self, ATheme);
 end;
 

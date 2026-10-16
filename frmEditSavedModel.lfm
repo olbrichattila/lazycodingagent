@@ -51,7 +51,8 @@ object EditSavedModelForm: TEditSavedModelForm
     ClientHeight = 44
     ClientWidth = 440
     TabOrder = 2
-    object btnOK: TButton
+    object btnOK: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 256
       Height = 28
       Top = 8
@@ -61,7 +62,8 @@ object EditSavedModelForm: TEditSavedModelForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TButton
+    object btnCancel: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 344
       Height = 28
       Top = 8

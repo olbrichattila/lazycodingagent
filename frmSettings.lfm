@@ -47,7 +47,7 @@ object SettingsForm: TSettingsForm
         Width = 63
         Caption = 'LLM Provider'
       end
-      object cboProvider: TComboBox
+      object cboProvider: TLcaThemedComboBox
         Left = 16
         Height = 25
         Top = 36
@@ -115,7 +115,8 @@ object SettingsForm: TSettingsForm
         OnClick = lstModelsClick
         TabOrder = 3
       end
-      object btnFetchModels: TButton
+      object btnFetchModels: TLcaThemedButton
+        ButtonRole = tbrPrimary
         Tag = 1
         Left = 16
         Height = 28
@@ -125,7 +126,8 @@ object SettingsForm: TSettingsForm
         OnClick = btnFetchModelsClick
         TabOrder = 4
       end
-      object btnEditModel: TButton
+      object btnEditModel: TLcaThemedButton
+        ButtonRole = tbrCancel
         Left = 144
         Height = 28
         Top = 336
@@ -134,7 +136,8 @@ object SettingsForm: TSettingsForm
         OnClick = btnEditModelClick
         TabOrder = 5
       end
-      object btnDeleteModel: TButton
+      object btnDeleteModel: TLcaThemedButton
+        ButtonRole = tbrDestructive
         Tag = 2
         Left = 240
         Height = 28
@@ -253,7 +256,8 @@ object SettingsForm: TSettingsForm
         Width = 416
         TabOrder = 0
       end
-      object btnBrowseWorkspace: TButton
+      object btnBrowseWorkspace: TLcaThemedButton
+        ButtonRole = tbrCancel
         Left = 440
         Height = 23
         Top = 36
@@ -291,7 +295,8 @@ object SettingsForm: TSettingsForm
     ClientHeight = 44
     ClientWidth = 560
     TabOrder = 1
-    object btnOK: TButton
+    object btnOK: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Tag = 1
       Left = 376
       Height = 28
@@ -302,7 +307,8 @@ object SettingsForm: TSettingsForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TButton
+    object btnCancel: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 464
       Height = 28
       Top = 8

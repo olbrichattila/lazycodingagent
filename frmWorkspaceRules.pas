@@ -5,8 +5,8 @@ unit frmWorkspaceRules;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme, uAgentRules, frmEditRule;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme, uAgentRules, frmEditRule;
 
 type
   { TWorkspaceRulesForm }
@@ -14,11 +14,11 @@ type
     lblRules: TLabel;
     lstRules: TListBox;
     pnlActions: TPanel;
-    btnAddRule: TButton;
-    btnEditRule: TButton;
-    btnDeleteRule: TButton;
+    btnAddRule: TLcaThemedButton;
+    btnEditRule: TLcaThemedButton;
+    btnDeleteRule: TLcaThemedButton;
     pnlBottom: TPanel;
-    btnClose: TButton;
+    btnClose: TLcaThemedButton;
     procedure btnAddRuleClick(Sender: TObject);
     procedure btnEditRuleClick(Sender: TObject);
     procedure btnDeleteRuleClick(Sender: TObject);
@@ -109,10 +109,6 @@ begin
   ApplyThemedForm(Self, ATheme);
   ConfigureThemedListBox(lstRules, ATheme);
   lblRules.Font.Color := P.Text;
-  StylePrimaryButton(btnAddRule, ATheme);
-  StyleCancelButton(btnEditRule, ATheme);
-  StyleDestructiveButton(btnDeleteRule, ATheme);
-  StyleCancelButton(btnClose, ATheme);
   ApplyPlatformChrome(Self, ATheme);
 end;
 

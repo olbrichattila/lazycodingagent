@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
-  ComCtrls, LCLType, uAppTypes, uTheme, uCodingAgentPresets,
+  ComCtrls, LCLType, uAppTypes, LcaTheme, LcaThemedButton, uCodingAgentPresets,
   uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
 
 type
@@ -38,8 +38,8 @@ type
     FErrorLogList: TListBox;
     FExecutionLog: TAgentExecutionLog;
     FToolErrorLog: TAgentToolErrorLog;
-    FActionBtn: TButton;
-    FSecondaryActionBtn: TButton;
+    FActionBtn: TLcaThemedButton;
+    FSecondaryActionBtn: TLcaThemedButton;
     FWorkspaceIds: TStringList;
     FSessionIds: TStringList;
     FSessionArchived: TStringList;
@@ -85,7 +85,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel; AFileList: TListBox;
-      ATree: TTreeView; ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TButton);
+      ATree: TTreeView; ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -149,7 +149,7 @@ end;
 
 procedure TNavContentControl.Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel;
   AFileList: TListBox; ATree: TTreeView; ALogList, AErrorLogList: TListBox;
-  APrimaryBtn, ASecondaryBtn: TButton);
+  APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
 begin
   FTitleLabel := ATitle;
   FSubLabel := ASub;
@@ -365,9 +365,9 @@ begin
   end;
   ApplyNavListMetrics;
   if Assigned(FActionBtn) then
-    StylePrimaryButton(FActionBtn, ATheme);
+    FActionBtn.ApplyTheme(ATheme);
   if Assigned(FSecondaryActionBtn) then
-    StyleCancelButton(FSecondaryActionBtn, ATheme);
+    FSecondaryActionBtn.ApplyTheme(ATheme);
 end;
 
 procedure TNavContentControl.ApplyPlatformChrome(ATheme: TThemeKind);

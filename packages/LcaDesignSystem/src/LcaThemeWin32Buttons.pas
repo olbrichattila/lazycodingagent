@@ -1,11 +1,11 @@
-unit uThemeWin32Buttons;
+unit LcaThemeWin32Buttons;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, Controls, StdCtrls, uAppTypes, uTheme;
+  Classes, Controls, StdCtrls, LcaTheme;
 
 procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
   ARole: TThemedButtonRole);
@@ -286,6 +286,10 @@ var
   Helper: TWin32ThemedButtonPaint;
 begin
   if not Assigned(ABtn) then Exit;
+  if csDesigning in ABtn.ComponentState then Exit;
+  if csLoading in ABtn.ComponentState then Exit;
+  if csReading in ABtn.ComponentState then Exit;
+  if not ABtn.HandleAllocated then Exit;
   Helper := TWin32ThemedButtonPaint.FindOnButton(ABtn);
   if Helper = nil then
     Helper := TWin32ThemedButtonPaint.Create(ABtn);

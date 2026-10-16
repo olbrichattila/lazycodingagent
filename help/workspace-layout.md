@@ -6,9 +6,9 @@ The main window is an IDE-style layout: navigation on the left, a tabbed center 
 
 The narrow left **activity bar** switches views:
 
-- **Home** — workspace overview.
+- **Workspace** — workspace overview.
 - **Projects** — file tree for the workspace.
-- **Sessions** — chat session list (active and archived).
+- **Agents** — chat session list (active and archived).
 - **Bots** — agent presets and prompt setups.
 - **Tools & Logs** — per-step execution log for the active session: user prompts, model steps (`Step N/M · Model:`), and each tool’s input/output (`Step N/M · tool_name(...)`). Click a row to open **Execution Detail**; during an active run new rows follow into that panel until you select an older row.
 - **Tasks & Plans** — session task list from the todo tool.

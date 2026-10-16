@@ -1,40 +1,44 @@
-unit uMarkdownHtmlView;
+unit LcaMarkdownView;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, Graphics, uAppTypes, uTheme;
+  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, LcaTheme;
 
 const
-  MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
+  LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
 
 type
-  { Subset Markdown renderer on a streamed TPanel host (TurboPower IpHtml at runtime). }
-  TMarkdownHtmlView = class
+  TLcaMarkdownView = class(TPanel)
   private
-    FOwner: TComponent;
-    FHost: TPanel;
     FHtmlPanel: TControl;
-    FTheme: TThemeKind;
+    FThemeKind: TThemeKind;
     FMarkdown: string;
     FRawHtml: string;
     FUseRawHtml: Boolean;
     FRenderDeferRetries: Integer;
     FRenderDeferQueued: Boolean;
+    FRendering: Boolean;
+    procedure SetThemeKind(AValue: TThemeKind);
     function HostReadyForRender: Boolean;
     procedure EnsureViewer;
     procedure ScheduleDeferredRender;
     procedure DeferredRender(Data: PtrInt);
     procedure Render;
+  protected
+    procedure Loaded; override;
+    procedure Resize; override;
   public
-    constructor Create(AOwner: TComponent; AHost: TPanel);
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure SetMarkdown(const AMarkdown: string);
     procedure SetHtmlBody(const AFullHtml: string);
     procedure ApplyTheme(ATheme: TThemeKind);
-    property Host: TPanel read FHost;
+  published
+    property ThemeKind: TThemeKind read FThemeKind write SetThemeKind default tkDark;
+    property Align;
   end;
 
 function MarkdownSubsetToHtml(const AMarkdown: string): string;
@@ -43,7 +47,7 @@ function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): st
 implementation
 
 uses
-  Forms, IpHtml;
+  IpHtml;
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -73,7 +77,6 @@ end;
 function InlineMarkdownToHtml(const S: string): string;
 var
   I, N: Integer;
-  Ch: Char;
   InBold, InCode: Boolean;
   Token: string;
 begin
@@ -232,73 +235,85 @@ begin
     '</style></head><body>' + ABodyHtml + '</body></html>';
 end;
 
-constructor TMarkdownHtmlView.Create(AOwner: TComponent; AHost: TPanel);
+procedure TLcaMarkdownView.SetThemeKind(AValue: TThemeKind);
 begin
-  inherited Create;
-  FOwner := AOwner;
-  FHost := AHost;
-  FHtmlPanel := nil;
-  FTheme := tkDark;
+  if FThemeKind = AValue then Exit;
+  FThemeKind := AValue;
+  ApplyTheme(FThemeKind);
+end;
+
+constructor TLcaMarkdownView.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  BevelOuter := bvNone;
+  FThemeKind := tkDark;
   FMarkdown := '';
   FRawHtml := '';
   FUseRawHtml := False;
   FRenderDeferRetries := 0;
   FRenderDeferQueued := False;
-  EnsureViewer;
+  FRendering := False;
 end;
 
-destructor TMarkdownHtmlView.Destroy;
+destructor TLcaMarkdownView.Destroy;
 begin
   Application.RemoveAsyncCalls(Self);
-  { IpHtmlPanel is owned by FHost (LCL); freeing here double-frees on form close. }
   FHtmlPanel := nil;
   inherited Destroy;
 end;
 
-function TMarkdownHtmlView.HostReadyForRender: Boolean;
+function TLcaMarkdownView.HostReadyForRender: Boolean;
 begin
-  Result := Assigned(FHost)
-    and FHost.HandleAllocated
-    and FHost.Showing
-    and (FHost.ClientWidth > 0)
-    and (FHost.ClientHeight > 0);
+  Result := HandleAllocated and Showing and (ClientWidth > 0) and (ClientHeight > 0);
 end;
 
-procedure TMarkdownHtmlView.ScheduleDeferredRender;
+procedure TLcaMarkdownView.ScheduleDeferredRender;
 begin
   if FRenderDeferQueued then Exit;
-  if FRenderDeferRetries >= MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then Exit;
+  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then Exit;
   Inc(FRenderDeferRetries);
   FRenderDeferQueued := True;
   Application.QueueAsyncCall(@DeferredRender, PtrInt(Self));
 end;
 
-procedure TMarkdownHtmlView.DeferredRender(Data: PtrInt);
+procedure TLcaMarkdownView.DeferredRender(Data: PtrInt);
 begin
   FRenderDeferQueued := False;
   if PtrInt(Self) <> Data then Exit;
   Render;
 end;
 
-procedure TMarkdownHtmlView.EnsureViewer;
+procedure TLcaMarkdownView.EnsureViewer;
+var
+  Html: TIpHtmlPanel;
 begin
-  if not Assigned(FHost) then Exit;
-  if (csDestroying in FHost.ComponentState) or not FHost.HandleAllocated then Exit;
+  if csDesigning in ComponentState then Exit;
+  if (csDestroying in ComponentState) or not HandleAllocated then Exit;
   if Assigned(FHtmlPanel) then Exit;
-  FHtmlPanel := TIpHtmlPanel.Create(FHost);
-  FHtmlPanel.Parent := FHost;
-  FHtmlPanel.Align := alClient;
-  TIpHtmlPanel(FHtmlPanel).BorderStyle := bsNone;
-  TIpHtmlPanel(FHtmlPanel).AllowTextSelect := True;
-  TIpHtmlPanel(FHtmlPanel).DefaultTypeFace := 'Segoe UI';
-  TIpHtmlPanel(FHtmlPanel).FixedTypeface := 'Consolas';
+  DisableAutoSizing;
+  try
+    Html := TIpHtmlPanel.Create(Self);
+    Html.Parent := Self;
+    Html.Align := alClient;
+    Html.BorderStyle := bsNone;
+    Html.AllowTextSelect := True;
+    Html.DefaultTypeFace := 'Segoe UI';
+    Html.FixedTypeface := 'Consolas';
+    Html.AutoSize := False;
+    FHtmlPanel := Html;
+  finally
+    EnableAutoSizing;
+  end;
 end;
 
-procedure TMarkdownHtmlView.Render;
+procedure TLcaMarkdownView.Render;
 var
   Html: string;
+  Panel: TIpHtmlPanel;
 begin
-  if Assigned(FHost) and (csDestroying in FHost.ComponentState) then Exit;
+  if csDesigning in ComponentState then Exit;
+  if csDestroying in ComponentState then Exit;
+  if FRendering then Exit;
   if not HostReadyForRender then begin
     ScheduleDeferredRender;
     Exit;
@@ -312,15 +327,22 @@ begin
   if FUseRawHtml then
     Html := FRawHtml
   else
-    Html := WrapThemedHtmlDocument(MarkdownSubsetToHtml(FMarkdown), FTheme);
-  TIpHtmlPanel(FHtmlPanel).BgColor := ThemePalette(FTheme).Background;
-  TIpHtmlPanel(FHtmlPanel).TextColor := ThemePalette(FTheme).Text;
-  TIpHtmlPanel(FHtmlPanel).SetHtmlFromStr(Html);
-  FHtmlPanel.Invalidate;
+    Html := WrapThemedHtmlDocument(MarkdownSubsetToHtml(FMarkdown), FThemeKind);
+  Panel := TIpHtmlPanel(FHtmlPanel);
+  FRendering := True;
+  DisableAutoSizing;
+  try
+    Panel.BgColor := ThemePalette(FThemeKind).Background;
+    Panel.TextColor := ThemePalette(FThemeKind).Text;
+    Panel.SetHtmlFromStr(Html);
+  finally
+    EnableAutoSizing;
+    FRendering := False;
+  end;
   FRenderDeferRetries := 0;
 end;
 
-procedure TMarkdownHtmlView.SetMarkdown(const AMarkdown: string);
+procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string);
 begin
   FUseRawHtml := False;
   FRawHtml := '';
@@ -328,7 +350,7 @@ begin
   Render;
 end;
 
-procedure TMarkdownHtmlView.SetHtmlBody(const AFullHtml: string);
+procedure TLcaMarkdownView.SetHtmlBody(const AFullHtml: string);
 begin
   FUseRawHtml := True;
   FMarkdown := '';
@@ -336,17 +358,37 @@ begin
   Render;
 end;
 
-procedure TMarkdownHtmlView.ApplyTheme(ATheme: TThemeKind);
+procedure TLcaMarkdownView.ApplyTheme(ATheme: TThemeKind);
+var
+  P: TThemePalette;
 begin
-  FTheme := ATheme;
-  if FUseRawHtml and (FRawHtml <> '') then
-    Render
-  else if FMarkdown <> '' then
-    Render;
-  EnsureViewer;
-  if Assigned(FHtmlPanel) and (FHtmlPanel is TWinControl) and
-     TWinControl(FHtmlPanel).HandleAllocated then
-    ApplyPlatformScrollableTheme(TWinControl(FHtmlPanel), ATheme);
+  FThemeKind := ATheme;
+  P := ThemePalette(ATheme);
+  Color := P.Background;
+  if csDesigning in ComponentState then Exit;
+  if Assigned(FHtmlPanel) then begin
+    if FUseRawHtml and (FRawHtml <> '') then
+      Render
+    else if FMarkdown <> '' then
+      Render;
+    if (FHtmlPanel is TWinControl) and TWinControl(FHtmlPanel).HandleAllocated then
+      ApplyPlatformScrollableTheme(TWinControl(FHtmlPanel), ATheme);
+  end;
+end;
+
+procedure TLcaMarkdownView.Loaded;
+begin
+  inherited Loaded;
+  Color := ThemePalette(FThemeKind).Background;
+  if csDesigning in ComponentState then Exit;
+  if (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> '')) then
+    ScheduleDeferredRender;
+end;
+
+procedure TLcaMarkdownView.Resize;
+begin
+  inherited Resize;
+  { Do not call Render here — SetHtmlFromStr on TIpHtmlPanel can loop InvalidatePreferredSize. }
 end;
 
 end.

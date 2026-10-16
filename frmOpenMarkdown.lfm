@@ -40,7 +40,8 @@ object OpenMarkdownForm: TOpenMarkdownForm
     ClientHeight = 36
     ClientWidth = 432
     TabOrder = 0
-    object btnPreview: TButton
+    object btnPreview: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 0
       Height = 28
       Top = 4
@@ -49,7 +50,8 @@ object OpenMarkdownForm: TOpenMarkdownForm
       OnClick = btnPreviewClick
       TabOrder = 0
     end
-    object btnSource: TButton
+    object btnSource: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 128
       Height = 28
       Top = 4
@@ -69,7 +71,8 @@ object OpenMarkdownForm: TOpenMarkdownForm
     ClientHeight = 44
     ClientWidth = 464
     TabOrder = 1
-    object btnCancel: TButton
+    object btnCancel: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 368
       Height = 28
       Top = 8

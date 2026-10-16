@@ -22,7 +22,7 @@ Save settings before starting a long agent run.
 
 ## Your first chat
 
-1. In the left rail, open **Sessions** and choose **+ New Chat Session**.
+1. In the left rail, open **Agents** and choose **+ New Chat Session** (or use **+** on the chat session tab strip).
 2. Pick a **mode** in the composer footer (Ask, Plan, or Agent).
 3. Choose a **model** from the combo beside it.
 4. Type a prompt and send.

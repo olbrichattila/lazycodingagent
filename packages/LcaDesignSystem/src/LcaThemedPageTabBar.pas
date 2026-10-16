@@ -1,23 +1,23 @@
-unit uThemedPageTabBar;
+unit LcaThemedPageTabBar;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, ExtCtrls, ComCtrls, Graphics, LCLType, uAppTypes, uTheme;
+  Classes, SysUtils, Types, Controls, ExtCtrls, ComCtrls, Graphics, LCLType, LcaTheme;
 
 type
-  TThemedTabCloseEvent = procedure(Sender: TObject; TabSheet: TTabSheet;
+  TLcaTabCloseEvent = procedure(Sender: TObject; TabSheet: TTabSheet;
     var AllowClose: Boolean) of object;
-  TThemedAddTabEvent = procedure(Sender: TObject) of object;
-  TThemedManualTabSelectEvent = procedure(Sender: TObject; ATabIndex: Integer) of object;
-  TThemedManualTabCloseEvent = procedure(Sender: TObject; ATabIndex: Integer;
+  TLcaAddTabEvent = procedure(Sender: TObject) of object;
+  TLcaManualTabSelectEvent = procedure(Sender: TObject; ATabIndex: Integer) of object;
+  TLcaManualTabCloseEvent = procedure(Sender: TObject; ATabIndex: Integer;
     var AllowClose: Boolean) of object;
 
   { Themed tab strip for a PageControl with ShowTabs = False, or manual captions when
     PageControl is nil. }
-  TThemedPageTabBar = class(TPanel)
+  TLcaThemedPageTabBar = class(TPanel)
   private
     FPageControl: TPageControl;
     FTheme: TThemeKind;
@@ -25,10 +25,10 @@ type
     FAddTabCaption: string;
     FHoverTabIndex: Integer;
     FHoverCloseIndex: Integer;
-    FOnTabClose: TThemedTabCloseEvent;
-    FOnAddTab: TThemedAddTabEvent;
-    FOnManualTabSelect: TThemedManualTabSelectEvent;
-    FOnManualTabClose: TThemedManualTabCloseEvent;
+    FOnTabClose: TLcaTabCloseEvent;
+    FOnAddTab: TLcaAddTabEvent;
+    FOnManualTabSelect: TLcaManualTabSelectEvent;
+    FOnManualTabClose: TLcaManualTabCloseEvent;
     FTabRects: array of TRect;
     FAddTabRect: TRect;
     FManualCaptions: TStringList;
@@ -45,6 +45,7 @@ type
     procedure LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
     procedure PaintTabStrip;
     procedure SetPageControl(AControl: TPageControl);
+    procedure SetThemeKind(AValue: TThemeKind);
     function UsesParentForHeight: Boolean;
     class function FindMetaIndex(ASheet: TTabSheet): Integer; static;
     class procedure EnsureMeta(ASheet: TTabSheet); static;
@@ -65,14 +66,16 @@ type
     class procedure SetTabHidden(ASheet: TTabSheet; AValue: Boolean); static;
     class function TabIsHidden(ASheet: TTabSheet): Boolean; static;
     class function TabAllowsClose(ASheet: TTabSheet): Boolean; static;
+  published
+    property ThemeKind: TThemeKind read FTheme write SetThemeKind default tkDark;
     property PageControl: TPageControl read FPageControl write SetPageControl;
     property ShowAddTab: Boolean read FShowAddTab write FShowAddTab;
     property AddTabCaption: string read FAddTabCaption write FAddTabCaption;
-    property OnTabClose: TThemedTabCloseEvent read FOnTabClose write FOnTabClose;
-    property OnAddTab: TThemedAddTabEvent read FOnAddTab write FOnAddTab;
-    property OnManualTabSelect: TThemedManualTabSelectEvent read FOnManualTabSelect
+    property OnTabClose: TLcaTabCloseEvent read FOnTabClose write FOnTabClose;
+    property OnAddTab: TLcaAddTabEvent read FOnAddTab write FOnAddTab;
+    property OnManualTabSelect: TLcaManualTabSelectEvent read FOnManualTabSelect
       write FOnManualTabSelect;
-    property OnManualTabClose: TThemedManualTabCloseEvent read FOnManualTabClose
+    property OnManualTabClose: TLcaManualTabCloseEvent read FOnManualTabClose
       write FOnManualTabClose;
   end;
 
@@ -88,7 +91,7 @@ type
 var
   GThemedTabMeta: array of TThemedTabMeta;
 
-class function TThemedPageTabBar.FindMetaIndex(ASheet: TTabSheet): Integer;
+class function TLcaThemedPageTabBar.FindMetaIndex(ASheet: TTabSheet): Integer;
 var
   I: Integer;
 begin
@@ -99,7 +102,7 @@ begin
       Exit(I);
 end;
 
-class procedure TThemedPageTabBar.EnsureMeta(ASheet: TTabSheet);
+class procedure TLcaThemedPageTabBar.EnsureMeta(ASheet: TTabSheet);
 var
   N: Integer;
 begin
@@ -112,7 +115,7 @@ begin
   GThemedTabMeta[N].Hidden := False;
 end;
 
-class procedure TThemedPageTabBar.SetTabAllowsClose(ASheet: TTabSheet; AValue: Boolean);
+class procedure TLcaThemedPageTabBar.SetTabAllowsClose(ASheet: TTabSheet; AValue: Boolean);
 var
   I: Integer;
 begin
@@ -122,7 +125,7 @@ begin
     GThemedTabMeta[I].AllowClose := AValue;
 end;
 
-class procedure TThemedPageTabBar.SetTabHidden(ASheet: TTabSheet; AValue: Boolean);
+class procedure TLcaThemedPageTabBar.SetTabHidden(ASheet: TTabSheet; AValue: Boolean);
 var
   I: Integer;
 begin
@@ -134,7 +137,7 @@ begin
     ASheet.TabVisible := not AValue;
 end;
 
-class function TThemedPageTabBar.TabIsHidden(ASheet: TTabSheet): Boolean;
+class function TLcaThemedPageTabBar.TabIsHidden(ASheet: TTabSheet): Boolean;
 var
   I: Integer;
 begin
@@ -145,7 +148,7 @@ begin
     Result := GThemedTabMeta[I].Hidden;
 end;
 
-class function TThemedPageTabBar.TabAllowsClose(ASheet: TTabSheet): Boolean;
+class function TLcaThemedPageTabBar.TabAllowsClose(ASheet: TTabSheet): Boolean;
 var
   I: Integer;
 begin
@@ -156,12 +159,12 @@ begin
     Result := GThemedTabMeta[I].AllowClose;
 end;
 
-function TThemedPageTabBar.UsesParentForHeight: Boolean;
+function TLcaThemedPageTabBar.UsesParentForHeight: Boolean;
 begin
   Result := Align in [alClient, alTop, alBottom];
 end;
 
-constructor TThemedPageTabBar.Create(AOwner: TComponent);
+constructor TLcaThemedPageTabBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
@@ -178,18 +181,18 @@ begin
   DoubleBuffered := True;
 end;
 
-destructor TThemedPageTabBar.Destroy;
+destructor TLcaThemedPageTabBar.Destroy;
 begin
   FManualCaptions.Free;
   inherited Destroy;
 end;
 
-function TThemedPageTabBar.IsManualMode: Boolean;
+function TLcaThemedPageTabBar.IsManualMode: Boolean;
 begin
   Result := not Assigned(FPageControl);
 end;
 
-procedure TThemedPageTabBar.SetManualTabs(const ACaptions: array of string;
+procedure TLcaThemedPageTabBar.SetManualTabs(const ACaptions: array of string;
   const AAllowClose: array of Boolean; ASelectedIndex: Integer);
 var
   I: Integer;
@@ -208,7 +211,13 @@ begin
   Invalidate;
 end;
 
-procedure TThemedPageTabBar.SetPageControl(AControl: TPageControl);
+procedure TLcaThemedPageTabBar.SetThemeKind(AValue: TThemeKind);
+begin
+  if FTheme = AValue then Exit;
+  ApplyTheme(AValue);
+end;
+
+procedure TLcaThemedPageTabBar.SetPageControl(AControl: TPageControl);
 begin
   if FPageControl = AControl then Exit;
   FPageControl := AControl;
@@ -220,7 +229,7 @@ begin
   RefreshFromPageControl;
 end;
 
-procedure TThemedPageTabBar.ApplyTheme(ATheme: TThemeKind);
+procedure TLcaThemedPageTabBar.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
 begin
@@ -231,7 +240,7 @@ begin
   Invalidate;
 end;
 
-function TThemedPageTabBar.VisibleTabCount: Integer;
+function TLcaThemedPageTabBar.VisibleTabCount: Integer;
 var
   I: Integer;
   Sheet: TTabSheet;
@@ -249,7 +258,7 @@ begin
   end;
 end;
 
-function TThemedPageTabBar.TabCaptionAt(AVisibleIndex: Integer): string;
+function TLcaThemedPageTabBar.TabCaptionAt(AVisibleIndex: Integer): string;
 var
   Sheet: TTabSheet;
 begin
@@ -267,7 +276,7 @@ begin
     Result := '';
 end;
 
-function TThemedPageTabBar.TabAllowCloseAt(AVisibleIndex: Integer): Boolean;
+function TLcaThemedPageTabBar.TabAllowCloseAt(AVisibleIndex: Integer): Boolean;
 var
   Sheet: TTabSheet;
 begin
@@ -282,7 +291,7 @@ begin
   Result := TabAllowsClose(Sheet);
 end;
 
-function TThemedPageTabBar.TabIsSelectedAt(AVisibleIndex: Integer): Boolean;
+function TLcaThemedPageTabBar.TabIsSelectedAt(AVisibleIndex: Integer): Boolean;
 var
   Sheet: TTabSheet;
 begin
@@ -292,7 +301,7 @@ begin
   Result := Assigned(FPageControl) and Assigned(Sheet) and (FPageControl.ActivePage = Sheet);
 end;
 
-function TThemedPageTabBar.VisibleTabSheetAt(AVisibleIndex: Integer): TTabSheet;
+function TLcaThemedPageTabBar.VisibleTabSheetAt(AVisibleIndex: Integer): TTabSheet;
 var
   I, N: Integer;
   Sheet: TTabSheet;
@@ -309,7 +318,7 @@ begin
   end;
 end;
 
-function TThemedPageTabBar.IndexOfTabSheet(ASheet: TTabSheet): Integer;
+function TLcaThemedPageTabBar.IndexOfTabSheet(ASheet: TTabSheet): Integer;
 var
   I, N: Integer;
   Sheet: TTabSheet;
@@ -326,7 +335,7 @@ begin
   end;
 end;
 
-procedure TThemedPageTabBar.LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
+procedure TLcaThemedPageTabBar.LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
 var
   TabW: Integer;
 begin
@@ -340,7 +349,7 @@ begin
   FAddTabRect.Bottom := Height - 2;
 end;
 
-procedure TThemedPageTabBar.LayoutTabs;
+procedure TLcaThemedPageTabBar.LayoutTabs;
 var
   I, Count, TabW, X, Pad, MinW: Integer;
   MeasureCanvas: TControlCanvas;
@@ -379,13 +388,13 @@ begin
   end;
 end;
 
-procedure TThemedPageTabBar.RefreshFromPageControl;
+procedure TLcaThemedPageTabBar.RefreshFromPageControl;
 begin
   LayoutTabs;
   Invalidate;
 end;
 
-procedure TThemedPageTabBar.PaintTabStrip;
+procedure TLcaThemedPageTabBar.PaintTabStrip;
 var
   I: Integer;
 begin
@@ -398,13 +407,13 @@ begin
       False, False, FTheme);
 end;
 
-procedure TThemedPageTabBar.Paint;
+procedure TLcaThemedPageTabBar.Paint;
 begin
   inherited Paint;
   PaintTabStrip;
 end;
 
-procedure TThemedPageTabBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TLcaThemedPageTabBar.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
   I, OldTab, OldClose: Integer;
   R: TRect;
@@ -435,7 +444,7 @@ begin
     Invalidate;
 end;
 
-procedure TThemedPageTabBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+procedure TLcaThemedPageTabBar.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   I: Integer;
   Sheet: TTabSheet;
@@ -489,7 +498,7 @@ begin
   end;
 end;
 
-procedure TThemedPageTabBar.MouseLeave;
+procedure TLcaThemedPageTabBar.MouseLeave;
 begin
   inherited MouseLeave;
   if (FHoverTabIndex >= 0) or (FHoverCloseIndex >= 0) then begin
@@ -499,7 +508,7 @@ begin
   end;
 end;
 
-procedure TThemedPageTabBar.ChangeScale(M, D: Integer);
+procedure TLcaThemedPageTabBar.ChangeScale(M, D: Integer);
 begin
   inherited ChangeScale(M, D);
   if not UsesParentForHeight then

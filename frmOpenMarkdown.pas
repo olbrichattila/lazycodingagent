@@ -5,8 +5,8 @@ unit frmOpenMarkdown;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  uAppTypes, uTheme;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme;
 
 type
   TMarkdownOpenChoice = (mocCancel, mocPreview, mocSource);
@@ -16,10 +16,10 @@ type
     lblFile: TLabel;
     lblHint: TLabel;
     pnlActions: TPanel;
-    btnPreview: TButton;
-    btnSource: TButton;
+    btnPreview: TLcaThemedButton;
+    btnSource: TLcaThemedButton;
     pnlBottom: TPanel;
-    btnCancel: TButton;
+    btnCancel: TLcaThemedButton;
     procedure btnPreviewClick(Sender: TObject);
     procedure btnSourceClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
@@ -66,9 +66,7 @@ begin
   lblFile.Font.Color := P.Text;
   lblFile.Font.Style := [fsBold];
   lblHint.Font.Color := P.TextMuted;
-  StylePrimaryButton(btnPreview, ATheme);
-  StylePrimaryButton(btnSource, ATheme);
-  StyleCancelButton(btnCancel, ATheme);
+  ApplyThemedForm(Self, ATheme);
 end;
 
 procedure TOpenMarkdownForm.btnPreviewClick(Sender: TObject);

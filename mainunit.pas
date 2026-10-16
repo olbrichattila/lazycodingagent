@@ -6,24 +6,25 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
-  ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes,
-  uAppTypes, uAgentTypes, uAgentTools, uTheme, uThemedPageTabBar, uWorkspaceState,
-  uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel, uChatPanel,
-  uTerminalPanel, uMainFileEditor, uPlanView,
+  ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes, SynGutterBase,
+  uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
+  LcaThemedComboBox, LcaTerminalPanel,
+  uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
+  uChatPanel, uMainFileEditor, uPlanView,
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, uMarkdownHtmlView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, LcaMarkdownView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
 
 type
   TExecDetailSource = (edsNone, edsExecLog, edsToolError);
 
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
-    btnChatSend: TButton;
-    btnChatStop: TButton;
-    cboChatMode: TComboBox;
-    cboChatModel: TComboBox;
+    btnChatSend: TLcaThemedButton;
+    btnChatStop: TLcaThemedButton;
+    cboChatMode: TLcaThemedComboBox;
+    cboChatModel: TLcaThemedComboBox;
     MainMenu1: TMainMenu;
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
@@ -71,14 +72,14 @@ type
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
     lblNavTitle: TLabel;
-    btnNavDetach: TButton;
-    btnNavHide: TButton;
+    btnNavDetach: TLcaThemedButton;
+    btnNavHide: TLcaThemedButton;
     pnlNavContent: TPanel;
     lblNavViewTitle: TLabel;
     lblNavViewSub: TLabel;
     lblNavComingSoon: TLabel;
-    btnNavPrimary: TButton;
-    btnNavSecondary: TButton;
+    btnNavPrimary: TLcaThemedButton;
+    btnNavSecondary: TLcaThemedButton;
     lstNavFile: TListBox;
     tvNavProjects: TTreeView;
     lstNavLog: TListBox;
@@ -87,8 +88,9 @@ type
     pnlUtilityHost: TPanel;
     pnlUtilityChrome: TPanel;
     pnlUtilityTabStripHost: TPanel;
-    btnUtilityDetach: TButton;
-    btnUtilityHide: TButton;
+    lcaUtilityTabBar: TLcaThemedPageTabBar;
+    btnUtilityDetach: TLcaThemedButton;
+    btnUtilityHide: TLcaThemedButton;
     pnlUtilityContent: TPanel;
     pgcUtility: TPageControl;
     tsUtilityScratch: TTabSheet;
@@ -98,25 +100,27 @@ type
     tsUtilityPlan: TTabSheet;
     pnlPlanHeader: TPanel;
     lblPlanPath: TLabel;
-    cboPlanModel: TComboBox;
-    btnPlanBuild: TButton;
+    cboPlanModel: TLcaThemedComboBox;
+    btnPlanBuild: TLcaThemedButton;
     memPlanBody: TMemo;
     splUtility: TSplitter;
     pnlReservedHost: TPanel;
     pnlReservedChrome: TPanel;
     lblReservedTitle: TLabel;
-    btnReservedDetach: TButton;
-    btnReservedHide: TButton;
+    btnReservedDetach: TLcaThemedButton;
+    btnReservedHide: TLcaThemedButton;
     pnlReservedContent: TPanel;
     memReserved: TMemo;
     splReserved: TSplitter;
     pnlChatHost: TPanel;
     pnlChatChrome: TPanel;
     pnlCenterTabStripHost: TPanel;
-    btnChatDetach: TButton;
+    lcaCenterTabBar: TLcaThemedPageTabBar;
+    btnChatDetach: TLcaThemedButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
     pnlChatSessionTabStripHost: TPanel;
+    lcaChatSessionTabBar: TLcaThemedPageTabBar;
     lblChatHeading: TLabel;
     lblChatSession: TLabel;
     lblChatSub: TLabel;
@@ -125,6 +129,7 @@ type
     memChatPrompt: TMemo;
     pnlChatFooter: TPanel;
     pnlChatHistoryHost: TPanel;
+    lcaChatHistory: TLcaMarkdownView;
     tsEditor: TTabSheet;
     synEditor: TSynEdit;
     tsMarkdown: TTabSheet;
@@ -133,10 +138,11 @@ type
     pnlTerminalHost: TPanel;
     pnlTerminalChrome: TPanel;
     lblTerminalTitle: TLabel;
-    btnTerminalDetach: TButton;
-    btnTerminalHide: TButton;
+    btnTerminalDetach: TLcaThemedButton;
+    btnTerminalHide: TLcaThemedButton;
     pnlTerminalContent: TPanel;
     lblTerminalStatus: TLabel;
+    lcaTerminalPanel: TLcaTerminalPanel;
 
     procedure PanelHideClick(Sender: TObject);
     procedure PanelDetachClick(Sender: TObject);
@@ -166,9 +172,6 @@ type
     procedure MnuHelpAboutClick(Sender: TObject);
     procedure NavRailBtnClick(Sender: TObject);
   private
-    FCenterTabBar: TThemedPageTabBar;
-    FChatSessionTabBar: TThemedPageTabBar;
-    FUtilityTabBar: TThemedPageTabBar;
     FChatSessionTabIds: TStringList;
     FState: TWorkspaceState;
     FSessionHubs: TChatSessionHubManager;
@@ -189,11 +192,10 @@ type
     FChatPanel: TChatPanel;
     FSyntaxSchemes: TSyntaxSchemeRegistry;
 
-    FTerminalPanel: TTerminalPanel;
     FFileEditor: TMainFileEditor;
     FPlanView: TPlanView;
-    FMarkdownPreview: TMarkdownHtmlView;
-    FExecDetailView: TMarkdownHtmlView;
+    FMarkdownPreview: TLcaMarkdownView;
+    FExecDetailView: TLcaMarkdownView;
     FExecDetailSource: TExecDetailSource;
     FExecDetailIndex: Integer;
     FPanelDetach: TPanelDetachManager;
@@ -268,7 +270,7 @@ type
     procedure StateChanged(Sender: TObject);
     procedure ApplyDockPanelsLayout;
     procedure SyncCenterAddTabNav;
-    procedure CreateThemedTabBars;
+    procedure WireThemedTabBars;
     procedure InitCenterTabStrip;
     procedure TabBarCenterAddTab(Sender: TObject);
     procedure TabBarCenterTabClose(Sender: TObject; TabSheet: TTabSheet; var AllowClose: Boolean);
@@ -577,7 +579,7 @@ begin
   mnuWorkspaceProjectRules.Tag := -1;
 
   RegisterThemeCustomHooks;
-  CreateThemedTabBars;
+  WireThemedTabBars;
   InitWorkspaceSubControls;
   ReportSplashLoadProgress(75);
   FPanelDetach := TPanelDetachManager.Create(Self, Self, FState);
@@ -597,10 +599,6 @@ begin
   if FPendingInitialDockLayout then begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
-  end;
-  if FDeferThemesUntilShown then begin
-    FDeferThemesUntilShown := False;
-    ApplyAllThemes;
   end;
   ReportSplashLoadProgress(100);
 end;
@@ -626,12 +624,14 @@ end;
 procedure TLazyCodingAgentForm.PostShowStartup(Sender: TObject);
 begin
   FPostShowStartupTimer.Enabled := False;
+  if csDesigning in ComponentState then Exit;
   if csDestroying in ComponentState then Exit;
   if not HandleAllocated then Exit;
 
   if FDeferThemesUntilShown then begin
     FDeferThemesUntilShown := False;
     ApplyAllThemes;
+    ApplyEditorTheme;
   end;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
@@ -671,8 +671,8 @@ begin
   SaveCurrentSession;
   if Assigned(FRegistry) then
     FRegistry.Save;
-  if Assigned(FTerminalPanel) then
-    FTerminalPanel.Stop;
+  if Assigned(lcaTerminalPanel) then
+    lcaTerminalPanel.Stop;
   if Assigned(FPanelDetach) then
     FPanelDetach.FinalizeOnClose;
 end;
@@ -787,8 +787,8 @@ begin
   WasFloating := FState.IsPanelFloating(Id);
   FPanelDetach.ToggleDetach(Id);
   if (Id = piTerminal) and not WasFloating and FState.IsPanelFloating(piTerminal) and
-     Assigned(FTerminalPanel) then
-    FTerminalPanel.FocusTerminal;
+     Assigned(lcaTerminalPanel) then
+    lcaTerminalPanel.FocusTerminal;
 end;
 
 
@@ -801,42 +801,25 @@ begin
     pgcCenter.ActivePage := tsChat;
 end;
 
-procedure TLazyCodingAgentForm.CreateThemedTabBars;
+procedure TLazyCodingAgentForm.WireThemedTabBars;
 begin
-  if Assigned(pnlCenterTabStripHost) and not Assigned(FCenterTabBar) then begin
-    FCenterTabBar := TThemedPageTabBar.Create(Self);
-    FCenterTabBar.Parent := pnlCenterTabStripHost;
-    FCenterTabBar.Align := alClient;
-    FCenterTabBar.PageControl := pgcCenter;
-    FCenterTabBar.ShowAddTab := False;
-    FCenterTabBar.OnTabClose := @TabBarCenterTabClose;
-  end;
-  if Assigned(pnlChatSessionTabStripHost) and not Assigned(FChatSessionTabBar) then begin
-    FChatSessionTabBar := TThemedPageTabBar.Create(Self);
-    FChatSessionTabBar.Parent := pnlChatSessionTabStripHost;
-    FChatSessionTabBar.Align := alClient;
-    FChatSessionTabBar.ShowAddTab := True;
-    FChatSessionTabBar.AddTabCaption := '+';
-    FChatSessionTabBar.OnAddTab := @TabBarCenterAddTab;
-    FChatSessionTabBar.OnManualTabSelect := @TabBarChatSessionSelect;
-    FChatSessionTabBar.OnManualTabClose := @TabBarChatSessionClose;
-  end;
-  if Assigned(pnlUtilityTabStripHost) and not Assigned(FUtilityTabBar) then begin
-    FUtilityTabBar := TThemedPageTabBar.Create(Self);
-    FUtilityTabBar.Parent := pnlUtilityTabStripHost;
-    FUtilityTabBar.Align := alClient;
-    FUtilityTabBar.PageControl := pgcUtility;
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.OnTabClose := @TabBarCenterTabClose;
+  if Assigned(lcaChatSessionTabBar) then begin
+    lcaChatSessionTabBar.OnAddTab := @TabBarCenterAddTab;
+    lcaChatSessionTabBar.OnManualTabSelect := @TabBarChatSessionSelect;
+    lcaChatSessionTabBar.OnManualTabClose := @TabBarChatSessionClose;
   end;
 end;
 
 procedure TLazyCodingAgentForm.InitCenterTabStrip;
 begin
-  TThemedPageTabBar.SetTabAllowsClose(tsEditor, True);
-  TThemedPageTabBar.SetTabAllowsClose(tsMarkdown, True);
-  TThemedPageTabBar.SetTabHidden(tsEditor, True);
-  TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
-  if Assigned(FCenterTabBar) then
-    FCenterTabBar.RefreshFromPageControl;
+  TLcaThemedPageTabBar.SetTabAllowsClose(tsEditor, True);
+  TLcaThemedPageTabBar.SetTabAllowsClose(tsMarkdown, True);
+  TLcaThemedPageTabBar.SetTabHidden(tsEditor, True);
+  TLcaThemedPageTabBar.SetTabHidden(tsMarkdown, True);
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
 end;
 
 procedure TLazyCodingAgentForm.SyncCenterAddTabNav;
@@ -874,19 +857,19 @@ begin
     if not PromptDirtyEditor then Exit;
     if Assigned(FFileEditor) then
       FFileEditor.Clear;
-    TThemedPageTabBar.SetTabHidden(tsEditor, True);
+    TLcaThemedPageTabBar.SetTabHidden(tsEditor, True);
     AllowClose := True;
     ShowChatCenterTab;
   end else if TabSheet = tsMarkdown then begin
     FMarkdownPath := '';
     if Assigned(FMarkdownPreview) then
       FMarkdownPreview.SetMarkdown('');
-    TThemedPageTabBar.SetTabHidden(tsMarkdown, True);
+    TLcaThemedPageTabBar.SetTabHidden(tsMarkdown, True);
     AllowClose := True;
     ShowChatCenterTab;
   end;
-  if Assigned(FCenterTabBar) then
-    FCenterTabBar.RefreshFromPageControl;
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
 end;
 
 procedure TLazyCodingAgentForm.InitWorkspaceSubControls;
@@ -939,16 +922,21 @@ begin
   FPlanView.Bind(lblPlanPath, cboPlanModel, btnPlanBuild, memPlanBody);
   FPlanView.OnBuild := @PlanBuildRequested;
 
-  FTerminalPanel := TTerminalPanel.Create(Self);
-  FTerminalPanel.Bind(pnlTerminalContent, lblTerminalStatus);
-  FTerminalPanel.OnTerminalStatus := @TerminalStatus;
+  if Assigned(lcaTerminalPanel) then
+    lcaTerminalPanel.OnTerminalStatus := @TerminalStatus;
 
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
-  if not Assigned(FExecDetailView) then
-    FExecDetailView := TMarkdownHtmlView.Create(Self, pnlUtilityExecDetailHost);
+  if not Assigned(FExecDetailView) then begin
+    FExecDetailView := TLcaMarkdownView.Create(Self);
+    FExecDetailView.Parent := pnlUtilityExecDetailHost;
+    FExecDetailView.Align := alClient;
+  end;
   FExecDetailView.ApplyTheme(FState.Theme);
-  if not Assigned(FMarkdownPreview) then
-    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  if not Assigned(FMarkdownPreview) then begin
+    FMarkdownPreview := TLcaMarkdownView.Create(Self);
+    FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
+    FMarkdownPreview.Align := alClient;
+  end;
   FMarkdownPreview.ApplyTheme(FState.Theme);
 
   FTerminalRetryTimer := TTimer.Create(Self);
@@ -1094,6 +1082,7 @@ end;
 
 procedure TLazyCodingAgentForm.ScheduleDeferredTerminalStart;
 begin
+  if csDesigning in ComponentState then Exit;
   if FTerminalStartQueued then Exit;
   if not FState.IsPanelVisible(piTerminal) then Exit;
   FTerminalStartQueued := True;
@@ -1103,10 +1092,11 @@ end;
 procedure TLazyCodingAgentForm.DeferredEnsureTerminal(Data: PtrInt);
 begin
   FTerminalStartQueued := False;
-  if not Assigned(FTerminalPanel) then Exit;
+  if csDesigning in ComponentState then Exit;
+  if not Assigned(lcaTerminalPanel) then Exit;
   if not IsTerminalSurfaceVisible then Exit;
   SyncTerminalWorkingDirectory;
-  if not FTerminalPanel.EnsureRunning then
+  if not lcaTerminalPanel.EnsureRunning then
     ScheduleTerminalStartRetry
   else
     FTerminalRetryTimer.Enabled := False;
@@ -1116,10 +1106,10 @@ function TLazyCodingAgentForm.IsTerminalSurfaceVisible: Boolean;
 begin
   if not FState.IsPanelVisible(piTerminal) then
     Exit(False);
-  if not Assigned(FTerminalPanel) then
+  if not Assigned(lcaTerminalPanel) then
     Exit(False);
   if FState.IsPanelFloating(piTerminal) then
-    Result := FTerminalPanel.Visible
+    Result := lcaTerminalPanel.Visible
   else
     Result := pnlTerminalHost.Visible;
 end;
@@ -1133,7 +1123,7 @@ end;
 
 procedure TLazyCodingAgentForm.TerminalRetryTimer(Sender: TObject);
 begin
-  if not Assigned(FTerminalPanel) then begin
+  if not Assigned(lcaTerminalPanel) then begin
     FTerminalRetryTimer.Enabled := False;
     Exit;
   end;
@@ -1145,7 +1135,7 @@ begin
   if not IsTerminalSurfaceVisible then
     Exit;
   SyncTerminalWorkingDirectory;
-  if FTerminalPanel.EnsureRunning then
+  if lcaTerminalPanel.EnsureRunning then
     FTerminalRetryTimer.Enabled := False;
 end;
 
@@ -1157,11 +1147,11 @@ end;
 
 procedure TLazyCodingAgentForm.SyncTerminalWorkingDirectory;
 begin
-  if not Assigned(FTerminalPanel) then Exit;
+  if not Assigned(lcaTerminalPanel) then Exit;
   if FState.HasActiveWorkspace then
-    FTerminalPanel.SetWorkingDirectory(FState.WorkspaceRoot)
+    lcaTerminalPanel.SetWorkingDirectory(FState.WorkspaceRoot)
   else
-    FTerminalPanel.SetWorkingDirectory('');
+    lcaTerminalPanel.SetWorkingDirectory('');
 end;
 
 
@@ -1270,27 +1260,21 @@ begin
   pnlTerminalChrome.Color := P.HeaderBg;
 
   ApplyThemedControlTree(pnlMainContainer, FState.Theme);
-  StyleCancelButton(btnNavDetach, FState.Theme);
-  StyleCancelButton(btnNavHide, FState.Theme);
-  StyleCancelButton(btnChatDetach, FState.Theme);
-  StyleCancelButton(btnReservedDetach, FState.Theme);
-  StyleCancelButton(btnReservedHide, FState.Theme);
-  StyleCancelButton(btnUtilityDetach, FState.Theme);
-  StyleCancelButton(btnUtilityHide, FState.Theme);
-  StyleCancelButton(btnTerminalDetach, FState.Theme);
-  StyleCancelButton(btnTerminalHide, FState.Theme);
   if Assigned(FPanelDetach) then
     FPanelDetach.ApplyThemes(FState.Theme);
 
   if Assigned(FNavContent) then FNavContent.ApplyTheme(FState.Theme);
   if Assigned(FChatPanel) then FChatPanel.ApplyTheme(FState.Theme);
-  if Assigned(FTerminalPanel) then FTerminalPanel.ApplyTheme(FState.Theme);
+  if Assigned(lcaTerminalPanel) then lcaTerminalPanel.ApplyTheme(FState.Theme);
   if Assigned(FPlanView) then FPlanView.ApplyTheme(FState.Theme);
-  if Assigned(FCenterTabBar) then FCenterTabBar.ApplyTheme(FState.Theme);
-  if Assigned(FChatSessionTabBar) then FChatSessionTabBar.ApplyTheme(FState.Theme);
-  if Assigned(FUtilityTabBar) then FUtilityTabBar.ApplyTheme(FState.Theme);
-  if not Assigned(FMarkdownPreview) then
-    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  if Assigned(lcaCenterTabBar) then lcaCenterTabBar.ApplyTheme(FState.Theme);
+  if Assigned(lcaChatSessionTabBar) then lcaChatSessionTabBar.ApplyTheme(FState.Theme);
+  if Assigned(lcaUtilityTabBar) then lcaUtilityTabBar.ApplyTheme(FState.Theme);
+  if not Assigned(FMarkdownPreview) then begin
+    FMarkdownPreview := TLcaMarkdownView.Create(Self);
+    FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
+    FMarkdownPreview.Align := alClient;
+  end;
   FMarkdownPreview.ApplyTheme(FState.Theme);
   ApplyEditorTheme;
 
@@ -1923,13 +1907,13 @@ var
   Caps: array of string;
   Closable: array of Boolean;
 begin
-  if not Assigned(FChatSessionTabBar) then Exit;
+  if not Assigned(lcaChatSessionTabBar) then Exit;
   FChatSessionTabIds.Clear;
   SelIdx := -1;
   SetLength(Caps, 0);
   SetLength(Closable, 0);
   if not FState.HasActiveWorkspace or not Assigned(ActiveStore) then begin
-    FChatSessionTabBar.SetManualTabs(Caps, Closable, -1);
+    lcaChatSessionTabBar.SetManualTabs(Caps, Closable, -1);
     Exit;
   end;
   Store := ActiveStore;
@@ -1947,7 +1931,7 @@ begin
     if SameText(S.Id, FCurrentSessionId) then
       SelIdx := FChatSessionTabIds.Count - 1;
   end;
-  FChatSessionTabBar.SetManualTabs(Caps, Closable, SelIdx);
+  lcaChatSessionTabBar.SetManualTabs(Caps, Closable, SelIdx);
 end;
 
 procedure TLazyCodingAgentForm.RefreshSessionNav;
@@ -2066,10 +2050,10 @@ begin
   FRegistry.SetLastSessionId(Entry.Id, FCurrentSessionId);
   BindSessionToUI(FCurrentSessionId);
 
-  if Assigned(FTerminalPanel) then begin
-    FTerminalPanel.SetWorkingDirectory(FState.WorkspaceRoot);
+  if Assigned(lcaTerminalPanel) then begin
+    lcaTerminalPanel.SetWorkingDirectory(FState.WorkspaceRoot);
     if FState.IsPanelVisible(piTerminal) then
-      FTerminalPanel.RestartForWorkspace;
+      lcaTerminalPanel.RestartForWorkspace;
   end;
 
   StateChanged(Self);
@@ -2261,15 +2245,18 @@ begin
   end;
   FMarkdownPath := Path;
   tsMarkdown.Caption := ExtractFileName(Path) + ' [Preview]';
-  TThemedPageTabBar.SetTabHidden(tsMarkdown, False);
+  TLcaThemedPageTabBar.SetTabHidden(tsMarkdown, False);
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
   if Assigned(pgcCenter) then
     pgcCenter.ActivePage := tsMarkdown;
-  if Assigned(FCenterTabBar) then
-    FCenterTabBar.RefreshFromPageControl;
-  if not Assigned(FMarkdownPreview) then
-    FMarkdownPreview := TMarkdownHtmlView.Create(Self, pnlMarkdownPreviewHost);
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
+  if not Assigned(FMarkdownPreview) then begin
+    FMarkdownPreview := TLcaMarkdownView.Create(Self);
+    FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
+    FMarkdownPreview.Align := alClient;
+  end;
   Lines := TStringList.Create;
   try
     Lines.LoadFromFile(Path);
@@ -2318,15 +2305,15 @@ begin
     Exit;
   end;
   tsEditor.Caption := ExtractFileName(Path);
-  TThemedPageTabBar.SetTabHidden(tsEditor, False);
+  TLcaThemedPageTabBar.SetTabHidden(tsEditor, False);
   FState.SetPanelVisible(piChat, True);
   ApplyDockPanelsLayout;
   ApplyEditorTheme;
   RefreshEditorScheme;
   if Assigned(pgcCenter) then
     pgcCenter.ActivePage := tsEditor;
-  if Assigned(FCenterTabBar) then
-    FCenterTabBar.RefreshFromPageControl;
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
 end;
 
 procedure TLazyCodingAgentForm.ApplyEditorTheme;
@@ -2359,8 +2346,8 @@ begin
   Result := FFileEditor.SaveFile;
   if Result then begin
     tsEditor.Caption := ExtractFileName(FFileEditor.FilePath);
-    if Assigned(FCenterTabBar) then
-      FCenterTabBar.RefreshFromPageControl;
+    if Assigned(lcaCenterTabBar) then
+      lcaCenterTabBar.RefreshFromPageControl;
   end;
 end;
 

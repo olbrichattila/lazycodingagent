@@ -5,17 +5,17 @@ unit frmEditRule;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls,
-  LCLType,
-  uAppTypes, uTheme;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
+  LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme;
 
 type
   { TEditRuleForm }
   TEditRuleForm = class(TForm)
     memoRule: TMemo;
     pnlBottom: TPanel;
-    btnOK: TButton;
-    btnCancel: TButton;
+    btnOK: TLcaThemedButton;
+    btnCancel: TLcaThemedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -90,8 +90,6 @@ begin
   ConfigureThemedMemo(memoRule, ATheme);
   btnOK.ModalResult := mrOk;
   btnCancel.ModalResult := mrCancel;
-  StylePrimaryButton(btnOK, ATheme);
-  StyleCancelButton(btnCancel, ATheme);
   ApplyPlatformChrome(Self, ATheme);
   ApplyPlatformScrollableTheme(memoRule, ATheme);
 end;

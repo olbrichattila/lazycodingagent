@@ -40,7 +40,8 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
     ClientHeight = 36
     ClientWidth = 512
     TabOrder = 1
-    object btnAddRule: TButton
+    object btnAddRule: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 0
       Height = 28
       Top = 4
@@ -49,7 +50,8 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
       OnClick = btnAddRuleClick
       TabOrder = 0
     end
-    object btnEditRule: TButton
+    object btnEditRule: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 96
       Height = 28
       Top = 4
@@ -59,7 +61,8 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
       OnClick = btnEditRuleClick
       TabOrder = 1
     end
-    object btnDeleteRule: TButton
+    object btnDeleteRule: TLcaThemedButton
+      ButtonRole = tbrDestructive
       Left = 192
       Height = 28
       Top = 4
@@ -80,7 +83,8 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
     ClientHeight = 44
     ClientWidth = 544
     TabOrder = 2
-    object btnClose: TButton
+    object btnClose: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 448
       Height = 28
       Top = 8

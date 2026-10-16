@@ -5,8 +5,8 @@ unit frmModelSearch;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uLlmClient, uTheme;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, uLlmClient, LcaTheme;
 
 type
   TModelAddEvent = procedure(Sender: TObject; const AModelId, ADisplayName: string) of object;
@@ -18,8 +18,8 @@ type
     edtSearch: TEdit;
     lstModels: TListBox;
     pnlBottom: TPanel;
-    btnAdd: TButton;
-    btnClose: TButton;
+    btnAdd: TLcaThemedButton;
+    btnClose: TLcaThemedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -123,8 +123,6 @@ begin
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstModels, ATheme);
   lstModels.OnDrawItem := @lstModelsDrawItem;
-  StylePrimaryButton(btnAdd, ATheme);
-  StyleCancelButton(btnClose, ATheme);
   lstModels.Invalidate;
 end;
 

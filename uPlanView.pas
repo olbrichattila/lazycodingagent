@@ -5,7 +5,8 @@ unit uPlanView;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, StdCtrls, Graphics, uAppTypes, uTheme, uWorkspaceState;
+  Classes, SysUtils, Types, Controls, StdCtrls, Graphics, uAppTypes, LcaTheme, LcaThemedButton,
+  LcaThemedComboBox, uWorkspaceState;
 
 type
   TPlanBuildEvent = procedure(Sender: TObject; const APlanPath, APlanContent, AModelId: string) of object;
@@ -14,22 +15,21 @@ type
   private
     FTheme: TThemeKind;
     FLblPath: TLabel;
-    FModelCombo: TComboBox;
+    FModelCombo: TLcaThemedComboBox;
     FModelIds: TStringList;
     FModel: string;
-    FBuildBtn: TButton;
+    FBuildBtn: TLcaThemedButton;
     FBodyMemo: TMemo;
     FPlanPath: string;
     FPlanContent: string;
     FOnBuild: TPlanBuildEvent;
     procedure BuildClick(Sender: TObject);
     procedure ModelComboChange(Sender: TObject);
-    procedure ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
-      State: TOwnerDrawState);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Bind(ALblPath: TLabel; AModelCombo: TComboBox; ABuildBtn: TButton; ABody: TMemo);
+    procedure Bind(ALblPath: TLabel; AModelCombo: TLcaThemedComboBox; ABuildBtn: TLcaThemedButton;
+      ABody: TMemo);
     procedure LoadPlan(const APath, AContent: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetAvailableModels(const AModels: array of TSavedModel);
@@ -63,7 +63,8 @@ begin
   inherited Destroy;
 end;
 
-procedure TPlanView.Bind(ALblPath: TLabel; AModelCombo: TComboBox; ABuildBtn: TButton; ABody: TMemo);
+procedure TPlanView.Bind(ALblPath: TLabel; AModelCombo: TLcaThemedComboBox; ABuildBtn: TLcaThemedButton;
+  ABody: TMemo);
 begin
   FLblPath := ALblPath;
   FModelCombo := AModelCombo;
@@ -72,16 +73,9 @@ begin
   if Assigned(FModelCombo) then begin
     FModelCombo.Style := csDropDownList;
     FModelCombo.OnChange := @ModelComboChange;
-    FModelCombo.OnDrawItem := @ComboDrawItem;
   end;
   if Assigned(FBuildBtn) then
     FBuildBtn.OnClick := @BuildClick;
-end;
-
-procedure TPlanView.ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
-  State: TOwnerDrawState);
-begin
-  StyleComboBoxDrawItem(Control, Index, ARect, State, FTheme);
 end;
 
 procedure TPlanView.LoadPlan(const APath, AContent: string);
@@ -170,9 +164,9 @@ begin
   if Assigned(FLblPath) then
     FLblPath.Font.Color := P.TextMuted;
   if Assigned(FModelCombo) then
-    StyleComboBox(FModelCombo, ATheme);
+    FModelCombo.ApplyTheme(ATheme);
   if Assigned(FBuildBtn) then
-    StylePrimaryButton(FBuildBtn, ATheme);
+    FBuildBtn.ApplyTheme(ATheme);
   if Assigned(FBodyMemo) then
     ConfigureThemedMemo(FBodyMemo, ATheme);
 end;

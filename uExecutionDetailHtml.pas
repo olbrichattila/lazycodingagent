@@ -5,7 +5,7 @@ unit uExecutionDetailHtml;
 interface
 
 uses
-  Classes, SysUtils, Graphics, uAppTypes, uTheme;
+  Classes, SysUtils, Graphics, uAppTypes, LcaTheme;
 
 function ExecDetailEscapeHtml(const S: string): string;
 function JsonTextToHtmlBlock(const AJson: string): string;

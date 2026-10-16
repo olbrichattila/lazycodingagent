@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Dialogs, LCLType,
   SynEdit, SynEditTypes, SynHighlighterAny,
-  uAppTypes, uTheme, uThemeHooks, uSyntaxScheme, uSynGenericClike;
+  uAppTypes, LcaTheme, uThemeHooks, uSyntaxScheme, uSynGenericClike;
 
 type
   TMainFileEditor = class

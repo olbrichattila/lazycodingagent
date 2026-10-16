@@ -1,5 +1,5 @@
 ---
-description: Lazarus IDE + LCL — designer-editable .lfm, standard palette only, theme at runtime
+description: Lazarus IDE + LCL — designer-editable .lfm, LCA Design package, theme via LcaTheme
 alwaysApply: true
 ---
 
@@ -9,8 +9,9 @@ alwaysApply: true
 
 - **LazyCodingAgent** is a **Lazarus + LCL** desktop application (Free Pascal compiler under the hood).
 - Default workflow: open `lazycodingagent.lpi` in the **Lazarus IDE**, edit forms in the **Form Designer**, build with the IDE or `lazbuild`.
-- **No custom component package:** every visible control is a **stock LCL** type streamed in the form **`.lfm`** (`TPageControl`, `TTabSheet`, `TMemo`, `TComboBox`, `TButton`, `TSpeedButton`, `TSynEdit`, etc.). Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab. **Runtime-only (not in `.lfm`):** `TTerminalLCLView` (ViewLCL) via [`uTerminalPanel.pas`](uTerminalPanel.pas); **`TThemedPageTabBar`** on streamed **`TPanel`** tab-strip hosts via [`uThemedPageTabBar.pas`](uThemedPageTabBar.pas); **`TMarkdownHtmlView`** (TurboPower IpHtml) on streamed **`TPanel`** hosts for chat history, Markdown preview, and Help—via [`uMarkdownHtmlView.pas`](uMarkdownHtmlView.pas)—so the IDE needs no ViewLCL or custom tab design package.
-- Do **not** treat this repo as a console-only or “code-only UI” FPC project. The main window and dialogs must remain **editable in Lazarus** for layout.
+- **LCA Design system:** themed chrome lives in [`packages/LcaDesignSystem/`](packages/LcaDesignSystem/) (`LcaDesignSystem.lpk`, `LcaDesignReg` register unit). Install with [`scripts/install-lca-lazarus.ps1`](scripts/install-lca-lazarus.ps1) / [`.sh`](scripts/install-lca-lazarus.sh) (**close Lazarus first**; installs **`LcaDesignSystemDesign`** + `lazbuild --build-ide`). IDE hang recovery: [`scripts/recover-lazarus-ide.ps1`](scripts/recover-lazarus-ide.ps1). Component palette page **LCA Design** provides controls that **stream in `.lfm`**: `TLcaThemedPageTabBar`, `TLcaThemedButton`, `TLcaThemedComboBox`, `TLcaNavRailButton`, `TLcaSurfacePanel`, `TLcaMarkdownView`, `TLcaTerminalPanel`.
+- **Stock LCL** remains for menus, status bar, `TSynEdit`, memos, splitters, and dialogs where no LCA wrapper exists yet.
+- Open forms via the **`.pas`** file (F12), not a standalone `.lfm` tab.
 
 ## Lazarus IDE contract (hard requirements)
 
@@ -19,15 +20,16 @@ alwaysApply: true
 - **`TForm`** uses paired **`.pas` + `.lfm`**, `{$R *.lfm}`, designer **`published`** fields, and `inherited` in constructors where applicable.
 - Use normal **`TForm.Create(Application)`** or **`Create(AOwner)`** for modal dialogs—not `CreateNew` + manual `BuildForm` for user-facing UI.
 - **Geometry and hierarchy** belong in the **`.lfm`** (`Align`, `Anchors`, tab order, captions). The **`.pas`** file holds **published** components and **event handlers** wired from the `.lfm`, plus business logic in `private` / `implementation`.
-- Do **not** build designer-owned layout with **`TXXX.Create(Self)`** + manual **`SetBounds`** / parent assignment for new UI. Use the palette on the form instead.
+- Do **not** build designer-owned layout with **`TXXX.Create(Self)`** + manual **`SetBounds`** / parent assignment for new LCA chrome. Drop **LCA Design** components on the form instead.
 
-### Standard LCL component palette only
+### Components
 
-- Use stock LCL controls from the component palette only.
-- **Buttons:** designer **`TButton`**; optional `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from [`uTheme.pas`](uTheme.pas). On **Windows**, [`uThemeWin32Buttons.pas`](uThemeWin32Buttons.pas) custom-paints those fills via `SetWindowSubclass` + `PaintThemedButton` (stock `TButton` in `.lfm` only). Linux/macOS use native widget colors (`TButton.Color`).
-- **Tabs:** keep **`TPageControl`** / **`TTabSheet`** in **`.lfm`** with **`ShowTabs = False`**; use a stock **`TPanel`** tab-strip host in chrome; create **`TThemedPageTabBar`** at runtime in `FormCreate` (themed headers, optional **✕**, optional **`[+]`**).
-- Apply look-and-feel at runtime via [`uTheme.pas`](uTheme.pas)—not other custom tab or button frame subclasses.
-- **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, `fraThemedButton`, `fraThemedPicker`, `uMarkdownView`, or a Lazarus design package under `components/`. **`uPanelDetach`** is allowed for floating panels; detach controls are stock **`TButton`** (`⧉`) on panel chrome in `.lfm`.
+- **Theme tokens and tree apply:** [`packages/LcaDesignSystem/src/LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas) (`ThemePalette`, `ApplyThemedForm`, `Style*` helpers). App-specific hooks: [`uThemeHooks.pas`](uThemeHooks.pas) (SynEdit).
+- **Buttons:** prefer **`TLcaThemedButton`** on the form, or stock **`TButton`** + `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from **LcaTheme**. On **Windows**, primary/cancel/destructive fills use **LcaThemeWin32Buttons** via LcaTheme.
+- **Tabs:** **`TPageControl`** / **`TTabSheet`** with **`ShowTabs = False`**; **`TLcaThemedPageTabBar`** on tab-strip host panels (`Align = alClient`, `PageControl` set in the designer).
+- **Terminal:** **`TLcaTerminalPanel`** on the terminal content area (`StatusLabel` → status label on the form).
+- **Markdown:** **`TLcaMarkdownView`** for chat history, previews, and help-style hosts.
+- **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, etc. **`uPanelDetach`** is allowed for floating panels.
 
 ### Published events and designer wiring
 
@@ -37,30 +39,28 @@ alwaysApply: true
 ### Non-visual helpers (not layout owners)
 
 - [`uNavigationPanel.pas`](uNavigationPanel.pas) — `TNavContentControl` binds to streamed nav labels, lists, tree, and buttons on `mainunit`.
-- [`uChatPanel.pas`](uChatPanel.pas) — `TChatPanel` binds to streamed chat labels, `pnlChatHistoryHost`, prompt memo, combos, and buttons; creates **`TMarkdownHtmlView`** on the history host at runtime.
-- [`uTerminalPanel.pas`](uTerminalPanel.pas) — PTY controller; creates **`TTerminalLCLView`** on the streamed `pnlTerminalContent` host at runtime.
-- [`uThemedPageTabBar.pas`](uThemedPageTabBar.pas) — themed tab strip; created on streamed `pnl*TabStripHost` panels in [`mainunit.pas`](mainunit.pas) / [`frmSettings.pas`](frmSettings.pas) at runtime (not streamed).
+- [`uChatPanel.pas`](uChatPanel.pas) — `TChatPanel` binds to streamed chat labels, `pnlChatHistoryHost` / **`TLcaMarkdownView`**, prompt memo, combos, and buttons.
 - [`uMainFileEditor.pas`](uMainFileEditor.pas) / [`uPlanView.pas`](uPlanView.pas) — logic for streamed `TSynEdit` and plan utility controls.
 
-Do **not** add new `TPanel` subclasses that `Create` child controls in Pascal.
+Do **not** add new `TPanel` subclasses in the app that `Create` child controls in Pascal; add them to **LcaDesignSystem** and register on the palette.
 
 ## Main form layout ([`mainunit.lfm`](mainunit.lfm))
 
-- **Nav rail:** one `TSpeedButton` per navigation item, `Align = alTop`, shared `GroupIndex`, `OnClick` in `.lfm`.
-- **Nav body:** title/subtitle labels, `TListBox` / `TTreeView`, log list boxes, action buttons — visibility and captions only in code.
-- **Center `TPageControl`:** Chat (history + composer + mode/model combos), Editor (`TSynEdit`), Markdown preview (`TPanel` host). One open file at a time; no per-file tab strip. Session name on the chat sheet; session list in **Sessions** nav.
-- **Utility `TPageControl`:** Scratchpad, Execution Detail, Plan — fixed sheets.
-- **Terminal:** chrome (⧉ detach, ✕ hide) and status label on the bottom host in `.lfm`; `TTerminalLCLView` added at runtime via [`uTerminalPanel.pas`](uTerminalPanel.pas). Content detaches like other panels (`uPanelDetach`).
+- **Nav rail:** `TSpeedButton` or **`TLcaNavRailButton`** per item; map tags to `TNavigationItem` in code.
+- **Center `TPageControl`:** Chat ( **`TLcaMarkdownView`** history), Editor (`TSynEdit`), Markdown preview hosts.
+- **Tab bars:** **`TLcaThemedPageTabBar`** on `pnl*TabStripHost` panels.
+- **Terminal:** **`TLcaTerminalPanel`** inside `pnlTerminalContent`.
 
-Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) when adding rail items or large structural changes; preserve the `MainMenu1` tail.
+Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) when adding rail items or large structural changes; preserve the `MainMenu1` tail and LCA component entries.
 
 ## Theming (dark and light)
 
-- Do **not** hardcode theme colors or fonts in `.lfm`. Runtime applies [`uTheme.pas`](uTheme.pas): `ApplyAllThemes`, `ApplyThemedControlTree`, `ApplyThemedForm`, `ThemePalette`, `StyleComboBox`, `ConfigureThemedListBox`, `ApplyPlatformChrome`; custom hooks via [`uThemeHooks.pas`](uThemeHooks.pas).
-- Chat history, Markdown file preview, and Help topics use **`TMarkdownHtmlView`** on streamed **`TPanel`** hosts (rendered Markdown subset).
+- Do **not** hardcode theme colors in `.lfm`. Runtime applies **LcaTheme**: `ApplyAllThemes`, `ApplyThemedControlTree`, `ThemePalette`, `StyleComboBox`, etc.
+- Chat history, Markdown preview, and Help use **`TLcaMarkdownView`**.
 
 ## When adding UI
 
-1. Add or extend layout in the **Form Designer** (`.lfm`), usually [`mainunit.lfm`](mainunit.lfm) or a `frm*.lfm` dialog.
-2. Wire events in `.lfm`; implement handlers in `.pas`.
-3. After changes, verify **dark and light** via **View → Toggle Light / Dark Theme** and `lazbuild lazycodingagent.lpi`.
+1. Install/update **LCA Design** packages if new component types were added.
+2. Add or extend layout in the **Form Designer** (`.lfm`), usually [`mainunit.lfm`](mainunit.lfm) or a `frm*.lfm` dialog.
+3. Wire events in `.lfm`; implement handlers in `.pas`.
+4. After changes, verify **dark and light** via **View → Toggle Light / Dark Theme** and `lazbuild lazycodingagent.lpi`.

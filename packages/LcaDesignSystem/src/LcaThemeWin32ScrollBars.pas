@@ -1,11 +1,11 @@
-unit uThemeWin32ScrollBars;
+unit LcaThemeWin32ScrollBars;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, Controls, StdCtrls, ComCtrls, uAppTypes, uTheme;
+  Classes, Controls, StdCtrls, ComCtrls, LcaTheme;
 
 procedure ApplyWin32ThemedScrollBars(AControl: TWinControl; ATheme: TThemeKind);
 

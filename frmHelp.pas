@@ -5,8 +5,8 @@ unit frmHelp;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  uAppTypes, uTheme, uHelpContent, uMarkdownHtmlView;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
+  uAppTypes, LcaTheme, uHelpContent, LcaMarkdownView;
 
 type
   { THelpForm }
@@ -19,7 +19,7 @@ type
     lstTopics: TListBox;
     pnlPreviewHost: TPanel;
     pnlBottom: TPanel;
-    btnClose: TButton;
+    btnClose: TLcaThemedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure edtSearchChange(Sender: TObject);
@@ -30,7 +30,7 @@ type
   private
     FTheme: TThemeKind;
     FCatalog: THelpCatalog;
-    FPreview: TMarkdownHtmlView;
+    FPreview: TLcaMarkdownView;
     FFilteredIndices: THelpTopicIndexArray;
     procedure EnsurePreview;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -64,7 +64,7 @@ end;
 
 destructor THelpForm.Destroy;
 begin
-  FreeAndNil(FPreview);
+  FPreview := nil;
   FCatalog.Free;
   inherited Destroy;
 end;
@@ -73,7 +73,9 @@ procedure THelpForm.EnsurePreview;
 begin
   if Assigned(FPreview) then Exit;
   if not Assigned(pnlPreviewHost) then Exit;
-  FPreview := TMarkdownHtmlView.Create(Self, pnlPreviewHost);
+  FPreview := TLcaMarkdownView.Create(Self);
+  FPreview.Parent := pnlPreviewHost;
+  FPreview.Align := alClient;
 end;
 
 procedure THelpForm.FormCreate(Sender: TObject);
@@ -117,7 +119,6 @@ begin
   EnsurePreview;
   if Assigned(FPreview) then
     FPreview.ApplyTheme(ATheme);
-  StyleCancelButton(btnClose, ATheme);
   lstTopics.Invalidate;
 end;
 

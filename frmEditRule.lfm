@@ -35,7 +35,8 @@ object EditRuleForm: TEditRuleForm
     ClientHeight = 44
     ClientWidth = 504
     TabOrder = 1
-    object btnOK: TButton
+    object btnOK: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 320
       Height = 28
       Top = 8
@@ -45,7 +46,8 @@ object EditRuleForm: TEditRuleForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TButton
+    object btnCancel: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 408
       Height = 28
       Top = 8

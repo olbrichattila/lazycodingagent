@@ -61,7 +61,8 @@ object ModelSearchForm: TModelSearchForm
     ClientHeight = 48
     ClientWidth = 504
     TabOrder = 2
-    object btnAdd: TButton
+    object btnAdd: TLcaThemedButton
+      ButtonRole = tbrPrimary
       Left = 308
       Height = 28
       Top = 10
@@ -71,7 +72,8 @@ object ModelSearchForm: TModelSearchForm
       OnClick = btnAddClick
       TabOrder = 0
     end
-    object btnClose: TButton
+    object btnClose: TLcaThemedButton
+      ButtonRole = tbrCancel
       Left = 404
       Height = 28
       Top = 10

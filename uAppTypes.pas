@@ -4,12 +4,19 @@ unit uAppTypes;
 
 interface
 
+uses
+  LcaTheme;
+
 type
   TNavigationItem = (niHome, niProjects, niSessions, niBots, niTools, niTasks, niToolErrors,
     niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain);
   TWorkspaceMode = (wmAsk, wmPlan, wmAgent);
   TPanelId = (piNavigation, piChat, piReserved, piUtility, piTerminal);
-  TThemeKind = (tkDark, tkLight);
+  TThemeKind = LcaTheme.TThemeKind;
+
+const
+  tkDark = LcaTheme.tkDark;
+  tkLight = LcaTheme.tkLight;
 
 function NavigationCaption(AItem: TNavigationItem): string;
 function NavigationHint(AItem: TNavigationItem): string;
@@ -27,9 +34,9 @@ implementation
 function NavigationCaption(AItem: TNavigationItem): string;
 begin
   case AItem of
-    niHome: Result := 'Workspaces';
+    niHome: Result := 'Workspace';
     niProjects: Result := 'Projects';
-    niSessions: Result := 'Sessions';
+    niSessions: Result := 'Agents';
     niBots: Result := 'Bots';
     niTools: Result := 'Tools & Logs';
     niTasks: Result := 'Tasks & Plans';
@@ -44,9 +51,9 @@ end;
 function NavigationHint(AItem: TNavigationItem): string;
 begin
   case AItem of
-    niHome: Result := 'Workspaces - Open and switch projects';
+    niHome: Result := 'Workspace - Open and switch projects';
     niProjects: Result := 'Projects - Workspace files & tree';
-    niSessions: Result := 'Sessions - Conversation history & agents';
+    niSessions: Result := 'Agents - Chat sessions and coding agents';
     niBots: Result := 'Bots - Custom assistants & prompts';
     niTools: Result := 'Tools - Local tool execution & logs';
     niTasks: Result := 'Tasks - Active plan & task checklists';

@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms,
   LCLType, fpjson, jsonparser,
-  uAppTypes, uTheme, uAgentTypes, uWorkspaceState, uMarkdownHtmlView;
+  uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, uAgentTypes, uWorkspaceState,
+  LcaMarkdownView;
 
 type
   TPromptEvent = procedure(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode;
@@ -16,7 +17,7 @@ type
   TModelChangeEvent = procedure(Sender: TObject; const AModel: string) of object;
   TCancelEvent = procedure(Sender: TObject) of object;
 
-  { Binds designer-placed chat controls; Markdown subset in TMarkdownHtmlView on host panel. }
+  { Binds designer-placed chat controls; Markdown subset in TLcaMarkdownView on host panel. }
   TChatPanel = class(TComponent)
   private
     FWorkspaceName: string;
@@ -35,14 +36,14 @@ type
     FSubHeading: TLabel;
     FSessionLabel: TLabel;
     FHistoryHost: TPanel;
-    FHistoryView: TMarkdownHtmlView;
+    FHistoryView: TLcaMarkdownView;
     FWorkspaceTag: TLabel;
     FPromptMemo: TMemo;
-    FModeCombo: TComboBox;
-    FModelCombo: TComboBox;
+    FModeCombo: TLcaThemedComboBox;
+    FModelCombo: TLcaThemedComboBox;
     FModelIds: TStringList;
-    FSendBtn: TButton;
-    FStopBtn: TButton;
+    FSendBtn: TLcaThemedButton;
+    FStopBtn: TLcaThemedButton;
 
     procedure ModeComboChange(Sender: TObject);
     procedure ModelComboChange(Sender: TObject);
@@ -55,14 +56,12 @@ type
     procedure AppendToHistory(const ARoleLabel, ABody: string);
     procedure RefreshHistoryView;
     function ToolMessageBody(const AMsg: TChatMessage): string;
-    procedure ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
-      State: TOwnerDrawState);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
-      APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TComboBox;
-      ASendBtn, AStopBtn: TButton);
+      APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
+      ASendBtn, AStopBtn: TLcaThemedButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetWorkspace(const AName: string);
@@ -139,27 +138,30 @@ end;
 
 destructor TChatPanel.Destroy;
 begin
-  FreeAndNil(FHistoryView);
+  FHistoryView := nil;
   FModelIds.Free;
   inherited Destroy;
 end;
 
 procedure TChatPanel.EnsureHistoryView;
 var
-  OwnerComp: TComponent;
+  I: Integer;
+  C: TControl;
 begin
-  if not Assigned(FHistoryHost) then Exit;
   if Assigned(FHistoryView) then Exit;
-  if FHistoryHost.Owner is TComponent then
-    OwnerComp := TComponent(FHistoryHost.Owner)
-  else
-    OwnerComp := Self;
-  FHistoryView := TMarkdownHtmlView.Create(OwnerComp, FHistoryHost);
+  if not Assigned(FHistoryHost) then Exit;
+  for I := 0 to FHistoryHost.ControlCount - 1 do begin
+    C := FHistoryHost.Controls[I];
+    if C is TLcaMarkdownView then begin
+      FHistoryView := TLcaMarkdownView(C);
+      Exit;
+    end;
+  end;
 end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
-  APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TComboBox;
-  ASendBtn, AStopBtn: TButton);
+  APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
+  ASendBtn, AStopBtn: TLcaThemedButton);
 var
   M: TWorkspaceMode;
 begin
@@ -183,12 +185,10 @@ begin
     FModeCombo.ItemIndex := Ord(FMode);
     FModeCombo.OnChange := @ModeComboChange;
     FModeCombo.Style := csDropDownList;
-    FModeCombo.OnDrawItem := @ComboDrawItem;
   end;
   if Assigned(FModelCombo) then begin
     FModelCombo.OnChange := @ModelComboChange;
     FModelCombo.Style := csDropDownList;
-    FModelCombo.OnDrawItem := @ComboDrawItem;
   end;
   if Assigned(FSendBtn) then
     FSendBtn.OnClick := @SendBtnClick;
@@ -201,13 +201,6 @@ begin
 
   UpdateHeading;
   RefreshHistoryView;
-  ApplyTheme(FTheme);
-end;
-
-procedure TChatPanel.ComboDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
-  State: TOwnerDrawState);
-begin
-  StyleComboBoxDrawItem(Control, Index, ARect, State, FTheme);
 end;
 
 procedure TChatPanel.InitWelcomeText;
@@ -305,13 +298,13 @@ begin
   if Assigned(FPromptMemo) then
     ConfigureThemedMemo(FPromptMemo, ATheme);
   if Assigned(FModeCombo) then
-    StyleComboBox(FModeCombo, ATheme);
+    FModeCombo.ApplyTheme(ATheme);
   if Assigned(FModelCombo) then
-    StyleComboBox(FModelCombo, ATheme);
+    FModelCombo.ApplyTheme(ATheme);
   if Assigned(FSendBtn) then
-    StylePrimaryButton(FSendBtn, ATheme);
+    FSendBtn.ApplyTheme(ATheme);
   if Assigned(FStopBtn) then
-    StyleDestructiveButton(FStopBtn, ATheme);
+    FStopBtn.ApplyTheme(ATheme);
   RefreshHistoryView;
 end;
 

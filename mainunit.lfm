@@ -230,7 +230,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Width = 86
           Caption = 'Navigation'
         end
-        object btnNavDetach: TButton
+        object btnNavDetach: TLcaThemedButton
+          ButtonRole = tbrGhost
           Left = 267
           Height = 38
           Top = 6
@@ -240,7 +241,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           TabOrder = 0
           OnClick = PanelDetachClick
         end
-        object btnNavHide: TButton
+        object btnNavHide: TLcaThemedButton
+          ButtonRole = tbrGhost
           Left = 321
           Height = 38
           Top = 6
@@ -299,7 +301,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           ParentFont = False
           Visible = False
         end
-        object btnNavPrimary: TButton
+        object btnNavPrimary: TLcaThemedButton
+          ButtonRole = tbrPrimary
           Left = 0
           Height = 45
           Top = 865
@@ -308,7 +311,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Caption = 'Action'
           TabOrder = 0
         end
-        object btnNavSecondary: TButton
+        object btnNavSecondary: TLcaThemedButton
+          ButtonRole = tbrCancel
           Left = 0
           Height = 48
           Top = 817
@@ -398,7 +402,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           BevelOuter = bvNone
           TabOrder = 0
         end
-        object btnUtilityDetach: TButton
+        object btnUtilityDetach: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 3
           Left = 312
           Height = 38
@@ -409,7 +414,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           TabOrder = 1
           OnClick = PanelDetachClick
         end
-        object btnUtilityHide: TButton
+        object btnUtilityHide: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 3
           Left = 366
           Height = 38
@@ -490,7 +496,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Width = 65
                 Caption = 'Plan file:'
               end
-              object cboPlanModel: TComboBox
+              object cboPlanModel: TLcaThemedComboBox
                 Left = 208
                 Height = 33
                 Top = 3
@@ -500,7 +506,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Style = csDropDownList
                 TabOrder = 0
               end
-              object btnPlanBuild: TButton
+              object btnPlanBuild: TLcaThemedButton
+                ButtonRole = tbrPrimary
                 Left = 349
                 Height = 21
                 Top = 3
@@ -562,7 +569,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Width = 81
           Caption = 'Guidelines'
         end
-        object btnReservedDetach: TButton
+        object btnReservedDetach: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 2
           Left = 318
           Height = 38
@@ -573,7 +581,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           TabOrder = 0
           OnClick = PanelDetachClick
         end
-        object btnReservedHide: TButton
+        object btnReservedHide: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 2
           Left = 374
           Height = 38
@@ -646,7 +655,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           BevelOuter = bvNone
           TabOrder = 0
         end
-        object btnChatDetach: TButton
+        object btnChatDetach: TLcaThemedButton
+          ButtonRole = tbrGhost
           Tag = 1
           Left = 773
           Height = 38
@@ -740,7 +750,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               ClientHeight = 98
               ClientWidth = 829
               TabOrder = 1
-              object cboChatMode: TComboBox
+              object cboChatMode: TLcaThemedComboBox
                 Left = 8
                 Height = 33
                 Top = 30
@@ -749,7 +759,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Style = csDropDownList
                 TabOrder = 0
               end
-              object cboChatModel: TComboBox
+              object cboChatModel: TLcaThemedComboBox
                 Left = 121
                 Height = 33
                 Top = 30
@@ -758,7 +768,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Style = csDropDownList
                 TabOrder = 1
               end
-              object btnChatStop: TButton
+              object btnChatStop: TLcaThemedButton
+                ButtonRole = tbrDestructive
                 Left = 584
                 Height = 33
                 Top = 30
@@ -768,7 +779,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 TabOrder = 2
                 Visible = False
               end
-              object btnChatSend: TButton
+              object btnChatSend: TLcaThemedButton
+                ButtonRole = tbrPrimary
                 Left = 680
                 Height = 33
                 Top = 30
@@ -833,49 +845,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             MouseLinkColor.Foreground = clBlue
             LineHighlightColor.Background = clNone
             LineHighlightColor.Foreground = clNone
-            inline SynLeftGutterPartList1: TSynGutterPartList
-              object SynGutterMarks1: TSynGutterMarks
-                Width = 36
-                MouseActions = <>
-                MaxExtraMarksColums = 0
-                Options = [sgmoDeDuplicateMarksOnOverflow]
-                MarkupInfo.Background = clBtnFace
-                MarkupInfo.Foreground = clNone
-              end
-              object SynGutterLineNumber1: TSynGutterLineNumber
-                Width = 11
-                MouseActions = <>
-                MarkupInfo.Background = clBtnFace
-                MarkupInfo.Foreground = clNone
-                DigitCount = 2
-                ShowOnlyLineNumbersMultiplesOf = 1
-                ZeroStart = False
-                LeadingZeros = False
-              end
-              object SynGutterChanges1: TSynGutterChanges
-                Width = 6
-                MouseActions = <>
-                ModifiedColor = 59900
-                SavedColor = clGreen
-                MarkupInfo.Background = clNone
-                MarkupInfo.Foreground = clGreen
-                MarkupInfo.FrameColor = 59900
-              end
-              object SynGutterSeparator1: TSynGutterSeparator
-                Width = 3
-                MouseActions = <>
-                MarkupInfo.Background = clWhite
-                MarkupInfo.Foreground = clGray
-              end
-              object SynGutterCodeFolding1: TSynGutterCodeFolding
-                Width = 15
-                MouseActions = <>
-                MarkupInfo.Background = clNone
-                MarkupInfo.Foreground = clGray
-                MouseActionsExpanded = <>
-                MouseActionsCollapsed = <>
-              end
-            end
           end
         end
         object tsMarkdown: TTabSheet
@@ -937,7 +906,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 65
         Caption = 'Terminal'
       end
-      object btnTerminalDetach: TButton
+      object btnTerminalDetach: TLcaThemedButton
+        ButtonRole = tbrGhost
         Tag = 4
         Left = 2052
         Height = 38
@@ -948,7 +918,8 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         TabOrder = 0
         OnClick = PanelDetachClick
       end
-      object btnTerminalHide: TButton
+      object btnTerminalHide: TLcaThemedButton
+        ButtonRole = tbrGhost
         Tag = 4
         Left = 2106
         Height = 38

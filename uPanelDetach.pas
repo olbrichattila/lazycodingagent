@@ -1,11 +1,11 @@
-﻿unit uPanelDetach;
+unit uPanelDetach;
 
 {$mode objfpc}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, ExtCtrls, uAppTypes, uWorkspaceState, uTheme;
+  Classes, SysUtils, Forms, Controls, ExtCtrls, uAppTypes, uWorkspaceState, LcaTheme;
 
 type
   TPanelDetachManager = class
