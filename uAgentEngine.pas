@@ -103,11 +103,13 @@ type
     procedure ClearConversation;
     procedure LoadConversation(const AMessages: TChatMessageArray);
     procedure ExportMessages(out AMessages: TChatMessageArray);
-    function StartRunAsync(const AUserPrompt: string; AMode: TWorkspaceMode;
+    function StartRunAsync(const AUserPrompt: string;
+      const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
       const AModel: string): Boolean;
     procedure RequestCancel;
     function IsRunActive: Boolean;
-    procedure ExecuteRun(const AUserPrompt: string; AMode: TWorkspaceMode;
+    procedure ExecuteRun(const AUserPrompt: string;
+      const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
       const AModel: string);
     procedure RunThreadFinished;
 
@@ -141,7 +143,7 @@ type
 implementation
 
 uses
-  Forms, uAgentRunThread, uAgentToolBase;
+  Forms, uAgentRunThread, uAgentToolBase, uChatImageStore;
 
 function TruncationHintForFinishReason(const AReason: string): string;
 begin
@@ -674,7 +676,8 @@ begin
   Result := AResp.Success;
 end;
 
-function TAgentEngine.StartRunAsync(const AUserPrompt: string; AMode: TWorkspaceMode;
+function TAgentEngine.StartRunAsync(const AUserPrompt: string;
+  const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
   const AModel: string): Boolean;
 begin
   Result := False;
@@ -692,13 +695,14 @@ begin
 
   CaptureClientSnapshot;
 
-  FRunThread := TAgentRunThread.Create(Self, AUserPrompt, AMode, AModel);
+  FRunThread := TAgentRunThread.Create(Self, AUserPrompt, AAttachments, AMode, AModel);
   TAgentRunThread(FRunThread).Start;
   Result := True;
 end;
 
 procedure TAgentEngine.ExecuteRun(
   const AUserPrompt: string;
+  const AAttachments: array of TChatAttachment;
   AMode: TWorkspaceMode;
   const AModel: string
 );
@@ -715,6 +719,8 @@ var
   CompactNote: string;
   ContextRetry: Boolean;
   TruncationExhausted: Boolean;
+  UserLogText: string;
+  AttIdx: Integer;
 begin
   FInWorkerRun := True;
   FSyncRunStep := 0;
@@ -731,6 +737,9 @@ begin
 
     UserMsg := StringToChatRole('user');
     UserMsg.Content := AUserPrompt;
+    SetLength(UserMsg.Attachments, Length(AAttachments));
+    for AttIdx := 0 to High(AAttachments) do
+      UserMsg.Attachments[AttIdx] := AAttachments[AttIdx];
     AppendMessage(UserMsg);
 
     StepCount := 0;
@@ -744,7 +753,13 @@ begin
       finally
         FDataLock.Leave;
       end;
-      NotifyExecutionLogAdded(FExecutionLog.AddUserPrompt(AUserPrompt,
+      UserLogText := AUserPrompt;
+      if Length(AAttachments) > 0 then begin
+        if UserLogText <> '' then
+          UserLogText := UserLogText + LineEnding;
+        UserLogText := UserLogText + FormatAttachmentsSummary(AAttachments);
+      end;
+      NotifyExecutionLogAdded(FExecutionLog.AddUserPrompt(UserLogText,
         FormatMessagesForDisplay(MessagesCopy, ToolDefs)));
     end;
 

@@ -754,7 +754,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object pnlChatComposer: TPanel
             Left = 0
-            Height = 210
+            Height = 246
             Top = 692
             Width = 829
             Align = alBottom
@@ -780,33 +780,53 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               ScrollBars = ssVertical
               TabOrder = 0
             end
+            object pnlChatAttachmentStrip: TPanel
+              Left = 0
+              Height = 36
+              Top = 112
+              Width = 829
+              Align = alBottom
+              BevelOuter = bvNone
+              ClientHeight = 36
+              ClientWidth = 829
+              TabOrder = 1
+              Visible = False
+            end
             object pnlChatFooter: TPanel
               Left = 0
               Height = 98
-              Top = 112
+              Top = 148
               Width = 829
               Align = alBottom
               BevelOuter = bvNone
               ClientHeight = 98
               ClientWidth = 829
-              TabOrder = 1
-              object cboChatMode: TLcaThemedComboBox
+              TabOrder = 2
+              object btnChatAttachImage: TLcaThemedButton
                 Left = 8
+                Height = 33
+                Top = 30
+                Width = 108
+                Caption = 'Attach image'
+                TabOrder = 0
+              end
+              object cboChatMode: TLcaThemedComboBox
+                Left = 122
                 Height = 33
                 Top = 30
                 Width = 105
                 ItemHeight = 25
                 Style = csDropDownList
-                TabOrder = 0
+                TabOrder = 1
               end
               object cboChatModel: TLcaThemedComboBox
-                Left = 121
+                Left = 235
                 Height = 33
                 Top = 30
                 Width = 237
                 ItemHeight = 25
                 Style = csDropDownList
-                TabOrder = 1
+                TabOrder = 2
               end
               object btnChatStop: TLcaThemedButton
                 ButtonRole = tbrDestructive
@@ -816,7 +836,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Width = 84
                 Anchors = [akTop, akRight]
                 Caption = 'Stop'
-                TabOrder = 2
+                TabOrder = 3
                 Visible = False
               end
               object btnChatSend: TLcaThemedButton
@@ -827,7 +847,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Width = 140
                 Anchors = [akTop, akRight]
                 Caption = 'Run Agent'
-                TabOrder = 3
+                TabOrder = 4
               end
             end
           end

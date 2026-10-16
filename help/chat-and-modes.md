@@ -22,6 +22,15 @@ The mode applies to the **next run** and is sent with the system prompt so the m
 
 Pick **Ask**, **Plan**, or **Agent** from the **mode** combo at the left of the composer footer.
 
+## Image attachments (vision)
+
+You can attach **screenshots and mockups** so a **vision-capable model** can see them (configure one in Settings, e.g. GPT-4o, Claude 3.x via OpenRouter, or a local Ollama vision model).
+
+- Click **Attach image** in the composer footer, or **Ctrl+V** in the prompt box when the clipboard holds a picture.
+- Supported types: **PNG, JPEG, WebP, GIF**. Up to **4** images per message, **5 MiB** each (large images may be downscaled to 2048 px on the longest edge).
+- Files are copied into **`.lca/attachments/`** under the workspace; session history stores paths only, not embedded binary.
+- Text-only models ignore image bytes poorly or return errors—pick a model that supports vision for image-heavy prompts.
+
 ## Model selection
 
 The **model** combo lists models you configured in Settings. The choice is kept with the workspace and shown on the status bar when relevant.
@@ -35,7 +44,19 @@ With debugging off, you still get a readable run in chat:
 - **Activity** lines such as `Calling read_file` when each tool starts (not part of saved conversation history).
 - **Tools & Logs** in the nav rail plus **Execution Detail** in the utility panel for full prompts, tool arguments, and outputs.
 
-Click an older log row to **pin** the inspector on that step; click the **latest** row to follow the live trace again.
+Open **Tools & Logs** and **Execution Detail** yourself anytime to inspect a run. Click an older log row to **pin** the inspector on that step; click the **latest** row to follow the live trace again.
+
+## Learn mode
+
+In **Settings → Agent Behavior**, enable **Learn mode** when you want a guided tour of each agent run (off by default for everyday coding).
+
+When **Learn mode** is on, sending a prompt:
+
+- Switches the nav rail to **Tools & Logs**
+- Opens the utility panel on **Execution Detail**
+- **Follows** new log steps in the inspector until you select an older row (click the latest row again to resume follow)
+
+**Learn mode** controls where the UI goes during a run. **Debugging mode** controls whether full tool JSON appears in chat—they are independent.
 
 ## Step limit
 

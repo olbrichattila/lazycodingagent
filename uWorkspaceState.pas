@@ -46,6 +46,7 @@ type
     FMaxTokens: Integer;
     FMaxSteps: Integer;
     FDebuggingMode: Boolean;
+    FLearnMode: Boolean;
     FAutoSummarizeContext: Boolean;
     FContextWindowTokens: Integer;
     FSummarizeThreshold: Double;
@@ -107,6 +108,7 @@ type
     property MaxTokens: Integer read FMaxTokens write FMaxTokens;
     property MaxSteps: Integer read FMaxSteps write FMaxSteps;
     property DebuggingMode: Boolean read FDebuggingMode write FDebuggingMode;
+    property LearnMode: Boolean read FLearnMode write FLearnMode;
     property AutoSummarizeContext: Boolean read FAutoSummarizeContext write FAutoSummarizeContext;
     property ContextWindowTokens: Integer read FContextWindowTokens write FContextWindowTokens;
     property SummarizeThreshold: Double read FSummarizeThreshold write FSummarizeThreshold;
@@ -182,6 +184,7 @@ begin
   FMaxTokens := DEFAULT_MAX_OUTPUT_TOKENS;
   FMaxSteps := 20;
   FDebuggingMode := False;
+  FLearnMode := False;
   FAutoSummarizeContext := True;
   FContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
   FSummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;
@@ -517,6 +520,7 @@ begin
     FMaxTokens := I.ReadInteger('LLM', 'MaxTokens', FMaxTokens);
     FMaxSteps := I.ReadInteger('LLM', 'MaxSteps', FMaxSteps);
     FDebuggingMode := I.ReadBool('General', 'DebuggingMode', FDebuggingMode);
+    FLearnMode := I.ReadBool('General', 'LearnMode', FLearnMode);
     FAutoSummarizeContext := I.ReadBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
     FContextWindowTokens := I.ReadInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
     FSummarizeThreshold := I.ReadFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
@@ -606,6 +610,7 @@ begin
     I.WriteInteger('LLM', 'MaxTokens', FMaxTokens);
     I.WriteInteger('LLM', 'MaxSteps', FMaxSteps);
     I.WriteBool('General', 'DebuggingMode', FDebuggingMode);
+    I.WriteBool('General', 'LearnMode', FLearnMode);
     I.WriteBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
     I.WriteInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
     I.WriteFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);

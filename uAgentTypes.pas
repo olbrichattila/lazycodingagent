@@ -69,12 +69,25 @@ type
   end;
   TToolCallArray = array of TToolCall;
 
+  TChatAttachmentKind = (cakImage);
+
+  TChatAttachment = record
+    Kind: TChatAttachmentKind;
+    RelativePath: string;
+    MimeType: string;
+    OriginalName: string;
+    Width: Integer;
+    Height: Integer;
+  end;
+  TChatAttachmentArray = array of TChatAttachment;
+
   { Chat Message data struct }
   TChatMessage = record
     Role: TChatRole;
     Content: string;
     ToolCallId: string; // for tool response messages
     ToolCalls: TToolCallArray;
+    Attachments: TChatAttachmentArray;
     Timestamp: TDateTime;
     TokensUsed: Integer;
     VisualSummary: string; // Summary banner for tool outputs in UI
@@ -95,6 +108,8 @@ type
   function StringToLlmProvider(const S: string): TLlmProvider;
   function AgentStateToString(AState: TAgentState): string;
   function FormatAgentStateLabel(AState: TAgentState; AStep, AMaxSteps: Integer): string;
+  function ChatAttachmentKindToString(AKind: TChatAttachmentKind): string;
+  function StringToChatAttachmentKind(const S: string): TChatAttachmentKind;
 
 implementation
 
@@ -113,6 +128,7 @@ begin
   Result.Content := '';
   Result.ToolCallId := '';
   SetLength(Result.ToolCalls, 0);
+  SetLength(Result.Attachments, 0);
   Result.Timestamp := Now;
   Result.TokensUsed := 0;
   Result.VisualSummary := '';
@@ -166,6 +182,21 @@ begin
   Result := AgentStateToString(AState);
   if (AMaxSteps > 0) and (AStep > 0) and (AState in [asThinking, asExecutingTool]) then
     Result := Result + Format(' (step %d/%d)', [AStep, AMaxSteps]);
+end;
+
+function ChatAttachmentKindToString(AKind: TChatAttachmentKind): string;
+begin
+  case AKind of
+    cakImage: Result := 'image';
+  end;
+end;
+
+function StringToChatAttachmentKind(const S: string): TChatAttachmentKind;
+begin
+  if SameText(S, 'image') then
+    Result := cakImage
+  else
+    Result := cakImage;
 end;
 
 end.

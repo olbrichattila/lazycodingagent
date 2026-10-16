@@ -222,6 +222,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uChatImageStore.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uChatSessionHub.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

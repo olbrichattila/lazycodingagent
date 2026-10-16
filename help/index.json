@@ -15,7 +15,7 @@
     "id": "chat-and-modes",
     "title": "Chat, sessions, and modes",
     "file": "chat-and-modes.md",
-    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window"]
+    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment"]
   },
   {
     "id": "project-rules",

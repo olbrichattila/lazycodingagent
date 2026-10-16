@@ -53,7 +53,7 @@ function FormatMessageBodyForLog(const AMsg: TChatMessage): string;
 implementation
 
 uses
-  fpjson, jsonparser, uAgentToolBase, uExecutionDetailHtml;
+  fpjson, jsonparser, uAgentToolBase, uExecutionDetailHtml, uChatImageStore;
 
 function PrettyJsonString(const S: string): string;
 var
@@ -126,6 +126,7 @@ function FormatMessageBodyForLog(const AMsg: TChatMessage): string;
 var
   I: Integer;
   Parts: TStringList;
+  AttSummary: string;
 begin
   Parts := TStringList.Create;
   try
@@ -139,8 +140,15 @@ begin
       for I := Low(AMsg.ToolCalls) to High(AMsg.ToolCalls) do
         Parts.Add(Format('tool_call: %s(%s)', [
           AMsg.ToolCalls[I].Name, PrettyJsonString(AMsg.ToolCalls[I].ArgumentsJson)]));
-    end else
-      Parts.Add(AMsg.Content);
+    end else begin
+      if Trim(AMsg.Content) <> '' then
+        Parts.Add(AMsg.Content);
+      if Length(AMsg.Attachments) > 0 then begin
+        AttSummary := FormatAttachmentsSummary(AMsg.Attachments);
+        if AttSummary <> '' then
+          Parts.Add(AttSummary);
+      end;
+    end;
     Result := Parts.Text;
   finally
     Parts.Free;

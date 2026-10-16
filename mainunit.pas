@@ -22,6 +22,8 @@ type
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
     btnChatSend: TLcaThemedButton;
+    btnChatAttachImage: TLcaThemedButton;
+    pnlChatAttachmentStrip: TPanel;
     btnChatStop: TLcaThemedButton;
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
@@ -294,7 +296,9 @@ type
     procedure RebuildWindowMenu;
 
     procedure PanelHideClickAction(AId: TPanelId);
-    procedure ChatPrompt(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string);
+    procedure ChatPrompt(Sender: TObject; const APrompt: string;
+      const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
+      const AModel: string);
     procedure ChatModeChange(Sender: TObject; AMode: TWorkspaceMode);
     procedure ChatModelChange(Sender: TObject; const AModel: string);
     procedure ChatCancel(Sender: TObject);
@@ -491,6 +495,7 @@ begin
       Cap := Cap + ' ●';
   end;
   FChatPanel.SetSessionCaption('Session: ' + Cap);
+  FChatPanel.SetSessionId(FCurrentSessionId);
 end;
 
 function TLazyCodingAgentForm.AgentStateIsRunning(AState: TAgentState): Boolean;
@@ -567,7 +572,7 @@ begin
   FNavSessionIds := TStringList.Create;
   FNavSessionArchived := TStringList.Create;
   FCurrentSessionId := '';
-  FExecutionLogFollowLive := True;
+  FExecutionLogFollowLive := False;
   FStatusRunStep := 0;
   FStatusRunMaxSteps := 0;
   FExecDetailView := nil;
@@ -918,7 +923,8 @@ begin
 
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
-    lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop);
+    lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop,
+    btnChatAttachImage, pnlChatAttachmentStrip);
   FChatPanel.OnPrompt := @ChatPrompt;
   FChatPanel.OnModeChange := @ChatModeChange;
   FChatPanel.OnModelChange := @ChatModelChange;
@@ -1330,7 +1336,9 @@ begin
 end;
 
 
-procedure TLazyCodingAgentForm.ChatPrompt(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode; const AModel: string);
+procedure TLazyCodingAgentForm.ChatPrompt(Sender: TObject; const APrompt: string;
+  const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
+  const AModel: string);
 var
   Info: TChatSessionInfo;
   Eng: TAgentEngine;
@@ -1342,10 +1350,14 @@ begin
   FPlanSavedThisRun := False;
   Eng := ActiveAgent;
   if not Assigned(Eng) then Exit;
-  FExecutionLogFollowLive := True;
-  OpenUtilityExecutionDetailTab;
+  if FState.LearnMode then begin
+    FState.SetNavigation(niTools);
+    FExecutionLogFollowLive := True;
+    OpenUtilityExecutionDetailTab;
+  end else
+    FExecutionLogFollowLive := False;
   FChatPanel.SetRunning(True);
-  if not Eng.StartRunAsync(APrompt, AMode, AModel) then
+  if not Eng.StartRunAsync(APrompt, AAttachments, AMode, AModel) then
     FChatPanel.SetRunning(False);
 end;
 
@@ -1481,7 +1493,7 @@ begin
   if csDestroying in ComponentState then Exit;
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FNavContent) then
-    FNavContent.AppendExecutionLogEntry(AEntryIndex);
+    FNavContent.AppendExecutionLogEntry(AEntryIndex, FExecutionLogFollowLive);
   if FExecutionLogFollowLive then
     ShowExecutionLogDetail(AEntryIndex);
 end;

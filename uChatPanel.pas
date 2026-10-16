@@ -5,13 +5,14 @@ unit uChatPanel;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms,
-  LCLType, fpjson, jsonparser,
+  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms, Buttons,
+  LCLType, Clipbrd, fpjson, jsonparser,
   uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, uAgentTypes, uWorkspaceState,
   LcaMarkdownView;
 
 type
-  TPromptEvent = procedure(Sender: TObject; const APrompt: string; AMode: TWorkspaceMode;
+  TPromptEvent = procedure(Sender: TObject; const APrompt: string;
+    const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
     const AModel: string) of object;
   TModeChangeEvent = procedure(Sender: TObject; AMode: TWorkspaceMode) of object;
   TModelChangeEvent = procedure(Sender: TObject; const AModel: string) of object;
@@ -44,11 +45,26 @@ type
     FModelIds: TStringList;
     FSendBtn: TLcaThemedButton;
     FStopBtn: TLcaThemedButton;
+    FAttachBtn: TLcaThemedButton;
+    FAttachmentStrip: TPanel;
+
+    FSessionId: string;
+    FPendingImagePaths: TStringList;
+    FOpenImageDialog: TOpenDialog;
 
     procedure ModeComboChange(Sender: TObject);
     procedure ModelComboChange(Sender: TObject);
     procedure SendBtnClick(Sender: TObject);
     procedure StopBtnClick(Sender: TObject);
+    procedure AttachBtnClick(Sender: TObject);
+    procedure PromptMemoKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure PendingRemoveClick(Sender: TObject);
+    function TryAddPendingImagePath(const APath: string): Boolean;
+    procedure ClearPendingImages;
+    procedure RefreshAttachmentStrip;
+    function FinalizeAttachmentsForSend(out AAttachments: TChatAttachmentArray): string;
+    function FormatUserMessageBody(const AMsg: TChatMessage): string;
+    function FilePathToFileUrl(const APath: string): string;
     procedure UpdateHeading;
     procedure UpdateSessionLabel(const ACaption: string);
     procedure InitWelcomeText;
@@ -61,7 +77,8 @@ type
     destructor Destroy; override;
     procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
       APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-      ASendBtn, AStopBtn: TLcaThemedButton);
+      ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel);
+    procedure SetSessionId(const ASessionId: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetWorkspace(const AName: string);
@@ -90,6 +107,9 @@ type
   end;
 
 implementation
+
+uses
+  uChatImageStore;
 
 const
   MaxToolBodyInChat = 1200;
@@ -133,12 +153,20 @@ begin
   FMode := wmAgent;
   FModel := '';
   FModelIds := TStringList.Create;
+  FPendingImagePaths := TStringList.Create;
+  FOpenImageDialog := TOpenDialog.Create(nil);
+  FOpenImageDialog.Title := 'Attach image';
+  FOpenImageDialog.Filter :=
+    'Images|*.png;*.jpg;*.jpeg;*.webp;*.gif|PNG (*.png)|*.png|JPEG (*.jpg)|*.jpg;*.jpeg';
+  FOpenImageDialog.Options := [ofFileMustExist, ofHideReadOnly];
   InitWelcomeText;
 end;
 
 destructor TChatPanel.Destroy;
 begin
   FHistoryView := nil;
+  FOpenImageDialog.Free;
+  FPendingImagePaths.Free;
   FModelIds.Free;
   inherited Destroy;
 end;
@@ -161,7 +189,7 @@ end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
   APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-  ASendBtn, AStopBtn: TLcaThemedButton);
+  ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel);
 var
   M: TWorkspaceMode;
 begin
@@ -175,6 +203,8 @@ begin
   FModelCombo := AModelCombo;
   FSendBtn := ASendBtn;
   FStopBtn := AStopBtn;
+  FAttachBtn := AAttachBtn;
+  FAttachmentStrip := AAttachmentStrip;
 
   EnsureHistoryView;
 
@@ -196,11 +226,183 @@ begin
     FStopBtn.OnClick := @StopBtnClick;
     FStopBtn.Visible := False;
   end;
+  if Assigned(FAttachBtn) then
+    FAttachBtn.OnClick := @AttachBtnClick;
   if Assigned(FPromptMemo) then
-    FPromptMemo.OnKeyDown := nil;
+    FPromptMemo.OnKeyDown := @PromptMemoKeyDown;
 
   UpdateHeading;
   RefreshHistoryView;
+  RefreshAttachmentStrip;
+end;
+
+procedure TChatPanel.SetSessionId(const ASessionId: string);
+begin
+  FSessionId := ASessionId;
+end;
+
+function TChatPanel.FilePathToFileUrl(const APath: string): string;
+begin
+  Result := 'file:///' + StringReplace(ExpandFileName(APath), '\', '/', [rfReplaceAll]);
+end;
+
+function TChatPanel.TryAddPendingImagePath(const APath: string): Boolean;
+var
+  Expanded: string;
+begin
+  Result := False;
+  Expanded := ExpandFileName(Trim(APath));
+  if not FileExists(Expanded) then Exit;
+  if not IsAllowedImageFileName(Expanded) then begin
+    ShowMessage('Unsupported image type (use PNG, JPEG, WebP, or GIF).');
+    Exit;
+  end;
+  if FPendingImagePaths.Count >= CHAT_IMAGE_MAX_COUNT then begin
+    ShowMessage(Format('At most %d images per message.', [CHAT_IMAGE_MAX_COUNT]));
+    Exit;
+  end;
+  if FPendingImagePaths.IndexOf(Expanded) >= 0 then
+    Exit(True);
+  FPendingImagePaths.Add(Expanded);
+  RefreshAttachmentStrip;
+  Result := True;
+end;
+
+procedure TChatPanel.ClearPendingImages;
+begin
+  FPendingImagePaths.Clear;
+  RefreshAttachmentStrip;
+end;
+
+procedure TChatPanel.RefreshAttachmentStrip;
+var
+  I, X: Integer;
+  Btn: TSpeedButton;
+  P: TThemePalette;
+begin
+  if not Assigned(FAttachmentStrip) then Exit;
+  while FAttachmentStrip.ControlCount > 0 do
+    FAttachmentStrip.Controls[0].Free;
+  if FPendingImagePaths.Count = 0 then begin
+    FAttachmentStrip.Visible := False;
+    Exit;
+  end;
+  FAttachmentStrip.Visible := True;
+  P := ThemePalette(FTheme);
+  FAttachmentStrip.Color := P.Surface;
+  X := 4;
+  for I := 0 to FPendingImagePaths.Count - 1 do begin
+    Btn := TSpeedButton.Create(FAttachmentStrip);
+    Btn.Parent := FAttachmentStrip;
+    Btn.Left := X;
+    Btn.Top := 4;
+    Btn.Height := 28;
+    Btn.Caption := ExtractFileName(FPendingImagePaths[I]) + '  x';
+    Btn.Tag := I;
+    Btn.Flat := True;
+    Btn.Font.Color := P.Text;
+    Btn.OnClick := @PendingRemoveClick;
+    Btn.ShowHint := True;
+    Btn.Hint := FPendingImagePaths[I];
+    Inc(X, Btn.Width + 6);
+  end;
+end;
+
+procedure TChatPanel.PendingRemoveClick(Sender: TObject);
+var
+  Idx: Integer;
+begin
+  if not (Sender is TSpeedButton) then Exit;
+  Idx := TSpeedButton(Sender).Tag;
+  if (Idx >= 0) and (Idx < FPendingImagePaths.Count) then begin
+    FPendingImagePaths.Delete(Idx);
+    RefreshAttachmentStrip;
+  end;
+end;
+
+procedure TChatPanel.AttachBtnClick(Sender: TObject);
+begin
+  if FIsRunning then Exit;
+  if not Assigned(FOpenImageDialog) then Exit;
+  if FOpenImageDialog.Execute then
+    TryAddPendingImagePath(FOpenImageDialog.FileName);
+end;
+
+procedure TChatPanel.PromptMemoKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+var
+  TempPath: string;
+  Pic: TPicture;
+begin
+  if FIsRunning then Exit;
+  if not (Key = VK_V) then Exit;
+  if not (ssCtrl in Shift) then Exit;
+  if not (Clipboard.HasFormat(CF_Picture) or Clipboard.HasFormat(CF_BITMAP)) then Exit;
+
+  TempPath := IncludeTrailingPathDelimiter(GetTempDir) +
+    'lca-paste-' + IntToHex(GetTickCount64, 16) + '.png';
+  Pic := TPicture.Create;
+  try
+    try
+      Pic.Assign(Clipboard);
+      Pic.SaveToFile(TempPath);
+      if TryAddPendingImagePath(TempPath) then
+        Key := 0;
+    except
+      on E: Exception do
+        ShowMessage('Could not paste image: ' + E.Message);
+    end;
+  finally
+    Pic.Free;
+  end;
+end;
+
+function TChatPanel.FinalizeAttachmentsForSend(out AAttachments: TChatAttachmentArray): string;
+var
+  I: Integer;
+  Att: TChatAttachment;
+begin
+  Result := '';
+  SetLength(AAttachments, 0);
+  if FPendingImagePaths.Count = 0 then Exit;
+  if Trim(FSessionId) = '' then begin
+    Result := 'No active chat session for image attachment.';
+    Exit;
+  end;
+  SetLength(AAttachments, FPendingImagePaths.Count);
+  for I := 0 to FPendingImagePaths.Count - 1 do begin
+    Result := ImportImageToSidecar(FPendingImagePaths[I], FSessionId, Att);
+    if Result <> '' then begin
+      SetLength(AAttachments, 0);
+      Exit;
+    end;
+    AAttachments[I] := Att;
+  end;
+end;
+
+function TChatPanel.FormatUserMessageBody(const AMsg: TChatMessage): string;
+var
+  I: Integer;
+  AbsPath, Url, Alt: string;
+  Parts: TStringList;
+begin
+  Parts := TStringList.Create;
+  try
+    if Trim(AMsg.Content) <> '' then
+      Parts.Add(AMsg.Content);
+    for I := 0 to High(AMsg.Attachments) do begin
+      AbsPath := AttachmentAbsolutePath(AMsg.Attachments[I].RelativePath);
+      Url := FilePathToFileUrl(AbsPath);
+      if AMsg.Attachments[I].OriginalName <> '' then
+        Alt := AMsg.Attachments[I].OriginalName
+      else
+        Alt := ExtractFileName(AbsPath);
+      Parts.Add('![' + Alt + '](' + Url + ')');
+    end;
+    Result := Parts.Text;
+    Result := Trim(Result);
+  finally
+    Parts.Free;
+  end;
 end;
 
 procedure TChatPanel.InitWelcomeText;
@@ -305,6 +507,9 @@ begin
     FSendBtn.ApplyTheme(ATheme);
   if Assigned(FStopBtn) then
     FStopBtn.ApplyTheme(ATheme);
+  if Assigned(FAttachBtn) then
+    FAttachBtn.ApplyTheme(ATheme);
+  RefreshAttachmentStrip;
   RefreshHistoryView;
 end;
 
@@ -427,7 +632,7 @@ begin
     crUser:
       begin
         RoleLabel := 'You';
-        Body := AMsg.Content;
+        Body := FormatUserMessageBody(AMsg);
       end;
     crAssistant:
       begin
@@ -499,6 +704,8 @@ begin
     FModelCombo.Enabled := AEnabled;
   if Assigned(FSendBtn) then
     FSendBtn.Enabled := AEnabled and not FIsRunning;
+  if Assigned(FAttachBtn) then
+    FAttachBtn.Enabled := AEnabled and not FIsRunning;
 end;
 
 procedure TChatPanel.ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);
@@ -518,12 +725,24 @@ begin
 end;
 
 procedure TChatPanel.SubmitPrompt(const APrompt: string);
+var
+  Attachments: TChatAttachmentArray;
+  Err, Prompt: string;
 begin
-  if Trim(APrompt) = '' then Exit;
+  Prompt := Trim(APrompt);
+  if (Prompt = '') and (FPendingImagePaths.Count = 0) then Exit;
   if FIsRunning then Exit;
   if Assigned(FPromptMemo) and not FPromptMemo.Enabled then Exit;
+
+  Err := FinalizeAttachmentsForSend(Attachments);
+  if Err <> '' then begin
+    ShowMessage(Err);
+    Exit;
+  end;
+
+  ClearPendingImages;
   if Assigned(FOnPrompt) then
-    FOnPrompt(Self, Trim(APrompt), FMode, FModel);
+    FOnPrompt(Self, Prompt, Attachments, FMode, FModel);
 end;
 
 procedure TChatPanel.SendBtnClick(Sender: TObject);
@@ -532,7 +751,7 @@ var
 begin
   if not Assigned(FPromptMemo) then Exit;
   Prompt := Trim(FPromptMemo.Text);
-  if Prompt = '' then Exit;
+  if (Prompt = '') and (FPendingImagePaths.Count = 0) then Exit;
   FPromptMemo.Text := '';
   SubmitPrompt(Prompt);
 end;

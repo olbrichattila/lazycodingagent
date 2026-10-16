@@ -74,7 +74,7 @@ type
 implementation
 
 uses
-  uAgentToolBase
+  uAgentToolBase, uChatImageStore
   {$IFNDEF MSWINDOWS}
   , fphttpclient, opensslsockets
   {$ENDIF}
@@ -82,6 +82,38 @@ uses
   , uWindowsHTTP
   {$ENDIF}
   ;
+
+procedure AddUserContentToMessageObject(AMsgObj: TJSONObject; const AMsg: TChatMessage);
+var
+  Parts: TJSONArray;
+  TextPart, ImgPart, ImgUrlObj: TJSONObject;
+  K: Integer;
+  DataUrl, Err: string;
+begin
+  if (AMsg.Role <> crUser) or (Length(AMsg.Attachments) = 0) then begin
+    AMsgObj.Add('content', AMsg.Content);
+    Exit;
+  end;
+
+  Parts := TJSONArray.Create;
+  TextPart := TJSONObject.Create;
+  TextPart.Add('type', 'text');
+  TextPart.Add('text', UserMessageTextForPayload(AMsg.Content, True));
+  Parts.Add(TextPart);
+  for K := Low(AMsg.Attachments) to High(AMsg.Attachments) do begin
+    Err := LoadAttachmentAsDataUrl(AMsg.Attachments[K].RelativePath, DataUrl);
+    if Err <> '' then
+      raise Exception.Create(Err);
+    ImgPart := TJSONObject.Create;
+    ImgPart.Add('type', 'image_url');
+    ImgUrlObj := TJSONObject.Create;
+    ImgUrlObj.Add('url', DataUrl);
+    ImgUrlObj.Add('detail', 'auto');
+    ImgPart.Add('image_url', ImgUrlObj);
+    Parts.Add(ImgPart);
+  end;
+  AMsgObj.Add('content', Parts);
+end;
 
 function ExtractFunctionArgumentsJson(AFuncObj: TJSONObject): string;
 var
@@ -200,9 +232,10 @@ begin
       if Msg.Role = crTool then begin
         MsgObj.Add('tool_call_id', Msg.ToolCallId);
         MsgObj.Add('content', Msg.Content);
-      end else begin
+      end else if Msg.Role = crUser then
+        AddUserContentToMessageObject(MsgObj, Msg)
+      else
         MsgObj.Add('content', Msg.Content);
-      end;
 
       // If assistant produced tool calls previously
       if (Msg.Role = crAssistant) and (Length(Msg.ToolCalls) > 0) then begin

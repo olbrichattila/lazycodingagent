@@ -48,7 +48,10 @@ function RunConversationSummary(AClient: TLlmClient;
 implementation
 
 uses
-  uAgentExecutionLog;
+  uAgentExecutionLog, uChatImageStore;
+
+const
+  ATTACHMENT_TOKEN_FLOOR = 800;
 
 function FinishReasonIndicatesTruncation(const AReason: string): Boolean;
 var
@@ -79,8 +82,10 @@ end;
 function EstimatePromptTokens(const AMessages: TChatMessageArray;
   const ATools: TToolDefArray; ALastReportedPromptTokens: Integer): Integer;
 var
-  I, J: Integer;
+  I, J, K: Integer;
   M: TChatMessage;
+  ImgTok: Integer;
+  FileSize: Int64;
 begin
   if ALastReportedPromptTokens > 0 then
     Exit(ALastReportedPromptTokens);
@@ -89,6 +94,13 @@ begin
   for I := Low(AMessages) to High(AMessages) do begin
     M := AMessages[I];
     Inc(Result, 4 + EstimateTextTokens(M.Content));
+    for K := Low(M.Attachments) to High(M.Attachments) do begin
+      FileSize := AttachmentFileSize(M.Attachments[K].RelativePath);
+      ImgTok := EstimateTextTokens(IntToStr(FileSize)) + ATTACHMENT_TOKEN_FLOOR;
+      if ImgTok < ATTACHMENT_TOKEN_FLOOR then
+        ImgTok := ATTACHMENT_TOKEN_FLOOR;
+      Inc(Result, ImgTok);
+    end;
     for J := Low(M.ToolCalls) to High(M.ToolCalls) do
       Inc(Result, 8 + EstimateTextTokens(M.ToolCalls[J].Name) +
         EstimateTextTokens(M.ToolCalls[J].ArgumentsJson));

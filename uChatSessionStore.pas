@@ -112,8 +112,8 @@ end;
 
 function MessageToJson(const AMsg: TChatMessage): TJSONObject;
 var
-  O, TC: TJSONObject;
-  TCs: TJSONArray;
+  O, TC, AttObj: TJSONObject;
+  TCs, Atts: TJSONArray;
   I: Integer;
 begin
   O := TJSONObject.Create;
@@ -132,6 +132,18 @@ begin
     TCs.Add(TC);
   end;
   O.Add('toolCalls', TCs);
+  Atts := TJSONArray.Create;
+  for I := 0 to High(AMsg.Attachments) do begin
+    AttObj := TJSONObject.Create;
+    AttObj.Add('kind', ChatAttachmentKindToString(AMsg.Attachments[I].Kind));
+    AttObj.Add('path', AMsg.Attachments[I].RelativePath);
+    AttObj.Add('mime', AMsg.Attachments[I].MimeType);
+    AttObj.Add('name', AMsg.Attachments[I].OriginalName);
+    AttObj.Add('width', AMsg.Attachments[I].Width);
+    AttObj.Add('height', AMsg.Attachments[I].Height);
+    Atts.Add(AttObj);
+  end;
+  O.Add('attachments', Atts);
   Result := O;
 end;
 
@@ -139,7 +151,7 @@ procedure MessageFromJson(AObj: TJSONObject; out AMsg: TChatMessage);
 var
   Arr: TJSONArray;
   I: Integer;
-  TCObj: TJSONObject;
+  TCObj, AttObj: TJSONObject;
 begin
   AMsg := StringToChatRole(AObj.Get('role', 'user'));
   AMsg.Content := AObj.Get('content', '');
@@ -160,6 +172,21 @@ begin
       AMsg.ToolCalls[I].Id := TCObj.Get('id', '');
       AMsg.ToolCalls[I].Name := TCObj.Get('name', '');
       AMsg.ToolCalls[I].ArgumentsJson := TCObj.Get('argumentsJson', '');
+    end;
+  end;
+  SetLength(AMsg.Attachments, 0);
+  if AObj.Find('attachments') is TJSONArray then begin
+    Arr := TJSONArray(AObj.Find('attachments'));
+    SetLength(AMsg.Attachments, Arr.Count);
+    for I := 0 to Arr.Count - 1 do begin
+      if not (Arr.Items[I] is TJSONObject) then Continue;
+      AttObj := TJSONObject(Arr.Items[I]);
+      AMsg.Attachments[I].Kind := StringToChatAttachmentKind(AttObj.Get('kind', 'image'));
+      AMsg.Attachments[I].RelativePath := AttObj.Get('path', '');
+      AMsg.Attachments[I].MimeType := AttObj.Get('mime', '');
+      AMsg.Attachments[I].OriginalName := AttObj.Get('name', '');
+      AMsg.Attachments[I].Width := AttObj.Get('width', 0);
+      AMsg.Attachments[I].Height := AttObj.Get('height', 0);
     end;
   end;
 end;

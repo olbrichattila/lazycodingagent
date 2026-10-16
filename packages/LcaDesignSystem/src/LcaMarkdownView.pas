@@ -47,7 +47,7 @@ function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): st
 implementation
 
 uses
-  IpHtml;
+  IpHtml, StrUtils;
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -125,6 +125,29 @@ begin
     Result := Result + '</code>';
 end;
 
+function MarkdownImageLineToHtml(const ALine: string): string;
+var
+  S, Alt, Url: string;
+  P1, P2: Integer;
+begin
+  Result := '';
+  S := Trim(ALine);
+  if Length(S) < 5 then Exit;
+  if not ((S[1] = '!') and (S[2] = '[')) then Exit;
+  P1 := Pos(']', S);
+  if P1 <= 3 then Exit;
+  Alt := Copy(S, 3, P1 - 3);
+  if (P1 + 1 > Length(S)) or (S[P1 + 1] <> '(') then Exit;
+  P2 := PosEx(')', S, P1 + 2);
+  if P2 = 0 then Exit;
+  Url := Copy(S, P1 + 2, P2 - P1 - 2);
+  if not (StartsText('file://', Url) or StartsText('http://', Url) or
+    StartsText('https://', Url)) then
+    Exit;
+  Result := '<p><img src="' + EscapeHtml(Url) + '" alt="' + EscapeHtml(Alt) +
+    '" class="lca-md-img"/></p>';
+end;
+
 function MarkdownSubsetToHtml(const AMarkdown: string): string;
 var
   Lines: TStringList;
@@ -199,6 +222,10 @@ begin
         Result := Result + '</ul>';
         InList := False;
       end;
+      if MarkdownImageLineToHtml(Trimmed) <> '' then begin
+        Result := Result + MarkdownImageLineToHtml(Trimmed);
+        Continue;
+      end;
       Result := Result + '<p>' + InlineMarkdownToHtml(Trimmed) + '</p>';
     end;
     if InList then
@@ -232,6 +259,8 @@ begin
     '.msg-assistant { padding-left: 8px; margin: 10px 0; } ' +
     '.msg-tool { color: ' + ColorToHex(P.TextMuted) + '; font-size: 9pt; margin: 6px 0; } ' +
     '.msg-label { font-weight: bold; color: ' + ColorToHex(P.TextMuted) + '; } ' +
+    'img.lca-md-img { max-width: 100%; height: auto; border-radius: 4px; ' +
+    'border: 1px solid ' + ColorToHex(P.Border) + '; margin: 4px 0; } ' +
     '</style></head><body>' + ABodyHtml + '</body></html>';
 end;
 

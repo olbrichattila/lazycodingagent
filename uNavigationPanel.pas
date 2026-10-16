@@ -93,7 +93,7 @@ type
     procedure SetSessionList(const ACaptions, AIds, AArchived: TStrings; const AActiveId: string);
     procedure BindExecutionLog(ALog: TAgentExecutionLog);
     procedure RefreshExecutionLogList;
-    procedure AppendExecutionLogEntry(AIndex: Integer);
+    procedure AppendExecutionLogEntry(AIndex: Integer; AFollowSelection: Boolean = True);
     procedure BindToolErrorLog(ALog: TAgentToolErrorLog);
     procedure RefreshToolErrorLogList;
     procedure AppendToolErrorLogEntry(AIndex: Integer);
@@ -409,7 +409,7 @@ begin
     FLogList.Items.Add(FExecutionLog.Entry(I).Caption);
 end;
 
-procedure TNavContentControl.AppendExecutionLogEntry(AIndex: Integer);
+procedure TNavContentControl.AppendExecutionLogEntry(AIndex: Integer; AFollowSelection: Boolean);
 begin
   if not Assigned(FExecutionLog) or not Assigned(FLogList) then Exit;
   if (AIndex < 0) or (AIndex >= FExecutionLog.Count) then Exit;
@@ -417,7 +417,7 @@ begin
     RefreshExecutionLogList
   else
     FLogList.Items[AIndex] := FExecutionLog.Entry(AIndex).Caption;
-  if AIndex < FLogList.Items.Count then
+  if AFollowSelection and (AIndex < FLogList.Items.Count) then
     FLogList.ItemIndex := AIndex;
 end;
 

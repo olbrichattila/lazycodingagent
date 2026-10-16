@@ -46,6 +46,8 @@ type
     edtMaxSteps: TEdit;
     chkDebuggingMode: TCheckBox;
     lblDebuggingHint: TLabel;
+    chkLearnMode: TCheckBox;
+    lblLearnModeHint: TLabel;
     chkAutoSummarizeContext: TCheckBox;
     lblAutoSummarizeHint: TLabel;
     lblContextWindow: TLabel;
@@ -201,6 +203,8 @@ begin
     lblNotice.Font.Color := P.TextMuted;
   if Assigned(lblDebuggingHint) then
     lblDebuggingHint.Font.Color := P.TextMuted;
+  if Assigned(lblLearnModeHint) then
+    lblLearnModeHint.Font.Color := P.TextMuted;
   if Assigned(lblAutoSummarizeHint) then
     lblAutoSummarizeHint.Font.Color := P.TextMuted;
   if Assigned(lblMaxTokensHint) then
@@ -287,6 +291,7 @@ begin
   edtMaxTokens.Text := IntToStr(FState.MaxTokens);
   edtMaxSteps.Text := IntToStr(FState.MaxSteps);
   chkDebuggingMode.Checked := FState.DebuggingMode;
+  chkLearnMode.Checked := FState.LearnMode;
   chkAutoSummarizeContext.Checked := FState.AutoSummarizeContext;
   edtContextWindow.Text := IntToStr(FState.ContextWindowTokens);
   edtSummarizeThreshold.Text := FloatToStr(FState.SummarizeThreshold);
@@ -318,6 +323,7 @@ begin
   edtMaxTokens.Text := IntToStr(FState.MaxTokens);
   FState.MaxSteps := StrToIntDef(edtMaxSteps.Text, 20);
   FState.DebuggingMode := chkDebuggingMode.Checked;
+  FState.LearnMode := chkLearnMode.Checked;
   FState.AutoSummarizeContext := chkAutoSummarizeContext.Checked;
   FState.ContextWindowTokens := StrToIntDef(edtContextWindow.Text, DEFAULT_CONTEXT_WINDOW_TOKENS);
   if FState.ContextWindowTokens < 4096 then

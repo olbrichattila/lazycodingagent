@@ -30,6 +30,9 @@
 *.lps
 packagefiles.xml
 
+# Local agent sidecars (chat image attachments, etc.)
+.lca/
+
 # Temporary and backup files
 /temp/
 tmp*/
