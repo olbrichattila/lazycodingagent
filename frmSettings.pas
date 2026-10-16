@@ -6,6 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
+  LcaThemedPageTabBar,
   uAppTypes, uAgentTypes, LcaTheme, uWorkspaceState, uWorkspaceRegistry,
   
   uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager;
@@ -17,6 +18,8 @@ type
     btnOK: TLcaThemedButton;
     btnCancel: TLcaThemedButton;
     pnlSettingsTabsHost: TPanel;
+    pnlSettingsTabStripHost: TPanel;
+    lcaSettingsTabBar: TLcaThemedPageTabBar;
     pgcSettings: TPageControl;
     tsProvider: TTabSheet;
     pnlTabProvider: TPanel;

@@ -23,13 +23,33 @@ object SettingsForm: TSettingsForm
     BorderSpacing.Right = 12
     BorderSpacing.Bottom = 8
     TabOrder = 0
-    object pgcSettings: TPageControl
+    object pnlSettingsTabStripHost: TPanel
       Left = 0
-      Height = 420
+      Height = 38
       Top = 0
       Width = 536
-      Align = alClient
+      Align = alTop
+      BevelOuter = bvNone
       TabOrder = 0
+      object lcaSettingsTabBar: TLcaThemedPageTabBar
+        Left = 0
+        Height = 38
+        Top = 0
+        Width = 536
+        Align = alClient
+        BevelOuter = bvNone
+        PageControl = pgcSettings
+        TabOrder = 0
+      end
+    end
+    object pgcSettings: TPageControl
+      Left = 0
+      Height = 382
+      Top = 38
+      Width = 536
+      Align = alClient
+      ShowTabs = False
+      TabOrder = 1
       object tsProvider: TTabSheet
         Caption = 'AI Provider & Model'
         object pnlTabProvider: TPanel
