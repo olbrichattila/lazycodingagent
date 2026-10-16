@@ -15,6 +15,8 @@ if [[ -z "$TARGET_DIR" ]]; then
   TARGET_DIR="${PROJ_DIR}/lib/$(fpc -iTP)-$(fpc -iTOS)"
 fi
 
-"$SCRIPT_DIR/copy-help.sh" "$PROJ_DIR" "$TARGET_DIR"
-"$SCRIPT_DIR/copy-assets.sh" "$PROJ_DIR" "$TARGET_DIR"
-echo "post-build: deployed help/ and assets/ to ${TARGET_DIR}"
+for DEST in "$TARGET_DIR" "$PROJ_DIR"; do
+  "$SCRIPT_DIR/copy-help.sh" "$PROJ_DIR" "$DEST"
+  "$SCRIPT_DIR/copy-assets.sh" "$PROJ_DIR" "$DEST"
+  echo "post-build: deployed help/ and assets/ to ${DEST}"
+done

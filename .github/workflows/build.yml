@@ -68,6 +68,10 @@ jobs:
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
 
+      - name: Owl branding (BMP resource + EXE icon)
+        shell: cmd
+        run: scripts\gen-owl-branding.bat
+
       - name: lazbuild
         shell: pwsh
         env:

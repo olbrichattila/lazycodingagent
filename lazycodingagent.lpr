@@ -2,6 +2,8 @@ program lazycodingagent;
 
 {$mode objfpc}{$H+}
 
+{$R packages/LcaDesignSystem/res/owl_icon.res}
+
 uses
   {$IFDEF UNIX}
   cthreads,
@@ -10,7 +12,7 @@ uses
   athreads,
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, mainunit, frmSplash, uWorkspaceState
+  Forms, uAppIcon, mainunit, frmSplash, uWorkspaceState
   { you can add units after this };
 
 {$IFDEF WINDOWS}
@@ -28,6 +30,7 @@ begin
   Application.MainFormOnTaskbar:=True;
   {$POP}
   Application.Initialize;
+  ApplyOwlApplicationIcon;
   Application.ShowMainForm := False;
   Splash := TSplashForm.Create(Application);
   try

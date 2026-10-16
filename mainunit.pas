@@ -592,7 +592,7 @@ begin
   FPanelDetach.Bind(piTerminal, pnlTerminalHost, pnlTerminalContent);
   PopulateMenusAndCombos;
   FFormChrome := AttachLcaFormChrome(Self);
-  if Assigned(Application.Icon) then
+  if Assigned(Application) and Assigned(Application.Icon) then
     Icon := Application.Icon;
   ReportSplashLoadProgress(90);
 end;

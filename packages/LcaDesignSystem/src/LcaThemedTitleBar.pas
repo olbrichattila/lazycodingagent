@@ -114,12 +114,8 @@ end;
 procedure TLcaThemedTitleBar.LoadOwlPicture;
 begin
   if not Assigned(FImgLogo) then Exit;
-  try
-    LoadOwlIconInto(FImgLogo.Picture);
-  except
-    on E: Exception do
-      FImgLogo.Picture.Clear;
-  end;
+  if not TryLoadOwlIconInto(FImgLogo.Picture) then
+    FImgLogo.Picture.Clear;
 end;
 
 constructor TLcaThemedTitleBar.Create(AOwner: TComponent);

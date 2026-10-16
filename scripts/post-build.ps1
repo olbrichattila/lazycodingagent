@@ -38,6 +38,8 @@ function Copy-TreeReplace {
 }
 
 $outDir = Resolve-TargetDir -ProjectRoot $ProjDir -Explicit $TargetDir
-Copy-TreeReplace -Source (Join-Path $ProjDir 'help') -Dest (Join-Path $outDir 'help')
-Copy-TreeReplace -Source (Join-Path $ProjDir 'assets') -Dest (Join-Path $outDir 'assets')
-Write-Host "post-build: deployed help/ and assets/ to $outDir"
+foreach ($destRoot in @($outDir, $ProjDir)) {
+    Copy-TreeReplace -Source (Join-Path $ProjDir 'help') -Dest (Join-Path $destRoot 'help')
+    Copy-TreeReplace -Source (Join-Path $ProjDir 'assets') -Dest (Join-Path $destRoot 'assets')
+    Write-Host "post-build: deployed help/ and assets/ to $destRoot"
+}

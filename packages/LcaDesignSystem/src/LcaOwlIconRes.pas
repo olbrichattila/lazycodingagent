@@ -2,7 +2,7 @@ unit LcaOwlIconRes;
 
 {$mode objfpc}{$H+}
 
-{ Embeds packages/LcaDesignSystem/res/owl_icon.png as OWL_ICON (lazres). }
+{ OWL_ICON is embedded in lazycodingagent.exe (owl_icon.bmp via lazres in lazycodingagent.lpr). }
 
 interface
 
@@ -10,11 +10,13 @@ uses
   Classes, SysUtils, Graphics, LResources;
 
 function LcaOwlIconResourceInstance: PtrUInt;
+function TryLoadOwlIconInto(APicture: TPicture): Boolean;
 procedure LoadOwlIconInto(APicture: TPicture);
 
 implementation
 
 uses
+  LCLType,
   {$IFDEF WINDOWS}Windows{$ENDIF}
   {$IFDEF UNIX}ctypes, dynlibs{$ENDIF};
 
@@ -23,8 +25,6 @@ const
 
 var
   LcaOwlIconResAnchor: Byte;
-
-{$R ../res/owl_icon.res}
 
 function ModuleFromAddress(const AAddr: Pointer): PtrUInt;
 {$IFDEF WINDOWS}
@@ -58,21 +58,6 @@ begin
     Result := PtrUInt(HInstance);
 end;
 
-function TryOpenOwlIconStream(const AInstance: PtrUInt; const AResType: PChar;
-  out AStream: TResourceStream): Boolean;
-begin
-  Result := False;
-  AStream := nil;
-  if AInstance = 0 then Exit;
-  try
-    AStream := TResourceStream.Create(AInstance, OwlIconResourceName, AResType);
-    Result := True;
-  except
-    on E: EResNotFound do
-      AStream := nil;
-  end;
-end;
-
 procedure AppendUniqueInstance(var AInstances: array of PtrUInt; var ACount: Integer;
   const AValue: PtrUInt);
 var
@@ -85,49 +70,96 @@ begin
   Inc(ACount);
 end;
 
-procedure LoadOwlIconInto(APicture: TPicture);
+function TryLoadOwlIconFromInstance(const AInstance: PtrUInt; APicture: TPicture): Boolean;
+begin
+  Result := False;
+  if (AInstance = 0) or not Assigned(APicture) then Exit;
+  try
+    APicture.Bitmap.LoadFromResourceName(TLCLHandle(AInstance), OwlIconResourceName);
+    Result := (APicture.Bitmap.Width > 0) and (APicture.Bitmap.Height > 0);
+  except
+    on E: Exception do
+      Result := False;
+  end;
+end;
+
+function TryLoadOwlIconFromStream(const AInstance: PtrUInt; const AResType: PChar;
+  APicture: TPicture): Boolean;
 var
   RS: TResourceStream;
+begin
+  Result := False;
+  if (AInstance = 0) or not Assigned(APicture) then Exit;
+  try
+    RS := TResourceStream.Create(AInstance, OwlIconResourceName, AResType);
+  except
+    on E: EResNotFound do
+      Exit;
+  end;
+  try
+    if AResType = RT_BITMAP then
+      APicture.Bitmap.LoadFromStream(RS, RS.Size)
+    else
+      APicture.LoadFromStream(RS);
+    Result := (APicture.Width > 0) and (APicture.Height > 0);
+  finally
+    RS.Free;
+  end;
+end;
+
+function TryLoadOwlIconInto(APicture: TPicture): Boolean;
+var
   Instances: array[0..7] of PtrUInt;
+  ResTypes: array[0..2] of PChar;
   InstanceCount, I, T: Integer;
-  ResTypes: array[0..1] of PChar;
   {$IFDEF WINDOWS}
-  BplHandle: HMODULE;
+  ModHandle: HMODULE;
   {$ENDIF}
 begin
+  Result := False;
   if not Assigned(APicture) then Exit;
 
-  ResTypes[0] := PChar('PNG');
-  {$IFDEF WINDOWS}
-  ResTypes[1] := RT_RCDATA;
-  {$ELSE}
-  ResTypes[1] := PChar(10);
-  {$ENDIF}
+  APicture.Graphic := nil;
 
   InstanceCount := 0;
+  {$IFDEF WINDOWS}
+  ModHandle := GetModuleHandle(nil);
+  if ModHandle <> 0 then
+    AppendUniqueInstance(Instances, InstanceCount, PtrUInt(ModHandle));
+  {$ENDIF}
   AppendUniqueInstance(Instances, InstanceCount, PtrUInt(HInstance));
   AppendUniqueInstance(Instances, InstanceCount, LcaOwlIconResourceInstance);
   {$IFDEF WINDOWS}
-  BplHandle := GetModuleHandle('LcaDesignSystem.bpl');
-  if BplHandle <> 0 then
-    AppendUniqueInstance(Instances, InstanceCount, PtrUInt(BplHandle));
-  BplHandle := GetModuleHandle('lcadesignsystem.bpl');
-  if BplHandle <> 0 then
-    AppendUniqueInstance(Instances, InstanceCount, PtrUInt(BplHandle));
+  ModHandle := GetModuleHandle('LcaDesignSystem.bpl');
+  if ModHandle <> 0 then
+    AppendUniqueInstance(Instances, InstanceCount, PtrUInt(ModHandle));
+  ModHandle := GetModuleHandle('lcadesignsystem.bpl');
+  if ModHandle <> 0 then
+    AppendUniqueInstance(Instances, InstanceCount, PtrUInt(ModHandle));
   {$ENDIF}
 
   for I := 0 to InstanceCount - 1 do
-    for T := Low(ResTypes) to High(ResTypes) do begin
-      if not TryOpenOwlIconStream(Instances[I], ResTypes[T], RS) then Continue;
-      try
-        APicture.LoadFromStream(RS);
-        Exit;
-      finally
-        RS.Free;
-      end;
-    end;
+    if TryLoadOwlIconFromInstance(Instances[I], APicture) then
+      Exit(True);
 
-  raise EResNotFound.Create(OwlIconResourceName);
+  ResTypes[0] := RT_BITMAP;
+  ResTypes[1] := PChar('PNG');
+  {$IFDEF WINDOWS}
+  ResTypes[2] := RT_RCDATA;
+  {$ELSE}
+  ResTypes[2] := PChar(10);
+  {$ENDIF}
+
+  for I := 0 to InstanceCount - 1 do
+    for T := Low(ResTypes) to High(ResTypes) do
+      if TryLoadOwlIconFromStream(Instances[I], ResTypes[T], APicture) then
+        Exit(True);
+end;
+
+procedure LoadOwlIconInto(APicture: TPicture);
+begin
+  if not TryLoadOwlIconInto(APicture) then
+    raise EResNotFound.Create(OwlIconResourceName);
 end;
 
 end.
