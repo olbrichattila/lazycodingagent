@@ -63,6 +63,6 @@ If it still hangs with **Coding Agent Chat** restored on the desktop, set that I
 ## Package
 
 - **`LcaDesignSystem.lpk`** — **RunTimeOnly** (app + `lazbuild`; all component units)
-- **`LcaDesignSystemDesign.lpk`** — **DesignTime** (`LcaDesignReg` only; **LCA Design** palette). It must **not** add `src` to the IDE unit path (types come from the linked runtime package). After changing either `.lpk`, close Lazarus and re-run **`scripts/install-lca-lazarus`**.
+- **`LcaDesignSystemDesign.lpk`** — **DesignTime** (`LcaDesignReg` only; **LCA Design** palette). Compile-time **`OtherUnitFiles=src`** is required so `LcaDesignReg` resolves; **`UsageOptions` / `UnitPath`** must stay **`$(PkgOutDir)` only** (do not publish `src` to the IDE — types come from the linked runtime package). After changing either `.lpk`, close Lazarus and re-run **`scripts/install-lca-lazarus`**.
 
 If the IDE warns that the runtime unit path contains `...\LcaDesignSystem\src`, reinstall the design package with Lazarus closed so only `lib\$(TargetCPU)-$(TargetOS)` is used at run/build time.

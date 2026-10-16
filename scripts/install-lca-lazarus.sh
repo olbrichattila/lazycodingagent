@@ -40,6 +40,7 @@ fi
 
 if [[ "$LINK_ONLY" -eq 0 ]]; then
   "$LAZBUILD" --add-package "$LpkDesign"
+  "$LAZBUILD" "$LpkDesign"
   echo ""
   echo "Close Lazarus completely before rebuilding the IDE (required for the component palette)."
   echo "Rebuilding Lazarus IDE with LcaDesignSystemDesign (runtime stays out of lazarus.exe)..."

@@ -59,6 +59,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (-not $LinkOnly) {
     & $LazBuild --add-package $LpkDesign
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & $LazBuild $LpkDesign
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Write-Host ''
     Write-Host 'Close Lazarus completely before rebuilding the IDE (required for the component palette).'
     Write-Host 'Rebuilding Lazarus IDE with LcaDesignSystemDesign (runtime stays out of lazarus.exe)...'
