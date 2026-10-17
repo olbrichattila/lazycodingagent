@@ -17,6 +17,7 @@
 /components/lib/
 /build/
 /bin/
+/dist/
 
 # Generated application binaries
 /lazycodingagent

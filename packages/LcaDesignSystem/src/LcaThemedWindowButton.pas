@@ -111,10 +111,14 @@ var
   P: TThemePalette;
   R: TRect;
   CX, CY, S, I: Integer;
-  HoverBg, IconColor: TColor;
+  HoverBg, IconColor, BarBg: TColor;
 begin
   P := ThemePalette(FTheme);
   R := ClientRect;
+  if Assigned(Parent) and (CompareText(Parent.ClassName, 'TLcaThemedTitleBar') = 0) then
+    BarBg := P.TitleBarBg
+  else
+    BarBg := P.HeaderBg;
 
   if FRole = twbClose then begin
     if FPressed then
@@ -122,11 +126,11 @@ begin
     else if FHover then
       HoverBg := RGBToColor(232, 17, 35)
     else
-      HoverBg := P.HeaderBg;
+      HoverBg := BarBg;
   end else if FHover or FPressed then
     HoverBg := P.SurfaceAlt
   else
-    HoverBg := P.HeaderBg;
+    HoverBg := BarBg;
 
   Canvas.Brush.Color := HoverBg;
   Canvas.Pen.Color := HoverBg;

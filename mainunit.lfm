@@ -19,7 +19,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnShow = FormShow
   object lcaTitleBar: TLcaThemedTitleBar
     Left = 0
-    Height = 32
+    Height = 36
     Top = 0
     Width = 2160
     Align = alTop
@@ -858,7 +858,18 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Width = 829
             Align = alClient
             BevelOuter = bvNone
+            ClientHeight = 641
+            ClientWidth = 829
             TabOrder = 2
+            object lcaChatHistory: TLcaMarkdownView
+              Left = 0
+              Height = 641
+              Top = 0
+              Width = 829
+              Align = alClient
+              BevelOuter = bvNone
+              TabOrder = 0
+            end
           end
         end
         object tsEditor: TTabSheet
@@ -1008,6 +1019,16 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Width = 2160
         Align = alTop
         WordWrap = True
+      end
+      object lcaTerminalPanel: TLcaTerminalPanel
+        Left = 0
+        Height = 278
+        Top = 1
+        Width = 2160
+        Align = alClient
+        BevelOuter = bvNone
+        StatusLabel = lblTerminalStatus
+        TabOrder = 0
       end
     end
   end

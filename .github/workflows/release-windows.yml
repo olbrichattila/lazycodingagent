@@ -1,0 +1,90 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Resolve release version
+        shell: pwsh
+        run: |
+          $tag = $env:GITHUB_REF_NAME
+          if ($tag -notmatch '^v(.+)$') {
+            throw "Expected tag vX.Y.Z, got: $tag"
+          }
+          $version = $Matches[1]
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "Empty version after v prefix on tag: $tag"
+          }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Release version: $version"
+
+      - name: Install Lazarus (Chocolatey)
+        run: choco install lazarus -y --no-progress
+
+      - name: Prepare SynEdit and TurboPower IPro
+        shell: pwsh
+        env:
+          LAZBUILD: C:\lazarus\lazbuild.exe
+          LAZARUS_DIR: C:\lazarus
+        run: |
+          if (-not (Test-Path -LiteralPath $env:LAZBUILD)) {
+            $env:LAZBUILD = (Get-Command lazbuild).Source
+          }
+          ./scripts/ci-prepare-lazarus-deps.ps1 -LazBuild $env:LAZBUILD
+
+      - name: Link LCA and terminal packages
+        shell: pwsh
+        env:
+          LAZBUILD: C:\lazarus\lazbuild.exe
+        run: |
+          if (-not (Test-Path -LiteralPath $env:LAZBUILD)) {
+            $env:LAZBUILD = (Get-Command lazbuild).Source
+          }
+          & $env:LAZBUILD --version
+          ./scripts/install-lca-lazarus.ps1 -LinkOnly
+
+      - name: Owl branding (BMP resource + EXE icon)
+        shell: cmd
+        run: scripts\gen-owl-branding.bat
+
+      - name: lazbuild
+        shell: pwsh
+        env:
+          LAZBUILD: C:\lazarus\lazbuild.exe
+        run: |
+          if (-not (Test-Path -LiteralPath $env:LAZBUILD)) {
+            $env:LAZBUILD = (Get-Command lazbuild).Source
+          }
+          & $env:LAZBUILD lazycodingagent.lpi
+
+      - name: Post-build deploy
+        shell: pwsh
+        run: ./scripts/post-build.ps1
+
+      - name: Install Inno Setup (Chocolatey)
+        run: choco install innosetup -y --no-progress
+
+      - name: Build installer
+        shell: pwsh
+        run: ./scripts/build-windows-installer.ps1 -Version $env:APP_VERSION
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: LazyCodingAgent ${{ env.APP_VERSION }}
+          files: dist/*-Setup.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true

@@ -724,6 +724,16 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
         AutoSize = True
         WordWrap = True
       end
+      object lcaTerminalPanel: TLcaTerminalPanel
+        Left = 0
+        Height = 351
+        Top = 21
+        Width = 2880
+        Align = alClient
+        BevelOuter = bvNone
+        StatusLabel = lblTerminalStatus
+        TabOrder = 0
+      end
     end
   end
   object StatusBar1: TStatusBar

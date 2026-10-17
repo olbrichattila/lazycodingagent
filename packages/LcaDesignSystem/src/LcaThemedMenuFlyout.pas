@@ -324,7 +324,7 @@ var
 begin
   FTheme := ATheme;
   P := ThemePalette(ATheme);
-  Color := P.Surface;
+  Color := P.MenuFlyoutBg;
   FRowHeight := ScaledThemedMenuPopupItemHeight(Self);
   Invalidate;
   if Assigned(FSubFlyout) then
@@ -340,7 +340,7 @@ var
 begin
   inherited Paint;
   P := ThemePalette(FTheme);
-  Canvas.Brush.Color := P.Surface;
+  Canvas.Brush.Color := P.MenuFlyoutBg;
   Canvas.FillRect(ClientRect);
   Canvas.Pen.Color := P.Border;
   Canvas.Pen.Width := 1;

@@ -175,6 +175,25 @@ scripts\post-build.cmd
 
 **CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild).
 
+### Releasing (Windows)
+
+Pushing a version tag builds a Windows installer with [Inno Setup](https://jrsoftware.org/isinfo.php) and publishes a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
+
+1. Choose the release version (for example `0.1.0`).
+2. Tag and push: `git tag v0.1.0` then `git push origin v0.1.0`.
+3. Open **Actions → Release Windows** on GitHub and wait for the job to finish.
+4. Download **`LazyCodingAgent-0.1.0-win64-Setup.exe`** from the release page for that tag.
+
+The workflow [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) mirrors the Windows build in `build.yml`, runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss), and uploads the setup EXE. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for the installer file name and release title.
+
+**Local installer (optional):** after `lazbuild` and `post-build.ps1`, install Inno Setup 6 and run:
+
+```powershell
+./scripts/build-windows-installer.ps1 -Version 0.0.0-local
+```
+
+Output is written to `dist/`.
+
 **Manual IDE install:** compile `LcaDesignSystem.lpk` (runtime), then `LcaDesignSystemDesign.lpk` → **Use → Install** (after terminal packages). Do not install the runtime package into the IDE.
 
 If the Lazarus IDE hangs when opening this project, use **`recover-lazarus-ide`**, or quit Lazarus and remove `lazycodingagent.lps` (session file), then open `lazycodingagent.lpi` again.

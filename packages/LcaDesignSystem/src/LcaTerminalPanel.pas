@@ -5,7 +5,7 @@ unit LcaTerminalPanel;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, FileUtil, Forms, LCLType, LcaTheme,
+  Classes, SysUtils, Controls, ExtCtrls, StdCtrls, FileUtil, Forms, LCLType, LMessages, LcaTheme,
   Terminal.Controller, Terminal.View.LCL;
 
 type
@@ -31,6 +31,7 @@ type
   protected
     procedure Loaded; override;
     procedure Resize; override;
+    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -205,6 +206,16 @@ begin
   inherited Resize;
   if Assigned(FView) then
     FView.Invalidate;
+end;
+
+procedure TLcaTerminalPanel.CMShowingChanged(var Message: TLMessage);
+begin
+  inherited CMShowingChanged(Message);
+  if csDesigning in ComponentState then Exit;
+  if not Showing or not Visible then Exit;
+  if FShellRunning then Exit;
+  if not ParentFormHandlesReady(Self) then Exit;
+  EnsureRunning;
 end;
 
 procedure TLcaTerminalPanel.ApplyTheme(ATheme: TThemeKind);

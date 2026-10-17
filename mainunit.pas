@@ -921,6 +921,17 @@ begin
   FNavContent.OnClearToolErrorLog := @NavClearToolErrorLog;
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
 
+  if not Assigned(lcaChatHistory) then begin
+    lcaChatHistory := TLcaMarkdownView.Create(Self);
+    lcaChatHistory.Name := 'lcaChatHistory';
+    lcaChatHistory.Parent := pnlChatHistoryHost;
+    lcaChatHistory.Align := alClient;
+  end else if lcaChatHistory.Parent <> pnlChatHistoryHost then begin
+    lcaChatHistory.Parent := pnlChatHistoryHost;
+    lcaChatHistory.Align := alClient;
+  end;
+  lcaChatHistory.ApplyTheme(FState.Theme);
+
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
     lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop,
@@ -935,8 +946,14 @@ begin
   FPlanView.Bind(lblPlanPath, cboPlanModel, btnPlanBuild, memPlanBody);
   FPlanView.OnBuild := @PlanBuildRequested;
 
-  if Assigned(lcaTerminalPanel) then
-    lcaTerminalPanel.OnTerminalStatus := @TerminalStatus;
+  if not Assigned(lcaTerminalPanel) then begin
+    lcaTerminalPanel := TLcaTerminalPanel.Create(Self);
+    lcaTerminalPanel.Parent := pnlTerminalContent;
+    lcaTerminalPanel.Align := alClient;
+    lcaTerminalPanel.StatusLabel := lblTerminalStatus;
+  end;
+  lcaTerminalPanel.OnTerminalStatus := @TerminalStatus;
+  lcaTerminalPanel.ApplyTheme(FState.Theme);
 
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
   if not Assigned(FExecDetailView) then begin

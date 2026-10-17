@@ -180,14 +180,24 @@ object SettingsForm: TSettingsForm
       end
       object tsAgent: TTabSheet
         Caption = 'Agent Behavior'
-        object pnlTabAgent: TPanel
+        object scrollTabAgent: TScrollBox
           Left = 0
-          Height = 540
+          Height = 354
           Top = 0
           Width = 528
           Align = alClient
-          BevelOuter = bvNone
+          BorderStyle = bsNone
+          HorzScrollBar.Visible = False
           TabOrder = 0
+          object pnlTabAgent: TPanel
+            Left = 0
+            Height = 440
+            Top = 0
+            Width = 528
+            Align = alTop
+            Anchors = [akTop, akLeft, akRight]
+            BevelOuter = bvNone
+            TabOrder = 0
       object lblTemp: TLabel
         Left = 16
         Height = 15
@@ -325,6 +335,7 @@ object SettingsForm: TSettingsForm
         Font.Color = clGray
         WordWrap = True
       end
+          end
         end
       end
       object tsWorkspace: TTabSheet

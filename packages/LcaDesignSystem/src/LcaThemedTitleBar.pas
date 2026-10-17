@@ -200,10 +200,10 @@ var
 begin
   FTheme := ATheme;
   P := ThemePalette(ATheme);
-  Color := P.HeaderBg;
+  Color := P.TitleBarBg;
   Font.Color := P.Text;
   if Assigned(FDragPanel) then begin
-    FDragPanel.Color := P.HeaderBg;
+    FDragPanel.Color := P.TitleBarBg;
     FDragPanel.Font.Color := P.Text;
   end;
   if Assigned(FMenuBar) then

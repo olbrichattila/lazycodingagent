@@ -24,6 +24,7 @@ type
     tsProvider: TTabSheet;
     pnlTabProvider: TPanel;
     tsAgent: TTabSheet;
+    scrollTabAgent: TScrollBox;
     pnlTabAgent: TPanel;
     tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
@@ -175,6 +176,10 @@ begin
 
   ApplyThemedForm(Self, ATheme);
   pnlBottom.Color := P.Surface;
+  if Assigned(scrollTabAgent) then begin
+    scrollTabAgent.Color := P.Surface;
+    scrollTabAgent.ParentColor := False;
+  end;
 
   edtApiKey.Color := P.SurfaceAlt;
   edtApiKey.Font.Color := P.Text;

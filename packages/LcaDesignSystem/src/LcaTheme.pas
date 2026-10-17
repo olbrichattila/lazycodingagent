@@ -17,6 +17,8 @@ type
     Surface: TColor;         // Panel surface
     SurfaceAlt: TColor;      // Input / secondary surface
     HeaderBg: TColor;        // Header strip background
+    TitleBarBg: TColor;      // Frameless title bar (menu + window buttons)
+    MenuFlyoutBg: TColor;    // Main menu dropdown panel
     RailBg: TColor;          // Left navigation rail background
     Border: TColor;          // Visible crisp boundary borders
     BorderStrong: TColor;    // Prominent boundary / active splitters
@@ -38,10 +40,10 @@ const
   ThemedComboBoxHeight = 25;
   ThemedComboBoxItemHeight = 22;
   ThemedTabBarBaseHeight = 38;
-  ThemedMenuBarBaseHeight = 32;
+  ThemedMenuBarBaseHeight = 36;
   ThemedMenuPopupItemBaseHeight = 28;
   { Menu bar caption — logical pt like ThemedTabFontSize (not PPI-scaled again). }
-  ThemedMenuBarFontSizeBase = 9;
+  ThemedMenuBarFontSizeBase = 10;
   { Logical pt for combo/list metrics — do not PPI-scale ad hoc. }
   ThemedTabFontSize = 9;
   { Close column and min tab width at 96 DPI — scaled via ScaledThemedTabMetric. }
@@ -79,7 +81,7 @@ function ThemedComboCornerRadius(AControl: TControl): Integer;
 function ThemedComboChevronGutter(AControl: TControl): Integer;
 
 procedure PaintThemedMenuBarItem(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
-  ASelected: Boolean; ATheme: TThemeKind; AFontSize: Integer);
+  ASelected: Boolean; ATheme: TThemeKind; AFontSize: Integer; AChromeBg: TColor = clNone);
 procedure ThemedMenuPopupDrawItem(ACanvas: TCanvas; const ARect: TRect;
   State: TOwnerDrawState; ATheme: TThemeKind; ASource: TMenuItem);
 
@@ -509,6 +511,8 @@ begin
     Result.Surface        := RGBToColor(14, 16, 28);      // #0E101C
     Result.SurfaceAlt     := RGBToColor(22, 24, 40);      // #161828
     Result.HeaderBg       := RGBToColor(12, 14, 24);      // #0C0E18
+    Result.TitleBarBg     := RGBToColor(0, 0, 0);         // #000000
+    Result.MenuFlyoutBg   := RGBToColor(28, 32, 50);     // #1C2032 — above Surface / Background
     Result.RailBg         := RGBToColor(6, 8, 14);        // #06080E
     Result.Border         := RGBToColor(45, 55, 90);      // #2D375A
     Result.BorderStrong   := RGBToColor(0, 200, 255);     // cyan glow edge
@@ -526,6 +530,8 @@ begin
     Result.Surface        := RGBToColor(255, 255, 255);   // #FFFFFF
     Result.SurfaceAlt     := RGBToColor(246, 248, 250);   // #F6F8FA
     Result.HeaderBg       := RGBToColor(240, 242, 245);   // #F0F2F5
+    Result.TitleBarBg     := RGBToColor(240, 242, 245);   // match header (light)
+    Result.MenuFlyoutBg   := RGBToColor(240, 242, 245);   // #F0F2F5 — gray vs white Surface / page bg
     Result.RailBg         := RGBToColor(235, 237, 242);   // #EBEDF2
     Result.Border         := RGBToColor(218, 222, 230);   // #DADEEC
     Result.BorderStrong   := RGBToColor(180, 186, 198);   // #B4BAC6
@@ -1209,22 +1215,27 @@ end;
 {$ENDIF}
 
 procedure PaintThemedMenuBarItem(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
-  ASelected: Boolean; ATheme: TThemeKind; AFontSize: Integer);
+  ASelected: Boolean; ATheme: TThemeKind; AFontSize: Integer; AChromeBg: TColor);
 var
   P: TThemePalette;
   R: TRect;
   TextStr: string;
   TextTop: Integer;
+  ChromeBg: TColor;
 begin
   P := ThemePalette(ATheme);
   R := ARect;
+  if AChromeBg = clNone then
+    ChromeBg := P.HeaderBg
+  else
+    ChromeBg := AChromeBg;
   Canvas.Brush.Style := bsSolid;
   if ASelected then begin
     Canvas.Brush.Color := P.AccentActive;
     Canvas.Pen.Color := P.AccentActive;
   end else begin
-    Canvas.Brush.Color := P.HeaderBg;
-    Canvas.Pen.Color := P.HeaderBg;
+    Canvas.Brush.Color := ChromeBg;
+    Canvas.Pen.Color := ChromeBg;
   end;
   Canvas.FillRect(R);
 
@@ -1257,8 +1268,8 @@ begin
     ACanvas.Brush.Color := P.AccentActive;
     ACanvas.Pen.Color := P.AccentActive;
   end else begin
-    ACanvas.Brush.Color := P.Surface;
-    ACanvas.Pen.Color := P.Surface;
+    ACanvas.Brush.Color := P.MenuFlyoutBg;
+    ACanvas.Pen.Color := P.MenuFlyoutBg;
   end;
   ACanvas.FillRect(R);
 
