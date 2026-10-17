@@ -24,8 +24,8 @@ DIST="$ROOT/dist"
 WORKDIR="$ROOT/build/appimage"
 APPDIR="$WORKDIR/AppDir"
 
-LINUXDEPLOY_VERSION="${LINUXDEPLOY_VERSION:-1-continuous}"
-LINUXDEPLOY_QT_VERSION="${LINUXDEPLOY_QT_VERSION:-1-continuous}"
+LINUXDEPLOY_VERSION="${LINUXDEPLOY_VERSION:-continuous}"
+LINUXDEPLOY_QT_VERSION="${LINUXDEPLOY_QT_VERSION:-continuous}"
 LINUXDEPLOY_URL="https://github.com/linuxdeploy/linuxdeploy/releases/download/${LINUXDEPLOY_VERSION}/linuxdeploy-x86_64.AppImage"
 LINUXDEPLOY_QT_URL="https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/${LINUXDEPLOY_QT_VERSION}/linuxdeploy-plugin-qt-x86_64.AppImage"
 
