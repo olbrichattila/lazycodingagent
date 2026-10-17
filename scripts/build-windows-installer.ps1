@@ -16,9 +16,9 @@ function Resolve-TargetDir {
         throw 'build-windows-installer: set -TargetDir or add fpc to PATH to auto-detect lib\cpu-os'
     }
     $cpu = & fpc -iTP 2>$null
-    $os = & fpc -iTOS 2>$null
+    $os = & fpc -iTO 2>$null
     if (-not $cpu -or -not $os) {
-        throw 'build-windows-installer: could not read fpc -iTP / fpc -iTOS'
+        throw 'build-windows-installer: could not read fpc -iTP / fpc -iTO'
     }
     $dir = Join-Path $ProjectRoot "lib\$cpu-$os"
     if (-not (Test-Path -LiteralPath $dir)) {
