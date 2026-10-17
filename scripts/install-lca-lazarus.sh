@@ -56,9 +56,21 @@ if ! command -v "$LAZBUILD" >/dev/null 2>&1; then
   exit 1
 fi
 
+INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 lazbuild_cmd() {
+  local widget_args=()
   if [[ -n "$WIDGETSET" ]]; then
-    "$LAZBUILD" --widgetset="$WIDGETSET" "$@"
+    widget_args=(--widgetset="$WIDGETSET")
+  fi
+  if [[ -n "${LAZARUS_PRIMARY_CONFIG:-}" ]]; then
+    if [[ -n "$WIDGETSET" ]]; then
+      LCL_WIDGETSET="$WIDGETSET" "$INSTALL_SCRIPT_DIR/ci-lazbuild.sh" "$@"
+    else
+      "$INSTALL_SCRIPT_DIR/ci-lazbuild.sh" "$@"
+    fi
+  elif [[ ${#widget_args[@]} -gt 0 ]]; then
+    "$LAZBUILD" "${widget_args[@]}" "$@"
   else
     "$LAZBUILD" "$@"
   fi

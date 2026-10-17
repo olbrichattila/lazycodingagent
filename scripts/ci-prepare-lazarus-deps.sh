@@ -22,14 +22,24 @@ LAZBUILD="$(resolve_lazbuild "$LAZBUILD")" || {
   exit 1
 }
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+run_lazbuild() {
+  if [[ -n "${LAZARUS_PRIMARY_CONFIG:-}" ]]; then
+    "$SCRIPT_DIR/ci-lazbuild.sh" "$@"
+  else
+    "$LAZBUILD" "$@"
+  fi
+}
+
 link_and_build() {
   local lpk="$1"
   if [[ ! -f "$lpk" ]]; then
     echo "ci-prepare-lazarus-deps: missing $lpk" >&2
     return 1
   fi
-  "$LAZBUILD" --add-package-link "$lpk"
-  "$LAZBUILD" "$lpk"
+  run_lazbuild --add-package-link "$lpk"
+  run_lazbuild "$lpk"
 }
 
 lazarus_root_has_synedit() {

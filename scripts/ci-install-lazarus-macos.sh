@@ -9,6 +9,8 @@ LAZARUS_ZIP="lazarus-darwin-aarch64-4.8.zip"
 
 WORKDIR="${CI_LAZARUS_WORKDIR:-${RUNNER_TEMP:-/tmp}/lazarus-ci}"
 LAZARUS_INSTALL="${CI_LAZARUS_ROOT:-$WORKDIR/lazarus-tree}"
+PRIMARY_CONFIG="$WORKDIR/primary-config"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$WORKDIR"
 
 download() {
@@ -19,29 +21,49 @@ download() {
   curl -fL --retry 3 --retry-delay 5 -o "$dest" "$url"
 }
 
-echo "ci-install-lazarus-macos: installing FPC from $FPC_DMG"
-FPC_PATH="$WORKDIR/$FPC_DMG"
-download "$SF_BASE/$FPC_DMG" "$FPC_PATH"
+install_fpc_from_dmg() {
+  if command -v fpc >/dev/null 2>&1; then
+    echo "ci-install-lazarus-macos: fpc already on PATH ($(fpc -iV 2>/dev/null || true)), skipping FPC DMG"
+    return 0
+  fi
 
-FPC_MOUNT="$WORKDIR/fpc-mount"
-mkdir -p "$FPC_MOUNT"
-hdiutil attach "$FPC_PATH" -mountpoint "$FPC_MOUNT" -nobrowse -quiet
-FPC_PKG="$(find "$FPC_MOUNT" -maxdepth 2 -name '*.pkg' -print -quit)"
-if [[ -z "$FPC_PKG" ]]; then
-  echo "ci-install-lazarus-macos: no .pkg found in FPC DMG" >&2
-  hdiutil detach "$FPC_MOUNT" -quiet || true
-  exit 1
-fi
-sudo installer -pkg "$FPC_PKG" -target /
-hdiutil detach "$FPC_MOUNT" -quiet
+  echo "ci-install-lazarus-macos: installing FPC from $FPC_DMG"
+  local fpc_path="$WORKDIR/$FPC_DMG"
+  download "$SF_BASE/$FPC_DMG" "$fpc_path"
 
-echo "ci-install-lazarus-macos: installing Lazarus from $LAZARUS_ZIP"
-ZIP_PATH="$WORKDIR/$LAZARUS_ZIP"
-download "$SF_BASE/$LAZARUS_ZIP" "$ZIP_PATH"
-xattr -cr "$ZIP_PATH"
-rm -rf "$LAZARUS_INSTALL"
-mkdir -p "$LAZARUS_INSTALL"
-unzip -q "$ZIP_PATH" -d "$LAZARUS_INSTALL"
+  local fpc_mount="$WORKDIR/fpc-mount"
+  mkdir -p "$fpc_mount"
+  hdiutil attach "$fpc_path" -mountpoint "$fpc_mount" -nobrowse -quiet
+  local fpc_pkg
+  fpc_pkg="$(find "$fpc_mount" -maxdepth 2 -name '*.pkg' -print -quit)"
+  if [[ -z "$fpc_pkg" ]]; then
+    echo "ci-install-lazarus-macos: no .pkg found in FPC DMG" >&2
+    hdiutil detach "$fpc_mount" -quiet || true
+    exit 1
+  fi
+  sudo installer -pkg "$fpc_pkg" -target /
+  hdiutil detach "$fpc_mount" -quiet
+}
+
+install_lazarus_tree() {
+  local lazbuild_bin zip_path
+  lazbuild_bin="$(find "$LAZARUS_INSTALL" -name lazbuild -type f -print -quit 2>/dev/null || true)"
+  if [[ -n "$lazbuild_bin" && -x "$lazbuild_bin" ]]; then
+    echo "ci-install-lazarus-macos: Lazarus tree already present at $LAZARUS_INSTALL"
+    return 0
+  fi
+
+  echo "ci-install-lazarus-macos: installing Lazarus from $LAZARUS_ZIP"
+  zip_path="$WORKDIR/$LAZARUS_ZIP"
+  download "$SF_BASE/$LAZARUS_ZIP" "$zip_path"
+  xattr -cr "$zip_path"
+  rm -rf "$LAZARUS_INSTALL"
+  mkdir -p "$LAZARUS_INSTALL"
+  unzip -q "$zip_path" -d "$LAZARUS_INSTALL"
+}
+
+install_fpc_from_dmg
+install_lazarus_tree
 
 LAZBUILD_BIN="$(find "$LAZARUS_INSTALL" -name lazbuild -type f -print -quit)"
 if [[ -z "$LAZBUILD_BIN" ]]; then
@@ -55,20 +77,23 @@ if [[ ! -x "$LAZBUILD_BIN" ]]; then
   chmod +x "$LAZBUILD_BIN"
 fi
 
-"$LAZBUILD_BIN" --version
+mkdir -p "$PRIMARY_CONFIG"
+export LAZARUS_DIR="$LAZARUS_ROOT"
+export LAZBUILD="$LAZBUILD_BIN"
+export LAZARUS_PRIMARY_CONFIG="$PRIMARY_CONFIG"
+export LCL_WIDGETSET=cocoa
+export PATH="$LAZARUS_ROOT:/usr/local/bin:${PATH}"
+
+"$SCRIPT_DIR/ci-lazbuild.sh" --version
 
 if [[ -n "${GITHUB_ENV:-}" ]]; then
   {
     echo "LAZARUS_DIR=$LAZARUS_ROOT"
     echo "LAZBUILD=$LAZBUILD_BIN"
+    echo "LAZARUS_PRIMARY_CONFIG=$PRIMARY_CONFIG"
     echo "LCL_WIDGETSET=cocoa"
     echo "PATH=$LAZARUS_ROOT:/usr/local/bin:${PATH}"
   } >>"$GITHUB_ENV"
 fi
 
-export LAZARUS_DIR="$LAZARUS_ROOT"
-export LAZBUILD="$LAZBUILD_BIN"
-export LCL_WIDGETSET=cocoa
-export PATH="$LAZARUS_ROOT:/usr/local/bin:${PATH}"
-
-echo "ci-install-lazarus-macos: ready (LAZARUS_DIR=$LAZARUS_ROOT)"
+echo "ci-install-lazarus-macos: ready (LAZARUS_DIR=$LAZARUS_ROOT, LAZARUS_PRIMARY_CONFIG=$PRIMARY_CONFIG)"

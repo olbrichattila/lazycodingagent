@@ -144,6 +144,7 @@ begin
   end;
 end;
 
+{$IFDEF WINDOWS}
 function TryLoadOwlIconFromInstance(const AInstance: PtrUInt; APicture: TPicture): Boolean;
 begin
   Result := False;
@@ -180,6 +181,7 @@ begin
     RS.Free;
   end;
 end;
+{$ENDIF}
 
 function TryLoadOwlIconInto(APicture: TPicture): Boolean;
 var

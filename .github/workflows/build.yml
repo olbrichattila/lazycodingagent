@@ -67,6 +67,9 @@ jobs:
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
 
+      - name: Install Python deps (owl branding)
+        run: python -m pip install --upgrade pip pillow
+
       - name: Owl branding (BMP resource + EXE icon)
         shell: cmd
         run: scripts\gen-owl-branding.bat
@@ -92,6 +95,12 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Cache Lazarus SourceForge downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lazarus-ci
+          key: macos-lazarus-4.8-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+
       - name: Install Free Pascal and Lazarus (SourceForge)
         run: |
           chmod +x scripts/*.sh
@@ -104,7 +113,7 @@ jobs:
         run: ./scripts/install-lca-lazarus.sh --link-only --widgetset=cocoa
 
       - name: lazbuild
-        run: lazbuild --widgetset=cocoa lazycodingagent.lpi
+        run: ./scripts/ci-lazbuild.sh lazycodingagent.lpi
 
       - name: Post-build deploy
         run: ./scripts/post-build.sh
