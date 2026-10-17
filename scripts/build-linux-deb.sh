@@ -67,9 +67,30 @@ for size in 32 48 256; do
   install -m 644 "$ICON_SRC" "$STAGING/usr/share/icons/hicolor/${size}x${size}/apps/lazycodingagent.png"
 done
 
-SHLIBS="$(dpkg-shlibdeps -O \
-  -l"$STAGING/usr/lib/lazycodingagent" \
-  "$STAGING/usr/lib/lazycodingagent/lazycodingagent")"
+SHLIB_WORK="$ROOT/build/deb-shlibdeps"
+rm -rf "$SHLIB_WORK"
+mkdir -p "$SHLIB_WORK/debian"
+cat > "$SHLIB_WORK/debian/control" <<EOF
+Source: ${PKG_NAME}
+Package: ${PKG_NAME}
+Version: ${VERSION}
+Architecture: amd64
+EOF
+
+SHLIBS_RAW="$(
+  cd "$SHLIB_WORK" && \
+  dpkg-shlibdeps -O \
+    -l"$STAGING/usr/lib/lazycodingagent" \
+    "$STAGING/usr/lib/lazycodingagent/lazycodingagent" 2>&1
+)"
+
+SHLIBS="$(printf '%s\n' "$SHLIBS_RAW" | grep -E '^shlibs:Depends=' | sed 's/^shlibs:Depends=/Depends: /' | head -1)"
+if [[ -z "$SHLIBS" ]]; then
+  echo "build-linux-deb: dpkg-shlibdeps did not produce shlibs:Depends" >&2
+  printf '%s\n' "$SHLIBS_RAW" >&2
+  exit 1
+fi
+rm -rf "$SHLIB_WORK"
 
 cat > "$STAGING/DEBIAN/control" <<EOF
 Package: ${PKG_NAME}
