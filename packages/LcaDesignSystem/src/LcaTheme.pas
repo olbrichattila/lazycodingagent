@@ -122,6 +122,7 @@ procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
 procedure ConfigureThemedExecDetailMemo(AMemo: TCustomMemo; ATheme: TThemeKind);
 procedure SyncThemedMemoWidget(AMemo: TCustomMemo);
 procedure SyncThemedEditWidget(AEdit: TCustomEdit);
+procedure SyncThemedListBoxWidget(AList: TCustomListBox);
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
@@ -1122,6 +1123,8 @@ begin
   AList.Font.Name := 'Segoe UI';
   AList.Font.Size := 9;
   AList.Font.Color := P.Text;
+  if AList.HandleAllocated then
+    SyncThemedListBoxWidget(AList);
   AList.Invalidate;
 end;
 
@@ -1184,6 +1187,47 @@ begin
   if not AEdit.HandleAllocated then Exit;
   AEdit.Font.Assign(AEdit.Font);
   AEdit.Invalidate;
+end;
+
+procedure SyncThemedListBoxWidget(AList: TCustomListBox);
+{$IFDEF LCLGtk2}
+var
+  Bg: TGdkColor;
+  W: PGtkWidget;
+{$ENDIF}
+{$IFDEF LCLGtk3}
+var
+  W: PGtkWidget;
+  Rgba: TGdkRGBA;
+{$ENDIF}
+{$IFDEF LCLQt5}
+var
+  QtWidget: TQtWidget;
+  Sheet: WideString;
+{$ENDIF}
+begin
+  if not Assigned(AList) then Exit;
+  if not AList.HandleAllocated then Exit;
+  {$IFDEF LCLGtk2}
+  W := PGtkWidget(Pointer(AList.Handle));
+  if W <> nil then begin
+    TColorToGdkColor(AList.Color, Bg);
+    gtk_widget_modify_bg(W, GTK_STATE_NORMAL, @Bg);
+  end;
+  {$ENDIF}
+  {$IFDEF LCLGtk3}
+  W := PGtkWidget(Pointer(AList.Handle));
+  if (W <> nil) and gdk_rgba_parse(@Rgba, PChar(ColorToStyleHex(AList.Color))) then
+    gtk_widget_override_background_color(W, GTK_STATE_FLAG_NORMAL, @Rgba);
+  {$ENDIF}
+  {$IFDEF LCLQt5}
+  QtWidget := TQtWidget(Pointer(AList.Handle));
+  Sheet := WideString(
+    'QListWidget { color: ' + ColorToStyleHex(AList.Font.Color) +
+    '; background-color: ' + ColorToStyleHex(AList.Color) + '; }');
+  QtWidget.StyleSheet := Sheet;
+  {$ENDIF}
+  AList.Invalidate;
 end;
 
 {$IFDEF LCLQt5}
@@ -1441,6 +1485,10 @@ begin
     Exit;
   end;
   {$ENDIF}
+  if AControl is TCustomListBox then begin
+    SyncThemedListBoxWidget(TCustomListBox(AControl));
+    Exit;
+  end;
   // GTK/Cocoa: scrollbars follow the OS widget theme; keep client colors via ApplyTheme.
   AControl.Invalidate;
 {$ENDIF}
@@ -1607,6 +1655,10 @@ begin
         TPanel(C).Color := P.HeaderBg
       else
         TPanel(C).Color := P.Surface;
+    end
+    else if C is TScrollBox then begin
+      TScrollBox(C).Color := P.Surface;
+      TScrollBox(C).ParentColor := False;
     end
     else if C is TPageControl then
       StylePageControl(TPageControl(C), ATheme)

@@ -1371,6 +1371,8 @@ begin
 
   pnlNavChrome.Color := P.HeaderBg;
   pnlNavChrome.Font.Color := P.Text;
+  if Assigned(pnlNavContent) then
+    pnlNavContent.Color := P.Surface;
   pnlChatChrome.Color := P.HeaderBg;
   pnlReservedChrome.Color := P.HeaderBg;
   pnlUtilityChrome.Color := P.HeaderBg;

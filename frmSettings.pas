@@ -24,6 +24,7 @@ type
     tsProvider: TTabSheet;
     pnlTabProvider: TPanel;
     tsAgent: TTabSheet;
+    scrAgentTab: TScrollBox;
     pnlTabAgent: TPanel;
     tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
