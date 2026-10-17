@@ -40,10 +40,6 @@
         <UnitName Value="LcaThemeWin32Combo"/>
       </Item>
       <Item>
-        <Filename Value="src\LcaThemeWin32ScrollBars.pas"/>
-        <UnitName Value="LcaThemeWin32ScrollBars"/>
-      </Item>
-      <Item>
         <Filename Value="src\LcaThemedPageTabBar.pas"/>
         <UnitName Value="LcaThemedPageTabBar"/>
       </Item>

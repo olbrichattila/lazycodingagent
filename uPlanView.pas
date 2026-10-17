@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, StdCtrls, Graphics, uAppTypes, LcaTheme, LcaThemedButton,
-  LcaThemedComboBox, uWorkspaceState;
+  LcaThemedComboBox, LcaMarkdownView, uWorkspaceState;
 
 type
   TPlanBuildEvent = procedure(Sender: TObject; const APlanPath, APlanContent, AModelId: string) of object;
@@ -19,7 +19,7 @@ type
     FModelIds: TStringList;
     FModel: string;
     FBuildBtn: TLcaThemedButton;
-    FBodyMemo: TMemo;
+    FBodyMarkdown: TLcaMarkdownView;
     FPlanPath: string;
     FPlanContent: string;
     FOnBuild: TPlanBuildEvent;
@@ -29,7 +29,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Bind(ALblPath: TLabel; AModelCombo: TLcaThemedComboBox; ABuildBtn: TLcaThemedButton;
-      ABody: TMemo);
+      ABody: TLcaMarkdownView);
     procedure LoadPlan(const APath, AContent: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetAvailableModels(const AModels: array of TSavedModel);
@@ -64,12 +64,12 @@ begin
 end;
 
 procedure TPlanView.Bind(ALblPath: TLabel; AModelCombo: TLcaThemedComboBox; ABuildBtn: TLcaThemedButton;
-  ABody: TMemo);
+  ABody: TLcaMarkdownView);
 begin
   FLblPath := ALblPath;
   FModelCombo := AModelCombo;
   FBuildBtn := ABuildBtn;
-  FBodyMemo := ABody;
+  FBodyMarkdown := ABody;
   if Assigned(FModelCombo) then begin
     FModelCombo.Style := csDropDownList;
     FModelCombo.OnChange := @ModelComboChange;
@@ -87,8 +87,8 @@ begin
     FLblPath.Hint := APath;
     FLblPath.ShowHint := True;
   end;
-  if Assigned(FBodyMemo) then
-    FBodyMemo.Lines.Text := AContent;
+  if Assigned(FBodyMarkdown) then
+    FBodyMarkdown.SetMarkdown(AContent);
 end;
 
 procedure TPlanView.SetAvailableModels(const AModels: array of TSavedModel);
@@ -167,8 +167,8 @@ begin
     FModelCombo.ApplyTheme(ATheme);
   if Assigned(FBuildBtn) then
     FBuildBtn.ApplyTheme(ATheme);
-  if Assigned(FBodyMemo) then
-    ConfigureThemedMemo(FBodyMemo, ATheme);
+  if Assigned(FBodyMarkdown) then
+    FBodyMarkdown.ApplyTheme(ATheme);
 end;
 
 procedure TPlanView.BuildClick(Sender: TObject);

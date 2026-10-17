@@ -583,58 +583,82 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             ClientWidth = 482
             object pnlPlanHeader: TPanel
               Left = 0
-              Height = 32
+              Height = 80
               Top = 0
               Width = 482
               Align = alTop
               BevelOuter = bvNone
-              ClientHeight = 32
+              ClientHeight = 80
               ClientWidth = 482
               TabOrder = 0
               object lblPlanPath: TLabel
-                Left = 7
+                Left = 8
                 Height = 30
-                Top = 9
-                Width = 79
+                Top = 8
+                Width = 466
+                Align = alTop
+                BorderSpacing.Left = 8
+                BorderSpacing.Top = 8
+                BorderSpacing.Right = 8
                 Caption = 'Plan file:'
+                WordWrap = True
               end
-              object cboPlanModel: TLcaThemedComboBox
-                Left = 244
-                Height = 38
-                Top = 4
-                Width = 158
-                Anchors = [akTop, akRight]
-                Color = 16447734
-                Font.Color = 2366488
-                Font.Height = -21
-                Font.Name = 'Segoe UI'
-                ItemHeight = 30
-                ParentFont = False
-                Style = csOwnerDrawFixed
+              object pnlPlanToolbar: TPanel
+                Left = 8
+                Height = 40
+                Top = 38
+                Width = 466
+                Align = alTop
+                BorderSpacing.Left = 8
+                BorderSpacing.Right = 8
+                BorderSpacing.Bottom = 8
+                BevelOuter = bvNone
+                ClientHeight = 40
+                ClientWidth = 466
                 TabOrder = 0
-              end
-              object btnPlanBuild: TLcaThemedButton
-                Left = 409
-                Height = 24
-                Top = 4
-                Width = 63
-                Anchors = [akTop, akRight]
-                Caption = 'Build'
-                Color = 15426341
-                Font.Color = clWhite
-                ParentFont = False
-                TabOrder = 1
-                ButtonRole = tbrPrimary
+                object btnPlanBuild: TLcaThemedButton
+                  Left = 403
+                  Height = 40
+                  Top = 0
+                  Width = 63
+                  Align = alRight
+                  BorderSpacing.Left = 8
+                  Caption = 'Build'
+                  Color = 15426341
+                  Font.Color = clWhite
+                  ParentFont = False
+                  TabOrder = 1
+                  ButtonRole = tbrPrimary
+                end
+                object cboPlanModel: TLcaThemedComboBox
+                  Left = 0
+                  Height = 36
+                  Top = 4
+                  Width = 395
+                  Align = alClient
+                  BorderSpacing.Top = 4
+                  BorderSpacing.Bottom = 4
+                  Color = 16447734
+                  Font.Color = 2366488
+                  Font.Height = -21
+                  Font.Name = 'Segoe UI'
+                  ItemHeight = 30
+                  ParentFont = False
+                  Style = csOwnerDrawFixed
+                  TabOrder = 0
+                end
               end
             end
-            object memPlanBody: TMemo
+            object lcaPlanBody: TLcaMarkdownView
               Left = 0
-              Height = 677
-              Top = 32
+              Height = 629
+              Top = 80
               Width = 482
               Align = alClient
-              ReadOnly = True
-              ScrollBars = ssVertical
+              BevelOuter = bvNone
+              Color = 16184563
+              ParentBackground = False
+              ParentColor = False
               TabOrder = 1
             end
           end
@@ -874,12 +898,12 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object pnlChatComposer: TPanel
             Left = 0
-            Height = 287
-            Top = 422
+            Height = 391
+            Top = 318
             Width = 585
             Align = alBottom
             BevelOuter = bvNone
-            ClientHeight = 287
+            ClientHeight = 391
             ClientWidth = 585
             TabOrder = 0
             object lblChatWorkspaceTag: TLabel
@@ -894,7 +918,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object memChatPrompt: TMemo
               Left = 0
-              Height = 71
+              Height = 175
               Top = 58
               Width = 585
               Align = alClient
@@ -904,7 +928,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             object pnlChatFooter: TPanel
               Left = 10
               Height = 138
-              Top = 139
+              Top = 243
               Width = 565
               Align = alBottom
               BorderSpacing.Around = 10
@@ -1000,17 +1024,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object pnlChatHistoryHost: TPanel
             Left = 0
-            Height = 362
+            Height = 258
             Top = 60
             Width = 585
             Align = alClient
             BevelOuter = bvNone
-            ClientHeight = 362
+            ClientHeight = 258
             ClientWidth = 585
             TabOrder = 2
             object lcaChatHistory: TLcaMarkdownView
               Left = 0
-              Height = 362
+              Height = 258
               Top = 0
               Width = 585
               Align = alClient

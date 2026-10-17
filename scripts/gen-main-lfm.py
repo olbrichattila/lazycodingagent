@@ -321,7 +321,7 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
             Caption = 'Plan'
             object pnlPlanHeader: TPanel
               Left = 0
-              Height = 36
+              Height = 80
               Top = 0
               Width = 552
               Align = alTop
@@ -330,38 +330,58 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
               object lblPlanPath: TLabel
                 Left = 8
                 Height = 15
-                Top = 10
-                Width = 52
+                Top = 8
+                Width = 536
+                Align = alTop
+                AutoSize = True
+                BorderSpacing.Left = 8
+                BorderSpacing.Right = 8
+                BorderSpacing.Top = 8
                 Caption = 'Plan file:'
+                WordWrap = True
               end
-              object cboPlanModel: TComboBox
-                Left = 280
-                Height = 25
-                Top = 4
-                Width = 180
-                Anchors = [akTop, akRight]
-                ItemHeight = 22
-                Style = csDropDownList
+              object pnlPlanToolbar: TPanel
+                Left = 8
+                Height = 40
+                Top = 38
+                Width = 536
+                Align = alTop
+                BevelOuter = bvNone
+                BorderSpacing.Left = 8
+                BorderSpacing.Right = 8
+                BorderSpacing.Bottom = 8
                 TabOrder = 0
-              end
-              object btnPlanBuild: TButton
-                Left = 468
-                Height = 28
-                Top = 4
-                Width = 72
-                Anchors = [akTop, akRight]
-                Caption = 'Build'
-                TabOrder = 1
+                object btnPlanBuild: TLcaThemedButton
+                  Left = 473
+                  Height = 32
+                  Top = 4
+                  Width = 63
+                  Align = alRight
+                  BorderSpacing.Left = 8
+                  Caption = 'Build'
+                  TabOrder = 1
+                  ButtonRole = tbrPrimary
+                end
+                object cboPlanModel: TLcaThemedComboBox
+                  Left = 0
+                  Height = 36
+                  Top = 4
+                  Width = 465
+                  Align = alClient
+                  BorderSpacing.Top = 4
+                  BorderSpacing.Bottom = 4
+                  Style = csDropDownList
+                  TabOrder = 0
+                end
               end
             end
-            object memPlanBody: TMemo
+            object lcaPlanBody: TLcaMarkdownView
               Left = 0
-              Height = 1180
-              Top = 36
+              Height = 1136
+              Top = 80
               Width = 552
               Align = alClient
-              ReadOnly = True
-              ScrollBars = ssVertical
+              BevelOuter = bvNone
               TabOrder = 1
             end
           end

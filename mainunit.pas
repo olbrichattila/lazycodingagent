@@ -107,9 +107,10 @@ type
     tsUtilityPlan: TTabSheet;
     pnlPlanHeader: TPanel;
     lblPlanPath: TLabel;
+    pnlPlanToolbar: TPanel;
     cboPlanModel: TLcaThemedComboBox;
     btnPlanBuild: TLcaThemedButton;
-    memPlanBody: TMemo;
+    lcaPlanBody: TLcaMarkdownView;
     splUtility: TSplitter;
     pnlReservedHost: TPanel;
     pnlReservedChrome: TPanel;
@@ -1012,7 +1013,7 @@ begin
 
   FFileEditor := TMainFileEditor.Create(synEditor, Self);
   FPlanView := TPlanView.Create(Self);
-  FPlanView.Bind(lblPlanPath, cboPlanModel, btnPlanBuild, memPlanBody);
+  FPlanView.Bind(lblPlanPath, cboPlanModel, btnPlanBuild, lcaPlanBody);
   FPlanView.OnBuild := @PlanBuildRequested;
 
   if not Assigned(lcaTerminalPanel) then begin

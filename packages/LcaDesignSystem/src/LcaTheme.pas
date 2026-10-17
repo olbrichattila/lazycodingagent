@@ -162,7 +162,7 @@ implementation
 
 uses
   Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox, LcaThemedButtonPaint
-  {$IFDEF WINDOWS}, LcaThemeWin32Buttons, LcaThemeWin32ScrollBars{$ENDIF}
+  {$IFDEF WINDOWS}, LcaThemeWin32Buttons{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
@@ -1508,9 +1508,7 @@ begin
   if not Assigned(AControl) then Exit;
   if not AControl.HandleAllocated then Exit;
 {$IFDEF WINDOWS}
-  if ControlUsesThemedScrollBars(AControl) then
-    ApplyWin32ThemedScrollBars(AControl, ATheme)
-  else if (AControl is TComboBox) or (AControl is TEdit) then begin
+  if (AControl is TComboBox) or (AControl is TEdit) then begin
     if ATheme = tkDark then
       ThemeId := 'DarkMode_Explorer'
     else

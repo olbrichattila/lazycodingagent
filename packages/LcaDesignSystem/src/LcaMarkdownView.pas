@@ -32,6 +32,7 @@ type
     procedure ScheduleDeferredScrollToEnd;
     procedure DeferredScrollToEnd(Data: PtrInt);
     procedure ScrollDocumentToEnd;
+    function IsDocumentScrolledToEnd: Boolean;
     procedure ScheduleScrollToEndAfterRender;
     procedure Render;
   protected
@@ -55,7 +56,7 @@ function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): st
 implementation
 
 uses
-  IpHtml, IpHtmlTypes, StrUtils;
+  Types, IpHtml, IpHtmlTypes, StrUtils;
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -323,6 +324,26 @@ begin
   Render;
 end;
 
+function TLcaMarkdownView.IsDocumentScrolledToEnd: Boolean;
+var
+  Panel: TIpHtmlPanel;
+  Sz: TSize;
+  CanScrollDown: Boolean;
+begin
+  Result := True;
+  if not Assigned(FHtmlPanel) then Exit;
+  if csDestroying in FHtmlPanel.ComponentState then Exit;
+  Panel := TIpHtmlPanel(FHtmlPanel);
+  Sz := Panel.GetContentSize;
+  if Sz.cy <= 0 then Exit;
+  if Panel.ClientHeight <= 0 then Exit;
+  if Sz.cy <= Panel.ClientHeight then Exit;
+  CanScrollDown := Panel.Scroll(hsaDown, 1);
+  Result := not CanScrollDown;
+  if CanScrollDown then
+    Panel.Scroll(hsaUp, 1);
+end;
+
 procedure TLcaMarkdownView.ScrollDocumentToEnd;
 var
   Panel: TIpHtmlPanel;
@@ -331,6 +352,10 @@ begin
   if csDestroying in FHtmlPanel.ComponentState then Exit;
   Panel := TIpHtmlPanel(FHtmlPanel);
   Panel.Scroll(hsaEnd);
+{$IFDEF MSWINDOWS}
+  Application.ProcessMessages;
+  Panel.Scroll(hsaEnd);
+{$ENDIF}
 end;
 
 procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
@@ -356,8 +381,11 @@ begin
     Exit;
   end;
   ScrollDocumentToEnd;
-  FScrollToEndPending := False;
-  FScrollDeferRetries := 0;
+  if IsDocumentScrolledToEnd then begin
+    FScrollToEndPending := False;
+    FScrollDeferRetries := 0;
+  end else
+    ScheduleDeferredScrollToEnd;
 end;
 
 procedure TLcaMarkdownView.ScheduleScrollToEndAfterRender;

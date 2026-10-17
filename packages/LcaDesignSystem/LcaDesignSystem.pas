@@ -9,7 +9,7 @@ interface
 
 uses
   LcaTheme, LcaThemedButtonPaint, LcaThemeWin32Buttons, frmThemedMessage, 
-  LcaThemedMessageBox, LcaThemeWin32Combo, LcaThemeWin32ScrollBars, 
+  LcaThemedMessageBox, LcaThemeWin32Combo, 
   LcaThemedPageTabBar, LcaThemedButton, LcaThemedComboBox, LcaNavRailButton, 
   LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, 
   LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedMenuFlyout, LcaOwlIconRes, 
