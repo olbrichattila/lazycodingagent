@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install Lazarus and build deps
         run: |
@@ -39,8 +37,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Install Lazarus (Chocolatey)
         run: choco install lazarus -y --no-progress
@@ -92,8 +88,6 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: Cache Lazarus SourceForge downloads
         uses: actions/cache@v4

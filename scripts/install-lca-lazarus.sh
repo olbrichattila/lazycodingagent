@@ -115,7 +115,7 @@ fi
 
 if [[ "$SKIP_TERMINAL" -eq 0 ]]; then
   if [[ ! -f "$LpkTF" ]]; then
-    echo "Missing submodule: git submodule update --init third_party/TerminalEmulator" >&2
+    echo "Missing vendored terminal: third_party/TerminalEmulator (TerminalFramework.lpk not found)" >&2
     exit 1
   fi
   lazbuild_cmd --add-package-link "$LpkTF"

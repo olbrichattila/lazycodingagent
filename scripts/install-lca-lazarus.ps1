@@ -72,7 +72,7 @@ if ($WidgetSet) {
 
 if (-not $SkipTerminal) {
     if (-not (Test-Path -LiteralPath $LpkTF)) {
-        Write-Error 'Missing submodule: git submodule update --init third_party/TerminalEmulator'
+        Write-Error 'Missing vendored terminal: third_party/TerminalEmulator (TerminalFramework.lpk not found)'
     }
     Invoke-LazBuild --add-package-link $LpkTF
     Invoke-LazBuild --add-package-link $LpkView

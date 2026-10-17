@@ -7,7 +7,7 @@ TE="$ROOT/third_party/TerminalEmulator"
 LAZBUILD="${LAZBUILD:-lazbuild}"
 
 if [[ ! -f "$TE/TerminalFramework/TerminalFramework.lpk" ]]; then
-  echo "Missing submodule: run git submodule update --init third_party/TerminalEmulator" >&2
+  echo "Missing vendored terminal: third_party/TerminalEmulator (TerminalFramework.lpk not found)" >&2
   exit 1
 fi
 

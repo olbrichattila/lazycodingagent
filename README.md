@@ -84,8 +84,8 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Terminal chrome is on the main form via **`TLcaTerminalPanel`** ([`LcaTerminalPanel.pas`](packages/LcaDesignSystem/src/LcaTerminalPanel.pas)); [`uTerminalPanel.pas`](uTerminalPanel.pas) is a thin alias type for app code.
 - Docked height defaults to about **one quarter** of the client area (resizable splitter); floating window size is stored separately from docked height.
 - When you open the panel with an active workspace, the shell starts in the **workspace root** (`pwd` / `cd`); switching workspaces restarts the shell in the new folder if the terminal is already visible.
-- Powered by the [TerminalEmulator](https://github.com/andrewd207/TerminalEmulator) submodule (`third_party/TerminalEmulator`). **Windows** requires Windows 10 1809+ (ConPTY).
-- **Linux PTY:** the embedded terminal needs `forkpty` from **libutil** (Debian/Ubuntu: `bsdutils` / `util-linux`). Build the submodule packages via `./scripts/build-terminal-deps.sh` before compiling the app. If the panel stays blank, check the status bar for a PTY error and verify `$SHELL` or `/bin/bash` exists.
+- Powered by a vendored copy of [TerminalEmulator](https://github.com/andrewd207/TerminalEmulator) in `third_party/TerminalEmulator` (BSD 3-Clause; see `third_party/TerminalEmulator/LICENSE`). **Windows** requires Windows 10 1809+ (ConPTY).
+- **Linux PTY:** the embedded terminal needs `forkpty` from **libutil** (Debian/Ubuntu: `bsdutils` / `util-linux`). Build the terminal packages via `./scripts/build-terminal-deps.sh` before compiling the app. If the panel stays blank, check the status bar for a PTY error and verify `$SHELL` or `/bin/bash` exists.
 
 #### Terminal manual test checklist
 
@@ -110,19 +110,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 ## Building & Running
 
-Clone with submodules (required for the integrated terminal). Without them, Lazarus shows a broken dependency on **TerminalFramework**:
-
-```bash
-git clone --recurse-submodules <repo-url>
-# or after clone:
-git submodule update --init third_party/TerminalEmulator
-```
-
-On Windows (PowerShell), the same init step:
-
-```powershell
-git submodule update --init third_party/TerminalEmulator
-```
+Clone the repository normally; `third_party/TerminalEmulator` is included in the tree (required for the integrated terminal and **TerminalFramework** / **ViewLCL** packages).
 
 Install **terminal packages**, **LcaDesignSystem** runtime, and (for the Form Designer) the **LCA Design** palette once per machine:
 
@@ -245,7 +233,7 @@ If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macO
 - `uTerminalPanel.pas` — Alias for `TLcaTerminalPanel` (PTY + `TTerminalLCLView` inside the design-system component)
 - `uMainFileEditor.pas` — Single `TSynEdit` load/save/highlighter
 - `uPlanView.pas` — Plan utility tab (path, build, memo)
-- `third_party/TerminalEmulator/` — Git submodule: TerminalFramework + ViewLCL packages
+- `third_party/TerminalEmulator/` — Vendored TerminalEmulator: TerminalFramework + ViewLCL packages (see `VENDORED.md` there)
 - `uNavigationPanel.pas` — `TNavContentControl` binds to streamed nav controls on the main form
 - `uChatPanel.pas` — Binds composer memos/combos/buttons; chat history on `TLcaMarkdownView`
 - `packages/LcaDesignSystem/src/LcaMarkdownView.pas` — Markdown subset preview (TurboPower IPro) for chat, center preview, and Help

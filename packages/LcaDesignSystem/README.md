@@ -59,7 +59,7 @@ chmod +x scripts/install-lca-lazarus.sh
 Requires:
 
 - Lazarus + `lazbuild` on `PATH` (or `LAZBUILD` / `$env:LAZBUILD`)
-- Git submodule `third_party/TerminalEmulator` (unless `--skip-terminal`)
+- Vendored `third_party/TerminalEmulator` (unless `--skip-terminal`)
 - IDE packages: **TurboPowerIPro**, **SynEdit** (app project; markdown uses IPro)
 
 The install script links the **runtime** package for `lazbuild`, installs **`LcaDesignSystemDesign`** into the IDE, and runs **`lazbuild --build-ide`** (close Lazarus first). Only the lightweight design package is linked into `lazarus.exe`; terminal and TurboPower stay in the runtime package used by projects.

@@ -7,7 +7,7 @@ $LpkTF = Join-Path $TE 'TerminalFramework\TerminalFramework.lpk'
 $LpkView = Join-Path $TE 'ViewLCL\ViewLCL.lpk'
 
 if (-not (Test-Path -LiteralPath $LpkTF)) {
-    Write-Error 'Missing submodule: run git submodule update --init third_party/TerminalEmulator'
+    Write-Error 'Missing vendored terminal: third_party/TerminalEmulator (TerminalFramework.lpk not found)'
 }
 
 function Resolve-LazBuild {
