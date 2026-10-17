@@ -223,7 +223,7 @@ var
   P: TThemePalette;
 begin
   FThemeKind := ATheme;
-  P := ThemePalette(ATheme);
+  P := ThemePalette(EffectiveControlTheme(Self, ATheme));
   Color := P.Background;
   if Assigned(FStatusLabel) then begin
     FStatusLabel.Color := P.Background;

@@ -17,6 +17,8 @@ type
     procedure ThemedDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
       State: TOwnerDrawState);
     function CanApplyRuntimeTheme: Boolean;
+  protected
+    procedure Loaded; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -77,9 +79,25 @@ begin
   StyleComboBoxDrawItem(Control, Index, ARect, State, FThemeKind);
 end;
 
+procedure TLcaThemedComboBox.Loaded;
+begin
+  inherited Loaded;
+  if csDesigning in ComponentState then
+    ApplyTheme(FThemeKind);
+end;
+
 procedure TLcaThemedComboBox.ApplyTheme(ATheme: TThemeKind);
+var
+  EffTheme: TThemeKind;
 begin
   FThemeKind := ATheme;
+  if csDesigning in ComponentState then begin
+    EffTheme := EffectiveControlTheme(Self, ATheme);
+    StyleComboBox(Self, EffTheme);
+    OnDrawItem := @ThemedDrawItem;
+    Invalidate;
+    Exit;
+  end;
   if not CanApplyRuntimeTheme then
     Exit;
   StyleComboBox(Self, ATheme);

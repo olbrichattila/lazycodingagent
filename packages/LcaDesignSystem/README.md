@@ -41,7 +41,7 @@ From the repo root:
 scripts\install-lca-lazarus.bat
 ```
 
-(Or `powershell -ExecutionPolicy Bypass -File scripts\install-lca-lazarus.ps1` from the repo root.)
+Do **not** run `.\scripts\install-lca-lazarus.ps1` directly if PowerShell reports scripts are disabled; use **`.bat`** above. Equivalent: `powershell -ExecutionPolicy Bypass -File scripts\install-lca-lazarus.ps1` from the repo root.
 
 ## Install (Linux / macOS)
 

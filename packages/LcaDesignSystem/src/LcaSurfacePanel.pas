@@ -15,6 +15,7 @@ type
     procedure SetThemeKind(AValue: TThemeKind);
     procedure SetShowAccentBorder(AValue: Boolean);
   protected
+    procedure Loaded; override;
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -49,12 +50,18 @@ begin
   DoubleBuffered := True;
 end;
 
+procedure TLcaSurfacePanel.Loaded;
+begin
+  inherited Loaded;
+  ApplyTheme(FThemeKind);
+end;
+
 procedure TLcaSurfacePanel.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
 begin
   FThemeKind := ATheme;
-  P := ThemePalette(ATheme);
+  P := ThemePalette(EffectiveControlTheme(Self, ATheme));
   Color := P.CardBg;
   Font.Color := P.Text;
   Invalidate;
@@ -66,7 +73,7 @@ var
   R: TRect;
 begin
   inherited Paint;
-  P := ThemePalette(FThemeKind);
+  P := ThemePalette(EffectiveControlTheme(Self, FThemeKind));
   Canvas.Pen.Color := P.Border;
   Canvas.Brush.Style := bsClear;
   R := ClientRect;

@@ -28,6 +28,7 @@ type
     function HostForm: TCustomForm;
     function InTitleBar: Boolean;
   protected
+    procedure Loaded; override;
     procedure Paint; override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -183,12 +184,20 @@ begin
   inherited Destroy;
 end;
 
+procedure TLcaThemedMenuBar.Loaded;
+begin
+  inherited Loaded;
+  ApplyTheme(FTheme);
+end;
+
 procedure TLcaThemedMenuBar.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
+  EffTheme: TThemeKind;
 begin
   FTheme := ATheme;
-  P := ThemePalette(ATheme);
+  EffTheme := EffectiveControlTheme(Self, ATheme);
+  P := ThemePalette(EffTheme);
   if InTitleBar then
     Color := P.TitleBarBg
   else
@@ -222,12 +231,14 @@ end;
 procedure TLcaThemedMenuBar.Paint;
 var
   P: TThemePalette;
+  EffTheme: TThemeKind;
   I, MenuIdx: Integer;
   Selected: Boolean;
   Item: TMenuItem;
 begin
   inherited Paint;
-  P := ThemePalette(FTheme);
+  EffTheme := EffectiveControlTheme(Self, FTheme);
+  P := ThemePalette(EffTheme);
   if InTitleBar then
     Canvas.Brush.Color := P.TitleBarBg
   else
@@ -242,10 +253,10 @@ begin
     Item := FMainMenu.Items[MenuIdx];
     Selected := (I = FHoverIndex);
     if InTitleBar then
-      PaintThemedMenuBarItem(Canvas, FItemRects[I], Item.Caption, Selected, FTheme,
+      PaintThemedMenuBarItem(Canvas, FItemRects[I], Item.Caption, Selected, EffTheme,
         FBarFontSize, P.TitleBarBg)
     else
-      PaintThemedMenuBarItem(Canvas, FItemRects[I], Item.Caption, Selected, FTheme,
+      PaintThemedMenuBarItem(Canvas, FItemRects[I], Item.Caption, Selected, EffTheme,
         FBarFontSize);
   end;
 end;

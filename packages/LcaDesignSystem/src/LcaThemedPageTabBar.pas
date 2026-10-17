@@ -50,6 +50,7 @@ type
     class function FindMetaIndex(ASheet: TTabSheet): Integer; static;
     class procedure EnsureMeta(ASheet: TTabSheet); static;
   protected
+    procedure Loaded; override;
     procedure Paint; override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -230,12 +231,18 @@ begin
   RefreshFromPageControl;
 end;
 
+procedure TLcaThemedPageTabBar.Loaded;
+begin
+  inherited Loaded;
+  ApplyTheme(FTheme);
+end;
+
 procedure TLcaThemedPageTabBar.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
 begin
   FTheme := ATheme;
-  P := ThemePalette(ATheme);
+  P := ThemePalette(EffectiveControlTheme(Self, ATheme));
   Color := P.HeaderBg;
   Font.Color := P.Text;
   Invalidate;
@@ -406,14 +413,16 @@ end;
 procedure TLcaThemedPageTabBar.PaintTabStrip;
 var
   I: Integer;
+  EffTheme: TThemeKind;
 begin
+  EffTheme := EffectiveControlTheme(Self, FTheme);
   LayoutTabs;
   for I := 0 to High(FTabRects) do
     PaintThemedTab(Canvas, FTabRects[I], TabCaptionAt(I), TabIsSelectedAt(I),
-      FHoverTabIndex = I, TabAllowCloseAt(I), FHoverCloseIndex = I, FTheme, Self);
+      FHoverTabIndex = I, TabAllowCloseAt(I), FHoverCloseIndex = I, EffTheme, Self);
   if FShowAddTab and (FAddTabRect.Right > FAddTabRect.Left) then
     PaintThemedTab(Canvas, FAddTabRect, FAddTabCaption, False, FHoverTabIndex = VisibleTabCount,
-      False, False, FTheme, Self);
+      False, False, EffTheme, Self);
 end;
 
 procedure TLcaThemedPageTabBar.Paint;

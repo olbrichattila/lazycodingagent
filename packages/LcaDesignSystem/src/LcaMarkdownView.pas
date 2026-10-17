@@ -448,9 +448,11 @@ end;
 procedure TLcaMarkdownView.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
+  EffTheme: TThemeKind;
 begin
   FThemeKind := ATheme;
-  P := ThemePalette(ATheme);
+  EffTheme := EffectiveControlTheme(Self, ATheme);
+  P := ThemePalette(EffTheme);
   Color := P.Background;
   if csDesigning in ComponentState then Exit;
   if Assigned(FHtmlPanel) then begin
@@ -466,7 +468,7 @@ end;
 procedure TLcaMarkdownView.Loaded;
 begin
   inherited Loaded;
-  Color := ThemePalette(FThemeKind).Background;
+  ApplyTheme(FThemeKind);
   if csDesigning in ComponentState then Exit;
   if (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> '')) then
     ScheduleDeferredRender;

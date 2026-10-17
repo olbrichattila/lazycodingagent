@@ -321,9 +321,11 @@ end;
 procedure TLcaThemedMenuFlyout.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
+  EffTheme: TThemeKind;
 begin
   FTheme := ATheme;
-  P := ThemePalette(ATheme);
+  EffTheme := EffectiveControlTheme(Self, ATheme);
+  P := ThemePalette(EffTheme);
   Color := P.MenuFlyoutBg;
   FRowHeight := ScaledThemedMenuPopupItemHeight(Self);
   Invalidate;
@@ -334,12 +336,14 @@ end;
 procedure TLcaThemedMenuFlyout.Paint;
 var
   P: TThemePalette;
+  EffTheme: TThemeKind;
   I: Integer;
   R: TRect;
   State: TOwnerDrawState;
 begin
   inherited Paint;
-  P := ThemePalette(FTheme);
+  EffTheme := EffectiveControlTheme(Self, FTheme);
+  P := ThemePalette(EffTheme);
   Canvas.Brush.Color := P.MenuFlyoutBg;
   Canvas.FillRect(ClientRect);
   Canvas.Pen.Color := P.Border;
@@ -355,7 +359,7 @@ begin
     State := [];
     if I = FHoverRow then
       Include(State, odSelected);
-    ThemedMenuPopupDrawItem(Canvas, R, State, FTheme, FRowItems[I]);
+    ThemedMenuPopupDrawItem(Canvas, R, State, EffTheme, FRowItems[I]);
   end;
 end;
 

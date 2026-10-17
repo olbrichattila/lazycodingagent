@@ -13,6 +13,7 @@ type
   TPlanBuildConfirmForm = class(TForm)
     lblMessage: TLabel;
     chkAllowModifyOutside: TCheckBox;
+    lblAllowModifyOutside: TLabel;
     pnlBottom: TPanel;
     btnBuild: TLcaThemedButton;
     btnCancel: TLcaThemedButton;
@@ -21,6 +22,7 @@ type
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnBuildClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
+    procedure lblAllowModifyOutsideClick(Sender: TObject);
   private
     FTheme: TThemeKind;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -80,12 +82,14 @@ var
   P: TThemePalette;
 begin
   P := ThemePalette(ATheme);
+  ApplyThemedForm(Self, ATheme);
   Color := P.Surface;
-  Font.Color := P.Text;
-  if Assigned(lblMessage) then
-    lblMessage.Font.Color := P.Text;
+  if Assigned(pnlBottom) then
+    pnlBottom.Color := P.Surface;
   if Assigned(chkAllowModifyOutside) then
-    chkAllowModifyOutside.Font.Color := P.Text;
+    ConfigureThemedCheckBox(chkAllowModifyOutside, ATheme);
+  if Assigned(lblAllowModifyOutside) then
+    lblAllowModifyOutside.Font.Color := P.Text;
   if Assigned(btnBuild) then
     btnBuild.ApplyTheme(ATheme);
   if Assigned(btnCancel) then
@@ -100,6 +104,12 @@ end;
 procedure TPlanBuildConfirmForm.btnCancelClick(Sender: TObject);
 begin
   ModalResult := mrCancel;
+end;
+
+procedure TPlanBuildConfirmForm.lblAllowModifyOutsideClick(Sender: TObject);
+begin
+  if Assigned(chkAllowModifyOutside) then
+    chkAllowModifyOutside.Checked := not chkAllowModifyOutside.Checked;
 end;
 
 end.

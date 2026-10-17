@@ -49,6 +49,7 @@ type
     FAttachBtn: TLcaThemedButton;
     FAttachmentStrip: TPanel;
     FAllowModifyOutsideCheck: TCheckBox;
+    FAllowModifyOutsideLabel: TLabel;
     FUpdatingAllowModifyOutside: Boolean;
 
     FSessionId: string;
@@ -81,7 +82,7 @@ type
     procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
       APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
       ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
-      AAllowModifyOutside: TCheckBox);
+      AAllowModifyOutside: TCheckBox; AAllowModifyOutsideLabel: TLabel = nil);
     procedure SetAllowModifyOutsideChecked(AValue: Boolean);
     function GetAllowModifyOutsideChecked: Boolean;
     procedure SetSessionId(const ASessionId: string);
@@ -205,7 +206,7 @@ end;
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
   APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
   ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
-  AAllowModifyOutside: TCheckBox);
+  AAllowModifyOutside: TCheckBox; AAllowModifyOutsideLabel: TLabel);
 var
   M: TWorkspaceMode;
 begin
@@ -222,6 +223,7 @@ begin
   FAttachBtn := AAttachBtn;
   FAttachmentStrip := AAttachmentStrip;
   FAllowModifyOutsideCheck := AAllowModifyOutside;
+  FAllowModifyOutsideLabel := AAllowModifyOutsideLabel;
 
   EnsureHistoryView;
 
@@ -526,6 +528,10 @@ begin
     FStopBtn.ApplyTheme(ATheme);
   if Assigned(FAttachBtn) then
     FAttachBtn.ApplyTheme(ATheme);
+  if Assigned(FAllowModifyOutsideCheck) then
+    ConfigureThemedCheckBox(FAllowModifyOutsideCheck, ATheme);
+  if Assigned(FAllowModifyOutsideLabel) then
+    FAllowModifyOutsideLabel.Font.Color := P.Text;
   RefreshAttachmentStrip;
   RefreshHistoryView;
 end;
@@ -743,6 +749,8 @@ begin
     FAttachBtn.Enabled := AEnabled and not FIsRunning;
   if Assigned(FAllowModifyOutsideCheck) then
     FAllowModifyOutsideCheck.Enabled := AEnabled and not FIsRunning;
+  if Assigned(FAllowModifyOutsideLabel) then
+    FAllowModifyOutsideLabel.Enabled := AEnabled and not FIsRunning;
 end;
 
 procedure TChatPanel.ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);

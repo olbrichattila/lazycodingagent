@@ -15,6 +15,7 @@ type
     procedure SetThemeKind(AValue: TThemeKind);
     procedure SetButtonRole(AValue: TThemedButtonRole);
   protected
+    procedure Loaded; override;
     procedure CreateWnd; override;
     procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
   public
@@ -55,10 +56,20 @@ begin
   StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
 end;
 
+procedure TLcaThemedButton.Loaded;
+begin
+  inherited Loaded;
+  if csDesigning in ComponentState then
+    StyleThemedButtonRole(Self, EffectiveControlTheme(Self, FThemeKind), FButtonRole);
+end;
+
 procedure TLcaThemedButton.ApplyTheme(ATheme: TThemeKind);
 begin
   FThemeKind := ATheme;
-  if csDesigning in ComponentState then Exit;
+  if csDesigning in ComponentState then begin
+    StyleThemedButtonRole(Self, EffectiveControlTheme(Self, ATheme), FButtonRole);
+    Exit;
+  end;
   if csLoading in ComponentState then Exit;
   if csReading in ComponentState then Exit;
   if not HandleAllocated then Exit;

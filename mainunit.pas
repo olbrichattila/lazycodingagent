@@ -29,6 +29,7 @@ type
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
     chkChatAllowModifyOutside: TCheckBox;
+    lblChatAllowModifyOutside: TLabel;
     lcaTitleBar: TLcaThemedTitleBar;
     lcaMainMenu: TLcaThemedMainMenu;
     mnuFile: TMenuItem;
@@ -178,6 +179,7 @@ type
     procedure MnuHelpAboutClick(Sender: TObject);
     procedure NavRailBtnClick(Sender: TObject);
     procedure ChkChatAllowModifyOutsideClick(Sender: TObject);
+    procedure LblChatAllowModifyOutsideClick(Sender: TObject);
   private
     FChatSessionTabIds: TStringList;
     FState: TWorkspaceState;
@@ -441,6 +443,12 @@ begin
   ApplyAllowModifyOutsideToSession(FCurrentSessionId, FChatPanel.GetAllowModifyOutsideChecked);
 end;
 
+procedure TLazyCodingAgentForm.LblChatAllowModifyOutsideClick(Sender: TObject);
+begin
+  if not Assigned(chkChatAllowModifyOutside) or not chkChatAllowModifyOutside.Enabled then Exit;
+  chkChatAllowModifyOutside.Checked := not chkChatAllowModifyOutside.Checked;
+end;
+
 procedure TLazyCodingAgentForm.ApplySessionComposerState;
 var
   Info: TChatSessionInfo;
@@ -564,6 +572,7 @@ var
 const
   TARGET_PCT = 67;
 begin
+  if csDesigning in ComponentState then Exit;
   R := Screen.PrimaryMonitor.WorkareaRect;
   W := (R.Width * TARGET_PCT) div 100;
   H := (R.Height * TARGET_PCT) div 100;
@@ -590,6 +599,7 @@ end;
 
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
+  if csDesigning in ComponentState then Exit;
   ReportSplashLoadProgress(5);
   ApplyOwlApplicationIcon;
   ApplyInitialWindowSize;
@@ -669,6 +679,7 @@ end;
 
 procedure TLazyCodingAgentForm.FormShow(Sender: TObject);
 begin
+  if csDesigning in ComponentState then Exit;
   if FPendingInitialDockLayout then begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
@@ -721,6 +732,7 @@ procedure TLazyCodingAgentForm.FormCloseQuery(Sender: TObject; var CanClose: Boo
 var
   I: Integer;
 begin
+  if csDesigning in ComponentState then Exit;
   CanClose := True;
   if not PromptDirtyEditor then begin
     CanClose := False;
@@ -754,6 +766,7 @@ procedure TLazyCodingAgentForm.FormDestroy(Sender: TObject);
 var
   I: Integer;
 begin
+  if csDesigning in ComponentState then Exit;
   FreeAndNil(FPanelDetach);
   FreeAndNil(FExecDetailView);
   FreeAndNil(FMarkdownPreview);
@@ -991,7 +1004,7 @@ begin
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
     lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop,
-    btnChatAttachImage, pnlChatAttachmentStrip, chkChatAllowModifyOutside);
+    btnChatAttachImage, pnlChatAttachmentStrip, chkChatAllowModifyOutside, lblChatAllowModifyOutside);
   FChatPanel.OnPrompt := @ChatPrompt;
   FChatPanel.OnModeChange := @ChatModeChange;
   FChatPanel.OnModelChange := @ChatModelChange;

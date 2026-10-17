@@ -357,7 +357,6 @@
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
-      <LCLWidgetType Value="qt5"/>
     </SearchPaths>
     <Linking>
       <Debugging>

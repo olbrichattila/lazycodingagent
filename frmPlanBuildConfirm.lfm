@@ -26,10 +26,19 @@ object PlanBuildConfirmForm: TPlanBuildConfirmForm
     Left = 16
     Height = 24
     Top = 80
-    Width = 472
+    Width = 24
+    Caption = ''
+    TabOrder = 0
+  end
+  object lblAllowModifyOutside: TLabel
+    Left = 48
+    Height = 24
+    Top = 80
+    Width = 440
     Anchors = [akLeft, akTop, akRight]
     Caption = 'Allow modify outside the working directory'
-    TabOrder = 0
+    Cursor = crHandPoint
+    OnClick = lblAllowModifyOutsideClick
   end
   object pnlBottom: TPanel
     Left = 0

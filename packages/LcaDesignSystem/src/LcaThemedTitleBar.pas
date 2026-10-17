@@ -202,9 +202,11 @@ end;
 procedure TLcaThemedTitleBar.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
+  EffTheme: TThemeKind;
 begin
   FTheme := ATheme;
-  P := ThemePalette(ATheme);
+  EffTheme := EffectiveControlTheme(Self, ATheme);
+  P := ThemePalette(EffTheme);
   Color := P.TitleBarBg;
   Font.Color := P.Text;
   if Assigned(FDragPanel) then begin

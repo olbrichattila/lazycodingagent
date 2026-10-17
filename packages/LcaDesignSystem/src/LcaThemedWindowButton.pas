@@ -113,7 +113,7 @@ var
   CX, CY, S, I: Integer;
   HoverBg, IconColor, BarBg: TColor;
 begin
-  P := ThemePalette(FTheme);
+  P := ThemePalette(EffectiveControlTheme(Self, FTheme));
   R := ClientRect;
   if Assigned(Parent) and (CompareText(Parent.ClassName, 'TLcaThemedTitleBar') = 0) then
     BarBg := P.TitleBarBg

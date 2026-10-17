@@ -34,6 +34,12 @@ type
   end;
 
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
+{ True when the control or an owner is on a form open in the Lazarus designer. }
+function LcaComponentOrOwnerDesigning(AComponent: TComponent): Boolean;
+{ Form designer, IDE-hosted preview, or JIT .lfm load before csDesigning is set. }
+function LcaInDesignContext(const AComponent: TComponent): Boolean;
+{ Lazarus designer uses the light palette so streamed dark-theme forms stay readable. }
+function EffectiveControlTheme(const AComponent: TComponent; AStored: TThemeKind): TThemeKind;
 function ParentFormHandlesReady(AControl: TControl): Boolean;
 
 const
@@ -119,6 +125,7 @@ procedure StyleGhostButton(ABtn: TButton; ATheme: TThemeKind);
 
 procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
 procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
+procedure ConfigureThemedCheckBox(ACheck: TCheckBox; ATheme: TThemeKind);
 procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
   const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
 procedure ConfigureThemedExecDetailMemo(AMemo: TCustomMemo; ATheme: TThemeKind);
@@ -506,6 +513,51 @@ function DwmSetWindowAttribute(hwnd: TWinHwnd; dwAttribute: LongWord;
   pvAttribute: Pointer; cbAttribute: LongWord): LongInt; stdcall;
   external 'dwmapi' name 'DwmSetWindowAttribute';
 {$ENDIF}
+
+function LazarusIdeHostExecutable: Boolean;
+var
+  N: string;
+begin
+  N := LowerCase(ExtractFileName(ParamStr(0)));
+  Result := (N = 'lazarus') or (N = 'startlazarus');
+end;
+
+function LcaComponentOrOwnerDesigning(AComponent: TComponent): Boolean;
+var
+  C: TComponent;
+begin
+  C := AComponent;
+  while C <> nil do begin
+    if csDesigning in C.ComponentState then
+      Exit(True);
+    C := C.Owner;
+  end;
+  Result := False;
+end;
+
+function LcaInDesignContext(const AComponent: TComponent): Boolean;
+var
+  F: TCustomForm;
+begin
+  if LcaComponentOrOwnerDesigning(AComponent) then
+    Exit(True);
+  if Assigned(Application) and (csDesigning in Application.ComponentState) then
+    Exit(True);
+  if LazarusIdeHostExecutable and (AComponent is TControl) then begin
+    F := GetParentForm(TControl(AComponent));
+    if Assigned(F) and (csDesigning in F.ComponentState) then
+      Exit(True);
+  end;
+  Result := False;
+end;
+
+function EffectiveControlTheme(const AComponent: TComponent; AStored: TThemeKind): TThemeKind;
+begin
+  if LcaInDesignContext(AComponent) then
+    Result := tkLight
+  else
+    Result := AStored;
+end;
 
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
 begin
@@ -1156,6 +1208,29 @@ begin
   ATree.Invalidate;
 end;
 
+procedure ConfigureThemedCheckBox(ACheck: TCheckBox; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  Bg: TColor;
+begin
+  if not Assigned(ACheck) then Exit;
+  P := ThemePalette(ATheme);
+  ACheck.ParentFont := False;
+  ACheck.Font.Name := 'Segoe UI';
+  ACheck.Font.Color := P.Text;
+  ACheck.ParentColor := False;
+  if Assigned(ACheck.Parent) then
+    Bg := TControl(ACheck.Parent).Color
+  else
+    Bg := P.Surface;
+  ACheck.Color := Bg;
+{$IFDEF WINDOWS}
+  if ACheck.HandleAllocated then
+    SetWindowTheme(ACheck.Handle, '', '');
+{$ENDIF}
+  ACheck.Invalidate;
+end;
+
 procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
   const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
 var
@@ -1679,7 +1754,7 @@ begin
       TStatusBar(C).Color := P.Surface;
       TStatusBar(C).Font.Color := P.TextMuted;
     end else if C is TCheckBox then
-      TCheckBox(C).Font.Color := P.Text
+      ConfigureThemedCheckBox(TCheckBox(C), ATheme)
     else if C is TSpeedButton then begin
       TSpeedButton(C).Font.Color := P.TextMuted;
       TSpeedButton(C).Color := P.RailBg;
