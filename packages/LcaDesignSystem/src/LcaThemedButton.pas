@@ -5,7 +5,7 @@ unit LcaThemedButton;
 interface
 
 uses
-  Classes, StdCtrls, Controls, Forms, LcaTheme;
+  Classes, StdCtrls, Controls, Forms, LMessages, LcaTheme;
 
 type
   TLcaThemedButton = class(TButton)
@@ -14,7 +14,9 @@ type
     FButtonRole: TThemedButtonRole;
     procedure SetThemeKind(AValue: TThemeKind);
     procedure SetButtonRole(AValue: TThemedButtonRole);
-    function CanApplyRuntimeTheme: Boolean;
+  protected
+    procedure CreateWnd; override;
+    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -46,30 +48,28 @@ begin
   FButtonRole := tbrCancel;
 end;
 
-function TLcaThemedButton.CanApplyRuntimeTheme: Boolean;
-var
-  F: TCustomForm;
+procedure TLcaThemedButton.CreateWnd;
 begin
-  if csDesigning in ComponentState then
-    Exit(False);
-  if csLoading in ComponentState then
-    Exit(False);
-  if csReading in ComponentState then
-    Exit(False);
-  F := GetParentForm(Self);
-  if (F = nil) or not F.HandleAllocated then
-    Exit(False);
-  if not HandleAllocated then
-    Exit(False);
-  Result := True;
+  inherited CreateWnd;
+  if csDesigning in ComponentState then Exit;
+  StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
 end;
 
 procedure TLcaThemedButton.ApplyTheme(ATheme: TThemeKind);
 begin
   FThemeKind := ATheme;
-  if not CanApplyRuntimeTheme then
-    Exit;
-  StyleThemedButtonRole(Self, ATheme, FButtonRole);
+  if csDesigning in ComponentState then Exit;
+  if csLoading in ComponentState then Exit;
+  if csReading in ComponentState then Exit;
+  if not HandleAllocated then Exit;
+  StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
+end;
+
+procedure TLcaThemedButton.CMShowingChanged(var Message: TLMessage);
+begin
+  inherited CMShowingChanged(Message);
+  if Showing and HandleAllocated and not (csDesigning in ComponentState) then
+    StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
 end;
 
 end.

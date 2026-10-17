@@ -9,10 +9,10 @@ TARGET_DIR="${2:-}"
 
 if [[ -z "$TARGET_DIR" ]]; then
   if ! command -v fpc >/dev/null 2>&1; then
-    echo "post-build: set TARGET_DIR or install fpc to auto-detect lib/\$(cpu)-\$(os)" >&2
+    echo "post-build: set TARGET_DIR or install fpc to auto-detect lib/\$(cpu)-\$(os) via fpc -iTP / -iTO" >&2
     exit 1
   fi
-  TARGET_DIR="${PROJ_DIR}/lib/$(fpc -iTP)-$(fpc -iTOS)"
+  TARGET_DIR="${PROJ_DIR}/lib/$(fpc -iTP)-$(fpc -iTO)"
 fi
 
 for DEST in "$TARGET_DIR" "$PROJ_DIR"; do

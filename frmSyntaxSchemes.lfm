@@ -9,6 +9,7 @@ object SyntaxSchemesForm: TSyntaxSchemesForm
   ClientWidth = 504
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
+  OnShow = FormShow
   LCLVersion = '4.8.0.0'
   object lblHint: TLabel
     Left = 16

@@ -71,7 +71,7 @@ begin
   end;
 
   try
-    Cwd := ResolveProjectPath(Args.Get('cwd', '.'));
+    Cwd := ResolveProjectPath(Args.Get('cwd', '.'), paWrite);
     ProcArgs := TStringList.Create;
     try
       {$IFDEF UNIX}

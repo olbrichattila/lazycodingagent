@@ -79,7 +79,7 @@ end;
 
 function AttachmentAbsolutePath(const ARelativePath: string): string;
 begin
-  Result := ResolveProjectPath(ARelativePath);
+  Result := ResolveProjectPathInWorkspace(ARelativePath);
 end;
 
 function NormalizeExt(const AFileName: string): string;

@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
   LcaThemedButton, LcaThemedComboBox,
-  uAppTypes, LcaTheme;
+  uAppTypes, LcaTheme, LcaThemedMessageBox;
 
 type
   { TEditRuleForm }
@@ -60,6 +60,7 @@ end;
 
 procedure TEditRuleForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
 end;
 
@@ -97,7 +98,7 @@ end;
 procedure TEditRuleForm.btnOKClick(Sender: TObject);
 begin
   if Trim(memoRule.Text) = '' then begin
-    ShowMessage('Enter a rule description.');
+    LcaShowMessage('Enter a rule description.', FTheme);
     Exit;
   end;
   ModalResult := mrOk;

@@ -7,12 +7,14 @@ program lazycodingagent;
 uses
   {$IFDEF UNIX}
   cthreads,
+  uLinuxDisplayEnv,
   {$ENDIF}
   {$IFDEF HASAMIGA}
   athreads,
   {$ENDIF}
-  Interfaces, // this includes the LCL widgetset
-  Forms, uAppIcon, mainunit, frmSplash, uWorkspaceState
+  Interfaces, // this includes the LCL widgetset (keep cthreads/uLinuxDisplayEnv before Interfaces on Unix)
+  SysUtils,
+  Forms, mainunit, frmSplash, uWorkspaceState
   { you can add units after this };
 
 {$IFDEF WINDOWS}
@@ -30,14 +32,14 @@ begin
   Application.MainFormOnTaskbar:=True;
   {$POP}
   Application.Initialize;
-  ApplyOwlApplicationIcon;
   Application.ShowMainForm := False;
   Splash := TSplashForm.Create(Application);
   try
     SetActiveSplashForm(Splash);
     Splash.ApplyTheme(LoadPersistedThemeKind);
-    Splash.SetLoadProgress(0);
     Splash.Show;
+    Application.ProcessMessages;
+    Splash.SetLoadProgress(0);
     Application.ProcessMessages;
     Application.CreateForm(TLazyCodingAgentForm, LazyCodingAgentForm);
     LazyCodingAgentForm.PrepareVisibleStartup;

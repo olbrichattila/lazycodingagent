@@ -62,7 +62,8 @@ With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & 
 
 ## Safety and sandboxing
 
-- File tools resolve paths under the **workspace root**; escapes outside the project are rejected.
+- **Reads:** inspection tools (`read_file`, `list_directory`, `glob`, `search_code`, and similar) may use paths **outside** the workspace when you pass an absolute path or a relative path that leaves the project folder.
+- **Writes:** by default, write tools (`write_file`, `edit_file`, `apply_patch`), plan saves under `.plan/`, chat image attachments, and shell **cwd** values must stay inside the **workspace root**. Enable **Allow modify outside the working directory** on the chat composer (per session) to permit writes and shell cwd outside the project for that chat only.
 - The **git** tool is **read-only** (status, diff, log, show).
 - **Shell** runs with a timeout cap; use Agent mode only when you trust the workspace and model.
 

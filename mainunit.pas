@@ -8,13 +8,15 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes, SynGutterBase,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
+  LcaThemedComboBox, LcaNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
   uChatPanel, uMainFileEditor, uPlanView,
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, LcaMarkdownView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, LcaMarkdownView, uPanelDetach, uThemeHooks,
+  LcaThemedMessageBox,
+  fpjson, jsonparser;
 
 type
   TExecDetailSource = (edsNone, edsExecLog, edsToolError);
@@ -23,10 +25,10 @@ type
   TLazyCodingAgentForm = class(TForm)
     btnChatSend: TLcaThemedButton;
     btnChatAttachImage: TLcaThemedButton;
-    pnlChatAttachmentStrip: TPanel;
     btnChatStop: TLcaThemedButton;
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
+    chkChatAllowModifyOutside: TCheckBox;
     lcaTitleBar: TLcaThemedTitleBar;
     lcaMainMenu: TLcaThemedMainMenu;
     mnuFile: TMenuItem;
@@ -56,22 +58,23 @@ type
     mnuHelp: TMenuItem;
     mnuHelpUserGuide: TMenuItem;
     mnuHelpAbout: TMenuItem;
+    pnlChatAttachmentStrip: TPanel;
 
     StatusBar1: TStatusBar;
 
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
-    sbtnNavHome: TSpeedButton;
-    sbtnNavProjects: TSpeedButton;
-    sbtnNavSessions: TSpeedButton;
-    sbtnNavBots: TSpeedButton;
-    sbtnNavTools: TSpeedButton;
-    sbtnNavTasks: TSpeedButton;
-    sbtnNavToolErrors: TSpeedButton;
-    sbtnNavMultiAgent: TSpeedButton;
-    sbtnNavExecPlans: TSpeedButton;
-    sbtnNavKnowledge: TSpeedButton;
-    sbtnNavBrain: TSpeedButton;
+    sbtnNavHome: TLcaNavRailButton;
+    sbtnNavProjects: TLcaNavRailButton;
+    sbtnNavSessions: TLcaNavRailButton;
+    sbtnNavBots: TLcaNavRailButton;
+    sbtnNavTools: TLcaNavRailButton;
+    sbtnNavTasks: TLcaNavRailButton;
+    sbtnNavToolErrors: TLcaNavRailButton;
+    sbtnNavMultiAgent: TLcaNavRailButton;
+    sbtnNavExecPlans: TLcaNavRailButton;
+    sbtnNavKnowledge: TLcaNavRailButton;
+    sbtnNavBrain: TLcaNavRailButton;
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
     lblNavTitle: TLabel;
@@ -174,6 +177,7 @@ type
     procedure MnuHelpUserGuideClick(Sender: TObject);
     procedure MnuHelpAboutClick(Sender: TObject);
     procedure NavRailBtnClick(Sender: TObject);
+    procedure ChkChatAllowModifyOutsideClick(Sender: TObject);
   private
     FChatSessionTabIds: TStringList;
     FState: TWorkspaceState;
@@ -191,7 +195,7 @@ type
     FTerminalChromeLayout: Boolean;
     FFormChrome: TLcaFormChrome;
 
-    FNavRailBtns: array[TNavigationItem] of TSpeedButton;
+    FNavRailBtns: array[TNavigationItem] of TLcaNavRailButton;
     FNavContent: TNavContentControl;
     FChatPanel: TChatPanel;
     FSyntaxSchemes: TSyntaxSchemeRegistry;
@@ -227,6 +231,8 @@ type
     procedure UpdateSessionCaption;
     function AgentStateIsRunning(AState: TAgentState): Boolean;
     procedure ApplySessionComposerState;
+    procedure ApplyAllowModifyOutsideToSession(const ASessionId: string; AValue: Boolean);
+    procedure LoadAllowModifyOutsideForSession(const ASessionId: string);
     procedure ActivateWorkspace(const AWorkspaceId: string);
     procedure DeactivateWorkspace;
     function AddOrActivateFolder(const ADisplayName, AFolderPath: string): Boolean;
@@ -283,6 +289,9 @@ type
     procedure SyncTerminalWorkingDirectory;
     procedure ScheduleDeferredTerminalStart;
     procedure DeferredEnsureTerminal(Data: PtrInt);
+    procedure DeferredEnforceHiddenPageTabs(Data: PtrInt);
+    procedure DeferredRefreshThemedChromeButtons(Data: PtrInt);
+    procedure RefreshThemedButtonsRecursive(ARoot: TWinControl);
     procedure ScheduleTerminalStartRetry;
     procedure TerminalRetryTimer(Sender: TObject);
     procedure TerminalStatus(Sender: TObject; const AMessage: string);
@@ -343,7 +352,7 @@ var
 implementation
 
 uses
-  uExecutionDetailHtml, frmSplash;
+  uExecutionDetailHtml, frmSplash, uAppIcon;
 
 {$R *.lfm}
 
@@ -393,16 +402,58 @@ begin
     FState.ContextWindowTokens, FState.SummarizeThreshold);
 end;
 
+procedure TLazyCodingAgentForm.ApplyAllowModifyOutsideToSession(const ASessionId: string;
+  AValue: Boolean);
+var
+  Eng: TAgentEngine;
+begin
+  if (ASessionId = '') or not Assigned(ActiveStore) then Exit;
+  ActiveStore.SetAllowModifyOutside(ASessionId, AValue);
+  if Assigned(FActiveHub) then begin
+    Eng := FActiveHub.EngineFor(ASessionId);
+    if Assigned(Eng) then
+      Eng.Context.AllowModifyOutsideWorkspace := AValue;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.LoadAllowModifyOutsideForSession(const ASessionId: string);
+var
+  Info: TChatSessionInfo;
+  Value: Boolean;
+  Eng: TAgentEngine;
+begin
+  Value := False;
+  if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(ASessionId, Info) then
+    Value := Info.AllowModifyOutside;
+  if Assigned(FChatPanel) then
+    FChatPanel.SetAllowModifyOutsideChecked(Value);
+  if Assigned(FActiveHub) then begin
+    Eng := FActiveHub.GetOrCreateEngine(ASessionId);
+    Eng.Context.AllowModifyOutsideWorkspace := Value;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.ChkChatAllowModifyOutsideClick(Sender: TObject);
+begin
+  if not Assigned(FChatPanel) then Exit;
+  if FCurrentSessionId = '' then Exit;
+  if Assigned(FActiveHub) and FActiveHub.IsSessionRunning(FCurrentSessionId) then Exit;
+  ApplyAllowModifyOutsideToSession(FCurrentSessionId, FChatPanel.GetAllowModifyOutsideChecked);
+end;
+
 procedure TLazyCodingAgentForm.ApplySessionComposerState;
 var
   Info: TChatSessionInfo;
   Archived: Boolean;
+  Running: Boolean;
 begin
   if not Assigned(FChatPanel) then Exit;
   Archived := False;
+  Running := Assigned(FActiveHub) and (FCurrentSessionId <> '') and
+    FActiveHub.IsSessionRunning(FCurrentSessionId);
   if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(FCurrentSessionId, Info) then
     Archived := Info.Archived;
-  if Archived then
+  if Archived or Running then
     FChatPanel.SetComposerEnabled(False)
   else
     FChatPanel.SetComposerEnabled(True);
@@ -427,6 +478,7 @@ begin
     FChatPanel.ReloadFromMessages(Msgs, FState.DebuggingMode);
     FChatPanel.SetRunning(E.IsRunActive);
   end;
+  LoadAllowModifyOutsideForSession(ASessionId);
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
   BindToolErrorLogToNav(ASessionId);
@@ -539,6 +591,7 @@ end;
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
   ReportSplashLoadProgress(5);
+  ApplyOwlApplicationIcon;
   ApplyInitialWindowSize;
   Caption := 'LazyCodingAgent — AI Workspace';
   FUpdatingState := False;
@@ -643,6 +696,14 @@ begin
     FDeferThemesUntilShown := False;
     ApplyAllThemes;
     ApplyEditorTheme;
+    EnforcePageControlHiddenTabs(pgcCenter);
+    EnforcePageControlHiddenTabs(pgcUtility);
+    if Assigned(lcaCenterTabBar) then
+      lcaCenterTabBar.RefreshFromPageControl;
+    if Assigned(lcaUtilityTabBar) then
+      lcaUtilityTabBar.RefreshFromPageControl;
+    Application.QueueAsyncCall(@DeferredEnforceHiddenPageTabs, 0);
+    Application.QueueAsyncCall(@DeferredRefreshThemedChromeButtons, 0);
   end;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
@@ -666,8 +727,9 @@ begin
     Exit;
   end;
   if Assigned(FSessionHubs) and FSessionHubs.AnyRunActive then begin
-    if MessageDlg('One or more agent runs are still in progress. Stop all runs and exit?',
-      mtConfirmation, [mbYes, mbNo], 0) <> mrYes then begin
+    if LcaMessageDlg('LazyCodingAgent',
+      'One or more agent runs are still in progress. Stop all runs and exit?',
+      mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then begin
       CanClose := False;
       Exit;
     end;
@@ -728,7 +790,7 @@ end;
 procedure TLazyCodingAgentForm.InitNavRailButtons;
 var
   Nav: TNavigationItem;
-  Btn: TSpeedButton;
+  Btn: TLcaNavRailButton;
 begin
   FNavRailBtns[niHome] := sbtnNavHome;
   FNavRailBtns[niProjects] := sbtnNavProjects;
@@ -751,25 +813,19 @@ end;
 
 procedure TLazyCodingAgentForm.NavRailBtnClick(Sender: TObject);
 begin
-  if Sender is TSpeedButton then
-    FState.SetNavigation(TNavigationItem(TSpeedButton(Sender).Tag));
+  if Sender is TLcaNavRailButton then
+    FState.SetNavigation(TNavigationItem(TLcaNavRailButton(Sender).Tag));
 end;
 
 procedure TLazyCodingAgentForm.UpdateNavRailSelection;
 var
   Nav: TNavigationItem;
-  Btn: TSpeedButton;
-  P: TThemePalette;
+  Btn: TLcaNavRailButton;
 begin
-  P := ThemePalette(FState.Theme);
   for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
     Btn := FNavRailBtns[Nav];
     if not Assigned(Btn) then Continue;
-    Btn.Down := Nav = FState.Navigation;
-    if Nav = FState.Navigation then
-      Btn.Font.Color := P.Accent
-    else
-      Btn.Font.Color := P.TextMuted;
+    Btn.Active := Nav = FState.Navigation;
   end;
 end;
 
@@ -935,7 +991,7 @@ begin
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
     lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop,
-    btnChatAttachImage, pnlChatAttachmentStrip);
+    btnChatAttachImage, pnlChatAttachmentStrip, chkChatAllowModifyOutside);
   FChatPanel.OnPrompt := @ChatPrompt;
   FChatPanel.OnModeChange := @ChatModeChange;
   FChatPanel.OnModelChange := @ChatModelChange;
@@ -1121,6 +1177,40 @@ begin
   Application.QueueAsyncCall(@DeferredEnsureTerminal, 0);
 end;
 
+procedure TLazyCodingAgentForm.DeferredEnforceHiddenPageTabs(Data: PtrInt);
+begin
+  EnforcePageControlHiddenTabs(pgcCenter);
+  EnforcePageControlHiddenTabs(pgcUtility);
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
+  if Assigned(lcaUtilityTabBar) then
+    lcaUtilityTabBar.RefreshFromPageControl;
+end;
+
+procedure TLazyCodingAgentForm.RefreshThemedButtonsRecursive(ARoot: TWinControl);
+var
+  I: Integer;
+  C: TControl;
+begin
+  if not Assigned(ARoot) then Exit;
+  for I := 0 to ARoot.ControlCount - 1 do begin
+    C := ARoot.Controls[I];
+    if C is TLcaThemedButton then
+      TLcaThemedButton(C).ApplyTheme(FState.Theme);
+    if C is TWinControl then
+      RefreshThemedButtonsRecursive(TWinControl(C));
+  end;
+end;
+
+procedure TLazyCodingAgentForm.DeferredRefreshThemedChromeButtons(Data: PtrInt);
+begin
+  if csDesigning in ComponentState then Exit;
+  if csDestroying in ComponentState then Exit;
+  if not HandleAllocated then Exit;
+  if not Assigned(pnlMainContainer) then Exit;
+  RefreshThemedButtonsRecursive(pnlMainContainer);
+end;
+
 procedure TLazyCodingAgentForm.DeferredEnsureTerminal(Data: PtrInt);
 begin
   FTerminalStartQueued := False;
@@ -1286,6 +1376,8 @@ begin
 
   pnlNavChrome.Color := P.HeaderBg;
   pnlNavChrome.Font.Color := P.Text;
+  if Assigned(pnlNavContent) then
+    pnlNavContent.Color := P.Surface;
   pnlChatChrome.Color := P.HeaderBg;
   pnlReservedChrome.Color := P.HeaderBg;
   pnlUtilityChrome.Color := P.HeaderBg;
@@ -1373,6 +1465,7 @@ begin
     OpenUtilityExecutionDetailTab;
   end else
     FExecutionLogFollowLive := False;
+  Eng.Context.AllowModifyOutsideWorkspace := FChatPanel.GetAllowModifyOutsideChecked;
   FChatPanel.SetRunning(True);
   if not Eng.StartRunAsync(APrompt, AAttachments, AMode, AModel) then
     FChatPanel.SetRunning(False);
@@ -1735,10 +1828,13 @@ procedure TLazyCodingAgentForm.PlanBuildRequested(Sender: TObject; const APlanPa
   APlanContent, AModelId: string);
 var
   Prompt, Sid, Title: string;
+  AllowOutside: Boolean;
 begin
   if not FState.HasActiveWorkspace then Exit;
   if not Assigned(FChatPanel) then Exit;
   if Trim(AModelId) = '' then Exit;
+  if not TPlanBuildConfirmForm.Execute(Self, FState.Theme, AllowOutside) then
+    Exit;
 
   FState.SetModel(AModelId);
   FState.SetMode(wmAgent);
@@ -1754,6 +1850,7 @@ begin
   FCurrentSessionId := Sid;
   ActiveStore.SetLastSessionId(Sid);
   FActiveHub.GetOrCreateEngine(Sid);
+  ApplyAllowModifyOutsideToSession(Sid, AllowOutside);
   BindSessionToUI(Sid);
   UpdateSessionCaption;
 
@@ -1854,7 +1951,7 @@ begin
   SaveCurrentSession;
   FRegistry.Save;
   FState.Save;
-  ShowMessage('Workspace configuration saved.');
+  LcaShowMessage('Workspace configuration saved.', FState.Theme);
 end;
 
 procedure TLazyCodingAgentForm.MnuFileExitClick(Sender: TObject);
@@ -1894,7 +1991,8 @@ end;
 procedure TLazyCodingAgentForm.MnuWorkspaceProjectRulesClick(Sender: TObject);
 begin
   if Trim(FState.WorkspaceRoot) = '' then begin
-    ShowMessage('Set a workspace project folder first (Settings or File → Open Project Folder).');
+    LcaShowMessage('Set a workspace project folder first (Settings or File → Open Project Folder).',
+      FState.Theme);
     Exit;
   end;
   TWorkspaceRulesForm.Execute(Self, FState.Theme, FState.WorkspaceRoot);
@@ -1907,9 +2005,9 @@ end;
 
 procedure TLazyCodingAgentForm.MnuHelpAboutClick(Sender: TObject);
 begin
-  ShowMessage('LazyCodingAgent v1.0'#13#10 +
+  LcaShowMessage('LazyCodingAgent v1.0'#13#10 +
               'Standalone Desktop AI Coding Assistant'#13#10 +
-              'Built with Free Pascal & Lazarus LCL');
+              'Built with Free Pascal & Lazarus LCL', FState.Theme);
 end;
 
 procedure TLazyCodingAgentForm.ApplyWorkspaceChatVisibility;
@@ -2060,7 +2158,8 @@ begin
     Exit;
   end;
   if not DirectoryExists(Entry.FolderPath) then begin
-    MessageDlg('Workspace folder is missing: ' + Entry.FolderPath, mtWarning, [mbOK], 0);
+    LcaMessageDlg('LazyCodingAgent', 'Workspace folder is missing: ' + Entry.FolderPath,
+      mtWarning, [mbOK], FState.Theme);
     DeactivateWorkspace;
     Exit;
   end;
@@ -2134,9 +2233,10 @@ var
   WasActive: Boolean;
 begin
   if not FRegistry.FindById(AWorkspaceId, Entry) then Exit;
-  if MessageDlg('Remove workspace "' + Entry.DisplayName + '" from the list?'#13#10 +
+  if LcaMessageDlg('LazyCodingAgent',
+    'Remove workspace "' + Entry.DisplayName + '" from the list?'#13#10 +
     'The project folder on disk will not be deleted.',
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then
     Exit;
 
   WasActive := SameText(FState.ActiveWorkspaceId, AWorkspaceId);
@@ -2171,7 +2271,7 @@ var
   Sid: string;
 begin
   if not FState.HasActiveWorkspace then begin
-    ShowMessage('Select a workspace first.');
+    LcaShowMessage('Select a workspace first.', FState.Theme);
     Exit;
   end;
   EnsureActiveHub;
@@ -2251,7 +2351,8 @@ var
   NewId: string;
 begin
   if not FState.HasActiveWorkspace or not Assigned(ActiveStore) then Exit;
-  if MessageDlg('Permanently delete this chat session?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if LcaMessageDlg('LazyCodingAgent', 'Permanently delete this chat session?',
+    mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then
     Exit;
   Store := ActiveStore;
   if Assigned(FActiveHub) then
@@ -2281,7 +2382,7 @@ var
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
-    ShowMessage('File not found.');
+    LcaShowMessage('File not found.', FState.Theme);
     Exit;
   end;
   FMarkdownPath := Path;
@@ -2333,7 +2434,7 @@ var
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
-    ShowMessage('File not found.');
+    LcaShowMessage('File not found.', FState.Theme);
     Exit;
   end;
   if Assigned(FFileEditor) and FFileEditor.Modified and
@@ -2342,7 +2443,7 @@ begin
       Exit;
   if not Assigned(FFileEditor) then Exit;
   if not FFileEditor.LoadFile(Path) then begin
-    ShowMessage('Could not open file.');
+    LcaShowMessage('Could not open file.', FState.Theme);
     Exit;
   end;
   tsEditor.Caption := ExtractFileName(Path);
@@ -2445,7 +2546,7 @@ end;
 procedure TLazyCodingAgentForm.MnuFileSaveFileClick(Sender: TObject);
 begin
   if not SaveActiveEditorFile then
-    ShowMessage('No file editor tab is active.');
+    LcaShowMessage('No file editor tab is active.', FState.Theme);
 end;
 
 end.

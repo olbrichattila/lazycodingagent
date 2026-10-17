@@ -75,7 +75,7 @@ function DefSubclassProc(hWnd: HWND; uMsg: UINT; wParam: WPARAM; lParam: LPARAM)
 procedure SetWindowTheme(hwnd: HWND; pszSubAppName, pszSubIdList: PWideChar); stdcall;
   external 'uxtheme.dll' name 'SetWindowTheme';
 
-function ButtonDisplayCaption(const ACaption: string): string;
+function Win32ButtonDisplayCaption(const ACaption: string): string;
 var
   P: Integer;
 begin
@@ -197,7 +197,7 @@ end;
 
 function TWin32ThemedButtonPaint.DisplayCaption: string;
 begin
-  Result := ButtonDisplayCaption(FButton.Caption);
+  Result := Win32ButtonDisplayCaption(FButton.Caption);
 end;
 
 procedure TWin32ThemedButtonPaint.PaintClient(HDC: HDC);

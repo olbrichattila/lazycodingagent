@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
-  uAppTypes, LcaTheme;
+  uAppTypes, LcaTheme, LcaThemedMessageBox;
 
 type
   { TEditSavedModelForm }
@@ -56,6 +56,7 @@ end;
 
 procedure TEditSavedModelForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
 end;
 
@@ -80,7 +81,7 @@ end;
 procedure TEditSavedModelForm.btnOKClick(Sender: TObject);
 begin
   if Trim(edtModelId.Text) = '' then begin
-    ShowMessage('Model id is required.');
+    LcaShowMessage('Model id is required.', FTheme);
     Exit;
   end;
   ModalResult := mrOk;

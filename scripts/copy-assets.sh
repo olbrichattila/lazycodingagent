@@ -9,5 +9,15 @@ if [ ! -d "$SRC" ]; then
   echo "copy-assets: missing ${SRC}" >&2
   exit 0
 fi
-rm -rf "$DEST"
-cp -r "$SRC" "$DEST"
+SRC_REAL="$(cd "$SRC" && pwd)"
+DEST_REAL="$(mkdir -p "$DEST" && cd "$DEST" && pwd)"
+if [ "$SRC_REAL" != "$DEST_REAL" ]; then
+  rm -rf "$DEST"
+  cp -r "$SRC" "$DEST"
+fi
+OWL_RES="${PROJ_DIR}/packages/LcaDesignSystem/res"
+for f in owl_icon.bmp owl_icon.png; do
+  if [ -f "${OWL_RES}/${f}" ]; then
+    cp -f "${OWL_RES}/${f}" "${DEST}/${f}"
+  fi
+done

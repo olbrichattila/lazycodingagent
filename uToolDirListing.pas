@@ -24,7 +24,7 @@ var
   R: TSearchRec;
   I: Integer;
 begin
-  Root := ResolveProjectPath(A.Get('path', '.'));
+  Root := ResolveProjectPath(A.Get('path', '.'), paRead);
   if not DirectoryExists(Root) then raise Exception.Create('Directory does not exist: ' + Root);
   Hidden := A.Get('include_hidden', False);
   Pattern := A.Get('pattern', '**/*');
@@ -64,7 +64,7 @@ begin
         Entry.Add('type', 'symlink');
         Entry.Add('size', 0);
       end
-      else if DirectoryExists(ResolveProjectPath(Full)) then
+      else if DirectoryExists(ResolveProjectPath(Full, paRead)) then
       begin
         Entry.Add('type', 'directory');
         Entry.Add('size', 0);

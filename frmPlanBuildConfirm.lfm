@@ -1,0 +1,67 @@
+object PlanBuildConfirmForm: TPlanBuildConfirmForm
+  Left = 360
+  Height = 220
+  Top = 240
+  Width = 520
+  BorderStyle = bsDialog
+  Caption = 'Build plan'
+  ClientHeight = 180
+  ClientWidth = 504
+  Font.Name = 'Segoe UI'
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnShow = FormShow
+  LCLVersion = '4.8.0.0'
+  object lblMessage: TLabel
+    Left = 16
+    Height = 48
+    Top = 16
+    Width = 472
+    Anchors = [akLeft, akTop, akRight]
+    AutoSize = False
+    Caption = 'Start an Agent session to implement this plan. File writes stay inside the working directory unless you enable the option below.'
+    WordWrap = True
+  end
+  object chkAllowModifyOutside: TCheckBox
+    Left = 16
+    Height = 24
+    Top = 80
+    Width = 472
+    Anchors = [akLeft, akTop, akRight]
+    Caption = 'Allow modify outside the working directory'
+    TabOrder = 0
+  end
+  object pnlBottom: TPanel
+    Left = 0
+    Height = 44
+    Top = 136
+    Width = 504
+    Align = alBottom
+    BevelOuter = bvNone
+    ClientHeight = 44
+    ClientWidth = 504
+    TabOrder = 1
+    object btnBuild: TLcaThemedButton
+      ButtonRole = tbrPrimary
+      Left = 320
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Caption = 'Build'
+      OnClick = btnBuildClick
+      TabOrder = 0
+    end
+    object btnCancel: TLcaThemedButton
+      ButtonRole = tbrCancel
+      Left = 408
+      Height = 28
+      Top = 8
+      Width = 80
+      Anchors = [akTop, akRight]
+      Caption = 'Cancel'
+      OnClick = btnCancelClick
+      TabOrder = 1
+    end
+  end
+end

@@ -95,6 +95,7 @@ begin
           ModeStr := A.Get('mode', 'Agent');
           Mode := ParseMode(ModeStr);
           Name := A.Get('tool', '');
+          Context.AllowModifyOutsideWorkspace := A.Get('allow_modify_outside', False);
           Context.SetCancelDeadline(0);
           if A.Get('cancel_after_ms', 0) > 0 then
             Context.SetCancelDeadline(GetTickCount64 + QWord(A.Get('cancel_after_ms', 0)));

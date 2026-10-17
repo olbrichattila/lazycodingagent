@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
-  ComCtrls, LCLType, uAppTypes, LcaTheme, LcaThemedButton, uCodingAgentPresets,
+  ComCtrls, LCLType, uAppTypes, LcaTheme, LcaThemedButton, LcaThemedMessageBox,
+  uCodingAgentPresets,
   uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
 
 type
@@ -550,7 +551,7 @@ begin
     niProjects:
       begin
         if Trim(FWorkspaceRoot) = '' then begin
-          ShowMessage('Select a workspace first.');
+          LcaShowMessage('Select a workspace first.', FTheme);
           Exit;
         end;
         PopulateFileTree(FWorkspaceRoot);
@@ -560,7 +561,7 @@ begin
       if Assigned(FOnSessionNew) then
         FOnSessionNew(Self);
     niBots:
-      ShowMessage('Configure Agent Models in Settings menu.');
+      LcaShowMessage('Configure Agent Models in Settings menu.', FTheme);
     niTools:
       if Assigned(FOnClearExecutionLog) then
         FOnClearExecutionLog(Self);

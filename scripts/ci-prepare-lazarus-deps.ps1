@@ -21,6 +21,31 @@ function Resolve-LazBuild {
     throw 'ci-prepare-lazarus-deps: lazbuild not found'
 }
 
+function Test-LazarusRoot {
+    param([string]$Root)
+    if (-not $Root) { return $false }
+    return Test-Path -LiteralPath (Join-Path $Root 'components\synedit\synedit.lpk')
+}
+
+function Resolve-LazarusRoot {
+    param([string]$LazBuildExe)
+
+    $root = Split-Path -Parent $LazBuildExe
+    if (Test-LazarusRoot $root) { return $root }
+
+    $roots = @(
+        $env:LAZARUS_DIR,
+        'C:\lazarus',
+        'C:\Program Files\Lazarus'
+    ) | Where-Object { $_ }
+
+    foreach ($candidate in $roots) {
+        if (Test-LazarusRoot $candidate) { return $candidate }
+    }
+
+    throw "ci-prepare-lazarus-deps: Lazarus root not found (lazbuild=$LazBuildExe, LAZARUS_DIR=$($env:LAZARUS_DIR))"
+}
+
 function Link-And-Build {
     param([string]$Lpk, [string]$Laz)
     if (-not (Test-Path -LiteralPath $Lpk)) { throw "missing $Lpk" }
@@ -31,22 +56,10 @@ function Link-And-Build {
 }
 
 $LazBuildExe = Resolve-LazBuild -Candidate $LazBuild
+$LazarusRoot = Resolve-LazarusRoot -LazBuildExe $LazBuildExe
 
-$roots = @(
-    $env:LAZARUS_DIR,
-    'C:\lazarus',
-    'C:\Program Files\Lazarus'
-) | Where-Object { $_ }
-
-$synLpk = $null
-foreach ($root in $roots) {
-    $candidate = Join-Path $root 'components\synedit\synedit.lpk'
-    if (Test-Path -LiteralPath $candidate) {
-        $synLpk = $candidate
-        break
-    }
-}
-if (-not $synLpk) { throw 'ci-prepare-lazarus-deps: SynEdit .lpk not found' }
+$synLpk = Join-Path $LazarusRoot 'components\synedit\synedit.lpk'
+$iproLpk = Join-Path $LazarusRoot 'components\turbopower_ipro\turbopoweripro.lpk'
 
 Link-And-Build -Lpk $synLpk -Laz $LazBuildExe
 $dsgn = Join-Path (Split-Path $synLpk) 'syneditdsgn.lpk'
@@ -54,16 +67,9 @@ if (Test-Path -LiteralPath $dsgn) {
     Link-And-Build -Lpk $dsgn -Laz $LazBuildExe
 }
 
-$iproDir = if ($env:TURBOPOWER_IPRO_DIR) { $env:TURBOPOWER_IPRO_DIR } else { Join-Path $env:RUNNER_TEMP 'IPro' }
-if (-not (Test-Path -LiteralPath (Join-Path $iproDir '.git'))) {
-    if (Test-Path -LiteralPath $iproDir) { Remove-Item -LiteralPath $iproDir -Recurse -Force }
-    git clone --depth 1 https://github.com/TurboPack/IPro.git $iproDir
+if (-not (Test-Path -LiteralPath $iproLpk)) {
+    throw "ci-prepare-lazarus-deps: TurboPower IPro .lpk not found at $iproLpk (LAZARUS_ROOT=$LazarusRoot)"
 }
-$iproLpk = Get-ChildItem -LiteralPath $iproDir -Recurse -Filter 'turbopoweripro.lpk' -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $iproLpk) {
-    $iproLpk = Get-ChildItem -LiteralPath $iproDir -Recurse -Filter '*.lpk' -ErrorAction SilentlyContinue | Select-Object -First 1
-}
-if (-not $iproLpk) { throw 'ci-prepare-lazarus-deps: TurboPower IPro .lpk not found' }
-Link-And-Build -Lpk $iproLpk.FullName -Laz $LazBuildExe
+Link-And-Build -Lpk $iproLpk -Laz $LazBuildExe
 
-Write-Host 'ci-prepare-lazarus-deps: SynEdit and TurboPower IPro linked.'
+Write-Host "ci-prepare-lazarus-deps: SynEdit and TurboPower IPro linked (LAZARUS_ROOT=$LazarusRoot)."

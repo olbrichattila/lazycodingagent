@@ -20,9 +20,11 @@ type
     procedure FormShow(Sender: TObject);
   private
     FTheme: TThemeKind;
+    FLoadPercent: Integer;
     procedure LoadSplashPictureIfNeeded;
     procedure FitClientToImage(AWidth, AHeight: Integer);
     procedure StyleProgressBar;
+    procedure PushProgressToWidget(APercent: Integer);
   public
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetLoadProgress(APercent: Integer);
@@ -129,6 +131,33 @@ begin
   pnlClient.Color := P.Background;
 end;
 
+procedure TSplashForm.PushProgressToWidget(APercent: Integer);
+var
+  V: Integer;
+begin
+  if APercent < progLoad.Min then
+    V := progLoad.Min
+  else if APercent > progLoad.Max then
+    V := progLoad.Max
+  else
+    V := APercent;
+  progLoad.Position := V;
+  if not progLoad.HandleAllocated then
+    Exit;
+  { LCL skips ApplyChanges when Position is unchanged; Qt/GTK may still show a stale fill. }
+  if progLoad.Position = V then begin
+    if V < progLoad.Max then
+      progLoad.Position := V + 1
+    else if V > progLoad.Min then
+      progLoad.Position := V - 1
+    else
+      progLoad.Max := 101;
+    progLoad.Max := 100;
+  end;
+  progLoad.Position := V;
+  progLoad.Update;
+end;
+
 procedure TSplashForm.StyleProgressBar;
 var
   P: TThemePalette;
@@ -136,14 +165,17 @@ begin
   P := ThemePalette(FTheme);
   progLoad.Min := 0;
   progLoad.Max := 100;
-  progLoad.Position := 0;
   progLoad.Smooth := True;
+  {$IFDEF WINDOWS}
   progLoad.Color := P.SurfaceAlt;
+  {$ENDIF}
+  PushProgressToWidget(FLoadPercent);
 end;
 
 procedure TSplashForm.FormCreate(Sender: TObject);
 begin
   FTheme := tkDark;
+  FLoadPercent := 0;
   imgSplash.Stretch := True;
   imgSplash.Proportional := True;
   imgSplash.Center := True;
@@ -170,14 +202,10 @@ end;
 
 procedure TSplashForm.SetLoadProgress(APercent: Integer);
 begin
-  if APercent < progLoad.Min then
-    progLoad.Position := progLoad.Min
-  else if APercent > progLoad.Max then
-    progLoad.Position := progLoad.Max
-  else
-    progLoad.Position := APercent;
+  FLoadPercent := APercent;
+  PushProgressToWidget(APercent);
   if HandleAllocated then
-    progLoad.Update;
+    Update;
   Application.ProcessMessages;
 end;
 
@@ -193,7 +221,9 @@ end;
 
 procedure TSplashForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
+  PushProgressToWidget(FLoadPercent);
 end;
 
 end.

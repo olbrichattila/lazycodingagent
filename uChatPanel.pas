@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms, Buttons,
   LCLType, Clipbrd, fpjson, jsonparser,
-  uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, uAgentTypes, uWorkspaceState,
+  uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, LcaThemedMessageBox, uAgentTypes,
+  uWorkspaceState,
   LcaMarkdownView;
 
 type
@@ -47,6 +48,8 @@ type
     FStopBtn: TLcaThemedButton;
     FAttachBtn: TLcaThemedButton;
     FAttachmentStrip: TPanel;
+    FAllowModifyOutsideCheck: TCheckBox;
+    FUpdatingAllowModifyOutside: Boolean;
 
     FSessionId: string;
     FPendingImagePaths: TStringList;
@@ -77,7 +80,10 @@ type
     destructor Destroy; override;
     procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
       APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-      ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel);
+      ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
+      AAllowModifyOutside: TCheckBox);
+    procedure SetAllowModifyOutsideChecked(AValue: Boolean);
+    function GetAllowModifyOutsideChecked: Boolean;
     procedure SetSessionId(const ASessionId: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
@@ -175,6 +181,7 @@ procedure TChatPanel.EnsureHistoryView;
 var
   I: Integer;
   C: TControl;
+  OwnerComp: TComponent;
 begin
   if Assigned(FHistoryView) then Exit;
   if not Assigned(FHistoryHost) then Exit;
@@ -185,11 +192,20 @@ begin
       Exit;
     end;
   end;
+  if FHistoryHost.Owner is TComponent then
+    OwnerComp := TComponent(FHistoryHost.Owner)
+  else
+    OwnerComp := Self;
+  FHistoryView := TLcaMarkdownView.Create(OwnerComp);
+  FHistoryView.Parent := FHistoryHost;
+  FHistoryView.Align := alClient;
+  FHistoryView.ApplyTheme(FTheme);
 end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
   APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-  ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel);
+  ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
+  AAllowModifyOutside: TCheckBox);
 var
   M: TWorkspaceMode;
 begin
@@ -205,6 +221,7 @@ begin
   FStopBtn := AStopBtn;
   FAttachBtn := AAttachBtn;
   FAttachmentStrip := AAttachmentStrip;
+  FAllowModifyOutsideCheck := AAllowModifyOutside;
 
   EnsureHistoryView;
 
@@ -254,11 +271,11 @@ begin
   Expanded := ExpandFileName(Trim(APath));
   if not FileExists(Expanded) then Exit;
   if not IsAllowedImageFileName(Expanded) then begin
-    ShowMessage('Unsupported image type (use PNG, JPEG, WebP, or GIF).');
+    LcaShowMessage('Unsupported image type (use PNG, JPEG, WebP, or GIF).', FTheme);
     Exit;
   end;
   if FPendingImagePaths.Count >= CHAT_IMAGE_MAX_COUNT then begin
-    ShowMessage(Format('At most %d images per message.', [CHAT_IMAGE_MAX_COUNT]));
+    LcaShowMessage(Format('At most %d images per message.', [CHAT_IMAGE_MAX_COUNT]), FTheme);
     Exit;
   end;
   if FPendingImagePaths.IndexOf(Expanded) >= 0 then
@@ -349,7 +366,7 @@ begin
         Key := 0;
     except
       on E: Exception do
-        ShowMessage('Could not paste image: ' + E.Message);
+        LcaShowMessage('Could not paste image: ' + E.Message, FTheme);
     end;
   finally
     Pic.Free;
@@ -445,7 +462,7 @@ procedure TChatPanel.RefreshHistoryView;
 begin
   EnsureHistoryView;
   if Assigned(FHistoryView) then
-    FHistoryView.SetMarkdown(FHistoryText);
+    FHistoryView.SetMarkdown(FHistoryText, True);
 end;
 
 procedure TChatPanel.AppendToHistory(const ARoleLabel, ABody: string);
@@ -694,6 +711,24 @@ begin
     FOnModelChange(Self, FModel);
 end;
 
+procedure TChatPanel.SetAllowModifyOutsideChecked(AValue: Boolean);
+begin
+  FUpdatingAllowModifyOutside := True;
+  try
+    if Assigned(FAllowModifyOutsideCheck) then
+      FAllowModifyOutsideCheck.Checked := AValue;
+  finally
+    FUpdatingAllowModifyOutside := False;
+  end;
+end;
+
+function TChatPanel.GetAllowModifyOutsideChecked: Boolean;
+begin
+  if Assigned(FAllowModifyOutsideCheck) then
+    Exit(FAllowModifyOutsideCheck.Checked);
+  Result := False;
+end;
+
 procedure TChatPanel.SetComposerEnabled(AEnabled: Boolean);
 begin
   if Assigned(FPromptMemo) then
@@ -706,6 +741,8 @@ begin
     FSendBtn.Enabled := AEnabled and not FIsRunning;
   if Assigned(FAttachBtn) then
     FAttachBtn.Enabled := AEnabled and not FIsRunning;
+  if Assigned(FAllowModifyOutsideCheck) then
+    FAllowModifyOutsideCheck.Enabled := AEnabled and not FIsRunning;
 end;
 
 procedure TChatPanel.ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);
@@ -736,7 +773,7 @@ begin
 
   Err := FinalizeAttachmentsForSend(Attachments);
   if Err <> '' then begin
-    ShowMessage(Err);
+    LcaShowMessage(Err, FTheme);
     Exit;
   end;
 

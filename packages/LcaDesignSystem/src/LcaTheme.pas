@@ -20,6 +20,7 @@ type
     TitleBarBg: TColor;      // Frameless title bar (menu + window buttons)
     MenuFlyoutBg: TColor;    // Main menu dropdown panel
     RailBg: TColor;          // Left navigation rail background
+    RailActiveBg: TColor;    // Selected nav rail cell
     Border: TColor;          // Visible crisp boundary borders
     BorderStrong: TColor;    // Prominent boundary / active splitters
     Text: TColor;            // Primary high-contrast text
@@ -94,6 +95,8 @@ procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
 procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
+{ Re-apply ShowTabs=False for TLcaThemedPageTabBar hosts (GTK may ignore until relayout). }
+procedure EnforcePageControlHiddenTabs(APageControl: TPageControl);
 procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
@@ -121,6 +124,7 @@ procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
 procedure ConfigureThemedExecDetailMemo(AMemo: TCustomMemo; ATheme: TThemeKind);
 procedure SyncThemedMemoWidget(AMemo: TCustomMemo);
 procedure SyncThemedEditWidget(AEdit: TCustomEdit);
+procedure SyncThemedListBoxWidget(AList: TCustomListBox);
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
@@ -150,7 +154,7 @@ var
 implementation
 
 uses
-  Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox
+  Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox, LcaThemedButtonPaint
   {$IFDEF WINDOWS}, LcaThemeWin32Buttons, LcaThemeWin32ScrollBars{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
@@ -514,6 +518,7 @@ begin
     Result.TitleBarBg     := RGBToColor(0, 0, 0);         // #000000
     Result.MenuFlyoutBg   := RGBToColor(28, 32, 50);     // #1C2032 — above Surface / Background
     Result.RailBg         := RGBToColor(6, 8, 14);        // #06080E
+    Result.RailActiveBg   := RGBToColor(14, 16, 28);      // #0E101C (Surface)
     Result.Border         := RGBToColor(45, 55, 90);      // #2D375A
     Result.BorderStrong   := RGBToColor(0, 200, 255);     // cyan glow edge
     Result.Text           := RGBToColor(240, 248, 255);   // #F0F8FF
@@ -532,7 +537,8 @@ begin
     Result.HeaderBg       := RGBToColor(240, 242, 245);   // #F0F2F5
     Result.TitleBarBg     := RGBToColor(240, 242, 245);   // match header (light)
     Result.MenuFlyoutBg   := RGBToColor(240, 242, 245);   // #F0F2F5 — gray vs white Surface / page bg
-    Result.RailBg         := RGBToColor(235, 237, 242);   // #EBEDF2
+    Result.RailBg         := RGBToColor(255, 255, 255);   // idle nav cells / rail
+    Result.RailActiveBg   := RGBToColor(235, 237, 242);   // #EBEDF2 selected cell
     Result.Border         := RGBToColor(218, 222, 230);   // #DADEEC
     Result.BorderStrong   := RGBToColor(180, 186, 198);   // #B4BAC6
     Result.Text           := RGBToColor(24, 28, 36);      // #181C24
@@ -678,6 +684,33 @@ begin
   end;
 
   APageControl.Invalidate;
+  EnforcePageControlHiddenTabs(APageControl);
+end;
+
+procedure EnforcePageControlHiddenTabs(APageControl: TPageControl);
+begin
+  if not Assigned(APageControl) then Exit;
+  if csDestroying in APageControl.ComponentState then Exit;
+  if not ParentFormHandlesReady(APageControl) then Exit;
+  if not APageControl.HandleAllocated then
+    APageControl.HandleNeeded;
+  if not APageControl.HandleAllocated then Exit;
+  APageControl.ShowTabs := False;
+  {$IFDEF LCLGtk2}
+  gtk_notebook_set_show_tabs(PGtkNotebook(APageControl.Handle), GFalse);
+  gtk_notebook_set_show_border(PGtkNotebook(APageControl.Handle), GFalse);
+  {$ENDIF}
+  {$IFDEF LCLGtk3}
+  gtk_notebook_set_show_tabs(PGtkNotebook(APageControl.Handle), False);
+  gtk_notebook_set_show_border(PGtkNotebook(APageControl.Handle), False);
+  {$ENDIF}
+  {$IFDEF LCLQt5}
+  if TQtWidget(APageControl.Handle).ChildOfComplexWidget <> ccwTTabControl then begin
+    with TQtTabWidget(APageControl.Handle) do
+      if TabBar <> nil then
+        ShowTabs := False;
+  end;
+  {$ENDIF}
 end;
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
@@ -796,11 +829,6 @@ end;
 {$ENDIF}
 
 {$IFNDEF WINDOWS}
-procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
-  ARole: TThemedButtonRole);
-begin
-end;
-
 procedure ApplyWin32ThemedComboPaint(ACombo: TComboBox; ATheme: TThemeKind);
 begin
 end;
@@ -1045,7 +1073,10 @@ begin
     tbrGhost:
       begin
         ABtn.Color := P.HeaderBg;
-        ABtn.Font.Color := P.TextMuted;
+        if ATheme = tkDark then
+          ABtn.Font.Color := P.Text
+        else
+          ABtn.Font.Color := P.TextMuted;
       end;
   else
     if ATheme = tkDark then begin
@@ -1058,7 +1089,7 @@ begin
   end;
   RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ApplyWin32UnthemedButton(ABtn);
-  ApplyWin32ThemedButtonPaint(ABtn, ATheme, ARole);
+  ApplyThemedButtonPaint(ABtn, ATheme, ARole);
   RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ABtn.Invalidate;
 end;
@@ -1098,6 +1129,8 @@ begin
   AList.Font.Name := 'Segoe UI';
   AList.Font.Size := 9;
   AList.Font.Color := P.Text;
+  if AList.HandleAllocated then
+    SyncThemedListBoxWidget(AList);
   AList.Invalidate;
 end;
 
@@ -1160,6 +1193,47 @@ begin
   if not AEdit.HandleAllocated then Exit;
   AEdit.Font.Assign(AEdit.Font);
   AEdit.Invalidate;
+end;
+
+procedure SyncThemedListBoxWidget(AList: TCustomListBox);
+{$IFDEF LCLGtk2}
+var
+  Bg: TGdkColor;
+  W: PGtkWidget;
+{$ENDIF}
+{$IFDEF LCLGtk3}
+var
+  W: PGtkWidget;
+  Rgba: TGdkRGBA;
+{$ENDIF}
+{$IFDEF LCLQt5}
+var
+  QtWidget: TQtWidget;
+  Sheet: WideString;
+{$ENDIF}
+begin
+  if not Assigned(AList) then Exit;
+  if not AList.HandleAllocated then Exit;
+  {$IFDEF LCLGtk2}
+  W := PGtkWidget(Pointer(AList.Handle));
+  if W <> nil then begin
+    TColorToGdkColor(AList.Color, Bg);
+    gtk_widget_modify_bg(W, GTK_STATE_NORMAL, @Bg);
+  end;
+  {$ENDIF}
+  {$IFDEF LCLGtk3}
+  W := PGtkWidget(Pointer(AList.Handle));
+  if (W <> nil) and gdk_rgba_parse(@Rgba, PChar(ColorToStyleHex(AList.Color))) then
+    gtk_widget_override_background_color(W, GTK_STATE_FLAG_NORMAL, @Rgba);
+  {$ENDIF}
+  {$IFDEF LCLQt5}
+  QtWidget := TQtWidget(Pointer(AList.Handle));
+  Sheet := WideString(
+    'QListWidget { color: ' + ColorToStyleHex(AList.Font.Color) +
+    '; background-color: ' + ColorToStyleHex(AList.Color) + '; }');
+  QtWidget.StyleSheet := Sheet;
+  {$ENDIF}
+  AList.Invalidate;
 end;
 
 {$IFDEF LCLQt5}
@@ -1422,15 +1496,41 @@ begin
     Exit;
   end;
   {$ENDIF}
+  if AControl is TCustomListBox then begin
+    SyncThemedListBoxWidget(TCustomListBox(AControl));
+    Exit;
+  end;
   // GTK/Cocoa: scrollbars follow the OS widget theme; keep client colors via ApplyTheme.
   AControl.Invalidate;
 {$ENDIF}
+end;
+
+procedure ApplyThemedButtonsRecursive(ARoot: TWinControl; ATheme: TThemeKind);
+var
+  I: Integer;
+  C: TControl;
+  Child: TWinControl;
+begin
+  if not Assigned(ARoot) then Exit;
+  for I := 0 to ARoot.ControlCount - 1 do begin
+    C := ARoot.Controls[I];
+    if C is TLcaThemedButton then
+      TLcaThemedButton(C).ApplyTheme(ATheme)
+    else if C is TButton then
+      ApplyThemedButtonControl(TButton(C), ATheme);
+    if C is TWinControl then begin
+      Child := TWinControl(C);
+      if Child.ControlCount > 0 then
+        ApplyThemedButtonsRecursive(Child, ATheme);
+    end;
+  end;
 end;
 
 procedure ApplyFormPlatformThemes(AForm: TCustomForm; ATheme: TThemeKind);
 begin
   if not Assigned(AForm) or not AForm.HandleAllocated then Exit;
   ApplyPlatformScrollableThemeRecursive(AForm, ATheme);
+  ApplyThemedButtonsRecursive(AForm, ATheme);
 end;
 
 procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
@@ -1561,8 +1661,16 @@ begin
       TCustomEdit(C).Font.Color := P.Text;
     end else if C is TLabel then
       TLabel(C).Font.Color := P.Text
-    else if C is TPanel then
-      TPanel(C).Color := P.Surface
+    else if C is TPanel then begin
+      if Pos('Chrome', C.Name) > 0 then
+        TPanel(C).Color := P.HeaderBg
+      else
+        TPanel(C).Color := P.Surface;
+    end
+    else if C is TScrollBox then begin
+      TScrollBox(C).Color := P.Surface;
+      TScrollBox(C).ParentColor := False;
+    end
     else if C is TPageControl then
       StylePageControl(TPageControl(C), ATheme)
     else if C is TSplitter then

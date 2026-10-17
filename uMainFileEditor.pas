@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Controls, Graphics, Dialogs, LCLType,
   SynEdit, SynEditTypes, SynHighlighterAny,
-  uAppTypes, LcaTheme, uThemeHooks, uSyntaxScheme, uSynGenericClike;
+  uAppTypes, LcaTheme, LcaThemedMessageBox, uThemeHooks, uSyntaxScheme, uSynGenericClike;
 
 type
   TMainFileEditor = class
@@ -99,7 +99,8 @@ begin
     Result := True;
   except
     on E: Exception do begin
-      MessageDlg('Could not save file: ' + E.Message, mtError, [mbOK], 0);
+      LcaMessageDlg('LazyCodingAgent', 'Could not save file: ' + E.Message, mtError,
+        [mbOK], FTheme);
       Result := False;
     end;
   end;
@@ -111,8 +112,9 @@ var
 begin
   if not FModified then
     Exit(True);
-  R := MessageDlg(Format('Save changes to %s?', [ExtractFileName(FFilePath)]),
-    mtConfirmation, [mbYes, mbNo, mbCancel], 0);
+  R := LcaMessageDlg('LazyCodingAgent',
+    Format('Save changes to %s?', [ExtractFileName(FFilePath)]),
+    mtConfirmation, [mbYes, mbNo, mbCancel], FTheme);
   if R = mrCancel then
     Exit(False);
   if R = mrYes then

@@ -15,6 +15,7 @@ type
     Modified: TDateTime;
     Archived: Boolean;
     ArchivedAt: TDateTime;
+    AllowModifyOutside: Boolean;
   end;
 
   TChatSessionStore = class
@@ -42,6 +43,7 @@ type
     procedure DeleteAllForWorkspace(const AWorkspaceId: string);
     function FindSessionInfo(const ASessionId: string; out AInfo: TChatSessionInfo): Boolean;
     procedure SetSessionArchived(const ASessionId: string; AArchived: Boolean);
+    procedure SetAllowModifyOutside(const ASessionId: string; AValue: Boolean);
     procedure UpdateSessionTitle(const ASessionId, ATitle: string);
   end;
 
@@ -208,6 +210,7 @@ begin
     AInfo.ArchivedAt := SafeJsonIsoToDateTime(AObj.Get('archivedAt', ''))
   else
     AInfo.ArchivedAt := 0;
+  AInfo.AllowModifyOutside := AObj.Get('allowModifyOutside', False);
 end;
 
 { TChatSessionStore }
@@ -354,6 +357,7 @@ begin
     Info.Title := 'Chat ' + IntToStr(Length(FSessions) + 1);
   Info.Created := Now;
   Info.Modified := Info.Created;
+  Info.AllowModifyOutside := False;
 
   if ReadRootFromFile(Root) then begin
     if Root.Find('sessions') is TJSONArray then
@@ -374,6 +378,7 @@ begin
   Sess.Add('created', DateTimeToJsonIso(Info.Created));
   Sess.Add('modified', DateTimeToJsonIso(Info.Modified));
   Sess.Add('archived', False);
+  Sess.Add('allowModifyOutside', False);
   MsgArr := TJSONArray.Create;
   Sess.Add('messages', MsgArr);
   Arr.Add(Sess);
@@ -584,6 +589,37 @@ begin
         Sess.Delete('archivedAt');
       if AArchived then
         Sess.Add('archivedAt', DateTimeToJsonIso(FSessions[Idx].ArchivedAt));
+      Break;
+    end;
+    WriteRootToFile(Root);
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TChatSessionStore.SetAllowModifyOutside(const ASessionId: string; AValue: Boolean);
+var
+  Root, Sess: TJSONObject;
+  Arr: TJSONArray;
+  I, Idx: Integer;
+begin
+  EnsureLoaded;
+  Idx := IndexOfSession(ASessionId);
+  if Idx < 0 then Exit;
+
+  FSessions[Idx].AllowModifyOutside := AValue;
+
+  if not ReadRootFromFile(Root) then Exit;
+  try
+    if not (Root.Find('sessions') is TJSONArray) then Exit;
+    Arr := TJSONArray(Root.Find('sessions'));
+    for I := 0 to Arr.Count - 1 do begin
+      if not (Arr.Items[I] is TJSONObject) then Continue;
+      Sess := TJSONObject(Arr.Items[I]);
+      if not SameText(Sess.Get('id', ''), ASessionId) then Continue;
+      if Sess.Find('allowModifyOutside') <> nil then
+        Sess.Delete('allowModifyOutside');
+      Sess.Add('allowModifyOutside', AValue);
       Break;
     end;
     WriteRootToFile(Root);

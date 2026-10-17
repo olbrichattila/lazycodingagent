@@ -52,14 +52,14 @@ procedure TLcaNavRailButton.SetActive(AValue: Boolean);
 begin
   if FActive = AValue then Exit;
   FActive := AValue;
-  Down := FActive;
-  Invalidate;
+  ApplyTheme(FThemeKind);
 end;
 
 constructor TLcaNavRailButton.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   Flat := True;
+  AllowAllUp := True;
   FThemeKind := tkDark;
   FActive := False;
   Layout := blGlyphTop;
@@ -77,8 +77,6 @@ begin
     Font.Color := P.Accent
   else
     Font.Color := P.TextMuted;
-  Font.Name := 'Segoe UI';
-  Font.Size := 8;
   Invalidate;
 end;
 
@@ -86,11 +84,26 @@ procedure TLcaNavRailButton.Paint;
 var
   P: TThemePalette;
   R: TRect;
+  BgColor: TColor;
+  TextX, TextY: Integer;
 begin
-  inherited Paint;
-  if not FActive then Exit;
   P := ThemePalette(FThemeKind);
   R := ClientRect;
+  if FActive then
+    BgColor := P.RailActiveBg
+  else
+    BgColor := P.RailBg;
+
+  Canvas.Brush.Color := BgColor;
+  Canvas.FillRect(R);
+
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsClear;
+  TextX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2;
+  TextY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2;
+  Canvas.TextOut(TextX, TextY, Caption);
+
+  if not FActive then Exit;
   Canvas.Pen.Color := P.Accent;
   Canvas.Pen.Width := 3;
   Canvas.MoveTo(0, R.Top + 4);

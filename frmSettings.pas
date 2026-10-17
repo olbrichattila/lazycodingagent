@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
   LcaThemedPageTabBar,
-  uAppTypes, uAgentTypes, LcaTheme, uWorkspaceState, uWorkspaceRegistry,
+  uAppTypes, uAgentTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceState, uWorkspaceRegistry,
   
   uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager;
 
@@ -24,7 +24,7 @@ type
     tsProvider: TTabSheet;
     pnlTabProvider: TPanel;
     tsAgent: TTabSheet;
-    scrollTabAgent: TScrollBox;
+    scrAgentTab: TScrollBox;
     pnlTabAgent: TPanel;
     tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
@@ -139,6 +139,7 @@ end;
 
 procedure TSettingsForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FCurrentTheme);
   ApplyFormPlatformThemes(Self, FCurrentTheme);
 end;
 
@@ -176,9 +177,9 @@ begin
 
   ApplyThemedForm(Self, ATheme);
   pnlBottom.Color := P.Surface;
-  if Assigned(scrollTabAgent) then begin
-    scrollTabAgent.Color := P.Surface;
-    scrollTabAgent.ParentColor := False;
+  if Assigned(scrAgentTab) then begin
+    scrAgentTab.Color := P.Surface;
+    scrAgentTab.ParentColor := False;
   end;
 
   edtApiKey.Color := P.SurfaceAlt;
@@ -415,12 +416,12 @@ begin
     end;
 
     if not ListResult.Success then begin
-      ShowMessage(ListResult.ErrorMessage);
+      LcaShowMessage(ListResult.ErrorMessage, FCurrentTheme);
       Exit;
     end;
 
     if Length(ListResult.Models) = 0 then begin
-      ShowMessage('No models returned by the provider.');
+      LcaShowMessage('No models returned by the provider.', FCurrentTheme);
       Exit;
     end;
 
@@ -440,14 +441,15 @@ var
 begin
   Idx := lstModels.ItemIndex;
   if Idx < 0 then begin
-    ShowMessage('Select a model to edit.');
+    LcaShowMessage('Select a model to edit.', FCurrentTheme);
     Exit;
   end;
   Prov := CurrentDialogProvider;
   Cur := FState.GetSavedModel(Prov, Idx);
   if TEditSavedModelForm.Execute(Self, FCurrentTheme, Cur.DisplayName, Cur.ModelId, M, NewId) then begin
     if not FState.UpdateSavedModel(Prov, Idx, NewId, M) then begin
-      ShowMessage('Could not update model. The model id may already exist in this provider list.');
+      LcaShowMessage('Could not update model. The model id may already exist in this provider list.',
+        FCurrentTheme);
       Exit;
     end;
     if SameText(FDefaultModelId, Cur.ModelId) then
@@ -464,12 +466,13 @@ var
 begin
   Idx := lstModels.ItemIndex;
   if Idx < 0 then begin
-    ShowMessage('Select a model to delete.');
+    LcaShowMessage('Select a model to delete.', FCurrentTheme);
     Exit;
   end;
   Prov := CurrentDialogProvider;
   DelId := FState.GetSavedModel(Prov, Idx).ModelId;
-  if MessageDlg('Remove this model from your saved list?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if LcaMessageDlg('Settings', 'Remove this model from your saved list?', mtConfirmation,
+    [mbYes, mbNo], FCurrentTheme) <> mrYes then
     Exit;
   FState.DeleteSavedModel(Prov, Idx);
   if SameText(FDefaultModelId, DelId) then begin

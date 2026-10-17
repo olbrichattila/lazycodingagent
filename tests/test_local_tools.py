@@ -74,6 +74,11 @@ def run(driver):
             for path in ('../escape.txt',str(Path(temporary)/'escape.txt')):
                 error('write_file', {'path':path,'content':'x'})
             outside = Path(temporary)/'outside'; outside.mkdir()
+            (outside/'escape.txt').write_text('outside-read', encoding='utf-8')
+            assert ok('read_file', {'path': str(outside/'escape.txt')})['content'].startswith('1|outside-read')
+            ok('write_file', {'path': str(outside/'wrote.txt'), 'content': 'outside-write'},
+               allow_modify_outside=True)
+            assert (outside/'wrote.txt').read_text() == 'outside-write'
             can_symlink = True
             try:
                 (root/'link').symlink_to(outside, target_is_directory=True)

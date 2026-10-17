@@ -114,6 +114,11 @@ end;
 procedure TLcaThemedTitleBar.LoadOwlPicture;
 begin
   if not Assigned(FImgLogo) then Exit;
+  if LcaShouldSkipOwlIconLoad(Self) then
+  begin
+    FImgLogo.Picture.Clear;
+    Exit;
+  end;
   if not TryLoadOwlIconInto(FImgLogo.Picture) then
     FImgLogo.Picture.Clear;
 end;

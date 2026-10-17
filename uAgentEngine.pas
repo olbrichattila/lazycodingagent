@@ -372,12 +372,24 @@ begin
     FOnMessageAdded(Self, AMsg);
 end;
 
+function PathAccessPolicyLine(const AContext: TAgentToolContext; AMode: TWorkspaceMode): string;
+begin
+  Result := '- Inspection tools may read files and directories outside the project directory when needed.';
+  if AMode in [wmAsk, wmPlan] then
+    Result := Result + ' Do not write or patch files outside the project directory.'
+  else if AContext.AllowModifyOutsideWorkspace then
+    Result := Result + ' The user enabled modifying files outside the project directory for this session; write tools and shell may use paths outside the project when required.'
+  else
+    Result := Result + ' Do not write, patch, or run shell with a working directory outside the project directory unless the user enables that option for this chat session.';
+end;
+
 function TAgentEngine.BuildSystemPrompt(AMode: TWorkspaceMode): string;
 var
-  RulesText, ToolsInfo, WorkingDir: string;
+  RulesText, ToolsInfo, WorkingDir, PathPolicy: string;
 begin
   WorkingDir := FContext.WorkspaceRoot;
   ToolsInfo := FTools.ToolGuidance(AMode);
+  PathPolicy := PathAccessPolicyLine(FContext, AMode);
 
   case AMode of
     wmPlan:
@@ -392,7 +404,8 @@ begin
         '- Only create .md files inside ' + IncludeTrailingPathDelimiter(WorkingDir) + '.plan' + DirectorySeparator + ', using create_plan_file. Do not modify other project files. Shell commands and compiler builds are unavailable.' + LineEnding +
         '- Produce a structured, actionable Markdown plan and save it with create_plan_file. The tool chooses a timestamped filename under .plan/.' + LineEnding +
         '- If clarification is needed, ask questions in chat without saving a plan. Otherwise, mark any completed plan returned in chat with <proposed_plan> and </proposed_plan> on separate lines, so the app can save and preview it if necessary.' + LineEnding +
-        '- Do not implement the plan.';
+        '- Do not implement the plan.' + LineEnding +
+        PathPolicy;
 
     wmAgent:
       Result :=
@@ -415,7 +428,8 @@ begin
         '- When diagnostics cannot start the resolved toolchain, explain the missing dependency/PATH requirement. When a build fails, use its preserved stdout/stderr and parsed messages to diagnose the failure.' + LineEnding +
         '- Output clean, robust Free Pascal code compatible with the Lazarus Component Library (LCL).' + LineEnding +
         '- Work systematically step by step until the user task is fully resolved.' + LineEnding +
-        '- Finish with a short summary of what was accomplished and any checks actually performed. State unfinished work or failures clearly.';
+        '- Finish with a short summary of what was accomplished and any checks actually performed. State unfinished work or failures clearly.' + LineEnding +
+        PathPolicy;
 
     else
       Result :=
@@ -426,7 +440,8 @@ begin
         'Instructions:' + LineEnding +
         '- For project questions, always inspect the actual files with list_directory/glob/search_code/read_file before answering.' + LineEnding +
         '- This is Ask mode: use inspection tools, cached diagnostics, and task tracking. Do not write or create files, call write tools, or propose file-write actions.' + LineEnding +
-        '- Answer questions directly and accurately using what you learned from the project.';
+        '- Answer questions directly and accurately using what you learned from the project.' + LineEnding +
+        PathPolicy;
   end;
 
   Result := Result + LineEnding + LineEnding +

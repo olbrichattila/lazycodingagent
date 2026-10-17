@@ -5,7 +5,7 @@ unit LcaMarkdownView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, LcaTheme;
+  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, LMessages, LcaTheme;
 
 const
   LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
@@ -21,19 +21,27 @@ type
     FRenderDeferRetries: Integer;
     FRenderDeferQueued: Boolean;
     FRendering: Boolean;
+    FScrollToEndPending: Boolean;
+    FScrollDeferRetries: Integer;
+    FScrollDeferQueued: Boolean;
     procedure SetThemeKind(AValue: TThemeKind);
     function HostReadyForRender: Boolean;
     procedure EnsureViewer;
     procedure ScheduleDeferredRender;
     procedure DeferredRender(Data: PtrInt);
+    procedure ScheduleDeferredScrollToEnd;
+    procedure DeferredScrollToEnd(Data: PtrInt);
+    procedure ScrollDocumentToEnd;
+    procedure ScheduleScrollToEndAfterRender;
     procedure Render;
   protected
     procedure Loaded; override;
     procedure Resize; override;
+    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure SetMarkdown(const AMarkdown: string);
+    procedure SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean = False);
     procedure SetHtmlBody(const AFullHtml: string);
     procedure ApplyTheme(ATheme: TThemeKind);
   published
@@ -47,7 +55,7 @@ function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): st
 implementation
 
 uses
-  IpHtml, StrUtils;
+  IpHtml, IpHtmlTypes, StrUtils;
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -282,6 +290,9 @@ begin
   FRenderDeferRetries := 0;
   FRenderDeferQueued := False;
   FRendering := False;
+  FScrollToEndPending := False;
+  FScrollDeferRetries := 0;
+  FScrollDeferQueued := False;
 end;
 
 destructor TLcaMarkdownView.Destroy;
@@ -310,6 +321,50 @@ begin
   FRenderDeferQueued := False;
   if PtrInt(Self) <> Data then Exit;
   Render;
+end;
+
+procedure TLcaMarkdownView.ScrollDocumentToEnd;
+var
+  Panel: TIpHtmlPanel;
+begin
+  if not Assigned(FHtmlPanel) then Exit;
+  if csDestroying in FHtmlPanel.ComponentState then Exit;
+  Panel := TIpHtmlPanel(FHtmlPanel);
+  Panel.Scroll(hsaEnd);
+end;
+
+procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
+begin
+  if FScrollDeferQueued then Exit;
+  if FScrollDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
+    FScrollToEndPending := False;
+    Exit;
+  end;
+  Inc(FScrollDeferRetries);
+  FScrollDeferQueued := True;
+  Application.QueueAsyncCall(@DeferredScrollToEnd, PtrInt(Self));
+end;
+
+procedure TLcaMarkdownView.DeferredScrollToEnd(Data: PtrInt);
+begin
+  FScrollDeferQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  if not FScrollToEndPending then Exit;
+  if not Assigned(FHtmlPanel) or not HostReadyForRender then begin
+    ScheduleDeferredScrollToEnd;
+    Exit;
+  end;
+  ScrollDocumentToEnd;
+  FScrollToEndPending := False;
+  FScrollDeferRetries := 0;
+end;
+
+procedure TLcaMarkdownView.ScheduleScrollToEndAfterRender;
+begin
+  if not FScrollToEndPending then Exit;
+  FScrollDeferRetries := 0;
+  ScheduleDeferredScrollToEnd;
 end;
 
 procedure TLcaMarkdownView.EnsureViewer;
@@ -369,13 +424,16 @@ begin
     FRendering := False;
   end;
   FRenderDeferRetries := 0;
+  ScheduleScrollToEndAfterRender;
 end;
 
-procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string);
+procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean = False);
 begin
   FUseRawHtml := False;
   FRawHtml := '';
   FMarkdown := AMarkdown;
+  if AScrollToEndAfterRender then
+    FScrollToEndPending := True;
   Render;
 end;
 
@@ -418,6 +476,16 @@ procedure TLcaMarkdownView.Resize;
 begin
   inherited Resize;
   { Do not call Render here — SetHtmlFromStr on TIpHtmlPanel can loop InvalidatePreferredSize. }
+end;
+
+procedure TLcaMarkdownView.CMShowingChanged(var Message: TLMessage);
+begin
+  inherited CMShowingChanged(Message);
+  if csDesigning in ComponentState then Exit;
+  if not Showing then Exit;
+  if (FMarkdown = '') and not (FUseRawHtml and (FRawHtml <> '')) then Exit;
+  FRenderDeferRetries := 0;
+  ScheduleDeferredRender;
 end;
 
 end.

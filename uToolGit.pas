@@ -112,7 +112,7 @@ begin
         begin
           if Paths[I].JSONType <> jtString then
             raise Exception.Create('paths must contain strings');
-          ProcArgs.Add(ResolveProjectPath(Paths.Strings[I]));
+          ProcArgs.Add(ResolveProjectPath(Paths.Strings[I], paRead));
         end;
       O := RunToolProcess('git', ProcArgs, CurrentToolContext.WorkspaceRoot, 120000, False, True);
       try

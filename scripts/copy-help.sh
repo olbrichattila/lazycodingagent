@@ -9,5 +9,10 @@ if [ ! -d "$SRC" ]; then
   echo "copy-help: missing ${SRC}" >&2
   exit 0
 fi
-rm -rf "$DEST"
-cp -r "$SRC" "$DEST"
+# Skip when target is the source tree (post-build's project-root pass).
+SRC_REAL="$(cd "$SRC" && pwd)"
+DEST_REAL="$(mkdir -p "$DEST" && cd "$DEST" && pwd)"
+if [ "$SRC_REAL" != "$DEST_REAL" ]; then
+  rm -rf "$DEST"
+  cp -r "$SRC" "$DEST"
+fi

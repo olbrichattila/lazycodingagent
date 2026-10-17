@@ -15,7 +15,7 @@
     "id": "chat-and-modes",
     "title": "Chat, sessions, and modes",
     "file": "chat-and-modes.md",
-    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment"]
+    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment", "sandbox", "outside", "working directory", "allow modify"]
   },
   {
     "id": "project-rules",
@@ -27,7 +27,7 @@
     "id": "how-the-agent-works",
     "title": "How the agent works",
     "file": "how-the-agent-works.md",
-    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger", "execution log", "step limit", "max steps", "calling", "follow", "summarize", "context", "truncation", "max tokens"]
+    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger", "execution log", "step limit", "max steps", "calling", "follow", "summarize", "context", "truncation", "max tokens", "sandbox", "outside workspace", "path"]
   },
   {
     "id": "tools-reference",

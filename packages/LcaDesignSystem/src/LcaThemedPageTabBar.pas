@@ -225,6 +225,7 @@ begin
     FManualCaptions.Clear;
     SetLength(FManualAllowClose, 0);
     FManualSelectedIndex := -1;
+    EnforcePageControlHiddenTabs(FPageControl);
   end;
   RefreshFromPageControl;
 end;

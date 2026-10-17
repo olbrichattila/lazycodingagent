@@ -71,7 +71,7 @@ begin
   end;
 
   try
-    ResolvedPath := ResolveProjectPath(FilePath);
+    ResolvedPath := ResolveProjectPath(FilePath, paRead);
     if not FileExists(ResolvedPath) then
     begin
       Result := ToolResultFromJson(ToolError('File not found: ' + ResolvedPath));

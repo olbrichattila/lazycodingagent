@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
-  uAppTypes, LcaTheme, uAgentRules, frmEditRule;
+  uAppTypes, LcaTheme, LcaThemedMessageBox, uAgentRules, frmEditRule;
 
 type
   { TWorkspaceRulesForm }
@@ -24,6 +24,7 @@ type
     procedure btnDeleteRuleClick(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
     procedure lstRulesDblClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     FTheme: TThemeKind;
     FProjectRoot: string;
@@ -95,6 +96,12 @@ begin
   btnDeleteRule.Enabled := lstRules.Items.Count > 0;
 end;
 
+procedure TWorkspaceRulesForm.FormShow(Sender: TObject);
+begin
+  ApplyTheme(FTheme);
+  ApplyFormPlatformThemes(Self, FTheme);
+end;
+
 procedure TWorkspaceRulesForm.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -123,7 +130,7 @@ begin
     lstRules.ItemIndex := lstRules.Items.Count - 1;
   except
     on E: Exception do
-      ShowMessage('Could not add rule: ' + E.Message);
+      LcaShowMessage('Could not add rule: ' + E.Message, FTheme);
   end;
 end;
 
@@ -142,7 +149,7 @@ begin
     lstRules.ItemIndex := I;
   except
     on E: Exception do
-      ShowMessage('Could not update rule: ' + E.Message);
+      LcaShowMessage('Could not update rule: ' + E.Message, FTheme);
   end;
 end;
 
@@ -152,14 +159,15 @@ var
 begin
   I := lstRules.ItemIndex;
   if (I < 0) or (I >= FRuleFiles.Count) then Exit;
-  if MessageDlg('Delete this project rule?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then Exit;
+  if LcaMessageDlg('Project Rules', 'Delete this project rule?', mtConfirmation,
+    [mbYes, mbNo], FTheme) <> mrYes then Exit;
   try
     if not DeleteFile(FRuleFiles[I]) then
       raise Exception.Create('Could not delete rule file.');
     RefreshRules;
   except
     on E: Exception do
-      ShowMessage('Could not delete rule: ' + E.Message);
+      LcaShowMessage('Could not delete rule: ' + E.Message, FTheme);
   end;
 end;
 

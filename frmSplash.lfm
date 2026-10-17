@@ -1,13 +1,13 @@
 object SplashForm: TSplashForm
-  Left = 913
-  Height = 1074
-  Top = 223
-  Width = 1792
+  Left = 2526
+  Height = 1228
+  Top = 610
+  Width = 2048
   BorderStyle = bsNone
   Caption = 'LazyCodingAgent'
-  ClientHeight = 1074
-  ClientWidth = 1792
-  DesignTimePPI = 168
+  ClientHeight = 1228
+  ClientWidth = 2048
+  DesignTimePPI = 192
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
   ShowInTaskBar = stNever
@@ -16,30 +16,33 @@ object SplashForm: TSplashForm
   OnShow = FormShow
   object pnlClient: TPanel
     Left = 0
-    Height = 1074
+    Height = 1228
     Top = 0
-    Width = 1792
+    Width = 2048
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 1074
-    ClientWidth = 1792
+    ClientHeight = 1228
+    ClientWidth = 2048
     TabOrder = 0
     object imgSplash: TImage
       Left = 0
-      Height = 1074
+      Height = 1228
       Top = 0
-      Width = 1792
+      Width = 2048
       Align = alClient
       Center = True
       Proportional = True
       Stretch = True
     end
     object progLoad: TProgressBar
-      Left = 176
-      Height = 19
-      Top = 824
-      Width = 1456
+      Left = 202
+      Height = 22
+      Top = 942
+      Width = 1664
       Anchors = [akLeft, akRight, akBottom]
+      Max = 100
+      Min = 0
+      Position = 0
       Smooth = True
       TabOrder = 0
     end

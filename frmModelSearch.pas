@@ -83,6 +83,7 @@ end;
 
 procedure TModelSearchForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
   pnlBottom.BringToFront;
 end;
