@@ -58,10 +58,10 @@ begin
   end;
 
   try
-    PlanDir := IncludeTrailingPathDelimiter(ResolveProjectPath('')) + '.plan';
+    PlanDir := IncludeTrailingPathDelimiter(ResolveProjectPathInWorkspace('')) + '.plan';
     if IsPathLink(PlanDir) then
       raise Exception.Create('Project .plan directory must not be a symbolic link or reparse point');
-    PlanDir := ResolveProjectPath(PlanDir);
+    PlanDir := ResolveProjectPathInWorkspace(PlanDir);
     if not ForceDirectories(PlanDir) then
       raise Exception.Create('Could not create project .plan directory');
 
@@ -73,7 +73,7 @@ begin
       PlanPath := IncludeTrailingPathDelimiter(PlanDir) + BaseName + '-' + IntToStr(Suffix) + '.md';
       Inc(Suffix);
     end;
-    ResolveProjectPath(PlanPath);
+    ResolveProjectPathInWorkspace(PlanPath);
     Stream := TFileStream.Create(PlanPath, fmCreate);
     try
       if Length(Content) > 0 then

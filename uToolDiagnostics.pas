@@ -130,7 +130,7 @@ begin
     else
     begin
       if Target <> '' then
-        Target := ResolveProjectPath(Target);
+        Target := ResolveProjectPath(Target, paRead);
       if (Target <> '') and not (FileExists(Target) or DirectoryExists(Target)) then
         raise Exception.Create('Build target does not exist');
       Resolved := ResolveBuildInvocation(FContext.WorkspaceRoot, Target, Inv);

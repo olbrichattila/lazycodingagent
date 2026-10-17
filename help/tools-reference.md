@@ -13,6 +13,12 @@ Aliases: `search_code` also answers to `grep`; `shell` to `terminal` / `run_proc
 | create_plan_file | No | Yes | Yes |
 | write_file, apply_patch, edit_file, shell | No | No | Yes |
 
+## Path rules
+
+- **Read/search tools** may target paths outside the workspace (absolute paths or `..` segments are allowed after canonicalization).
+- **Write tools and shell `cwd`** default to the workspace root only. Per chat session, enable **Allow modify outside the working directory** to lift that write sandbox.
+- **create_plan_file** and chat image attachments always stay under the workspace (`.plan/` and `.lca/attachments/`).
+
 ## Tools
 
 ### read_file

@@ -63,7 +63,7 @@ begin
   end;
 
   try
-    ResolvedPath := ResolveProjectPath(FilePath);
+    ResolvedPath := ResolveProjectPath(FilePath, paWrite);
     WriteBytes(ResolvedPath, UTF8Encode(Content));
     OutJSON := TJSONObject.Create;
     try

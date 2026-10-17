@@ -22,6 +22,12 @@ The mode applies to the **next run** and is sent with the system prompt so the m
 
 Pick **Ask**, **Plan**, or **Agent** from the **mode** combo at the left of the composer footer.
 
+## Writes outside the working directory
+
+Each chat session has its own **Allow modify outside the working directory** checkbox in the composer footer (default off). When off, Agent mode can still **read** files anywhere, but write tools and shell working directories must stay inside the open workspace folder. When on, that session may modify files and run shell commands with cwd outside the workspace—use only when you intend it.
+
+Starting **Build** on the **Plan** utility tab opens a confirmation dialog with the same option before a new Agent session is created to implement the plan.
+
 ## Image attachments (vision)
 
 You can attach **screenshots and mockups** so a **vision-capable model** can see them (configure one in Settings, e.g. GPT-4o, Claude 3.x via OpenRouter, or a local Ollama vision model).

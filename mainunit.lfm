@@ -63,11 +63,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 662
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '◉'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -78,11 +80,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 598
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '📖'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -93,11 +97,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 534
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '☑'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -108,11 +114,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 470
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 22
         Caption = '⬡'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -123,11 +131,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 394
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '⚠'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -138,11 +148,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 330
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '☰'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -153,11 +165,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 266
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '◈'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -168,11 +182,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 202
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '✦'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -183,11 +199,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 138
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '✉'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -198,11 +216,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 74
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '◫'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -212,11 +232,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Top = 10
         Width = 102
         Align = alTop
+        AllowAllUp = True
         BorderSpacing.Top = 10
         Caption = '⌂'
         Flat = True
         Font.Height = -32
         GroupIndex = 1
+        Layout = blGlyphTop
         ParentFont = False
         OnClick = NavRailBtnClick
       end
@@ -499,13 +521,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityExecDetail: TTabSheet
             Caption = 'Execution Detail'
-            ClientHeight = 1127
-            ClientWidth = 556
+            ClientHeight = 0
+            ClientWidth = 0
             object pnlUtilityExecDetailHost: TPanel
               Left = 0
-              Height = 1127
+              Height = 0
               Top = 0
-              Width = 556
+              Width = 0
               Align = alClient
               BevelOuter = bvNone
               TabOrder = 0
@@ -513,17 +535,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityPlan: TTabSheet
             Caption = 'Plan'
-            ClientHeight = 1127
-            ClientWidth = 556
+            ClientHeight = 0
+            ClientWidth = 0
             object pnlPlanHeader: TPanel
               Left = 0
               Height = 36
               Top = 0
-              Width = 556
+              Width = 0
               Align = alTop
               BevelOuter = bvNone
               ClientHeight = 36
-              ClientWidth = 556
+              ClientWidth = 0
               TabOrder = 0
               object lblPlanPath: TLabel
                 Left = 8
@@ -533,7 +555,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Caption = 'Plan file:'
               end
               object cboPlanModel: TLcaThemedComboBox
-                Left = 284
+                Left = -272
                 Height = 44
                 Top = 4
                 Width = 180
@@ -543,7 +565,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 TabOrder = 0
               end
               object btnPlanBuild: TLcaThemedButton
-                Left = 472
+                Left = -84
                 Height = 28
                 Top = 4
                 Width = 72
@@ -555,9 +577,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object memPlanBody: TMemo
               Left = 0
-              Height = 1091
-              Top = 36
-              Width = 556
+              Height = 0
+              Top = 0
+              Width = 0
               Align = alClient
               ReadOnly = True
               ScrollBars = ssVertical
@@ -790,32 +812,34 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             ClientWidth = 1114
             TabOrder = 0
             object lblChatWorkspaceTag: TLabel
-              Left = 0
+              Left = 12
               Height = 44
-              Top = 0
-              Width = 1114
+              Top = 12
+              Width = 1090
               Align = alTop
               AutoSize = False
+              BorderSpacing.Around = 12
               Caption = 'PROJECT'
             end
             object memChatPrompt: TMemo
               Left = 0
-              Height = 154
-              Top = 44
+              Height = 78
+              Top = 68
               Width = 1114
               Align = alClient
               ScrollBars = ssVertical
               TabOrder = 0
             end
             object pnlChatFooter: TPanel
-              Left = 0
-              Height = 130
-              Top = 198
-              Width = 1114
+              Left = 12
+              Height = 158
+              Top = 158
+              Width = 1090
               Align = alBottom
+              BorderSpacing.Around = 12
               BevelOuter = bvNone
-              ClientHeight = 130
-              ClientWidth = 1114
+              ClientHeight = 158
+              ClientWidth = 1090
               TabOrder = 1
               object btnChatAttachImage: TLcaThemedButton
                 Left = 16
@@ -844,7 +868,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 TabOrder = 2
               end
               object btnChatStop: TLcaThemedButton
-                Left = 788
+                Left = 764
                 Height = 44
                 Top = 16
                 Width = 112
@@ -855,7 +879,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 ButtonRole = tbrDestructive
               end
               object btnChatSend: TLcaThemedButton
-                Left = 916
+                Left = 892
                 Height = 44
                 Top = 16
                 Width = 186
@@ -863,6 +887,15 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Caption = 'Run Agent'
                 TabOrder = 4
                 ButtonRole = tbrPrimary
+              end
+              object chkChatAllowModifyOutside: TCheckBox
+                Left = 16
+                Height = 42
+                Top = 72
+                Width = 609
+                Caption = 'Allow modify outside the working directory'
+                TabOrder = 5
+                OnClick = ChkChatAllowModifyOutsideClick
               end
             end
           end
@@ -892,13 +925,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsEditor: TTabSheet
           Caption = 'Editor'
-          ClientHeight = 0
-          ClientWidth = 0
+          ClientHeight = 1127
+          ClientWidth = 1114
           inline synEditor: TSynEdit
             Left = 0
-            Height = 0
+            Height = 1127
             Top = 0
-            Width = 0
+            Width = 1114
             Align = alClient
             Font.Height = 14
             Font.Name = 'DejaVu Sans Mono'
@@ -940,13 +973,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsMarkdown: TTabSheet
           Caption = 'Markdown'
-          ClientHeight = 0
-          ClientWidth = 0
+          ClientHeight = 1127
+          ClientWidth = 1114
           object pnlMarkdownPreviewHost: TPanel
             Left = 0
-            Height = 0
+            Height = 1127
             Top = 0
-            Width = 0
+            Width = 1114
             Align = alClient
             BevelOuter = bvNone
             TabOrder = 0

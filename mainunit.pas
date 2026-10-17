@@ -14,7 +14,8 @@ uses
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, LcaMarkdownView, uPanelDetach, uThemeHooks, LcaThemedMessageBox,
+  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, LcaMarkdownView, uPanelDetach, uThemeHooks,
+  LcaThemedMessageBox,
   fpjson, jsonparser;
 
 type
@@ -27,6 +28,7 @@ type
     btnChatStop: TLcaThemedButton;
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
+    chkChatAllowModifyOutside: TCheckBox;
     lcaTitleBar: TLcaThemedTitleBar;
     lcaMainMenu: TLcaThemedMainMenu;
     mnuFile: TMenuItem;
@@ -175,6 +177,7 @@ type
     procedure MnuHelpUserGuideClick(Sender: TObject);
     procedure MnuHelpAboutClick(Sender: TObject);
     procedure NavRailBtnClick(Sender: TObject);
+    procedure ChkChatAllowModifyOutsideClick(Sender: TObject);
   private
     FChatSessionTabIds: TStringList;
     FState: TWorkspaceState;
@@ -228,6 +231,8 @@ type
     procedure UpdateSessionCaption;
     function AgentStateIsRunning(AState: TAgentState): Boolean;
     procedure ApplySessionComposerState;
+    procedure ApplyAllowModifyOutsideToSession(const ASessionId: string; AValue: Boolean);
+    procedure LoadAllowModifyOutsideForSession(const ASessionId: string);
     procedure ActivateWorkspace(const AWorkspaceId: string);
     procedure DeactivateWorkspace;
     function AddOrActivateFolder(const ADisplayName, AFolderPath: string): Boolean;
@@ -397,16 +402,58 @@ begin
     FState.ContextWindowTokens, FState.SummarizeThreshold);
 end;
 
+procedure TLazyCodingAgentForm.ApplyAllowModifyOutsideToSession(const ASessionId: string;
+  AValue: Boolean);
+var
+  Eng: TAgentEngine;
+begin
+  if (ASessionId = '') or not Assigned(ActiveStore) then Exit;
+  ActiveStore.SetAllowModifyOutside(ASessionId, AValue);
+  if Assigned(FActiveHub) then begin
+    Eng := FActiveHub.EngineFor(ASessionId);
+    if Assigned(Eng) then
+      Eng.Context.AllowModifyOutsideWorkspace := AValue;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.LoadAllowModifyOutsideForSession(const ASessionId: string);
+var
+  Info: TChatSessionInfo;
+  Value: Boolean;
+  Eng: TAgentEngine;
+begin
+  Value := False;
+  if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(ASessionId, Info) then
+    Value := Info.AllowModifyOutside;
+  if Assigned(FChatPanel) then
+    FChatPanel.SetAllowModifyOutsideChecked(Value);
+  if Assigned(FActiveHub) then begin
+    Eng := FActiveHub.GetOrCreateEngine(ASessionId);
+    Eng.Context.AllowModifyOutsideWorkspace := Value;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.ChkChatAllowModifyOutsideClick(Sender: TObject);
+begin
+  if not Assigned(FChatPanel) then Exit;
+  if FCurrentSessionId = '' then Exit;
+  if Assigned(FActiveHub) and FActiveHub.IsSessionRunning(FCurrentSessionId) then Exit;
+  ApplyAllowModifyOutsideToSession(FCurrentSessionId, FChatPanel.GetAllowModifyOutsideChecked);
+end;
+
 procedure TLazyCodingAgentForm.ApplySessionComposerState;
 var
   Info: TChatSessionInfo;
   Archived: Boolean;
+  Running: Boolean;
 begin
   if not Assigned(FChatPanel) then Exit;
   Archived := False;
+  Running := Assigned(FActiveHub) and (FCurrentSessionId <> '') and
+    FActiveHub.IsSessionRunning(FCurrentSessionId);
   if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(FCurrentSessionId, Info) then
     Archived := Info.Archived;
-  if Archived then
+  if Archived or Running then
     FChatPanel.SetComposerEnabled(False)
   else
     FChatPanel.SetComposerEnabled(True);
@@ -431,6 +478,7 @@ begin
     FChatPanel.ReloadFromMessages(Msgs, FState.DebuggingMode);
     FChatPanel.SetRunning(E.IsRunActive);
   end;
+  LoadAllowModifyOutsideForSession(ASessionId);
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
   BindToolErrorLogToNav(ASessionId);
@@ -939,7 +987,7 @@ begin
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
     lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop,
-    btnChatAttachImage, pnlChatAttachmentStrip);
+    btnChatAttachImage, pnlChatAttachmentStrip, chkChatAllowModifyOutside);
   FChatPanel.OnPrompt := @ChatPrompt;
   FChatPanel.OnModeChange := @ChatModeChange;
   FChatPanel.OnModelChange := @ChatModelChange;
@@ -1405,6 +1453,7 @@ begin
     OpenUtilityExecutionDetailTab;
   end else
     FExecutionLogFollowLive := False;
+  Eng.Context.AllowModifyOutsideWorkspace := FChatPanel.GetAllowModifyOutsideChecked;
   FChatPanel.SetRunning(True);
   if not Eng.StartRunAsync(APrompt, AAttachments, AMode, AModel) then
     FChatPanel.SetRunning(False);
@@ -1767,10 +1816,13 @@ procedure TLazyCodingAgentForm.PlanBuildRequested(Sender: TObject; const APlanPa
   APlanContent, AModelId: string);
 var
   Prompt, Sid, Title: string;
+  AllowOutside: Boolean;
 begin
   if not FState.HasActiveWorkspace then Exit;
   if not Assigned(FChatPanel) then Exit;
   if Trim(AModelId) = '' then Exit;
+  if not TPlanBuildConfirmForm.Execute(Self, FState.Theme, AllowOutside) then
+    Exit;
 
   FState.SetModel(AModelId);
   FState.SetMode(wmAgent);
@@ -1786,6 +1838,7 @@ begin
   FCurrentSessionId := Sid;
   ActiveStore.SetLastSessionId(Sid);
   FActiveHub.GetOrCreateEngine(Sid);
+  ApplyAllowModifyOutsideToSession(Sid, AllowOutside);
   BindSessionToUI(Sid);
   UpdateSessionCaption;
 

@@ -30,22 +30,7 @@ popd
 python "%~dp0write_bmp_ico.py" "%PNG%" "%ICO%"
 if errorlevel 1 exit /b 1
 
-set "WINDRES="
-if exist "C:\lazarus\fpc\3.2.2\bin\x86_64-win64\windres.exe" set "WINDRES=C:\lazarus\fpc\3.2.2\bin\x86_64-win64\windres.exe"
-if not defined WINDRES if exist "C:\Program Files\Lazarus\fpc\3.2.2\bin\x86_64-win64\windres.exe" set "WINDRES=C:\Program Files\Lazarus\fpc\3.2.2\bin\x86_64-win64\windres.exe"
-if not defined WINDRES (
-  echo windres not found
-  exit /b 1
-)
-for %%I in ("%WINDRES%") do set "FPCBIN=%%~dpI"
-if not exist "%FPCBIN%gcc.exe" (
-  echo FPC preprocessor not found: %FPCBIN%gcc.exe
-  exit /b 1
-)
-pushd "%ROOT%"
-"%WINDRES%" --preprocessor="%FPCBIN%gcc.exe" -J rc -O res -i "%RC%" -o "%APPICON%"
-set "WINDRES_ERR=%ERRORLEVEL%"
-popd
-if not "%WINDRES_ERR%"=="0" exit /b %WINDRES_ERR%
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0compile-lazycodingagent-appicon-res.ps1"
+if errorlevel 1 exit /b 1
 
 echo Wrote %BMP%, %OWLRES%, %ICO%, %APPICON%

@@ -125,7 +125,7 @@ var
 begin
   Json := '{}';
   Root := CanonicalWorkspaceRoot;
-  SearchRoot := ResolveProjectPath(Args.Get('path', '.'));
+  SearchRoot := ResolveProjectPath(Args.Get('path', '.'), paRead);
   Query := Args.Get('query', '');
   if Query = '' then
   begin

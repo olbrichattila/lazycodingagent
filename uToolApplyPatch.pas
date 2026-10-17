@@ -124,7 +124,7 @@ begin
   if (Copy(Result, 1, 2) = 'a/') or (Copy(Result, 1, 2) = 'b/') then Delete(Result, 1, 2);
   if (Result = '') or (Result[1] = '"') then
     raise EPatchError.Create('format', 'Patch requires unquoted file paths', '', 0);
-  Result := ResolveProjectPath(Result);
+  Result := ResolveProjectPath(Result, paWrite);
 end;
 
 function NextLineStart(const S: string; StartAt: Integer): Integer;
@@ -226,9 +226,9 @@ procedure Stage(Edit: TStagedEdit);
 {$IFDEF UNIX}var Info: Stat;{$ENDIF}
 begin
   if Edit.Remove then Exit;
-  ResolveProjectPath(Edit.FilePath);
+  ResolveProjectPath(Edit.FilePath, paWrite);
   if not ForceDirectories(ExtractFileDir(Edit.FilePath)) then raise Exception.Create('Cannot create patch parent directory');
-  ResolveProjectPath(Edit.FilePath);
+  ResolveProjectPath(Edit.FilePath, paWrite);
   Edit.TempPath := SysUtils.GetTempFileName(ExtractFileDir(Edit.FilePath), '.agent-patch-');
   WriteBytes(Edit.TempPath, Edit.Content);
   {$IFDEF UNIX}
@@ -252,7 +252,7 @@ begin
       for I := 0 to Edits.Count - 1 do
       begin
         Stg := TStagedEdit(Edits[I]);
-        ResolveProjectPath(Stg.FilePath);
+        ResolveProjectPath(Stg.FilePath, paWrite);
         if Stg.CreateFile then
         begin if FileExists(Stg.FilePath) or DirectoryExists(Stg.FilePath) then raise Exception.Create('Creation target already exists'); end
         else if ReadTextBytes(Stg.FilePath) <> Stg.Original then raise Exception.Create('File changed since patch validation: ' + Stg.FilePath);
@@ -267,7 +267,7 @@ begin
       for I := 0 to Edits.Count - 1 do
       begin
         if ToolCancelled then raise Exception.Create('Tool cancelled');
-        Stg := TStagedEdit(Edits[I]); ResolveProjectPath(Stg.FilePath);
+        Stg := TStagedEdit(Edits[I]); ResolveProjectPath(Stg.FilePath, paWrite);
         if (not Stg.CreateFile) and FileExists(Stg.FilePath) then
         begin
           BackupPath := SysUtils.GetTempFileName(ExtractFileDir(Stg.FilePath), '.agent-patch-bak-');
@@ -279,7 +279,7 @@ begin
       for I := 0 to Edits.Count - 1 do
       begin
         if ToolCancelled then raise Exception.Create('Tool cancelled');
-        Stg := TStagedEdit(Edits[I]); ResolveProjectPath(Stg.FilePath);
+        Stg := TStagedEdit(Edits[I]); ResolveProjectPath(Stg.FilePath, paWrite);
         if Stg.Remove then
         begin if not SysUtils.DeleteFile(Stg.FilePath) then raise Exception.Create('Cannot delete ' + Stg.FilePath); end
         else
@@ -553,7 +553,7 @@ begin
   Edits := TList.Create;
   Edits.Add(Stg);
   try
-    Stg.FilePath := ResolveProjectPath(A.Get('path', ''));
+    Stg.FilePath := ResolveProjectPath(A.Get('path', ''), paWrite);
     Stg.Original := ReadTextBytes(Stg.FilePath);
     Old := A.Get('old_text', '');
     NewText := A.Get('new_text', '');

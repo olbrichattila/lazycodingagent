@@ -7,7 +7,11 @@ interface
 uses
   Classes, SysUtils, fpjson, uAgentToolBase;
 
-function ResolveProjectPath(const Path: string): string;
+type
+  TPathAccess = (paRead, paWrite);
+
+function ResolveProjectPath(const Path: string; AAccess: TPathAccess = paWrite): string;
+function ResolveProjectPathInWorkspace(const Path: string): string;
 function CanonicalFilePath(const Path: string): string;
 function CanonicalWorkspaceRoot: string;
 function ReadTextBytes(const Path: string): RawByteString;
@@ -197,7 +201,7 @@ begin
   Result := ExcludeTrailingPathDelimiter(CanonicalPath(C.WorkspaceRoot, 0));
 end;
 
-function ResolveProjectPath(const Path: string): string;
+function ResolveProjectPathCore(const Path: string; AEnforceWorkspaceJail: Boolean): string;
 var
   Root, Candidate, Prefix: string;
   C: TAgentToolContext;
@@ -215,9 +219,28 @@ begin
   else Candidate := IncludeTrailingPathDelimiter(Root) + Path;
   Result := CanonicalPath(Candidate, 0);
   if SafeToolText(Result) <> Result then raise Exception.Create('Unsupported path encoding');
-  Prefix := IncludeTrailingPathDelimiter(Root);
-  if not PathJailPrefixMatches(Root, Prefix, Result) then
-    raise Exception.Create('Path escapes the active project: ' + Path);
+  if AEnforceWorkspaceJail then
+  begin
+    Prefix := IncludeTrailingPathDelimiter(Root);
+    if not PathJailPrefixMatches(Root, Prefix, Result) then
+      raise Exception.Create('Path escapes the active project: ' + Path);
+  end;
+end;
+
+function ResolveProjectPath(const Path: string; AAccess: TPathAccess): string;
+var
+  C: TAgentToolContext;
+  EnforceJail: Boolean;
+begin
+  C := CurrentToolContext;
+  if not Assigned(C) then raise Exception.Create('Tool context is not active');
+  EnforceJail := (AAccess = paWrite) and not C.AllowModifyOutsideWorkspace;
+  Result := ResolveProjectPathCore(Path, EnforceJail);
+end;
+
+function ResolveProjectPathInWorkspace(const Path: string): string;
+begin
+  Result := ResolveProjectPathCore(Path, True);
 end;
 
 function ReadTextBytes(const Path: string): RawByteString;
@@ -254,7 +277,7 @@ var
   Resolved, TempPath: string;
   {$IFDEF UNIX}Info: Stat;{$ENDIF}
 begin
-  Resolved := ResolveProjectPath(Path);
+  Resolved := ResolveProjectPath(Path, paWrite);
   {$IFDEF UNIX}
   if (fpStat(Resolved, Info) = 0) and not FPS_ISREG(Info.st_mode) then
     raise Exception.Create('Not a regular file: ' + Path);
@@ -362,7 +385,7 @@ begin
       Rel := Sub + R.Name;
       Full := IncludeTrailingPathDelimiter(Root) + Rel;
       if IsPathLink(Full) then Continue;
-      ResolveProjectPath(Full);
+      ResolveProjectPath(Full, paRead);
       if (R.Attr and faDirectory) <> 0 then
       begin
         if not SkipGenerated(R.Name) then

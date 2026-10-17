@@ -48,6 +48,8 @@ type
     FStopBtn: TLcaThemedButton;
     FAttachBtn: TLcaThemedButton;
     FAttachmentStrip: TPanel;
+    FAllowModifyOutsideCheck: TCheckBox;
+    FUpdatingAllowModifyOutside: Boolean;
 
     FSessionId: string;
     FPendingImagePaths: TStringList;
@@ -78,7 +80,10 @@ type
     destructor Destroy; override;
     procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
       APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-      ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel);
+      ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
+      AAllowModifyOutside: TCheckBox);
+    procedure SetAllowModifyOutsideChecked(AValue: Boolean);
+    function GetAllowModifyOutsideChecked: Boolean;
     procedure SetSessionId(const ASessionId: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
@@ -199,7 +204,8 @@ end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
   APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-  ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel);
+  ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
+  AAllowModifyOutside: TCheckBox);
 var
   M: TWorkspaceMode;
 begin
@@ -215,6 +221,7 @@ begin
   FStopBtn := AStopBtn;
   FAttachBtn := AAttachBtn;
   FAttachmentStrip := AAttachmentStrip;
+  FAllowModifyOutsideCheck := AAllowModifyOutside;
 
   EnsureHistoryView;
 
@@ -704,6 +711,24 @@ begin
     FOnModelChange(Self, FModel);
 end;
 
+procedure TChatPanel.SetAllowModifyOutsideChecked(AValue: Boolean);
+begin
+  FUpdatingAllowModifyOutside := True;
+  try
+    if Assigned(FAllowModifyOutsideCheck) then
+      FAllowModifyOutsideCheck.Checked := AValue;
+  finally
+    FUpdatingAllowModifyOutside := False;
+  end;
+end;
+
+function TChatPanel.GetAllowModifyOutsideChecked: Boolean;
+begin
+  if Assigned(FAllowModifyOutsideCheck) then
+    Exit(FAllowModifyOutsideCheck.Checked);
+  Result := False;
+end;
+
 procedure TChatPanel.SetComposerEnabled(AEnabled: Boolean);
 begin
   if Assigned(FPromptMemo) then
@@ -716,6 +741,8 @@ begin
     FSendBtn.Enabled := AEnabled and not FIsRunning;
   if Assigned(FAttachBtn) then
     FAttachBtn.Enabled := AEnabled and not FIsRunning;
+  if Assigned(FAllowModifyOutsideCheck) then
+    FAllowModifyOutsideCheck.Enabled := AEnabled and not FIsRunning;
 end;
 
 procedure TChatPanel.ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);

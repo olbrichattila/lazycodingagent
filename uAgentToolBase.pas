@@ -34,11 +34,12 @@ type
     FSession: TAgentToolSession;
     FCancelFlag: PBoolean;
     FCancelDeadline: QWord;
+    FAllowModifyOutsideWorkspace: Boolean;
   public
     constructor Create(const AWorkspaceRoot: string);
     destructor Destroy; override;
 
-    function ResolvePath(const APath: string): string;
+    function ResolvePath(const APath: string; AForWrite: Boolean = True): string;
     function IsCancelled: Boolean;
     procedure SetCancelFlag(AFlag: PBoolean);
     procedure SetCancelDeadline(ADeadline: QWord);
@@ -47,6 +48,8 @@ type
     property WorkspaceRoot: string read FWorkspaceRoot write FWorkspaceRoot;
     property Mode: TWorkspaceMode read FMode write FMode;
     property Session: TAgentToolSession read FSession;
+    property AllowModifyOutsideWorkspace: Boolean read FAllowModifyOutsideWorkspace
+      write FAllowModifyOutsideWorkspace;
   end;
 
   TAgentTool = class
@@ -518,6 +521,7 @@ begin
   FSession := TAgentToolSession.Create;
   FCancelFlag := nil;
   FCancelDeadline := 0;
+  FAllowModifyOutsideWorkspace := False;
 end;
 
 destructor TAgentToolContext.Destroy;
@@ -526,9 +530,12 @@ begin
   inherited Destroy;
 end;
 
-function TAgentToolContext.ResolvePath(const APath: string): string;
+function TAgentToolContext.ResolvePath(const APath: string; AForWrite: Boolean): string;
 begin
-  Result := uAgentToolPaths.ResolveProjectPath(APath);
+  if AForWrite then
+    Result := uAgentToolPaths.ResolveProjectPath(APath, paWrite)
+  else
+    Result := uAgentToolPaths.ResolveProjectPath(APath, paRead);
 end;
 
 function TAgentToolContext.IsCancelled: Boolean;

@@ -28,4 +28,4 @@ Use rules for coding standards, architecture notes, test commands, or “always 
 - Put the most important constraints near the top of a file.
 - Rules apply to **every** mode; use clear language so Plan mode does not assume write access it does not have.
 
-Rules do **not** replace the built-in safety limits (workspace path sandbox, mode-gated tools). They add **project-specific** guidance on top.
+Rules do **not** replace the built-in safety limits (write sandbox outside the workspace unless the user opts in per session, mode-gated tools). They add **project-specific** guidance on top.

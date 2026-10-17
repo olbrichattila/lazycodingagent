@@ -198,7 +198,7 @@ lazbuild lazycodingagent.lpi
 scripts\post-build.cmd
 ```
 
-**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux and Windows use distro/Chocolatey Lazarus; macOS installs pinned aarch64 builds from SourceForge (the Homebrew Lazarus cask is disabled). [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo).
+**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux and Windows use distro/Chocolatey Lazarus; macOS installs pinned aarch64 builds from SourceForge (the Homebrew Lazarus cask is disabled). [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo). On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
 
 **Manual IDE install:** compile `LcaDesignSystem.lpk` (runtime), then `LcaDesignSystemDesign.lpk` → **Use → Install** (after terminal packages). Do not install the runtime package into the IDE.
 
