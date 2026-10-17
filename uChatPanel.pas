@@ -175,6 +175,7 @@ procedure TChatPanel.EnsureHistoryView;
 var
   I: Integer;
   C: TControl;
+  OwnerComp: TComponent;
 begin
   if Assigned(FHistoryView) then Exit;
   if not Assigned(FHistoryHost) then Exit;
@@ -185,6 +186,14 @@ begin
       Exit;
     end;
   end;
+  if FHistoryHost.Owner is TComponent then
+    OwnerComp := TComponent(FHistoryHost.Owner)
+  else
+    OwnerComp := Self;
+  FHistoryView := TLcaMarkdownView.Create(OwnerComp);
+  FHistoryView.Parent := FHistoryHost;
+  FHistoryView.Align := alClient;
+  FHistoryView.ApplyTheme(FTheme);
 end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;

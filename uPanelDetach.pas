@@ -5,7 +5,7 @@ unit uPanelDetach;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, ExtCtrls, uAppTypes, uWorkspaceState, LcaTheme;
+  Classes, SysUtils, Forms, Controls, ExtCtrls, ComCtrls, uAppTypes, uWorkspaceState, LcaTheme;
 
 type
   TPanelDetachManager = class
@@ -155,6 +155,8 @@ begin
   finally
     FContent[AId].EnableAlign;
   end;
+  if FContent[AId] is TPageControl then
+    EnforcePageControlHiddenTabs(TPageControl(FContent[AId]));
 
   FState.SetPanelFloating(AId, True);
   FF.Show;
@@ -180,6 +182,8 @@ begin
   finally
     FContent[AId].EnableAlign;
   end;
+  if FContent[AId] is TPageControl then
+    EnforcePageControlHiddenTabs(TPageControl(FContent[AId]));
 
   FState.SetPanelFloating(AId, False);
   ApplyLayout;

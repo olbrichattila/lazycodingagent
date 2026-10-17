@@ -5,7 +5,7 @@ unit LcaMarkdownView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, LcaTheme;
+  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, LMessages, LcaTheme;
 
 const
   LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
@@ -30,6 +30,7 @@ type
   protected
     procedure Loaded; override;
     procedure Resize; override;
+    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -418,6 +419,16 @@ procedure TLcaMarkdownView.Resize;
 begin
   inherited Resize;
   { Do not call Render here — SetHtmlFromStr on TIpHtmlPanel can loop InvalidatePreferredSize. }
+end;
+
+procedure TLcaMarkdownView.CMShowingChanged(var Message: TLMessage);
+begin
+  inherited CMShowingChanged(Message);
+  if csDesigning in ComponentState then Exit;
+  if not Showing then Exit;
+  if (FMarkdown = '') and not (FUseRawHtml and (FRawHtml <> '')) then Exit;
+  FRenderDeferRetries := 0;
+  ScheduleDeferredRender;
 end;
 
 end.

@@ -283,6 +283,7 @@ type
     procedure SyncTerminalWorkingDirectory;
     procedure ScheduleDeferredTerminalStart;
     procedure DeferredEnsureTerminal(Data: PtrInt);
+    procedure DeferredEnforceHiddenPageTabs(Data: PtrInt);
     procedure ScheduleTerminalStartRetry;
     procedure TerminalRetryTimer(Sender: TObject);
     procedure TerminalStatus(Sender: TObject; const AMessage: string);
@@ -644,6 +645,13 @@ begin
     FDeferThemesUntilShown := False;
     ApplyAllThemes;
     ApplyEditorTheme;
+    EnforcePageControlHiddenTabs(pgcCenter);
+    EnforcePageControlHiddenTabs(pgcUtility);
+    if Assigned(lcaCenterTabBar) then
+      lcaCenterTabBar.RefreshFromPageControl;
+    if Assigned(lcaUtilityTabBar) then
+      lcaUtilityTabBar.RefreshFromPageControl;
+    Application.QueueAsyncCall(@DeferredEnforceHiddenPageTabs, 0);
   end;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
@@ -922,6 +930,13 @@ begin
   FNavContent.OnClearToolErrorLog := @NavClearToolErrorLog;
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
 
+  if not Assigned(lcaChatHistory) then begin
+    lcaChatHistory := TLcaMarkdownView.Create(Self);
+    lcaChatHistory.Parent := pnlChatHistoryHost;
+    lcaChatHistory.Align := alClient;
+  end;
+  lcaChatHistory.ApplyTheme(FState.Theme);
+
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
     lblChatWorkspaceTag, cboChatMode, cboChatModel, btnChatSend, btnChatStop,
@@ -1103,6 +1118,16 @@ begin
   if not FState.IsPanelVisible(piTerminal) then Exit;
   FTerminalStartQueued := True;
   Application.QueueAsyncCall(@DeferredEnsureTerminal, 0);
+end;
+
+procedure TLazyCodingAgentForm.DeferredEnforceHiddenPageTabs(Data: PtrInt);
+begin
+  EnforcePageControlHiddenTabs(pgcCenter);
+  EnforcePageControlHiddenTabs(pgcUtility);
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
+  if Assigned(lcaUtilityTabBar) then
+    lcaUtilityTabBar.RefreshFromPageControl;
 end;
 
 procedure TLazyCodingAgentForm.DeferredEnsureTerminal(Data: PtrInt);

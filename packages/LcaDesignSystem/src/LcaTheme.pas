@@ -92,6 +92,8 @@ procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
 procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
+{ Re-apply ShowTabs=False for TLcaThemedPageTabBar hosts (GTK may ignore until relayout). }
+procedure EnforcePageControlHiddenTabs(APageControl: TPageControl);
 procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
@@ -672,6 +674,33 @@ begin
   end;
 
   APageControl.Invalidate;
+  EnforcePageControlHiddenTabs(APageControl);
+end;
+
+procedure EnforcePageControlHiddenTabs(APageControl: TPageControl);
+begin
+  if not Assigned(APageControl) then Exit;
+  if csDestroying in APageControl.ComponentState then Exit;
+  if not ParentFormHandlesReady(APageControl) then Exit;
+  if not APageControl.HandleAllocated then
+    APageControl.HandleNeeded;
+  if not APageControl.HandleAllocated then Exit;
+  APageControl.ShowTabs := False;
+  {$IFDEF LCLGtk2}
+  gtk_notebook_set_show_tabs(PGtkNotebook(APageControl.Handle), GFalse);
+  gtk_notebook_set_show_border(PGtkNotebook(APageControl.Handle), GFalse);
+  {$ENDIF}
+  {$IFDEF LCLGtk3}
+  gtk_notebook_set_show_tabs(PGtkNotebook(APageControl.Handle), False);
+  gtk_notebook_set_show_border(PGtkNotebook(APageControl.Handle), False);
+  {$ENDIF}
+  {$IFDEF LCLQt5}
+  if TQtWidget(APageControl.Handle).ChildOfComplexWidget <> ccwTTabControl then begin
+    with TQtTabWidget(APageControl.Handle) do
+      if TabBar <> nil then
+        ShowTabs := False;
+  end;
+  {$ENDIF}
 end;
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
