@@ -455,7 +455,7 @@ procedure TChatPanel.RefreshHistoryView;
 begin
   EnsureHistoryView;
   if Assigned(FHistoryView) then
-    FHistoryView.SetMarkdown(FHistoryText);
+    FHistoryView.SetMarkdown(FHistoryText, True);
 end;
 
 procedure TChatPanel.AppendToHistory(const ARoleLabel, ABody: string);

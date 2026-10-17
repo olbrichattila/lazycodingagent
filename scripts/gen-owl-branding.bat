@@ -37,7 +37,7 @@ if not defined WINDRES (
   echo windres not found
   exit /b 1
 )
-"%WINDRES%" -i "%RC%" -o "%APPICON%"
+"%WINDRES%" --no-preprocess -i "%RC%" -o "%APPICON%"
 if errorlevel 1 exit /b 1
 
 echo Wrote %BMP%, %OWLRES%, %ICO%, %APPICON%
