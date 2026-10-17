@@ -37,7 +37,15 @@ if not defined WINDRES (
   echo windres not found
   exit /b 1
 )
-"%WINDRES%" --no-preprocess -i "%RC%" -o "%APPICON%"
-if errorlevel 1 exit /b 1
+for %%I in ("%WINDRES%") do set "FPCBIN=%%~dpI"
+if not exist "%FPCBIN%gcc.exe" (
+  echo FPC preprocessor not found: %FPCBIN%gcc.exe
+  exit /b 1
+)
+pushd "%ROOT%"
+"%WINDRES%" --preprocessor="%FPCBIN%gcc.exe" -J rc -O res -i "%RC%" -o "%APPICON%"
+set "WINDRES_ERR=%ERRORLEVEL%"
+popd
+if not "%WINDRES_ERR%"=="0" exit /b %WINDRES_ERR%
 
 echo Wrote %BMP%, %OWLRES%, %ICO%, %APPICON%
