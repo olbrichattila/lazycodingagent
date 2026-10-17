@@ -198,7 +198,7 @@ Pushing a version tag builds a Windows installer with [Inno Setup](https://jrsof
 3. Open **Actions → Release Windows** on GitHub and wait for the job to finish.
 4. Download **`LazyCodingAgent-0.1.0-win64-Setup.exe`** from the release page for that tag.
 
-The workflow [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) mirrors the Windows build in `build.yml`, runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss), and uploads the setup EXE. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for the installer file name and release title.
+The workflow [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) mirrors the Windows build in `build.yml`, runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss), and uploads the setup EXE. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for the installer file name and release title. If the app did not link, CI fails at the **lazbuild** step ([`scripts/ci-lazbuild.ps1`](scripts/ci-lazbuild.ps1)), not only when building the installer.
 
 **Local installer (optional):** after `lazbuild` and `post-build.ps1`, install Inno Setup 6 and run:
 

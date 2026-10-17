@@ -74,11 +74,7 @@ jobs:
         shell: pwsh
         env:
           LAZBUILD: C:\lazarus\lazbuild.exe
-        run: |
-          if (-not (Test-Path -LiteralPath $env:LAZBUILD)) {
-            $env:LAZBUILD = (Get-Command lazbuild).Source
-          }
-          & $env:LAZBUILD lazycodingagent.lpi
+        run: ./scripts/ci-lazbuild.ps1
 
       - name: Post-build deploy
         shell: pwsh
