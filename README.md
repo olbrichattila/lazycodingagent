@@ -191,17 +191,18 @@ scripts\post-build.cmd
 
 ### Releasing
 
-Pushing a version tag builds Windows and Linux packages and publishes a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
+Pushing a version tag builds Windows, Linux, and macOS packages and publishes a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
 
 1. Choose the release version (for example `0.1.0`).
 2. Tag and push: `git tag v0.1.0` then `git push origin v0.1.0`.
-3. Open **Actions → Release** on GitHub and wait for `build-windows`, `build-linux`, and `publish` to finish.
+3. Open **Actions → Release** on GitHub and wait for `build-windows`, `build-linux`, `build-macos`, and `publish` to finish.
 4. Download assets from the release page for that tag:
    - **`LazyCodingAgent-0.1.0-win64-Setup.exe`** — Windows installer ([Inno Setup](https://jrsoftware.org/isinfo.php))
    - **`LazyCodingAgent-0.1.0-amd64.deb`** — Debian/Ubuntu/Mint package (system Qt5 runtime via `Depends`)
    - **`LazyCodingAgent-0.1.0-x86_64.AppImage`** — portable Linux build (Qt5 bundled via [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy))
+   - **`LazyCodingAgent-0.1.0-aarch64.dmg`** — macOS Apple Silicon (Cocoa app bundle; drag **Lazy Coding Agent** to Applications)
 
-The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
+The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). macOS uses **macos-14** (Apple Silicon), SourceForge Lazarus 4.8 with **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
 
 **Linux QA (manual):** CI smoke-tests the AppImage under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
 
@@ -222,6 +223,14 @@ DEB installs to `/usr/lib/lazycodingagent` with a `/usr/bin/lazycodingagent` wra
 ```
 
 Output is written to `dist/`.
+
+**Local macOS DMG (optional):** after a Cocoa `lazbuild` and [`post-build.sh`](scripts/post-build.sh) into the app bundle `Contents/MacOS` folder:
+
+```bash
+export APP_VERSION=0.0.0-local
+./scripts/build-macos-icon.sh   # optional if installer/macos/lazycodingagent.icns exists
+./scripts/build-macos-dmg.sh
+```
 
 **Manual IDE install:** compile `LcaDesignSystem.lpk` (runtime), then `LcaDesignSystemDesign.lpk` → **Use → Install** (after terminal packages). Do not install the runtime package into the IDE.
 

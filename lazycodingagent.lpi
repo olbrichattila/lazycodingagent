@@ -5,8 +5,10 @@
     <PathDelim Value="\"/>
     <General>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="lazycodingagent"/>
+      <Title Value="Lazy Coding Agent"/>
       <Scaled Value="True"/>
+      <UseAppBundle Value="True"/>
+      <NSPrincipalClass Value="NSApplication"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <XPManifest>
