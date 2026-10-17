@@ -12,7 +12,7 @@ if [[ "${CI_LINUX_QT5_SKIP_APT:-0}" != "1" ]]; then
     git fpc lazarus lcl fp-units-rtl fp-units-fcl fp-units-misc \
     libqt5pas-dev qtbase5-dev \
     dpkg-dev file wget curl xvfb \
-    libglib2.0-dev libgdk-pixbuf2.0-dev
+    libglib2.0-dev libgdk-pixbuf2.0-dev libxml2-dev libxslt1-dev
 fi
 
 ensure_qt5_units_writable() {
@@ -20,7 +20,7 @@ ensure_qt5_units_writable() {
   user="${SUDO_USER:-${USER:-runner}}"
   group="$(id -gn "$user" 2>/dev/null || echo "$user")"
 
-  for units_root in /usr/share/lazarus/*/units/x86_64-linux; do
+  for units_root in /usr/lib/lazarus/*/units/x86_64-linux /usr/share/lazarus/*/units/x86_64-linux; do
     [[ -d "$(dirname "$units_root")" ]] || continue
     qt5_dir="${units_root}/qt5"
     if [[ ! -d "$qt5_dir" ]]; then
@@ -47,9 +47,16 @@ export LCL_WIDGETSET=qt5
 
 cd "$ROOT"
 LCL_WIDGETSET=qt5 "$SCRIPT_DIR/ci-lazbuild.sh" lazycodingagent.lpi
-"$SCRIPT_DIR/post-build.sh"
 
-TARGET_DIR="$ROOT/lib/$(fpc -iTP)-$(fpc -iTO)"
+LIB_DIR="$ROOT/lib/$(fpc -iTP)-$(fpc -iTO)"
+mkdir -p "$LIB_DIR"
+BUILD_OUT="$("$SCRIPT_DIR/resolve-lazycodingagent-output.sh" "$ROOT" "" ci-linux-qt5-release-build)"
+if [[ "$BUILD_OUT" != "$(cd "$LIB_DIR" && pwd)" ]]; then
+  install -m 755 "$BUILD_OUT/lazycodingagent" "$LIB_DIR/lazycodingagent"
+fi
+"$SCRIPT_DIR/post-build.sh" "$ROOT" "$LIB_DIR"
+
+TARGET_DIR="$LIB_DIR"
 BIN="$TARGET_DIR/lazycodingagent"
 if [[ ! -f "$BIN" ]]; then
   echo "ci-linux-qt5-release-build: missing $BIN" >&2

@@ -85,7 +85,8 @@ jobs:
           if-no-files-found: error
 
   build-linux:
-    runs-on: ubuntu-22.04
+    # 22.04 apt ships Lazarus 2.2 (no TurboPower IpHtmlTypes); 24.04 has Lazarus 3.0+.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 

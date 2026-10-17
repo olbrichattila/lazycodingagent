@@ -15,7 +15,9 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-SOURCE_DIR="${SOURCE_DIR:-$ROOT/lib/$(fpc -iTP)-$(fpc -iTO)}"
+if [[ -z "${SOURCE_DIR:-}" ]]; then
+  SOURCE_DIR="$("$SCRIPT_DIR/resolve-lazycodingagent-output.sh" "$ROOT" "" build-linux-deb)"
+fi
 DESKTOP_SRC="$ROOT/installer/linux/lazycodingagent.desktop"
 ICON_SRC="$ROOT/assets/owl_icon.png"
 PKG_NAME="lazycodingagent"

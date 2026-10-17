@@ -201,7 +201,7 @@ Pushing a version tag builds Windows and Linux packages and publishes a [GitHub 
    - **`LazyCodingAgent-0.1.0-amd64.deb`** — Debian/Ubuntu/Mint package (system Qt5 runtime via `Depends`)
    - **`LazyCodingAgent-0.1.0-x86_64.AppImage`** — portable Linux build (Qt5 bundled via [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy))
 
-The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux uses **ubuntu-22.04** for an older **glibc** baseline, builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
+The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
 
 **Linux QA (manual):** CI smoke-tests the AppImage under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
 
@@ -213,7 +213,7 @@ export APP_VERSION=0.0.0-local
 ./scripts/build-linux-appimage.sh
 ```
 
-DEB installs to `/usr/lib/lazycodingagent` with a `/usr/bin/lazycodingagent` wrapper; runtime libraries come from distribution packages (`dpkg-shlibdeps`). The AppImage bundles Qt5 from the build host — use an **Ubuntu 22.04** (or similar) environment when producing release-quality AppImages locally.
+DEB installs to `/usr/lib/lazycodingagent` with a `/usr/bin/lazycodingagent` wrapper; runtime libraries come from distribution packages (`dpkg-shlibdeps`). The AppImage bundles Qt5 from the build host — match the **ubuntu-24.04** CI environment when producing release-quality AppImages locally.
 
 **Local installer (optional):** after `lazbuild` and `post-build.ps1`, install Inno Setup 6 and run:
 
