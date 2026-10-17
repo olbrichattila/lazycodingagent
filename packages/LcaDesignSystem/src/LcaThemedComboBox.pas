@@ -59,7 +59,7 @@ function TLcaThemedComboBox.CanApplyRuntimeTheme: Boolean;
 var
   F: TCustomForm;
 begin
-  if csDesigning in ComponentState then
+  if LcaInDesignContext(Self) then
     Exit(False);
   if csLoading in ComponentState then
     Exit(False);
@@ -82,7 +82,7 @@ end;
 procedure TLcaThemedComboBox.Loaded;
 begin
   inherited Loaded;
-  if csDesigning in ComponentState then
+  if LcaInDesignContext(Self) then
     ApplyTheme(FThemeKind);
 end;
 
@@ -91,7 +91,7 @@ var
   EffTheme: TThemeKind;
 begin
   FThemeKind := ATheme;
-  if csDesigning in ComponentState then begin
+  if LcaInDesignContext(Self) then begin
     EffTheme := EffectiveControlTheme(Self, ATheme);
     StyleComboBox(Self, EffTheme);
     OnDrawItem := @ThemedDrawItem;

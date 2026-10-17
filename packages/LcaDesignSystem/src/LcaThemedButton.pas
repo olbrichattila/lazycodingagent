@@ -52,21 +52,21 @@ end;
 procedure TLcaThemedButton.CreateWnd;
 begin
   inherited CreateWnd;
-  if csDesigning in ComponentState then Exit;
+  if LcaInDesignContext(Self) then Exit;
   StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
 end;
 
 procedure TLcaThemedButton.Loaded;
 begin
   inherited Loaded;
-  if csDesigning in ComponentState then
+  if LcaInDesignContext(Self) then
     StyleThemedButtonRole(Self, EffectiveControlTheme(Self, FThemeKind), FButtonRole);
 end;
 
 procedure TLcaThemedButton.ApplyTheme(ATheme: TThemeKind);
 begin
   FThemeKind := ATheme;
-  if csDesigning in ComponentState then begin
+  if LcaInDesignContext(Self) then begin
     StyleThemedButtonRole(Self, EffectiveControlTheme(Self, ATheme), FButtonRole);
     Exit;
   end;

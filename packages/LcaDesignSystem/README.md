@@ -21,7 +21,7 @@ Theme API lives in **`LcaTheme`** (`TThemeKind`, `ThemePalette`, `ApplyThemedFor
 
 ## Opening in Lazarus (Form Designer)
 
-`lazbuild` only needs the **runtime** package (`LcaDesignSystem.lpk`). The **Form Designer** also needs **`LcaDesignSystemDesign`** compiled, installed into the IDE, and a rebuilt `lazarus.exe` (see install below).
+`lazbuild` only needs the **runtime** package (`LcaDesignSystem.lpk`). The **Form Designer** also needs **`LcaDesignSystemDesign`** compiled, installed into the IDE, and a rebuilt IDE binary (`lazbuild --build-ide`; see install below). On Linux/Qt5, **`make build` alone does not update the designer** — use **`make ide`** or **`./scripts/install-lca-lazarus.sh --widgetset=qt5`**. After install, reopen **`mainunit`** (F12); LCA chrome should use the **light palette** in the designer (readable dark-first `.lfm`).
 
 If opening **`mainunit.pas`** (F12) shows **Unable to find component class 'TLcaThemedMainMenu'** (or another `TLca*` type):
 

@@ -125,14 +125,14 @@ if [[ "$SKIP_TERMINAL" -eq 0 ]]; then
 fi
 
 lazbuild_cmd --add-package-link "$LpkRuntime"
-lazbuild_cmd "$LpkRuntime"
+lazbuild_cmd "$LpkRuntime" --build-all
 
 if [[ "$LINK_ONLY" -eq 0 ]]; then
   lazbuild_cmd --add-package "$LpkDesign"
-  lazbuild_cmd "$LpkDesign"
+  lazbuild_cmd "$LpkDesign" --build-all
   if ! system_lazarus_units_writable; then
     warn_system_lazarus_build_ide
-    exit 1
+    echo "Attempting lazbuild --build-ide anyway (IDE output is usually under ~/.lazarus)..." >&2
   fi
   echo ""
   echo "Close Lazarus completely before rebuilding the IDE (required for the component palette)."

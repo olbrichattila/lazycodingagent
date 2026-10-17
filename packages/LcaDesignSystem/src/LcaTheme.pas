@@ -40,6 +40,8 @@ function LcaComponentOrOwnerDesigning(AComponent: TComponent): Boolean;
 function LcaInDesignContext(const AComponent: TComponent): Boolean;
 { Lazarus designer uses the light palette so streamed dark-theme forms stay readable. }
 function EffectiveControlTheme(const AComponent: TComponent; AStored: TThemeKind): TThemeKind;
+{ True when ParamStr(0) is the lazarus or startlazarus IDE binary. }
+function LazarusIdeHostExecutable: Boolean;
 function ParentFormHandlesReady(AControl: TControl): Boolean;
 
 const
@@ -545,7 +547,7 @@ begin
     Exit(True);
   if LazarusIdeHostExecutable and (AComponent is TControl) then begin
     F := GetParentForm(TControl(AComponent));
-    if Assigned(F) and (csDesigning in F.ComponentState) then
+    if Assigned(F) then
       Exit(True);
   end;
   Result := False;

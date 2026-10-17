@@ -167,7 +167,7 @@ lazbuild lazycodingagent.lpi
 ./scripts/post-build.sh
 ```
 
-On **Linux**, prefer the **Qt5** LCL widgetset (`lazbuild --widgetset=qt5 lazycodingagent.lpi` or use `make`, which passes `--widgetset=qt5`). The project file pins **Widget set: qt5** so IDE **Build** matches command-line builds. GTK2/GTK3 are also supported with GTK menubar sync.
+On **Linux**, prefer the **Qt5** LCL widgetset (`lazbuild --widgetset=qt5 lazycodingagent.lpi` or use `make build`, which passes `--widgetset=qt5`). The project file pins **Widget set: qt5** so IDE **Build** matches command-line builds. **`make build` does not refresh the Form Designer** (no `LcaDesignSystemDesign` install or `--build-ide`); after LCA package changes, close Lazarus and run **`make ide`** or **`./scripts/install-lca-lazarus.sh --widgetset=qt5`**. GTK2/GTK3 are also supported with GTK menubar sync.
 
 **Running on Linux:** `make` runs `post-build.sh` automatically. Start the app with `./scripts/run-linux.sh` (on Wayland: sets `QT_QPA_PLATFORM=xcb` for Qt5 builds or `GDK_BACKEND=x11` for GTK2). You can also run `./lazycodingagent` directly; Qt5 builds set `QT_QPA_PLATFORM=xcb` in [`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas) **before** the LCL loads Qt (same effect as IDE **Run** env). GTK2 builds set `GDK_BACKEND=x11` the same way when `WAYLAND_DISPLAY` is set.
 
@@ -189,16 +189,31 @@ scripts\post-build.cmd
 
 **CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux and Windows use distro/Chocolatey Lazarus; macOS installs pinned aarch64 builds from SourceForge (the Homebrew Lazarus cask is disabled). [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo). On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
 
-### Releasing (Windows)
+### Releasing
 
-Pushing a version tag builds a Windows installer with [Inno Setup](https://jrsoftware.org/isinfo.php) and publishes a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
+Pushing a version tag builds Windows and Linux packages and publishes a [GitHub Release](https://docs.github.com/en/repositories/releasing-projects-on-github/managing-releases-in-a-repository).
 
 1. Choose the release version (for example `0.1.0`).
 2. Tag and push: `git tag v0.1.0` then `git push origin v0.1.0`.
-3. Open **Actions → Release Windows** on GitHub and wait for the job to finish.
-4. Download **`LazyCodingAgent-0.1.0-win64-Setup.exe`** from the release page for that tag.
+3. Open **Actions → Release** on GitHub and wait for `build-windows`, `build-linux`, and `publish` to finish.
+4. Download assets from the release page for that tag:
+   - **`LazyCodingAgent-0.1.0-win64-Setup.exe`** — Windows installer ([Inno Setup](https://jrsoftware.org/isinfo.php))
+   - **`LazyCodingAgent-0.1.0-amd64.deb`** — Debian/Ubuntu/Mint package (system Qt5 runtime via `Depends`)
+   - **`LazyCodingAgent-0.1.0-x86_64.AppImage`** — portable Linux build (Qt5 bundled via [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy))
 
-The workflow [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) mirrors the Windows build in `build.yml`, runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss), and uploads the setup EXE. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for the installer file name and release title. If the app did not link, CI fails at the **lazbuild** step ([`scripts/ci-lazbuild.ps1`](scripts/ci-lazbuild.ps1)), not only when building the installer.
+The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux uses **ubuntu-22.04** for an older **glibc** baseline, builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
+
+**Linux QA (manual):** CI smoke-tests the AppImage under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
+
+**Local Linux packages (optional):** after a Qt5 `lazbuild` and [`post-build.sh`](scripts/post-build.sh):
+
+```bash
+export APP_VERSION=0.0.0-local
+./scripts/build-linux-deb.sh
+./scripts/build-linux-appimage.sh
+```
+
+DEB installs to `/usr/lib/lazycodingagent` with a `/usr/bin/lazycodingagent` wrapper; runtime libraries come from distribution packages (`dpkg-shlibdeps`). The AppImage bundles Qt5 from the build host — use an **Ubuntu 22.04** (or similar) environment when producing release-quality AppImages locally.
 
 **Local installer (optional):** after `lazbuild` and `post-build.ps1`, install Inno Setup 6 and run:
 

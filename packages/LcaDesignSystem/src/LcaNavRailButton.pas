@@ -88,9 +88,7 @@ begin
     Exit(True);
   if LcaInDesignContext(Self) then
     Exit(True);
-  if (GetParentForm(Self) <> nil) and (ExtractFileName(ParamStr(0)) <> '') and
-     (SameText(ExtractFileName(ParamStr(0)), 'lazarus.exe') or
-      SameText(ExtractFileName(ParamStr(0)), 'startlazarus.exe')) then
+  if LazarusIdeHostExecutable and (GetParentForm(Self) <> nil) then
     Exit(True);
   Result := False;
 end;
