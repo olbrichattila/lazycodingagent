@@ -18,6 +18,7 @@ type
     SurfaceAlt: TColor;      // Input / secondary surface
     HeaderBg: TColor;        // Header strip background
     RailBg: TColor;          // Left navigation rail background
+    RailActiveBg: TColor;    // Selected nav rail cell
     Border: TColor;          // Visible crisp boundary borders
     BorderStrong: TColor;    // Prominent boundary / active splitters
     Text: TColor;            // Primary high-contrast text
@@ -512,6 +513,7 @@ begin
     Result.SurfaceAlt     := RGBToColor(22, 24, 40);      // #161828
     Result.HeaderBg       := RGBToColor(12, 14, 24);      // #0C0E18
     Result.RailBg         := RGBToColor(6, 8, 14);        // #06080E
+    Result.RailActiveBg   := RGBToColor(14, 16, 28);      // #0E101C (Surface)
     Result.Border         := RGBToColor(45, 55, 90);      // #2D375A
     Result.BorderStrong   := RGBToColor(0, 200, 255);     // cyan glow edge
     Result.Text           := RGBToColor(240, 248, 255);   // #F0F8FF
@@ -528,7 +530,8 @@ begin
     Result.Surface        := RGBToColor(255, 255, 255);   // #FFFFFF
     Result.SurfaceAlt     := RGBToColor(246, 248, 250);   // #F6F8FA
     Result.HeaderBg       := RGBToColor(240, 242, 245);   // #F0F2F5
-    Result.RailBg         := RGBToColor(235, 237, 242);   // #EBEDF2
+    Result.RailBg         := RGBToColor(255, 255, 255);   // idle nav cells / rail
+    Result.RailActiveBg   := RGBToColor(235, 237, 242);   // #EBEDF2 selected cell
     Result.Border         := RGBToColor(218, 222, 230);   // #DADEEC
     Result.BorderStrong   := RGBToColor(180, 186, 198);   // #B4BAC6
     Result.Text           := RGBToColor(24, 28, 36);      // #181C24
@@ -1063,7 +1066,10 @@ begin
     tbrGhost:
       begin
         ABtn.Color := P.HeaderBg;
-        ABtn.Font.Color := P.TextMuted;
+        if ATheme = tkDark then
+          ABtn.Font.Color := P.Text
+        else
+          ABtn.Font.Color := P.TextMuted;
       end;
   else
     if ATheme = tkDark then begin
@@ -1596,8 +1602,12 @@ begin
       TCustomEdit(C).Font.Color := P.Text;
     end else if C is TLabel then
       TLabel(C).Font.Color := P.Text
-    else if C is TPanel then
-      TPanel(C).Color := P.Surface
+    else if C is TPanel then begin
+      if Pos('Chrome', C.Name) > 0 then
+        TPanel(C).Color := P.HeaderBg
+      else
+        TPanel(C).Color := P.Surface;
+    end
     else if C is TPageControl then
       StylePageControl(TPageControl(C), ATheme)
     else if C is TSplitter then

@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
   ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes, SynGutterBase,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
+  LcaThemedComboBox, LcaNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
   uChatPanel, uMainFileEditor, uPlanView,
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
@@ -62,17 +62,17 @@ type
 
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
-    sbtnNavHome: TSpeedButton;
-    sbtnNavProjects: TSpeedButton;
-    sbtnNavSessions: TSpeedButton;
-    sbtnNavBots: TSpeedButton;
-    sbtnNavTools: TSpeedButton;
-    sbtnNavTasks: TSpeedButton;
-    sbtnNavToolErrors: TSpeedButton;
-    sbtnNavMultiAgent: TSpeedButton;
-    sbtnNavExecPlans: TSpeedButton;
-    sbtnNavKnowledge: TSpeedButton;
-    sbtnNavBrain: TSpeedButton;
+    sbtnNavHome: TLcaNavRailButton;
+    sbtnNavProjects: TLcaNavRailButton;
+    sbtnNavSessions: TLcaNavRailButton;
+    sbtnNavBots: TLcaNavRailButton;
+    sbtnNavTools: TLcaNavRailButton;
+    sbtnNavTasks: TLcaNavRailButton;
+    sbtnNavToolErrors: TLcaNavRailButton;
+    sbtnNavMultiAgent: TLcaNavRailButton;
+    sbtnNavExecPlans: TLcaNavRailButton;
+    sbtnNavKnowledge: TLcaNavRailButton;
+    sbtnNavBrain: TLcaNavRailButton;
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
     lblNavTitle: TLabel;
@@ -192,7 +192,7 @@ type
     FTerminalChromeLayout: Boolean;
     FFormChrome: TLcaFormChrome;
 
-    FNavRailBtns: array[TNavigationItem] of TSpeedButton;
+    FNavRailBtns: array[TNavigationItem] of TLcaNavRailButton;
     FNavContent: TNavContentControl;
     FChatPanel: TChatPanel;
     FSyntaxSchemes: TSyntaxSchemeRegistry;
@@ -285,6 +285,8 @@ type
     procedure ScheduleDeferredTerminalStart;
     procedure DeferredEnsureTerminal(Data: PtrInt);
     procedure DeferredEnforceHiddenPageTabs(Data: PtrInt);
+    procedure DeferredRefreshThemedChromeButtons(Data: PtrInt);
+    procedure RefreshThemedButtonsRecursive(ARoot: TWinControl);
     procedure ScheduleTerminalStartRetry;
     procedure TerminalRetryTimer(Sender: TObject);
     procedure TerminalStatus(Sender: TObject; const AMessage: string);
@@ -653,6 +655,7 @@ begin
     if Assigned(lcaUtilityTabBar) then
       lcaUtilityTabBar.RefreshFromPageControl;
     Application.QueueAsyncCall(@DeferredEnforceHiddenPageTabs, 0);
+    Application.QueueAsyncCall(@DeferredRefreshThemedChromeButtons, 0);
   end;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
@@ -739,7 +742,7 @@ end;
 procedure TLazyCodingAgentForm.InitNavRailButtons;
 var
   Nav: TNavigationItem;
-  Btn: TSpeedButton;
+  Btn: TLcaNavRailButton;
 begin
   FNavRailBtns[niHome] := sbtnNavHome;
   FNavRailBtns[niProjects] := sbtnNavProjects;
@@ -762,25 +765,19 @@ end;
 
 procedure TLazyCodingAgentForm.NavRailBtnClick(Sender: TObject);
 begin
-  if Sender is TSpeedButton then
-    FState.SetNavigation(TNavigationItem(TSpeedButton(Sender).Tag));
+  if Sender is TLcaNavRailButton then
+    FState.SetNavigation(TNavigationItem(TLcaNavRailButton(Sender).Tag));
 end;
 
 procedure TLazyCodingAgentForm.UpdateNavRailSelection;
 var
   Nav: TNavigationItem;
-  Btn: TSpeedButton;
-  P: TThemePalette;
+  Btn: TLcaNavRailButton;
 begin
-  P := ThemePalette(FState.Theme);
   for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
     Btn := FNavRailBtns[Nav];
     if not Assigned(Btn) then Continue;
-    Btn.Down := Nav = FState.Navigation;
-    if Nav = FState.Navigation then
-      Btn.Font.Color := P.Accent
-    else
-      Btn.Font.Color := P.TextMuted;
+    Btn.Active := Nav = FState.Navigation;
   end;
 end;
 
@@ -1130,6 +1127,30 @@ begin
     lcaCenterTabBar.RefreshFromPageControl;
   if Assigned(lcaUtilityTabBar) then
     lcaUtilityTabBar.RefreshFromPageControl;
+end;
+
+procedure TLazyCodingAgentForm.RefreshThemedButtonsRecursive(ARoot: TWinControl);
+var
+  I: Integer;
+  C: TControl;
+begin
+  if not Assigned(ARoot) then Exit;
+  for I := 0 to ARoot.ControlCount - 1 do begin
+    C := ARoot.Controls[I];
+    if C is TLcaThemedButton then
+      TLcaThemedButton(C).ApplyTheme(FState.Theme);
+    if C is TWinControl then
+      RefreshThemedButtonsRecursive(TWinControl(C));
+  end;
+end;
+
+procedure TLazyCodingAgentForm.DeferredRefreshThemedChromeButtons(Data: PtrInt);
+begin
+  if csDesigning in ComponentState then Exit;
+  if csDestroying in ComponentState then Exit;
+  if not HandleAllocated then Exit;
+  if not Assigned(pnlMainContainer) then Exit;
+  RefreshThemedButtonsRecursive(pnlMainContainer);
 end;
 
 procedure TLazyCodingAgentForm.DeferredEnsureTerminal(Data: PtrInt);

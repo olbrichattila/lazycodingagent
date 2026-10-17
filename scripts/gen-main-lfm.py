@@ -15,7 +15,7 @@ nav_items = [
 nav_rail = ""
 for name, tag, cap in nav_items:
     top_spacing = 16 if name == "sbtnNavMultiAgent" else 8
-    nav_rail += f"""      object {name}: TSpeedButton
+    nav_rail += f"""      object {name}: TLcaNavRailButton
         Tag = {tag}
         Left = 6
         Height = 40

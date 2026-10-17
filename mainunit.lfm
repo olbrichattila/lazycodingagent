@@ -56,7 +56,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       ClientHeight = 1199
       ClientWidth = 102
       TabOrder = 0
-      object sbtnNavBrain: TSpeedButton
+      object sbtnNavBrain: TLcaNavRailButton
         Tag = 10
         Left = 0
         Height = 54
@@ -71,7 +71,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavKnowledge: TSpeedButton
+      object sbtnNavKnowledge: TLcaNavRailButton
         Tag = 9
         Left = 0
         Height = 54
@@ -86,7 +86,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavExecPlans: TSpeedButton
+      object sbtnNavExecPlans: TLcaNavRailButton
         Tag = 8
         Left = 0
         Height = 54
@@ -101,7 +101,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavMultiAgent: TSpeedButton
+      object sbtnNavMultiAgent: TLcaNavRailButton
         Tag = 7
         Left = 0
         Height = 54
@@ -116,7 +116,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavToolErrors: TSpeedButton
+      object sbtnNavToolErrors: TLcaNavRailButton
         Tag = 6
         Left = 0
         Height = 54
@@ -131,7 +131,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavTasks: TSpeedButton
+      object sbtnNavTasks: TLcaNavRailButton
         Tag = 5
         Left = 0
         Height = 54
@@ -146,7 +146,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavTools: TSpeedButton
+      object sbtnNavTools: TLcaNavRailButton
         Tag = 4
         Left = 0
         Height = 54
@@ -161,7 +161,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavBots: TSpeedButton
+      object sbtnNavBots: TLcaNavRailButton
         Tag = 3
         Left = 0
         Height = 54
@@ -176,7 +176,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavSessions: TSpeedButton
+      object sbtnNavSessions: TLcaNavRailButton
         Tag = 2
         Left = 0
         Height = 54
@@ -191,7 +191,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavProjects: TSpeedButton
+      object sbtnNavProjects: TLcaNavRailButton
         Tag = 1
         Left = 0
         Height = 54
@@ -206,7 +206,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         ParentFont = False
         OnClick = NavRailBtnClick
       end
-      object sbtnNavHome: TSpeedButton
+      object sbtnNavHome: TLcaNavRailButton
         Left = 0
         Height = 54
         Top = 10
