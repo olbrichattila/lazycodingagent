@@ -150,7 +150,7 @@ var
 implementation
 
 uses
-  Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox
+  Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox, LcaThemedButtonPaint
   {$IFDEF WINDOWS}, LcaThemeWin32Buttons, LcaThemeWin32ScrollBars{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
@@ -819,11 +819,6 @@ end;
 {$ENDIF}
 
 {$IFNDEF WINDOWS}
-procedure ApplyWin32ThemedButtonPaint(ABtn: TButton; ATheme: TThemeKind;
-  ARole: TThemedButtonRole);
-begin
-end;
-
 procedure ApplyWin32ThemedComboPaint(ACombo: TComboBox; ATheme: TThemeKind);
 begin
 end;
@@ -1081,7 +1076,7 @@ begin
   end;
   RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ApplyWin32UnthemedButton(ABtn);
-  ApplyWin32ThemedButtonPaint(ABtn, ATheme, ARole);
+  ApplyThemedButtonPaint(ABtn, ATheme, ARole);
   RestoreButtonDesignerBounds(ABtn, SavedW, SavedH);
   ABtn.Invalidate;
 end;
@@ -1445,10 +1440,32 @@ begin
 {$ENDIF}
 end;
 
+procedure ApplyThemedButtonsRecursive(ARoot: TWinControl; ATheme: TThemeKind);
+var
+  I: Integer;
+  C: TControl;
+  Child: TWinControl;
+begin
+  if not Assigned(ARoot) then Exit;
+  for I := 0 to ARoot.ControlCount - 1 do begin
+    C := ARoot.Controls[I];
+    if C is TLcaThemedButton then
+      TLcaThemedButton(C).ApplyTheme(ATheme)
+    else if C is TButton then
+      ApplyThemedButtonControl(TButton(C), ATheme);
+    if C is TWinControl then begin
+      Child := TWinControl(C);
+      if Child.ControlCount > 0 then
+        ApplyThemedButtonsRecursive(Child, ATheme);
+    end;
+  end;
+end;
+
 procedure ApplyFormPlatformThemes(AForm: TCustomForm; ATheme: TThemeKind);
 begin
   if not Assigned(AForm) or not AForm.HandleAllocated then Exit;
   ApplyPlatformScrollableThemeRecursive(AForm, ATheme);
+  ApplyThemedButtonsRecursive(AForm, ATheme);
 end;
 
 procedure ApplyPlatformScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);

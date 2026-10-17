@@ -9,6 +9,7 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
   ClientWidth = 544
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
+  OnShow = FormShow
   LCLVersion = '4.8.0.0'
   object lblRules: TLabel
     Left = 16

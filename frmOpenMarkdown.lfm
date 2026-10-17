@@ -9,6 +9,7 @@ object OpenMarkdownForm: TOpenMarkdownForm
   ClientWidth = 464
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
+  OnShow = FormShow
   LCLVersion = '4.8.0.0'
   object lblFile: TLabel
     Left = 16

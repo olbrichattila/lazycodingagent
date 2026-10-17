@@ -86,6 +86,7 @@ end;
 
 procedure THelpForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
   pnlBottom.BringToFront;
   if lstTopics.ItemIndex < 0 then

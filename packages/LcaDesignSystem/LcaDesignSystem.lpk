@@ -19,8 +19,21 @@
         <UnitName Value="LcaTheme"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaThemedButtonPaint.pas"/>
+        <UnitName Value="LcaThemedButtonPaint"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaThemeWin32Buttons.pas"/>
         <UnitName Value="LcaThemeWin32Buttons"/>
+      </Item>
+      <Item>
+        <Filename Value="src\frmThemedMessage.pas"/>
+        <HasResources Value="True"/>
+        <UnitName Value="frmThemedMessage"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaThemedMessageBox.pas"/>
+        <UnitName Value="LcaThemedMessageBox"/>
       </Item>
       <Item>
         <Filename Value="src\LcaThemeWin32Combo.pas"/>

@@ -193,6 +193,7 @@ end;
 
 procedure TSplashForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
 end;
 

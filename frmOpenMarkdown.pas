@@ -23,6 +23,7 @@ type
     procedure btnPreviewClick(Sender: TObject);
     procedure btnSourceClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     FTheme: TThemeKind;
     FChoice: TMarkdownOpenChoice;
@@ -54,6 +55,12 @@ begin
   finally
     Dlg.Free;
   end;
+end;
+
+procedure TOpenMarkdownForm.FormShow(Sender: TObject);
+begin
+  ApplyTheme(FTheme);
+  ApplyFormPlatformThemes(Self, FTheme);
 end;
 
 procedure TOpenMarkdownForm.ApplyTheme(ATheme: TThemeKind);

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil, LcaThemedButton, LcaThemedComboBox,
-  uAppTypes, LcaTheme, uWorkspaceRegistry;
+  uAppTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceRegistry;
 
 type
   TNewWorkspaceForm = class(TForm)
@@ -58,6 +58,7 @@ end;
 
 procedure TNewWorkspaceForm.FormShow(Sender: TObject);
 begin
+  ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
 end;
 
@@ -111,16 +112,16 @@ var
 begin
   Path := ResolveFolderPath;
   if Path = '' then begin
-    ShowMessage('Choose a valid project folder.');
+    LcaShowMessage('Choose a valid project folder.', FTheme);
     Exit;
   end;
   if not DirectoryExists(Path) then begin
-    ShowMessage('Project folder does not exist.');
+    LcaShowMessage('Project folder does not exist.', FTheme);
     Exit;
   end;
   if Assigned(FRegistry) and FRegistry.FindByPath(Path, Entry) then begin
-    if MessageDlg('A workspace already uses this folder. Switch to it instead?',
-      mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    if LcaMessageDlg('New Workspace', 'A workspace already uses this folder. Switch to it instead?',
+      mtConfirmation, [mbYes, mbNo], FTheme) <> mrYes then
       Exit;
   end;
   ModalResult := mrOk;

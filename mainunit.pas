@@ -14,7 +14,8 @@ uses
   uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, LcaMarkdownView, uPanelDetach, uThemeHooks, fpjson, jsonparser;
+  frmOpenMarkdown, frmHelp, LcaMarkdownView, uPanelDetach, uThemeHooks, LcaThemedMessageBox,
+  fpjson, jsonparser;
 
 type
   TExecDetailSource = (edsNone, edsExecLog, edsToolError);
@@ -675,8 +676,9 @@ begin
     Exit;
   end;
   if Assigned(FSessionHubs) and FSessionHubs.AnyRunActive then begin
-    if MessageDlg('One or more agent runs are still in progress. Stop all runs and exit?',
-      mtConfirmation, [mbYes, mbNo], 0) <> mrYes then begin
+    if LcaMessageDlg('LazyCodingAgent',
+      'One or more agent runs are still in progress. Stop all runs and exit?',
+      mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then begin
       CanClose := False;
       Exit;
     end;
@@ -1863,7 +1865,7 @@ begin
   SaveCurrentSession;
   FRegistry.Save;
   FState.Save;
-  ShowMessage('Workspace configuration saved.');
+  LcaShowMessage('Workspace configuration saved.', FState.Theme);
 end;
 
 procedure TLazyCodingAgentForm.MnuFileExitClick(Sender: TObject);
@@ -1903,7 +1905,8 @@ end;
 procedure TLazyCodingAgentForm.MnuWorkspaceProjectRulesClick(Sender: TObject);
 begin
   if Trim(FState.WorkspaceRoot) = '' then begin
-    ShowMessage('Set a workspace project folder first (Settings or File → Open Project Folder).');
+    LcaShowMessage('Set a workspace project folder first (Settings or File → Open Project Folder).',
+      FState.Theme);
     Exit;
   end;
   TWorkspaceRulesForm.Execute(Self, FState.Theme, FState.WorkspaceRoot);
@@ -1916,9 +1919,9 @@ end;
 
 procedure TLazyCodingAgentForm.MnuHelpAboutClick(Sender: TObject);
 begin
-  ShowMessage('LazyCodingAgent v1.0'#13#10 +
+  LcaShowMessage('LazyCodingAgent v1.0'#13#10 +
               'Standalone Desktop AI Coding Assistant'#13#10 +
-              'Built with Free Pascal & Lazarus LCL');
+              'Built with Free Pascal & Lazarus LCL', FState.Theme);
 end;
 
 procedure TLazyCodingAgentForm.ApplyWorkspaceChatVisibility;
@@ -2069,7 +2072,8 @@ begin
     Exit;
   end;
   if not DirectoryExists(Entry.FolderPath) then begin
-    MessageDlg('Workspace folder is missing: ' + Entry.FolderPath, mtWarning, [mbOK], 0);
+    LcaMessageDlg('LazyCodingAgent', 'Workspace folder is missing: ' + Entry.FolderPath,
+      mtWarning, [mbOK], FState.Theme);
     DeactivateWorkspace;
     Exit;
   end;
@@ -2143,9 +2147,10 @@ var
   WasActive: Boolean;
 begin
   if not FRegistry.FindById(AWorkspaceId, Entry) then Exit;
-  if MessageDlg('Remove workspace "' + Entry.DisplayName + '" from the list?'#13#10 +
+  if LcaMessageDlg('LazyCodingAgent',
+    'Remove workspace "' + Entry.DisplayName + '" from the list?'#13#10 +
     'The project folder on disk will not be deleted.',
-    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then
     Exit;
 
   WasActive := SameText(FState.ActiveWorkspaceId, AWorkspaceId);
@@ -2180,7 +2185,7 @@ var
   Sid: string;
 begin
   if not FState.HasActiveWorkspace then begin
-    ShowMessage('Select a workspace first.');
+    LcaShowMessage('Select a workspace first.', FState.Theme);
     Exit;
   end;
   EnsureActiveHub;
@@ -2260,7 +2265,8 @@ var
   NewId: string;
 begin
   if not FState.HasActiveWorkspace or not Assigned(ActiveStore) then Exit;
-  if MessageDlg('Permanently delete this chat session?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  if LcaMessageDlg('LazyCodingAgent', 'Permanently delete this chat session?',
+    mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then
     Exit;
   Store := ActiveStore;
   if Assigned(FActiveHub) then
@@ -2290,7 +2296,7 @@ var
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
-    ShowMessage('File not found.');
+    LcaShowMessage('File not found.', FState.Theme);
     Exit;
   end;
   FMarkdownPath := Path;
@@ -2342,7 +2348,7 @@ var
 begin
   Path := ExpandFileName(Trim(APath));
   if (Path = '') or not FileExists(Path) then begin
-    ShowMessage('File not found.');
+    LcaShowMessage('File not found.', FState.Theme);
     Exit;
   end;
   if Assigned(FFileEditor) and FFileEditor.Modified and
@@ -2351,7 +2357,7 @@ begin
       Exit;
   if not Assigned(FFileEditor) then Exit;
   if not FFileEditor.LoadFile(Path) then begin
-    ShowMessage('Could not open file.');
+    LcaShowMessage('Could not open file.', FState.Theme);
     Exit;
   end;
   tsEditor.Caption := ExtractFileName(Path);
@@ -2454,7 +2460,7 @@ end;
 procedure TLazyCodingAgentForm.MnuFileSaveFileClick(Sender: TObject);
 begin
   if not SaveActiveEditorFile then
-    ShowMessage('No file editor tab is active.');
+    LcaShowMessage('No file editor tab is active.', FState.Theme);
 end;
 
 end.

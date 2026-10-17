@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms, Buttons,
   LCLType, Clipbrd, fpjson, jsonparser,
-  uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, uAgentTypes, uWorkspaceState,
+  uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, LcaThemedMessageBox, uAgentTypes,
+  uWorkspaceState,
   LcaMarkdownView;
 
 type
@@ -263,11 +264,11 @@ begin
   Expanded := ExpandFileName(Trim(APath));
   if not FileExists(Expanded) then Exit;
   if not IsAllowedImageFileName(Expanded) then begin
-    ShowMessage('Unsupported image type (use PNG, JPEG, WebP, or GIF).');
+    LcaShowMessage('Unsupported image type (use PNG, JPEG, WebP, or GIF).', FTheme);
     Exit;
   end;
   if FPendingImagePaths.Count >= CHAT_IMAGE_MAX_COUNT then begin
-    ShowMessage(Format('At most %d images per message.', [CHAT_IMAGE_MAX_COUNT]));
+    LcaShowMessage(Format('At most %d images per message.', [CHAT_IMAGE_MAX_COUNT]), FTheme);
     Exit;
   end;
   if FPendingImagePaths.IndexOf(Expanded) >= 0 then
@@ -358,7 +359,7 @@ begin
         Key := 0;
     except
       on E: Exception do
-        ShowMessage('Could not paste image: ' + E.Message);
+        LcaShowMessage('Could not paste image: ' + E.Message, FTheme);
     end;
   finally
     Pic.Free;
@@ -745,7 +746,7 @@ begin
 
   Err := FinalizeAttachmentsForSend(Attachments);
   if Err <> '' then begin
-    ShowMessage(Err);
+    LcaShowMessage(Err, FTheme);
     Exit;
   end;
 

@@ -8,7 +8,8 @@ unit LcaDesignSystem;
 interface
 
 uses
-  LcaTheme, LcaThemeWin32Buttons, LcaThemeWin32Combo, LcaThemeWin32ScrollBars, 
+  LcaTheme, LcaThemedButtonPaint, LcaThemeWin32Buttons, frmThemedMessage, 
+  LcaThemedMessageBox, LcaThemeWin32Combo, LcaThemeWin32ScrollBars, 
   LcaThemedPageTabBar, LcaThemedButton, LcaThemedComboBox, LcaNavRailButton, 
   LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, 
   LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedMenuFlyout, LcaOwlIconRes, 

@@ -1,7 +1,7 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 6428
+  Left = 6406
   Height = 1800
-  Top = 894
+  Top = 766
   Width = 2880
   BorderStyle = bsNone
   Caption = 'LazyCodingAgent — AI Workspace'
@@ -499,13 +499,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityExecDetail: TTabSheet
             Caption = 'Execution Detail'
-            ClientHeight = 0
-            ClientWidth = 0
+            ClientHeight = 1127
+            ClientWidth = 556
             object pnlUtilityExecDetailHost: TPanel
               Left = 0
-              Height = 0
+              Height = 1127
               Top = 0
-              Width = 0
+              Width = 556
               Align = alClient
               BevelOuter = bvNone
               TabOrder = 0
@@ -513,17 +513,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityPlan: TTabSheet
             Caption = 'Plan'
-            ClientHeight = 0
-            ClientWidth = 0
+            ClientHeight = 1127
+            ClientWidth = 556
             object pnlPlanHeader: TPanel
               Left = 0
               Height = 36
               Top = 0
-              Width = 0
+              Width = 556
               Align = alTop
               BevelOuter = bvNone
               ClientHeight = 36
-              ClientWidth = 0
+              ClientWidth = 556
               TabOrder = 0
               object lblPlanPath: TLabel
                 Left = 8
@@ -533,7 +533,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Caption = 'Plan file:'
               end
               object cboPlanModel: TLcaThemedComboBox
-                Left = -272
+                Left = 284
                 Height = 44
                 Top = 4
                 Width = 180
@@ -543,7 +543,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 TabOrder = 0
               end
               object btnPlanBuild: TLcaThemedButton
-                Left = -84
+                Left = 472
                 Height = 28
                 Top = 4
                 Width = 72
@@ -555,9 +555,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object memPlanBody: TMemo
               Left = 0
-              Height = 0
-              Top = 0
-              Width = 0
+              Height = 1091
+              Top = 36
+              Width = 556
               Align = alClient
               ReadOnly = True
               ScrollBars = ssVertical
@@ -892,13 +892,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsEditor: TTabSheet
           Caption = 'Editor'
-          ClientHeight = 1127
-          ClientWidth = 1114
+          ClientHeight = 0
+          ClientWidth = 0
           inline synEditor: TSynEdit
             Left = 0
-            Height = 1127
+            Height = 0
             Top = 0
-            Width = 1114
+            Width = 0
             Align = alClient
             Font.Height = 14
             Font.Name = 'DejaVu Sans Mono'
@@ -940,13 +940,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsMarkdown: TTabSheet
           Caption = 'Markdown'
-          ClientHeight = 1127
-          ClientWidth = 1114
+          ClientHeight = 0
+          ClientWidth = 0
           object pnlMarkdownPreviewHost: TPanel
             Left = 0
-            Height = 1127
+            Height = 0
             Top = 0
-            Width = 1114
+            Width = 0
             Align = alClient
             BevelOuter = bvNone
             TabOrder = 0

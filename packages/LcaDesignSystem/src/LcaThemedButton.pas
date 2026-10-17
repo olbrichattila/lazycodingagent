@@ -15,6 +15,8 @@ type
     procedure SetThemeKind(AValue: TThemeKind);
     procedure SetButtonRole(AValue: TThemedButtonRole);
     function CanApplyRuntimeTheme: Boolean;
+  protected
+    procedure CreateWnd; override;
   public
     constructor Create(AOwner: TComponent); override;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -64,12 +66,21 @@ begin
   Result := True;
 end;
 
+procedure TLcaThemedButton.CreateWnd;
+begin
+  inherited CreateWnd;
+  if csDesigning in ComponentState then Exit;
+  StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
+end;
+
 procedure TLcaThemedButton.ApplyTheme(ATheme: TThemeKind);
 begin
   FThemeKind := ATheme;
-  if not CanApplyRuntimeTheme then
-    Exit;
-  StyleThemedButtonRole(Self, ATheme, FButtonRole);
+  if csDesigning in ComponentState then Exit;
+  if csLoading in ComponentState then Exit;
+  if csReading in ComponentState then Exit;
+  if not HandleAllocated then Exit;
+  StyleThemedButtonRole(Self, FThemeKind, FButtonRole);
 end;
 
 end.

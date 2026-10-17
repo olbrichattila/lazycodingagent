@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
-  uAppTypes, LcaTheme, uSyntaxSchemeRegistry;
+  uAppTypes, LcaTheme, LcaThemedMessageBox, uSyntaxSchemeRegistry;
 
 type
   { TSyntaxSchemesForm }
@@ -24,6 +24,7 @@ type
     procedure btnSetActiveClick(Sender: TObject);
     procedure btnCloseClick(Sender: TObject);
     procedure lstSchemesClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     FTheme: TThemeKind;
     FRegistry: TSyntaxSchemeRegistry;
@@ -104,6 +105,12 @@ begin
   btnSetActive.Enabled := not SameText(E.Id, FRegistry.ActiveId);
 end;
 
+procedure TSyntaxSchemesForm.FormShow(Sender: TObject);
+begin
+  ApplyTheme(FTheme);
+  ApplyFormPlatformThemes(Self, FTheme);
+end;
+
 procedure TSyntaxSchemesForm.ApplyTheme(ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -128,7 +135,7 @@ begin
     if not Dlg.Execute then Exit;
     NewId := FRegistry.ImportFromFile(Dlg.FileName, Err);
     if NewId = '' then begin
-      MessageDlg('Import failed: ' + Err, mtError, [mbOK], 0);
+      LcaMessageDlg('Syntax Schemes', 'Import failed: ' + Err, mtError, [mbOK], FTheme);
       Exit;
     end;
     FChanged := True;
@@ -148,7 +155,7 @@ begin
   if Idx < 0 then Exit;
   E := FRegistry.GetEntry(PtrInt(lstSchemes.Items.Objects[Idx]));
   if not FRegistry.Remove(E.Id, Err) then begin
-    MessageDlg(Err, mtError, [mbOK], 0);
+    LcaMessageDlg('Syntax Schemes', Err, mtError, [mbOK], FTheme);
     Exit;
   end;
   FChanged := True;
