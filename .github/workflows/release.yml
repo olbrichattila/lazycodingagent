@@ -168,10 +168,13 @@ jobs:
           path: ${{ runner.temp }}/lazarus-ci
           key: macos-lazarus-4.8-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
 
-      - name: macOS release build
+      - name: Install Free Pascal and Lazarus (SourceForge)
         run: |
           chmod +x scripts/*.sh
-          ./scripts/ci-macos-release-build.sh
+          ./scripts/ci-install-lazarus-macos.sh
+
+      - name: macOS release build
+        run: ./scripts/ci-macos-release-build.sh
 
       - name: Build DMG
         run: ./scripts/build-macos-dmg.sh

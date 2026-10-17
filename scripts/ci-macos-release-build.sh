@@ -7,8 +7,10 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 chmod +x "$SCRIPT_DIR"/*.sh
 
-if [[ -x "$SCRIPT_DIR/ci-install-lazarus-macos.sh" && -z "${LAZBUILD:-}" ]]; then
-  "$SCRIPT_DIR/ci-install-lazarus-macos.sh"
+if [[ -z "${LAZBUILD:-}" ]]; then
+  # Subprocess exports do not persist; source so LAZBUILD/LAZARUS_DIR apply here.
+  # shellcheck disable=SC1091
+  source "$SCRIPT_DIR/ci-install-lazarus-macos.sh"
 fi
 
 export LCL_WIDGETSET=cocoa
