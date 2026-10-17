@@ -25,7 +25,7 @@ LAZBUILD="$(resolve_lazbuild "$LAZBUILD")" || {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 run_lazbuild() {
-  if [[ -n "${LAZARUS_PRIMARY_CONFIG:-}" ]]; then
+  if [[ -n "${LAZARUS_PRIMARY_CONFIG:-}" ]] || [[ -n "${LCL_WIDGETSET:-}" ]]; then
     "$SCRIPT_DIR/ci-lazbuild.sh" "$@"
   else
     "$LAZBUILD" "$@"
