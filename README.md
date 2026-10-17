@@ -143,9 +143,25 @@ scripts\install-lca-lazarus.bat
 
 **Close Lazarus** before running the full install: the script installs **`LcaDesignSystemDesign`** (palette only) and runs **`lazbuild --build-ide`**. The **runtime** `LcaDesignSystem` package is linked for builds but not embedded in `lazarus.exe`.
 
+On **Linux**, plain `lazbuild` defaults to **GTK2**, so a full install without a widgetset rebuilds the IDE for GTK2. To **rebuild the Lazarus IDE itself for Qt5** (apt install under `/usr/share/lazarus`), close Lazarus and run:
+
+```bash
+chmod +x scripts/rebuild-lazarus-ide-qt5.sh
+./scripts/rebuild-lazarus-ide-qt5.sh
+```
+
+That script creates `units/x86_64-linux/qt5` with `sudo` (one-time), then runs `lazbuild --widgetset=qt5 --build-ide` so **your** IDE (SynEdit, LCA Design, etc. from `~/.lazarus`) is linked into `~/.lazarus/bin/lazarus`. **Do not copy** `/usr/share/lazarus/4.8.0/lazarus` over that file — the system binary is a smaller stock build without your installed design packages. `startlazarus` and the desktop entry use `~/.lazarus/bin/lazarus`; `/usr/share/.../lazarus` is only the apt source tree.
+
+For **LCA Design** packages on Qt5, pass the same widgetset to the install script:
+
+```bash
+./scripts/install-lca-lazarus.sh --widgetset=qt5
+# or: LCL_WIDGETSET=qt5 ./scripts/install-lca-lazarus.sh
+```
+
 If Lazarus **hangs on startup** after an install, run **`scripts\recover-lazarus-ide.bat`**, then reinstall with **`install-lca-lazarus.bat`** (Lazarus closed). See [`packages/LcaDesignSystem/README.md`](packages/LcaDesignSystem/README.md).
 
-Use **`--link-only`** for CI/headless builds without IDE palette install or IDE rebuild.
+Use **`--link-only`** for CI/headless builds without IDE palette install or IDE rebuild (then pass **`--widgetset=qt5`** to `lazbuild` when building the app, if desired).
 
 Legacy scripts [`scripts/build-terminal-deps.sh`](scripts/build-terminal-deps.sh) / [`.ps1`](scripts/build-terminal-deps.ps1) only link terminal packages; prefer `install-lca-lazarus.*`.
 
@@ -163,7 +179,16 @@ lazbuild lazycodingagent.lpi
 ./scripts/post-build.sh
 ```
 
-On **Linux**, prefer the **Qt5** LCL widgetset in Lazarus (Project → Project Options → Compiler Options → Config and Target) so menubar and memo styling hooks in `LcaTheme` apply; GTK2/GTK3 are also supported with GTK menubar sync.
+On **Linux**, prefer the **Qt5** LCL widgetset (`lazbuild --widgetset=qt5 lazycodingagent.lpi` or Project → Project Options → Compiler Options → Config and Target) so menubar and memo styling hooks in `LcaTheme` apply. GTK2/GTK3 are also supported with GTK menubar sync.
+
+**Running on Linux:** After `post-build.sh`, start the app with `./scripts/run-linux.sh` (sets `GDK_BACKEND=x11` on Wayland when needed). You can also run `./lazycodingagent` directly; GTK2 builds auto-select XWayland when `WAYLAND_DISPLAY` is set and `GDK_BACKEND` is unset.
+
+**Linux troubleshooting:**
+
+- **No window on Wayland (GTK2 build):** The process runs but nothing appears (not even the splash). Default `lazbuild` on Linux uses GTK2, which often fails to map windows on Wayland. Use `GDK_BACKEND=x11 ./lazycodingagent`, `./scripts/run-linux.sh`, rebuild with the **Qt5** widgetset, or use an X11 session. Requires XWayland (`echo $DISPLAY` should be set, e.g. `:0`). If a window still does not appear on X11, check multi-monitor or saved off-screen bounds in workspace state under your config directory.
+- **Canberra Gtk-Message:** `Failed to load module "canberra-gtk-module"` is an optional event-sound module; the GUI still runs. Install with `sudo apt install libcanberra-gtk-module` (Debian/Ubuntu, GTK2 builds), or `GTK_MODULES= ./lazycodingagent`.
+- **`install-lca-lazarus.sh` / `mkdir: Permission denied` on `--build-ide`:** With **apt** Lazarus (`/usr/share/lazarus`), rebuilding the IDE for a **new** widgetset (e.g. **qt5**) tries to create `units/x86_64-linux/qt5` under the system tree, which is root-owned. Use **`--link-only --widgetset=qt5`** for command-line builds, or create the directory once: `sudo install -d -o "$USER" -g "$USER" /usr/share/lazarus/4.8.0/units/x86_64-linux/qt5`, then rerun the full install (Lazarus closed). A user-writable Lazarus install (fpcupdeluxe) avoids this entirely.
+- **Lazarus exits when opening `lazycodingagent.lpi`:** Access violation in **`TryLoadOwlIconInto`** while the designer loads **`mainunit`**. Rebuild LCA for **qt5**, then **`lazbuild --widgetset=qt5 --build-ide`** (close Lazarus first; **`--link-only` does not update the IDE**). Or run **`./scripts/install-lca-lazarus.sh --widgetset=qt5`**. On Wayland/Qt5, use **`./scripts/run-lazarus-linux.sh`** if the IDE dies with a Wayland protocol error. Match **Project → Compiler Options → Widget set: qt5**. Emergency: **`./scripts/recover-lazarus-ide.sh`**.
 
 **Windows:**
 

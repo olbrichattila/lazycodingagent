@@ -1,7 +1,8 @@
 # Install TerminalEmulator + LCA Design System packages for Lazarus IDE and lazbuild.
 param(
     [switch]$LinkOnly,
-    [switch]$SkipTerminal
+    [switch]$SkipTerminal,
+    [string]$WidgetSet = $env:LCL_WIDGETSET
 )
 
 $ErrorActionPreference = 'Stop'
@@ -37,35 +38,40 @@ function Resolve-LazBuild {
 
 $LazBuild = Resolve-LazBuild
 
+function Invoke-LazBuild {
+    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+    if ($WidgetSet) {
+        & $LazBuild --widgetset=$WidgetSet @Args
+    } else {
+        & $LazBuild @Args
+    }
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+}
+
+if ($WidgetSet) {
+    Write-Host "Using LCL widgetset: $WidgetSet"
+}
+
 if (-not $SkipTerminal) {
     if (-not (Test-Path -LiteralPath $LpkTF)) {
         Write-Error 'Missing submodule: git submodule update --init third_party/TerminalEmulator'
     }
-    & $LazBuild --add-package-link $LpkTF
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    & $LazBuild --add-package-link $LpkView
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    & $LazBuild $LpkTF
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    & $LazBuild $LpkView
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Invoke-LazBuild --add-package-link $LpkTF
+    Invoke-LazBuild --add-package-link $LpkView
+    Invoke-LazBuild $LpkTF
+    Invoke-LazBuild $LpkView
 }
 
-& $LazBuild --add-package-link $LpkRuntime
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& $LazBuild $LpkRuntime
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Invoke-LazBuild --add-package-link $LpkRuntime
+Invoke-LazBuild $LpkRuntime
 
 if (-not $LinkOnly) {
-    & $LazBuild --add-package $LpkDesign
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-    & $LazBuild $LpkDesign
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Invoke-LazBuild --add-package $LpkDesign
+    Invoke-LazBuild $LpkDesign
     Write-Host ''
     Write-Host 'Close Lazarus completely before rebuilding the IDE (required for the component palette).'
     Write-Host 'Rebuilding Lazarus IDE with LcaDesignSystemDesign (runtime stays out of lazarus.exe)...'
-    & $LazBuild --build-ide
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Invoke-LazBuild --build-ide
     Write-Host ''
     Write-Host 'IDE rebuild complete. Start Lazarus and open the Component palette page: LCA Design.'
     Write-Host 'If Lazarus hangs on startup, run: scripts\recover-lazarus-ide.bat'
@@ -73,4 +79,8 @@ if (-not $LinkOnly) {
     Write-Host 'Link-only: runtime packages linked for lazbuild (no IDE design install).'
 }
 
-Write-Host 'Done. Open lazycodingagent.lpi in Lazarus or run: lazbuild lazycodingagent.lpi'
+if ($WidgetSet) {
+    Write-Host "Done. Build the app with: lazbuild --widgetset=$WidgetSet lazycodingagent.lpi"
+} else {
+    Write-Host 'Done. Open lazycodingagent.lpi in Lazarus or run: lazbuild lazycodingagent.lpi'
+}

@@ -20,8 +20,13 @@ begin
   if not Assigned(Application) then Exit;
   Pic := TPicture.Create;
   try
-    if TryLoadOwlIconInto(Pic) then
-      Application.Icon.Assign(Pic.Bitmap);
+    try
+      if TryLoadOwlIconInto(Pic) then
+        Application.Icon.Assign(Pic.Bitmap);
+    except
+      on E: Exception do
+        { OWL_ICON resource may be unavailable until the LCL module handle is ready (Qt5/Linux). }
+    end;
   finally
     Pic.Free;
   end;

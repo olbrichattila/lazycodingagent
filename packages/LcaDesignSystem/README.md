@@ -54,6 +54,7 @@ chmod +x scripts/install-lca-lazarus.sh
 
 - **`--link-only`** — Register and compile runtime packages for `lazbuild` only (no IDE palette install).
 - **`--skip-terminal`** — Skip `TerminalFramework` / `ViewLCL` (terminal component will not build).
+- **`--widgetset=NAME`** / **`--qt5`** — Use the same LCL widgetset for every `lazbuild` call, including **`--build-ide`** (Linux default without this is **gtk2**). Example: `./scripts/install-lca-lazarus.sh --widgetset=qt5`. Or set **`LCL_WIDGETSET=qt5`**.
 
 Requires:
 
@@ -64,6 +65,12 @@ Requires:
 The install script links the **runtime** package for `lazbuild`, installs **`LcaDesignSystemDesign`** into the IDE, and runs **`lazbuild --build-ide`** (close Lazarus first). Only the lightweight design package is linked into `lazarus.exe`; terminal and TurboPower stay in the runtime package used by projects.
 
 After it finishes, start Lazarus, open the **Component** palette, and select the **LCA Design** page.
+
+### IDE crash when opening `lazycodingagent.lpi`
+
+If the whole IDE closes when you open the project (often while loading `mainunit` in the designer), the crash is usually **`TryLoadOwlIconInto`** from **`TLcaThemedTitleBar.Loaded`**. JIT form loading runs **`Loaded` before `csDesigning` is set**, so guards that only check **`ComponentState`** are not enough; current sources also skip owl loading when **`ParamStr(0)`** is the **`lazarus`** IDE binary.
+
+Close Lazarus, rebuild **both** packages for your widgetset (e.g. **qt5**), then **`lazbuild --widgetset=qt5 --build-ide`** (or **`./scripts/install-lca-lazarus.sh --widgetset=qt5`**). **`--link-only` does not refresh the IDE binary** — you need **`--build-ide`** after LCA code changes. On Wayland, start the IDE with **`./scripts/run-lazarus-linux.sh`** (`QT_QPA_PLATFORM=xcb`) if Qt logs a fatal Wayland protocol error.
 
 ### IDE hangs on startup
 

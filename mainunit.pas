@@ -23,7 +23,6 @@ type
   TLazyCodingAgentForm = class(TForm)
     btnChatSend: TLcaThemedButton;
     btnChatAttachImage: TLcaThemedButton;
-    pnlChatAttachmentStrip: TPanel;
     btnChatStop: TLcaThemedButton;
     cboChatMode: TLcaThemedComboBox;
     cboChatModel: TLcaThemedComboBox;
@@ -56,6 +55,7 @@ type
     mnuHelp: TMenuItem;
     mnuHelpUserGuide: TMenuItem;
     mnuHelpAbout: TMenuItem;
+    pnlChatAttachmentStrip: TPanel;
 
     StatusBar1: TStatusBar;
 
@@ -343,7 +343,7 @@ var
 implementation
 
 uses
-  uExecutionDetailHtml, frmSplash;
+  uExecutionDetailHtml, frmSplash, uAppIcon;
 
 {$R *.lfm}
 
@@ -539,6 +539,7 @@ end;
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
   ReportSplashLoadProgress(5);
+  ApplyOwlApplicationIcon;
   ApplyInitialWindowSize;
   Caption := 'LazyCodingAgent — AI Workspace';
   FUpdatingState := False;
