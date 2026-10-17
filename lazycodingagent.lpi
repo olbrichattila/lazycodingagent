@@ -63,6 +63,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uLinuxDisplayEnv.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="mainunit.pas"/>
         <IsPartOfProject Value="True"/>
         <ComponentName Value="LazyCodingAgentForm"/>
@@ -353,6 +357,7 @@
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+      <LCLWidgetType Value="qt5"/>
     </SearchPaths>
     <Linking>
       <Debugging>

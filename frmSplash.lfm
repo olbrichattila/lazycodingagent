@@ -40,6 +40,9 @@ object SplashForm: TSplashForm
       Top = 942
       Width = 1664
       Anchors = [akLeft, akRight, akBottom]
+      Max = 100
+      Min = 0
+      Position = 0
       Smooth = True
       TabOrder = 0
     end
