@@ -3,10 +3,24 @@
 set -euo pipefail
 
 LAZBUILD="${LAZBUILD:-lazbuild}"
-if ! command -v "$LAZBUILD" >/dev/null 2>&1; then
+
+resolve_lazbuild() {
+  local candidate="$1"
+  if [[ -f "$candidate" ]] && [[ -x "$candidate" ]]; then
+    echo "$candidate"
+    return 0
+  fi
+  if command -v "$candidate" >/dev/null 2>&1; then
+    command -v "$candidate"
+    return 0
+  fi
+  return 1
+}
+
+LAZBUILD="$(resolve_lazbuild "$LAZBUILD")" || {
   echo "ci-prepare-lazarus-deps: lazbuild not found (set LAZBUILD)" >&2
   exit 1
-fi
+}
 
 link_and_build() {
   local lpk="$1"
@@ -18,49 +32,55 @@ link_and_build() {
   "$LAZBUILD" "$lpk"
 }
 
-find_synedit_lpk() {
-  local root dir
+lazarus_root_has_synedit() {
+  local root="$1"
+  [[ -n "$root" ]] && [[ -f "${root}/components/synedit/synedit.lpk" ]]
+}
+
+resolve_lazarus_root() {
+  local root lb resolved syn
+
+  lb="$(readlink -f "$LAZBUILD" 2>/dev/null || realpath "$LAZBUILD" 2>/dev/null || echo "$LAZBUILD")"
+  root="$(dirname "$lb")"
+  if lazarus_root_has_synedit "$root"; then
+    echo "$root"
+    return 0
+  fi
+
   for root in \
     "${LAZARUS_DIR:-}" \
     "/usr/lib/lazarus" \
     "/usr/share/lazarus" \
     "/Applications/Lazarus/lazarus" \
     "/Applications/Lazarus" \
-    "C:/lazarus" \
-    "C:/Program Files/Lazarus" \
     ; do
-    [[ -z "$root" ]] && continue
-    dir="${root}/components/synedit/synedit.lpk"
-    if [[ -f "$dir" ]]; then
-      echo "$dir"
+    if lazarus_root_has_synedit "$root"; then
+      echo "$root"
       return 0
     fi
   done
+
+  shopt -s nullglob
+  for syn in /usr/share/lazarus/*/components/synedit/synedit.lpk; do
+    if [[ -f "$syn" ]]; then
+      resolved="$(cd "$(dirname "$syn")/../.." && pwd)"
+      echo "$resolved"
+      return 0
+    fi
+  done
+  shopt -u nullglob
+
   return 1
 }
 
-install_turbopower_ipro() {
-  local dir="${TURBOPOWER_IPRO_DIR:-${RUNNER_TEMP:-/tmp}/IPro}"
-  local lpk=""
-  if [[ ! -d "$dir/.git" ]]; then
-    rm -rf "$dir"
-    git clone --depth 1 https://github.com/TurboPack/IPro.git "$dir"
-  fi
-  lpk="$(find "$dir" -maxdepth 4 -type f -iname 'turbopoweripro.lpk' 2>/dev/null | head -1 || true)"
-  if [[ -z "$lpk" ]]; then
-    lpk="$(find "$dir" -maxdepth 4 -type f -name '*.lpk' 2>/dev/null | head -1 || true)"
-  fi
-  if [[ -z "$lpk" ]]; then
-    echo "ci-prepare-lazarus-deps: TurboPower IPro .lpk not found under $dir" >&2
-    return 1
-  fi
-  link_and_build "$lpk"
-}
-
-SYNEDIT_LPK="$(find_synedit_lpk)" || {
-  echo "ci-prepare-lazarus-deps: SynEdit .lpk not found (set LAZARUS_DIR)" >&2
+LAZARUS_ROOT="$(resolve_lazarus_root)" || {
+  echo "ci-prepare-lazarus-deps: Lazarus root not found (lazbuild=$LAZBUILD, LAZARUS_DIR=${LAZARUS_DIR:-})" >&2
   exit 1
 }
+
+SYNEDIT_LPK="${LAZARUS_ROOT}/components/synedit/synedit.lpk"
+IPRO_LPK="${LAZARUS_ROOT}/components/turbopower_ipro/turbopoweripro.lpk"
+
 link_and_build "$SYNEDIT_LPK"
 
 DSGN_LPK="$(dirname "$SYNEDIT_LPK")/syneditdsgn.lpk"
@@ -68,5 +88,10 @@ if [[ -f "$DSGN_LPK" ]]; then
   link_and_build "$DSGN_LPK"
 fi
 
-install_turbopower_ipro
-echo "ci-prepare-lazarus-deps: SynEdit and TurboPower IPro linked."
+if [[ ! -f "$IPRO_LPK" ]]; then
+  echo "ci-prepare-lazarus-deps: TurboPower IPro .lpk not found at $IPRO_LPK (LAZARUS_ROOT=$LAZARUS_ROOT)" >&2
+  exit 1
+fi
+link_and_build "$IPRO_LPK"
+
+echo "ci-prepare-lazarus-deps: SynEdit and TurboPower IPro linked (LAZARUS_ROOT=$LAZARUS_ROOT)."

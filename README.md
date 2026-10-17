@@ -198,7 +198,7 @@ lazbuild lazycodingagent.lpi
 scripts\post-build.cmd
 ```
 
-**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild).
+**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux and Windows use distro/Chocolatey Lazarus; macOS installs pinned aarch64 builds from SourceForge (the Homebrew Lazarus cask is disabled). [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo).
 
 **Manual IDE install:** compile `LcaDesignSystem.lpk` (runtime), then `LcaDesignSystemDesign.lpk` → **Use → Install** (after terminal packages). Do not install the runtime package into the IDE.
 

@@ -24,7 +24,6 @@ jobs:
       - name: Prepare SynEdit and TurboPower IPro
         run: |
           chmod +x scripts/*.sh
-          export LAZARUS_DIR=/usr/lib/lazarus
           ./scripts/ci-prepare-lazarus-deps.sh
 
       - name: Link LCA and terminal packages
@@ -93,37 +92,19 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Free Pascal and Lazarus
-        run: |
-          brew install fpc
-          brew install --cask lazarus
-
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Install Free Pascal and Lazarus (SourceForge)
         run: |
           chmod +x scripts/*.sh
-          export LAZARUS_DIR="/Applications/Lazarus/lazarus"
-          export LAZBUILD="/Applications/Lazarus/lazbuild"
-          if [[ ! -x "$LAZBUILD" ]]; then
-            LAZBUILD="$(command -v lazbuild)"
-            export LAZBUILD
-          fi
-          ./scripts/ci-prepare-lazarus-deps.sh
+          ./scripts/ci-install-lazarus-macos.sh
+
+      - name: Prepare SynEdit and TurboPower IPro
+        run: ./scripts/ci-prepare-lazarus-deps.sh
 
       - name: Link LCA and terminal packages
-        run: |
-          export LAZBUILD="${LAZBUILD:-/Applications/Lazarus/lazbuild}"
-          if [[ ! -x "$LAZBUILD" ]]; then
-            export LAZBUILD="$(command -v lazbuild)"
-          fi
-          ./scripts/install-lca-lazarus.sh --link-only
+        run: ./scripts/install-lca-lazarus.sh --link-only --widgetset=cocoa
 
       - name: lazbuild
-        run: |
-          LAZBUILD="${LAZBUILD:-/Applications/Lazarus/lazbuild}"
-          if [[ ! -x "$LAZBUILD" ]]; then
-            LAZBUILD="$(command -v lazbuild)"
-          fi
-          "$LAZBUILD" lazycodingagent.lpi
+        run: lazbuild --widgetset=cocoa lazycodingagent.lpi
 
       - name: Post-build deploy
         run: ./scripts/post-build.sh
