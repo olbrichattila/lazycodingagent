@@ -19,7 +19,8 @@ if [[ -z "${SOURCE_DIR:-}" ]]; then
   SOURCE_DIR="$("$SCRIPT_DIR/resolve-lazycodingagent-output.sh" "$ROOT" "" build-linux-appimage)"
 fi
 DESKTOP_SRC="$ROOT/installer/linux/lazycodingagent.desktop"
-ICON_SRC="$ROOT/assets/owl_icon.png"
+# linuxdeploy requires square icons at standard sizes (e.g. 256x256); owl_icon.png is not.
+ICON_APPIMAGE="$ROOT/assets/owl_icon_256.png"
 DIST="$ROOT/dist"
 WORKDIR="$ROOT/build/appimage"
 APPDIR="$WORKDIR/AppDir"
@@ -32,6 +33,10 @@ LINUXDEPLOY_QT_URL="https://github.com/linuxdeploy/linuxdeploy-plugin-qt/release
 BIN="$SOURCE_DIR/lazycodingagent"
 if [[ ! -f "$BIN" ]]; then
   echo "build-linux-appimage: missing binary $BIN" >&2
+  exit 1
+fi
+if [[ ! -f "$ICON_APPIMAGE" ]]; then
+  echo "build-linux-appimage: missing $ICON_APPIMAGE (256x256 icon for linuxdeploy)" >&2
   exit 1
 fi
 
@@ -49,8 +54,8 @@ if [[ -d "$SOURCE_DIR/assets" ]]; then
 fi
 
 install -m 644 "$DESKTOP_SRC" "$APPDIR/usr/share/applications/lazycodingagent.desktop"
-install -m 644 "$ICON_SRC" "$APPDIR/usr/share/icons/hicolor/256x256/apps/lazycodingagent.png"
-install -m 644 "$ICON_SRC" "$APPDIR/lazycodingagent.png"
+install -m 644 "$ICON_APPIMAGE" "$APPDIR/usr/share/icons/hicolor/256x256/apps/lazycodingagent.png"
+install -m 644 "$ICON_APPIMAGE" "$APPDIR/lazycodingagent.png"
 
 LINUXDEPLOY="$WORKDIR/linuxdeploy.AppImage"
 LINUXDEPLOY_QT="$WORKDIR/linuxdeploy-plugin-qt.AppImage"
