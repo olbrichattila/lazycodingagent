@@ -998,8 +998,13 @@ begin
   FPlanView.Bind(lblPlanPath, cboPlanModel, btnPlanBuild, memPlanBody);
   FPlanView.OnBuild := @PlanBuildRequested;
 
-  if Assigned(lcaTerminalPanel) then
-    lcaTerminalPanel.OnTerminalStatus := @TerminalStatus;
+  if not Assigned(lcaTerminalPanel) then begin
+    lcaTerminalPanel := TLcaTerminalPanel.Create(Self);
+    lcaTerminalPanel.Parent := pnlTerminalContent;
+    lcaTerminalPanel.Align := alClient;
+    lcaTerminalPanel.StatusLabel := lblTerminalStatus;
+  end;
+  lcaTerminalPanel.OnTerminalStatus := @TerminalStatus;
 
   ConfigureThemedMemo(memUtilityScratch, FState.Theme);
   if not Assigned(FExecDetailView) then begin
