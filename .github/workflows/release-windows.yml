@@ -53,6 +53,9 @@ jobs:
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
 
+      - name: Install Python deps (owl branding)
+        run: python -m pip install --upgrade pip pillow
+
       - name: Owl branding (BMP resource + EXE icon)
         shell: cmd
         run: scripts\gen-owl-branding.bat
