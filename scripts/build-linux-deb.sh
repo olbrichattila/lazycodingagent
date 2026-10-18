@@ -91,6 +91,8 @@ if [[ -z "$SHLIBS" ]]; then
   printf '%s\n' "$SHLIBS_RAW" >&2
   exit 1
 fi
+# OpenSSL is loaded at runtime (FPC opensslsockets); ensure HTTPS works on minimal installs (Pi bookworm+).
+SHLIBS="${SHLIBS}, libssl3 | libssl3t64"
 rm -rf "$SHLIB_WORK"
 
 cat > "$STAGING/DEBIAN/control" <<EOF

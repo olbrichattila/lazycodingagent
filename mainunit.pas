@@ -275,7 +275,6 @@ type
     procedure MenuSelectSyntaxScheme(Sender: TObject);
     procedure NavFileOpen(Sender: TObject; const AFilePath: string);
 
-    procedure ApplyInitialWindowSize;
     procedure InitWorkspaceSubControls;
     procedure InitNavRailButtons;
     procedure UpdateNavRailSelection;
@@ -565,45 +564,11 @@ begin
 end;
 
 
-
-procedure TLazyCodingAgentForm.ApplyInitialWindowSize;
-var
-  R: TRect;
-  W, H: Integer;
-const
-  TARGET_PCT = 67;
-begin
-  if csDesigning in ComponentState then Exit;
-  R := Screen.PrimaryMonitor.WorkareaRect;
-  W := (R.Width * TARGET_PCT) div 100;
-  H := (R.Height * TARGET_PCT) div 100;
-  if Constraints.MinWidth > R.Width then
-    Constraints.MinWidth := R.Width;
-  if Constraints.MinHeight > R.Height then
-    Constraints.MinHeight := R.Height;
-  if W < Constraints.MinWidth then
-    W := Constraints.MinWidth;
-  if H < Constraints.MinHeight then
-    H := Constraints.MinHeight;
-  if W > R.Width then
-    W := R.Width;
-  if H > R.Height then
-    H := R.Height;
-  Width := W;
-  Height := H;
-  if Position = poScreenCenter then begin
-    Left := R.Left + (R.Width - W) div 2;
-    Top := R.Top + (R.Height - H) div 2;
-  end;
-end;
-
-
 procedure TLazyCodingAgentForm.FormCreate(Sender: TObject);
 begin
   if csDesigning in ComponentState then Exit;
   ReportSplashLoadProgress(5);
   ApplyOwlApplicationIcon;
-  ApplyInitialWindowSize;
   Caption := 'LazyCodingAgent — AI Workspace';
   FUpdatingState := False;
   FTerminalStartQueued := False;
@@ -681,6 +646,8 @@ end;
 procedure TLazyCodingAgentForm.FormShow(Sender: TObject);
 begin
   if csDesigning in ComponentState then Exit;
+  if Assigned(FFormChrome) then
+    FFormChrome.EnsurePlatformChrome;
   if FPendingInitialDockLayout then begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;

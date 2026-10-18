@@ -13,6 +13,7 @@ type
     FForm: TCustomForm;
     FOldWindowProc: TWndMethod;
     FBorderlessApplied: Boolean;
+    FCocoaPlatformChromeApplied: Boolean;
     procedure WndProc(var Message: TLMessage);
     function EdgeHitTestClient(const P: TPoint): PtrInt;
   public
@@ -20,6 +21,7 @@ type
     destructor Destroy; override;
     procedure Attach(AForm: TCustomForm);
     procedure ApplyFrameless;
+    procedure EnsurePlatformChrome;
     class procedure BeginMove(AForm: TCustomForm; AButton: TMouseButton;
       const AScreenPos: TPoint); static;
   end;
@@ -32,7 +34,12 @@ uses
   Math
   {$IFDEF WINDOWS}, Windows{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
+  {$IFDEF LCLcocoa}, CocoaAll{$ENDIF}
   ;
+
+{$IFDEF LCLcocoa}
+{$modeswitch objectivec1}
+{$ENDIF}
 
 const
   HTCLIENT = 1;
@@ -63,6 +70,7 @@ var
   GResizeHit: Integer;
   GResizeStartCursor: TPoint;
   GResizeStartBounds: TRect;
+  GManualLeftDown: Boolean = False;
 
 function EdgeSize(AForm: TCustomForm): Integer;
 begin
@@ -136,9 +144,9 @@ begin
   ApplyCursorForHit(FramelessEdgeHitAtScreen(Mouse.CursorPos));
 end;
 
-function LeftMouseDown: Boolean;
+function ManualDragResizeActive: Boolean;
 begin
-  Result := (GetKeyState(VK_LBUTTON) and $8000) <> 0;
+  Result := GManualLeftDown or ((GetKeyState(VK_LBUTTON) and $8000) <> 0);
 end;
 
 procedure RegisterFramelessForm(AForm: TCustomForm);
@@ -180,12 +188,16 @@ end;
 procedure StopDrag;
 begin
   GDragForm := nil;
+  if GResizeForm = nil then
+    GManualLeftDown := False;
 end;
 
 procedure StopResize;
 begin
   GResizeForm := nil;
   GResizeHit := HTCLIENT;
+  if GDragForm = nil then
+    GManualLeftDown := False;
 end;
 
 procedure ApplyResizeBounds(AForm: TCustomForm; var R: TRect);
@@ -254,6 +266,7 @@ begin
   GDragStartCursor := AScreenPos;
   GDragStartFormPos.X := AForm.Left;
   GDragStartFormPos.Y := AForm.Top;
+  GManualLeftDown := True;
   EnsureFormChromeInputHook;
 end;
 
@@ -267,6 +280,7 @@ begin
   GResizeStartBounds.Top := AForm.Top;
   GResizeStartBounds.Right := AForm.Left + AForm.Width;
   GResizeStartBounds.Bottom := AForm.Top + AForm.Height;
+  GManualLeftDown := True;
   EnsureFormChromeInputHook;
 end;
 
@@ -331,6 +345,87 @@ begin
 end;
 {$ENDIF}
 
+{$IFDEF LCLcocoa}
+function CocoaFormWindow(AForm: TCustomForm): NSWindow;
+var
+  V: NSView;
+begin
+  Result := nil;
+  if AForm = nil then Exit;
+  if not AForm.HandleAllocated then Exit;
+  V := NSView(AForm.Handle);
+  if V = nil then Exit;
+  Result := V.window;
+end;
+
+procedure HideCocoaStandardWindowButtons(AWindow: NSWindow);
+var
+  Btn: NSButton;
+begin
+  if AWindow = nil then Exit;
+  Btn := AWindow.standardWindowButton(NSWindowCloseButton);
+  if Btn <> nil then
+    Btn.setHidden(True);
+  Btn := AWindow.standardWindowButton(NSWindowMiniaturizeButton);
+  if Btn <> nil then
+    Btn.setHidden(True);
+  Btn := AWindow.standardWindowButton(NSWindowZoomButton);
+  if Btn <> nil then
+    Btn.setHidden(True);
+end;
+
+function ApplyCocoaFramelessChrome(AForm: TCustomForm): Boolean;
+var
+  W: NSWindow;
+  Mask: NSUInteger;
+begin
+  Result := False;
+  if AForm = nil then Exit;
+  if not AForm.HandleAllocated then
+    AForm.HandleNeeded;
+  W := CocoaFormWindow(AForm);
+  if W = nil then Exit;
+  Mask := W.styleMask;
+  Mask := Mask or NSTitledWindowMask or NSResizableWindowMask or
+    NSFullSizeContentViewWindowMask;
+  W.setStyleMask(Mask);
+  W.setTitlebarAppearsTransparent(True);
+  W.setTitleVisibility(NSWindowTitleHidden);
+  HideCocoaStandardWindowButtons(W);
+  Result := True;
+end;
+
+function TryCocoaBeginMove(AForm: TCustomForm): Boolean;
+var
+  W: NSWindow;
+  Ev: NSEvent;
+  EvType: NSUInteger;
+begin
+  Result := False;
+  if AForm = nil then Exit;
+  if not AForm.HandleAllocated then
+    AForm.HandleNeeded;
+  Ev := NSApplication.sharedApplication.currentEvent;
+  if Ev = nil then Exit;
+  EvType := Ev.type_;
+  if (EvType <> NSLeftMouseDown) and (EvType <> NSLeftMouseDragged) then Exit;
+  W := CocoaFormWindow(AForm);
+  if W = nil then Exit;
+  W.performWindowDragWithEvent(Ev);
+  Result := True;
+end;
+{$ELSE}
+function ApplyCocoaFramelessChrome(AForm: TCustomForm): Boolean;
+begin
+  Result := False;
+end;
+
+function TryCocoaBeginMove(AForm: TCustomForm): Boolean;
+begin
+  Result := False;
+end;
+{$ENDIF}
+
 procedure TryStartEdgeResize(AForm: TCustomForm; const AScreenPos: TPoint);
 var
   ClientP: TPoint;
@@ -362,7 +457,7 @@ begin
     case Msg of
       LM_MOUSEMOVE:
         begin
-          if not LeftMouseDown then begin
+          if not ManualDragResizeActive then begin
             StopDrag;
             StopResize;
             Exit;
@@ -374,6 +469,7 @@ begin
         end;
       LM_LBUTTONUP:
         begin
+          GManualLeftDown := False;
           StopDrag;
           StopResize;
         end;
@@ -413,6 +509,7 @@ constructor TLcaFormChrome.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FBorderlessApplied := False;
+  FCocoaPlatformChromeApplied := False;
 end;
 
 destructor TLcaFormChrome.Destroy;
@@ -440,6 +537,18 @@ begin
   ApplyFrameless;
   RegisterFramelessForm(FForm);
   EnsureFormChromeInputHook;
+  EnsurePlatformChrome;
+end;
+
+procedure TLcaFormChrome.EnsurePlatformChrome;
+begin
+  if FForm = nil then Exit;
+  {$IFDEF LCLcocoa}
+  if not FForm.HandleAllocated then
+    FForm.HandleNeeded;
+  if ApplyCocoaFramelessChrome(FForm) then
+    FCocoaPlatformChromeApplied := True;
+  {$ENDIF}
 end;
 
 procedure TLcaFormChrome.ApplyFrameless;
@@ -464,6 +573,9 @@ begin
   {$IFDEF LCLGtk3}
   if TryGtk3BeginMove(AForm, AButton, AScreenPos) then Exit;
   {$ENDIF}
+  {$IFDEF LCLcocoa}
+  if TryCocoaBeginMove(AForm) then Exit;
+  {$ENDIF}
   StartManualDrag(AForm, AScreenPos);
   {$ENDIF}
 end;
@@ -479,6 +591,10 @@ var
   Hit: PtrInt;
 begin
   if FBorderlessApplied and Assigned(FForm) then begin
+    {$IFDEF LCLcocoa}
+    if (Message.Msg = CM_SHOWINGCHANGED) and FForm.Showing then
+      EnsurePlatformChrome;
+    {$ENDIF}
     {$IFDEF WINDOWS}
     case Message.Msg of
       WM_NCHITTEST:

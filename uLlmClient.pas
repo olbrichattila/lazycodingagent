@@ -74,7 +74,7 @@ type
 implementation
 
 uses
-  uAgentToolBase, uChatImageStore
+  uAgentToolBase, uChatImageStore, uSslRuntime
   {$IFNDEF MSWINDOWS}
   , fphttpclient, opensslsockets
   {$ENDIF}
@@ -151,14 +151,19 @@ end;
 
 function HttpConnectionErrorMessage(const E: Exception): string;
 begin
-  if E is EInOutError then
-    Result := 'HTTPS requires OpenSSL. Install system libssl (Linux/macOS) or Lazarus SSL support. ' + E.Message
+  if E is EInOutError then begin
+    Result := 'HTTPS requires OpenSSL. ' + E.Message;
+    if (Pos('OpenSSL', E.Message) > 0) or (Pos('initialize', LowerCase(E.Message)) > 0) then
+      Result := Result + ' ' + OpenSslUnavailableUserMessage;
+    Exit;
+  end;
   {$IFNDEF MSWINDOWS}
-  else if E is EHTTPClient then
-    Result := 'HTTP Error: ' + E.Message
+  if E is EHTTPClient then begin
+    Result := 'HTTP Error: ' + E.Message;
+    Exit;
+  end;
   {$ENDIF}
-  else
-    Result := 'Connection Exception: ' + E.Message;
+  Result := 'Connection Exception: ' + E.Message;
 end;
 
 {$IFNDEF MSWINDOWS}
@@ -517,6 +522,10 @@ begin
           AResponse := HttpFailureMessage(StatusCode, '');
       end;
       {$ELSE}
+      if not EnsureOpenSslAvailable then begin
+        AResponse := OpenSslUnavailableUserMessage;
+        Exit;
+      end;
       Client := TFPHTTPClient.Create(nil);
       try
         ApplyHeadersToHttpClient(Client, Headers);
@@ -574,6 +583,10 @@ begin
           AResponse := HttpFailureMessage(StatusCode, '');
       end;
       {$ELSE}
+      if not EnsureOpenSslAvailable then begin
+        AResponse := OpenSslUnavailableUserMessage;
+        Exit;
+      end;
       Client := TFPHTTPClient.Create(nil);
       ReqStream := TStringStream.Create(APayload, TEncoding.UTF8);
       try

@@ -15,7 +15,7 @@ On launch, a **branded splash image** appears while the workspace starts (about 
 Open **Settings** from the menu (or when prompted):
 
 - **LLM provider** — API key, base URL if needed, and default model.
-- **Fetch Models** — loads model IDs from your provider (requires working HTTPS; see README for platform notes).
+- **Fetch Models** — loads model IDs from your provider (requires working HTTPS).
 - **Agent Behavior** — optional **Debugging mode** to show full tool JSON in chat.
 
 Save settings before starting a long agent run.
@@ -30,6 +30,15 @@ lazbuild lazycodingagent.lpi
 ```
 
 That copies **help/** and **assets/** (splash image) next to the executable so **Help → User Guide** and the startup splash work outside the IDE. See the project **README** for Windows commands and CI details.
+
+## HTTPS and OpenSSL (Linux / Raspberry Pi)
+
+Chat, **Fetch Models**, and the agent need **HTTPS**. On Linux the app uses the system **OpenSSL 3** libraries.
+
+- **arm64 `.deb` (Raspberry Pi OS, Debian, Ubuntu):** Installing the release package should pull in **`libssl3`** automatically. If HTTPS still fails after an upgrade, run `sudo apt install libssl3` (on some distros the package is named `libssl3t64`).
+- **Built from source on the Pi:** Install the runtime before using AI features: `sudo apt install libssl3`. You do not need the `-dev` package to run the app.
+
+Settings and chat show a clear error instead of crashing when OpenSSL is missing.
 
 ## Your first chat
 

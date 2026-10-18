@@ -3,7 +3,7 @@
     "id": "getting-started",
     "title": "Getting started",
     "file": "getting-started.md",
-    "keywords": ["workspace", "project", "open", "settings", "api key", "model"]
+    "keywords": ["workspace", "project", "open", "settings", "api key", "model", "openssl", "libssl3", "https", "raspberry pi", "fetch models"]
   },
   {
     "id": "workspace-layout",

@@ -10,6 +10,13 @@ uses
 
 const
   SplashPostLoadDelayMs = 1000;
+  { Progress bar geometry at DesignTimePPI 96; matches frmSplash.lfm artwork slot. }
+  SplashDesignW = 2048;
+  SplashDesignH = 1228;
+  SplashProgLeft = 202;
+  SplashProgHeight = 22;
+  SplashProgBottomMargin = 264;
+  SplashProgRightMargin = 182;
 
 type
   TSplashForm = class(TForm)
@@ -24,6 +31,7 @@ type
     procedure LoadSplashPictureIfNeeded;
     procedure FitClientToImage(AWidth, AHeight: Integer);
     procedure StyleProgressBar;
+    procedure LayoutSplashChrome;
     procedure PushProgressToWidget(APercent: Integer);
   public
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -110,6 +118,26 @@ begin
   ClientWidth := W;
   ClientHeight := H;
   Position := poScreenCenter;
+  LayoutSplashChrome;
+end;
+
+procedure TSplashForm.LayoutSplashChrome;
+var
+  W, H, L, R, T, BarH, BarW: Integer;
+begin
+  if not Assigned(pnlClient) or not Assigned(progLoad) then Exit;
+  W := pnlClient.ClientWidth;
+  H := pnlClient.ClientHeight;
+  if (W < 1) or (H < 1) then Exit;
+  BarH := (SplashProgHeight * H + SplashDesignH div 2) div SplashDesignH;
+  if BarH < 2 then BarH := 2;
+  L := (SplashProgLeft * W + SplashDesignW div 2) div SplashDesignW;
+  R := (SplashProgRightMargin * W + SplashDesignW div 2) div SplashDesignW;
+  T := H - (SplashProgBottomMargin * H + SplashDesignH div 2) div SplashDesignH - BarH;
+  if T < 0 then T := 0;
+  BarW := W - L - R;
+  if BarW < 8 then BarW := 8;
+  progLoad.SetBounds(L, T, BarW, BarH);
 end;
 
 procedure TSplashForm.LoadSplashPictureIfNeeded;
@@ -174,6 +202,7 @@ end;
 
 procedure TSplashForm.FormCreate(Sender: TObject);
 begin
+  Scaled := False;
   FTheme := tkDark;
   FLoadPercent := 0;
   imgSplash.Stretch := True;
@@ -181,6 +210,7 @@ begin
   imgSplash.Center := True;
   LoadSplashPictureIfNeeded;
   StyleProgressBar;
+  LayoutSplashChrome;
 end;
 
 procedure TSplashForm.ApplyTheme(ATheme: TThemeKind);
@@ -194,6 +224,7 @@ begin
   pnlClient.Color := P.Background;
   LoadSplashPictureIfNeeded;
   StyleProgressBar;
+  LayoutSplashChrome;
   if (not Assigned(imgSplash.Picture.Graphic)) or imgSplash.Picture.Graphic.Empty then
     ApplyThemedForm(Self, ATheme);
   if HandleAllocated then
@@ -204,8 +235,10 @@ procedure TSplashForm.SetLoadProgress(APercent: Integer);
 begin
   FLoadPercent := APercent;
   PushProgressToWidget(APercent);
-  if HandleAllocated then
+  if HandleAllocated then begin
+    LayoutSplashChrome;
     Update;
+  end;
   Application.ProcessMessages;
 end;
 
@@ -223,6 +256,7 @@ procedure TSplashForm.FormShow(Sender: TObject);
 begin
   ApplyTheme(FTheme);
   ApplyFormPlatformThemes(Self, FTheme);
+  LayoutSplashChrome;
   PushProgressToWidget(FLoadPercent);
 end;
 

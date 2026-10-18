@@ -191,7 +191,9 @@ lazbuild --widgetset=qt5 lazycodingagent.lpi
 
 The binary is under `lib/aarch64-linux/lazycodingagent`. Use **Qt5 + XWayland** (`run-linux.sh` sets `QT_QPA_PLATFORM=xcb` on Wayland) for the same windowing behavior as desktop Linux. Expect long `lazbuild` times on Pi hardware; 4 GB RAM may need swap during linking.
 
-**Releases:** tagged builds publish an **`arm64` `.deb`** for Pi / ARM64 Linux (system Qt5 via `Depends`). The portable **AppImage** remains **x86_64** only.
+**Releases:** tagged builds publish an **`arm64` `.deb`** for Pi / ARM64 Linux (system Qt5 and **`libssl3`** via `Depends`). The portable **AppImage** remains **x86_64** only.
+
+**arm64 `.deb` on Pi:** `sudo apt install ./LazyCodingAgent-*-arm64.deb` pulls in Qt5 and OpenSSL 3 runtime packages. HTTPS (Settings **Fetch Models**, chat) needs **`libssl3`** (`libssl.so.3`); the package declares that dependency. If you built from source instead of the `.deb`, install `libssl3` yourself: `sudo apt install libssl3`.
 
 **Linux troubleshooting:**
 
@@ -238,7 +240,7 @@ export APP_VERSION=0.0.0-local
 ./scripts/build-linux-appimage.sh
 ```
 
-DEB installs to `/usr/lib/lazycodingagent` with a `/usr/bin/lazycodingagent` wrapper; runtime libraries come from distribution packages (`dpkg-shlibdeps`). The AppImage bundles Qt5 from the build host — match the **ubuntu-24.04** CI environment when producing release-quality AppImages locally.
+DEB installs to `/usr/lib/lazycodingagent` with a `/usr/bin/lazycodingagent` wrapper; runtime libraries come from distribution packages (`dpkg-shlibdeps`, plus an explicit **`libssl3`** dependency for HTTPS). The AppImage bundles Qt5 from the build host — match the **ubuntu-24.04** CI environment when producing release-quality AppImages locally.
 
 **Local installer (optional):** after `lazbuild` and `post-build.ps1`, install Inno Setup 6 and run:
 
@@ -267,9 +269,9 @@ All HTTPS traffic goes through [`uLlmClient.pas`](uLlmClient.pas) (Settings **Fe
 | Platform | Transport | Notes |
 |----------|-----------|--------|
 | **Windows** | WinHTTP + Schannel ([`uWindowsHTTP.pas`](uWindowsHTTP.pas)) | No OpenSSL DLLs beside the exe |
-| **Linux / macOS** | `fphttpclient` + `opensslsockets` | System OpenSSL must be installed and visible to FPC (typical Lazarus Linux builds; on macOS often Homebrew `openssl@3` or system libs). Socket `IOTimeout` is in **milliseconds**, matching `TLlmClient.TimeoutMs` (default 60s). |
+| **Linux / macOS** | `fphttpclient` + `opensslsockets` | **OpenSSL 3** runtime (`libssl3` on Debian / Raspberry Pi OS bookworm+). The project vendors a small FPC `openssl` unit tweak so `libssl.so.3` is found (see [`third_party/fpc-openssl3/`](third_party/fpc-openssl3/)). Socket `IOTimeout` is in **milliseconds**, matching `TLlmClient.TimeoutMs` (default 60s). |
 
-If Fetch Models or chat fails with an OpenSSL initialization error on Linux/macOS, install SSL development libraries for your distro and ensure Lazarus was built with SSL support. The app surfaces a dialog instead of crashing when SSL is unavailable.
+If Fetch Models or chat fails with an OpenSSL error on Linux, install the runtime package: `sudo apt install libssl3` (on some releases the package name is `libssl3t64`). You do **not** need `libssl-dev` to run the app. The app surfaces a dialog instead of crashing when SSL is unavailable. On macOS, use system libs or Homebrew `openssl@3` as usual.
 
 ---
 
