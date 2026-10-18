@@ -142,7 +142,7 @@ jobs:
             dist/*.AppImage
           if-no-files-found: error
 
-  build-macos:
+  build-macos-aarch64:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -165,13 +165,13 @@ jobs:
       - name: Cache Lazarus SourceForge downloads
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/lazarus-ci
-          key: macos-lazarus-4.8-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+          path: ${{ runner.temp }}/lazarus-ci-aarch64
+          key: macos-lazarus-4.8-aarch64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
 
       - name: Install Free Pascal and Lazarus (SourceForge)
         run: |
           chmod +x scripts/*.sh
-          ./scripts/ci-install-lazarus-macos.sh
+          CI_MACOS_ARCH=aarch64 ./scripts/ci-install-lazarus-macos.sh
 
       - name: macOS release build
         run: ./scripts/ci-macos-release-build.sh
@@ -180,46 +180,65 @@ jobs:
         run: ./scripts/build-macos-dmg.sh
 
       - name: Smoke test app bundle
-        run: |
-          set -euo pipefail
-          APP="build/macos-bundle/Lazy Coding Agent.app"
-          if [[ ! -d "$APP/Contents/MacOS" ]]; then
-            echo "App bundle not found at $APP" >&2
-            exit 1
-          fi
-          BIN="$APP/Contents/MacOS/lazycodingagent"
-          chmod +x "$BIN"
-          # macOS runners have no GNU timeout; poll up to 15s like timeout 15.
-          set +e
-          "$BIN" &
-          pid=$!
-          set -e
-          for _ in $(seq 1 15); do
-            if ! kill -0 "$pid" 2>/dev/null; then
-              set +e
-              wait "$pid"
-              code=$?
-              set -e
-              exit "$code"
-            fi
-            sleep 1
-          done
-          kill "$pid" 2>/dev/null || true
-          set +e
-          wait "$pid" 2>/dev/null
-          set -e
-          echo "Smoke test: app still running after 15s (OK)"
+        run: ./scripts/smoke-macos-app-bundle.sh "build/macos-bundle-aarch64/Lazy Coding Agent.app"
 
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
-          name: release-macos
+          name: release-macos-aarch64
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  build-macos-x86_64:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve release version
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "$tag" =~ ^v(.+)$ ]]; then
+            echo "Expected tag vX.Y.Z, got: $tag" >&2
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+          if [[ -z "$version" ]]; then
+            echo "Empty version after v prefix on tag: $tag" >&2
+            exit 1
+          fi
+          echo "APP_VERSION=$version" >> "$GITHUB_ENV"
+          echo "Release version: $version"
+
+      - name: Cache Lazarus SourceForge downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lazarus-ci-x86_64
+          key: macos-lazarus-4.8-x86_64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+
+      - name: Install Free Pascal and Lazarus (SourceForge)
+        run: |
+          chmod +x scripts/*.sh
+          CI_MACOS_ARCH=x86_64 ./scripts/ci-install-lazarus-macos.sh
+
+      - name: macOS release build
+        run: ./scripts/ci-macos-release-build.sh
+
+      - name: Build DMG
+        run: ./scripts/build-macos-dmg.sh
+
+      - name: Smoke test app bundle
+        run: ./scripts/smoke-macos-app-bundle.sh "build/macos-bundle-x86_64/Lazy Coding Agent.app"
+
+      - name: Upload macOS DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-x86_64
           path: dist/*.dmg
           if-no-files-found: error
 
   publish:
     runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-macos]
+    needs: [build-windows, build-linux, build-macos-aarch64, build-macos-x86_64]
     steps:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
@@ -233,10 +252,16 @@ jobs:
           name: release-linux
           path: dist
 
-      - name: Download macOS artifact
+      - name: Download macOS aarch64 artifact
         uses: actions/download-artifact@v4
         with:
-          name: release-macos
+          name: release-macos-aarch64
+          path: dist
+
+      - name: Download macOS x86_64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: release-macos-x86_64
           path: dist
 
       - name: Resolve release version

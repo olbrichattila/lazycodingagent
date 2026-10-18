@@ -16,8 +16,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 DIST="$ROOT/dist"
-STAGE="$ROOT/build/dmg-staging"
-WORKDIR="$ROOT/build/macos-bundle"
+if command -v fpc >/dev/null 2>&1; then
+  MACOS_CPU="${MACOS_RELEASE_ARCH:-$(fpc -iTP)}"
+else
+  MACOS_CPU="${MACOS_RELEASE_ARCH:-aarch64}"
+fi
+STAGE="$ROOT/build/dmg-staging-${MACOS_CPU}"
+WORKDIR="${MACOS_BUNDLE_WORKDIR:-$ROOT/build/macos-bundle-${MACOS_CPU}}"
 EXE_NAME=lazycodingagent
 DISPLAY_BUNDLE_NAME="Lazy Coding Agent.app"
 ICNS_SRC="$ROOT/installer/macos/lazycodingagent.icns"
@@ -186,7 +191,7 @@ cp -a "$OUT_BUNDLE" "$STAGE/"
 ln -sf /Applications "$STAGE/Applications"
 
 mkdir -p "$DIST"
-DMG_PATH="$DIST/LazyCodingAgent-${VERSION}-aarch64.dmg"
+DMG_PATH="$DIST/LazyCodingAgent-${VERSION}-${MACOS_CPU}.dmg"
 rm -f "$DMG_PATH"
 hdiutil create -volname "Lazy Coding Agent" -srcfolder "$STAGE" -ov -format UDZO "$DMG_PATH"
 

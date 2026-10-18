@@ -2,12 +2,26 @@
 # Install pinned FPC + Lazarus from SourceForge for GitHub Actions (Homebrew cask is disabled).
 set -euo pipefail
 
-# Pinned to Lazarus macOS aarch64 / Lazarus 4.8 on SourceForge.
-SF_BASE="https://downloads.sourceforge.net/project/lazarus/Lazarus%20macOS%20aarch64/Lazarus%204.8"
+# Pinned to Lazarus macOS 4.8 on SourceForge (aarch64 or x86_64 via CI_MACOS_ARCH).
+CI_MACOS_ARCH="${CI_MACOS_ARCH:-aarch64}"
 FPC_DMG="fpc-3.2.4rc1a.intelarm64-macosx.dmg"
-LAZARUS_ZIP="lazarus-darwin-aarch64-4.8.zip"
 
-WORKDIR="${CI_LAZARUS_WORKDIR:-${RUNNER_TEMP:-/tmp}/lazarus-ci}"
+case "$CI_MACOS_ARCH" in
+  aarch64)
+    SF_BASE="https://downloads.sourceforge.net/project/lazarus/Lazarus%20macOS%20aarch64/Lazarus%204.8"
+    LAZARUS_ZIP="lazarus-darwin-aarch64-4.8.zip"
+    ;;
+  x86_64)
+    SF_BASE="https://downloads.sourceforge.net/project/lazarus/Lazarus%20macOS%20x86-64/Lazarus%204.8"
+    LAZARUS_ZIP="lazarus-darwin-x86_64-4.8.zip"
+    ;;
+  *)
+    echo "ci-install-lazarus-macos: unsupported CI_MACOS_ARCH=$CI_MACOS_ARCH (use aarch64 or x86_64)" >&2
+    exit 1
+    ;;
+esac
+
+WORKDIR="${CI_LAZARUS_WORKDIR:-${RUNNER_TEMP:-/tmp}/lazarus-ci-${CI_MACOS_ARCH}}"
 LAZARUS_INSTALL="${CI_LAZARUS_ROOT:-$WORKDIR/lazarus-tree}"
 PRIMARY_CONFIG="$WORKDIR/primary-config"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -96,4 +110,4 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
   } >>"$GITHUB_ENV"
 fi
 
-echo "ci-install-lazarus-macos: ready (LAZARUS_DIR=$LAZARUS_ROOT, LAZARUS_PRIMARY_CONFIG=$PRIMARY_CONFIG)"
+echo "ci-install-lazarus-macos: ready (arch=$CI_MACOS_ARCH, LAZARUS_DIR=$LAZARUS_ROOT, LAZARUS_PRIMARY_CONFIG=$PRIMARY_CONFIG)"

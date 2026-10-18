@@ -80,7 +80,7 @@ jobs:
         shell: pwsh
         run: ./scripts/post-build.ps1
 
-  build-macos:
+  build-macos-aarch64:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
@@ -88,13 +88,13 @@ jobs:
       - name: Cache Lazarus SourceForge downloads
         uses: actions/cache@v4
         with:
-          path: ${{ runner.temp }}/lazarus-ci
-          key: macos-lazarus-4.8-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+          path: ${{ runner.temp }}/lazarus-ci-aarch64
+          key: macos-lazarus-4.8-aarch64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
 
       - name: Install Free Pascal and Lazarus (SourceForge)
         run: |
           chmod +x scripts/*.sh
-          ./scripts/ci-install-lazarus-macos.sh
+          CI_MACOS_ARCH=aarch64 ./scripts/ci-install-lazarus-macos.sh
 
       - name: Prepare SynEdit and TurboPower IPro
         run: ./scripts/ci-prepare-lazarus-deps.sh
@@ -107,5 +107,35 @@ jobs:
 
       - name: Post-build deploy
         run: |
-          MACOS_DIR="$(./scripts/resolve-lazycodingagent-output.sh . "" build-macos macos-bundle-macos)"
+          MACOS_DIR="$(./scripts/resolve-lazycodingagent-output.sh . "" build-macos-aarch64 macos-bundle-macos)"
+          ./scripts/post-build.sh . "$MACOS_DIR"
+
+  build-macos-x86_64:
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Lazarus SourceForge downloads
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lazarus-ci-x86_64
+          key: macos-lazarus-4.8-x86_64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+
+      - name: Install Free Pascal and Lazarus (SourceForge)
+        run: |
+          chmod +x scripts/*.sh
+          CI_MACOS_ARCH=x86_64 ./scripts/ci-install-lazarus-macos.sh
+
+      - name: Prepare SynEdit and TurboPower IPro
+        run: ./scripts/ci-prepare-lazarus-deps.sh
+
+      - name: Link LCA and terminal packages
+        run: ./scripts/install-lca-lazarus.sh --link-only --widgetset=cocoa
+
+      - name: lazbuild
+        run: ./scripts/ci-lazbuild.sh lazycodingagent.lpi
+
+      - name: Post-build deploy
+        run: |
+          MACOS_DIR="$(./scripts/resolve-lazycodingagent-output.sh . "" build-macos-x86_64 macos-bundle-macos)"
           ./scripts/post-build.sh . "$MACOS_DIR"
