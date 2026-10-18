@@ -1,76 +1,81 @@
 object PlanBuildConfirmForm: TPlanBuildConfirmForm
-  Left = 360
-  Height = 220
-  Top = 240
-  Width = 520
+  Left = 808
+  Height = 330
+  Top = 282
+  Width = 780
   BorderStyle = bsDialog
   Caption = 'Build plan'
-  ClientHeight = 180
-  ClientWidth = 504
+  ClientHeight = 330
+  ClientWidth = 780
+  DesignTimePPI = 144
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
+  LCLVersion = '4.8.0.0'
   OnCreate = FormCreate
   OnShow = FormShow
-  LCLVersion = '4.8.0.0'
   object lblMessage: TLabel
-    Left = 16
-    Height = 48
-    Top = 16
-    Width = 472
-    Anchors = [akLeft, akTop, akRight]
+    Left = 24
+    Height = 72
+    Top = 24
+    Width = 732
+    Anchors = [akTop, akLeft, akRight]
     AutoSize = False
     Caption = 'Start an Agent session to implement this plan. File writes stay inside the working directory unless you enable the option below.'
     WordWrap = True
   end
   object chkAllowModifyOutside: TCheckBox
-    Left = 16
+    Left = 24
     Height = 24
-    Top = 80
-    Width = 24
-    Caption = ''
+    Top = 120
+    Width = 25
     TabOrder = 0
   end
   object lblAllowModifyOutside: TLabel
-    Left = 48
-    Height = 24
-    Top = 80
-    Width = 440
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Allow modify outside the working directory'
     Cursor = crHandPoint
+    Left = 72
+    Height = 25
+    Top = 120
+    Width = 684
+    Anchors = [akTop, akLeft, akRight]
+    Caption = 'Allow modify outside the working directory'
     OnClick = lblAllowModifyOutsideClick
   end
   object pnlBottom: TPanel
     Left = 0
-    Height = 44
-    Top = 136
-    Width = 504
+    Height = 66
+    Top = 264
+    Width = 780
     Align = alBottom
     BevelOuter = bvNone
-    ClientHeight = 44
-    ClientWidth = 504
+    ClientHeight = 66
+    ClientWidth = 780
     TabOrder = 1
     object btnBuild: TLcaThemedButton
-      ButtonRole = tbrPrimary
-      Left = 320
-      Height = 28
-      Top = 8
-      Width = 80
+      Left = 504
+      Height = 42
+      Top = 12
+      Width = 120
       Anchors = [akTop, akRight]
       Caption = 'Build'
-      OnClick = btnBuildClick
+      Color = 15426341
+      Font.Color = clWhite
+      ParentFont = False
       TabOrder = 0
+      OnClick = btnBuildClick
+      ButtonRole = tbrPrimary
     end
     object btnCancel: TLcaThemedButton
-      ButtonRole = tbrCancel
-      Left = 408
-      Height = 28
-      Top = 8
-      Width = 80
+      Left = 636
+      Height = 42
+      Top = 12
+      Width = 120
       Anchors = [akTop, akRight]
       Caption = 'Cancel'
-      OnClick = btnCancelClick
+      Color = clWhite
+      Font.Color = 8220260
+      ParentFont = False
       TabOrder = 1
+      OnClick = btnCancelClick
     end
   end
 end

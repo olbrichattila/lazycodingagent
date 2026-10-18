@@ -342,8 +342,11 @@ type
     procedure MenuSelectNav(Sender: TObject);
     procedure MenuSelectMode(Sender: TObject);
     procedure MenuTogglePanel(Sender: TObject);
+    procedure ApplyInitialWindowSize;
+    procedure EnsureFormOnScreen;
   public
     procedure PrepareVisibleStartup;
+    procedure RevealAfterSplash;
     property State: TWorkspaceState read FState;
     property Agent: TAgentEngine read ActiveAgent;
   end;
@@ -354,7 +357,8 @@ var
 implementation
 
 uses
-  uExecutionDetailHtml, frmSplash, uAppIcon;
+  uExecutionDetailHtml, frmSplash, uAppIcon, LCLIntf
+  {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 {$R *.lfm}
 
@@ -632,10 +636,74 @@ begin
   ReportSplashLoadProgress(90);
 end;
 
+procedure TLazyCodingAgentForm.ApplyInitialWindowSize;
+var
+  R: TRect;
+  W, H: Integer;
+const
+  TARGET_PCT = 67;
+begin
+  if csDesigning in ComponentState then Exit;
+  R := Screen.PrimaryMonitor.WorkareaRect;
+  W := (R.Width * TARGET_PCT) div 100;
+  H := (R.Height * TARGET_PCT) div 100;
+  if Constraints.MinWidth > R.Width then
+    Constraints.MinWidth := R.Width;
+  if Constraints.MinHeight > R.Height then
+    Constraints.MinHeight := R.Height;
+  if W < Constraints.MinWidth then
+    W := Constraints.MinWidth;
+  if H < Constraints.MinHeight then
+    H := Constraints.MinHeight;
+  if W > R.Width then
+    W := R.Width;
+  if H > R.Height then
+    H := R.Height;
+  Width := W;
+  Height := H;
+  Position := poScreenCenter;
+  Left := R.Left + (R.Width - W) div 2;
+  Top := R.Top + (R.Height - H) div 2;
+end;
+
+procedure TLazyCodingAgentForm.EnsureFormOnScreen;
+var
+  R: TRect;
+begin
+  if csDesigning in ComponentState then Exit;
+  R := Screen.PrimaryMonitor.WorkareaRect;
+  if (Left + Width < R.Left + 48) or (Left > R.Right - 48) or
+     (Top + Height < R.Top + 48) or (Top > R.Bottom - 48) then
+    ApplyInitialWindowSize
+  else begin
+    if Width > R.Width then
+      Width := R.Width;
+    if Height > R.Height then
+      Height := R.Height;
+  end;
+end;
+
+procedure TLazyCodingAgentForm.RevealAfterSplash;
+begin
+  if csDesigning in ComponentState then Exit;
+  ApplyInitialWindowSize;
+  EnsureFormOnScreen;
+  WindowState := wsNormal;
+  Visible := True;
+  Show;
+  BringToFront;
+  {$IFDEF WINDOWS}
+  if HandleAllocated then begin
+    ShowWindow(Handle, SW_SHOW);
+    SetForegroundWindow(Handle);
+  end;
+  {$ENDIF}
+  if Assigned(Application) then
+    Application.BringToFront;
+end;
+
 procedure TLazyCodingAgentForm.PrepareVisibleStartup;
 begin
-  if not HandleAllocated then
-    HandleNeeded;
   if FPendingInitialDockLayout then begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;

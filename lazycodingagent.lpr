@@ -49,6 +49,7 @@ begin
     Splash.Hide;
     Splash.Free;
   end;
-  LazyCodingAgentForm.Show;
+  Application.ShowMainForm := True;
+  LazyCodingAgentForm.RevealAfterSplash;
   Application.Run;
 end.
