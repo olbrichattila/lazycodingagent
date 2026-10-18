@@ -33,6 +33,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 |-------|---------|-------------|---------------|
 | Nav rail icons + accent selection | Yes | Yes | Yes |
 | List rows: accent text, no blue band | Yes | Yes | Yes |
+| List empty / below-last-row background matches theme | Yes | Yes | Yes (Cocoa `NSTableView` sync) |
 | Primary / Cancel / Stop buttons (`TLcaThemedButton` / `TButton` + `LcaTheme`) | Custom-painted via `LcaThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
 | Scrollbars matching app light/dark palette | OS theme | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
@@ -195,6 +196,15 @@ The binary is under `lib/aarch64-linux/lazycodingagent`. Use **Qt5 + XWayland** 
 
 **arm64 `.deb` on Pi:** `sudo apt install ./LazyCodingAgent-*-arm64.deb` pulls in Qt5 and OpenSSL 3 runtime packages. HTTPS (Settings **Fetch Models**, chat) needs **`libssl3`** (`libssl.so.3`); the package declares that dependency. If you built from source instead of the `.deb`, install `libssl3` yourself: `sudo apt install libssl3`.
 
+**Release QA on Pi (64-bit OS):** After installing a new **`arm64` `.deb`**, confirm startup and the editor load cleanly (catches SynEdit / form-resource mismatches that only appear at runtime on distro Lazarus builds):
+
+1. `sudo apt install ./LazyCodingAgent-<version>-arm64.deb`
+2. Launch from the menu or `/usr/bin/lazycodingagent` — there must be **no** dialog about unknown SynEdit properties (for example `MaxExtraMarksColums`).
+3. Open the **Editor** tab; line numbers and gutter should render.
+4. Optional: **Settings → Fetch Models** (HTTPS / `libssl3` on the device).
+
+Older release `.deb` packages built before the SynEdit gutter `.lfm` trim may fail at step 2; upgrade to a release that includes that fix or build from current `main`.
+
 **Linux troubleshooting:**
 
 - **No window on Wayland (GTK2 build):** The process runs but nothing appears (not even the splash). Default `lazbuild` on Linux uses GTK2, which often fails to map windows on Wayland. Use `GDK_BACKEND=x11 ./lazycodingagent`, `./scripts/run-linux.sh`, rebuild with the **Qt5** widgetset, or use an X11 session. Requires XWayland (`echo $DISPLAY` should be set, e.g. `:0`). If a window still does not appear on X11, check multi-monitor or saved off-screen bounds in workspace state under your config directory.
@@ -230,7 +240,7 @@ Pushing a version tag builds Windows, Linux, and macOS packages and publishes a 
 
 The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux **amd64** uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). Linux **arm64** uses **`ubuntu-24.04-arm`**, the same Qt5 release build, and an **`arm64` `.deb`** only (no AppImage). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
 
-**Linux QA (manual):** CI smoke-tests the AppImage under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
+**Linux QA (manual):** CI smoke-tests the built binary, packaged **`.deb`** ([`scripts/smoke-linux-deb.sh`](scripts/smoke-linux-deb.sh)), and **AppImage** under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
 
 **Local Linux packages (optional):** after a Qt5 `lazbuild` and [`post-build.sh`](scripts/post-build.sh):
 

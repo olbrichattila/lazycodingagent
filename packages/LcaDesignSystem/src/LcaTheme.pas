@@ -1,6 +1,7 @@
 unit LcaTheme;
 
 {$mode objfpc}{$H+}
+{$IFDEF LCLcocoa}{$modeswitch objectivec1}{$ENDIF}
 
 interface
 
@@ -180,6 +181,7 @@ uses
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
+  {$IFDEF LCLcocoa}, CocoaAll, CocoaGDIObjects{$ENDIF}
   ;
 
 function ParentFormHandlesReady(AControl: TControl): Boolean;
@@ -1324,6 +1326,13 @@ var
   QtWidget: TQtWidget;
   Sheet: WideString;
 {$ENDIF}
+{$IFDEF LCLcocoa}
+var
+  Scroll: NSScrollView;
+  Table: NSTableView;
+  Clip: NSView;
+  Bg: NSColor;
+{$ENDIF}
 begin
   if not Assigned(AList) then Exit;
   if not AList.HandleAllocated then Exit;
@@ -1345,6 +1354,22 @@ begin
     'QListWidget { color: ' + ColorToStyleHex(AList.Font.Color) +
     '; background-color: ' + ColorToStyleHex(AList.Color) + '; }');
   QtWidget.StyleSheet := Sheet;
+  {$ENDIF}
+  {$IFDEF LCLcocoa}
+  Scroll := NSScrollView(Pointer(AList.Handle));
+  if Scroll <> nil then begin
+    Bg := ColorToNSColor(ColorToRGB(AList.Color));
+    Table := NSTableView(Scroll.documentView);
+    if Table <> nil then
+      Table.setBackgroundColor(Bg);
+    Clip := Scroll.contentView;
+    if Clip <> nil then begin
+      Clip.setDrawsBackground(True);
+      Clip.setBackgroundColor(Bg);
+    end;
+    Scroll.setDrawsBackground(True);
+    Scroll.setBackgroundColor(Bg);
+  end;
   {$ENDIF}
   AList.Invalidate;
 end;

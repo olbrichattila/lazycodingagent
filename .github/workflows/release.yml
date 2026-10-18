@@ -127,6 +127,9 @@ jobs:
       - name: Build DEB package
         run: ./scripts/build-linux-deb.sh
 
+      - name: Smoke test DEB package (xvfb)
+        run: ./scripts/smoke-linux-deb.sh "dist/LazyCodingAgent-${APP_VERSION}-amd64.deb"
+
       - name: Build AppImage
         run: ./scripts/build-linux-appimage.sh
 
@@ -186,6 +189,9 @@ jobs:
 
       - name: Build arm64 DEB package
         run: ./scripts/build-linux-deb.sh
+
+      - name: Smoke test arm64 DEB package (xvfb)
+        run: ./scripts/smoke-linux-deb.sh "dist/LazyCodingAgent-${APP_VERSION}-arm64.deb"
 
       - name: Upload Linux arm64 package
         uses: actions/upload-artifact@v4
