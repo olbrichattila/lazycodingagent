@@ -35,7 +35,7 @@ uses
   Math
   {$IFDEF WINDOWS}, Windows{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
-  {$IFDEF LCLcocoa}, CocoaAll{$ENDIF}
+  {$IFDEF LCLcocoa}, CocoaAll, Cocoa_Extra{$ENDIF}
   ;
 
 const
@@ -411,7 +411,7 @@ begin
   if (EvType <> NSLeftMouseDown) and (EvType <> NSLeftMouseDragged) then Exit;
   W := CocoaFormWindow(AForm);
   if W = nil then Exit;
-  W.performWindowDragWithEvent(Ev);
+  NSWindowFix(W).performWindowDragWithEvent(Ev);
   Result := True;
 end;
 {$ELSE}
