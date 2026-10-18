@@ -93,7 +93,7 @@ warn_system_lazarus_build_ide() {
   cat <<'EOF' >&2
 
 System Lazarus (/usr/share/lazarus) is not writable, so lazbuild --build-ide cannot create
-widgetset unit directories (e.g. units/x86_64-linux/qt5). That causes: mkdir: Permission denied
+widgetset unit directories (e.g. units/<cpu>-linux/qt5 for your `fpc -iTP`). That causes: mkdir: Permission denied
 
 Options:
   1) CLI / app builds only (no palette reinstall):
@@ -101,8 +101,7 @@ Options:
        lazbuild --widgetset=qt5 lazycodingagent.lpi
 
   2) One-time writable unit dir, then re-run this script (close Lazarus first):
-       sudo install -d -o "$(id -un)" -g "$(id -gn)" \
-         /usr/share/lazarus/4.8.0/units/x86_64-linux/qt5
+       ./scripts/ensure-lazarus-qt5-units-dir.sh
 
   3) Use a user-writable Lazarus tree (e.g. fpcupdeluxe) and set LAZBUILD to its lazbuild.
 

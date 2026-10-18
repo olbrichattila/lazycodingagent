@@ -58,6 +58,7 @@ if command -v fpc >/dev/null 2>&1; then
 fi
 candidates+=(
   "$PROJECT_ROOT/lib/aarch64-darwin"
+  "$PROJECT_ROOT/lib/aarch64-linux"
   "$PROJECT_ROOT/lib/x86_64-darwin"
   "$PROJECT_ROOT/lib/x86_64-linux"
   "$PROJECT_ROOT"

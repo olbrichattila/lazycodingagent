@@ -33,6 +33,39 @@ jobs:
       - name: Post-build deploy
         run: ./scripts/post-build.sh
 
+  build-linux-aarch64:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lazarus and Qt5 build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git fpc lazarus lcl fp-units-rtl fp-units-fcl fp-units-misc \
+            libqt5pas-dev qtbase5-dev \
+            libglib2.0-dev libgdk-pixbuf2.0-dev libxml2-dev libxslt1-dev
+
+      - name: Prepare SynEdit and TurboPower IPro
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/ci-prepare-lazarus-deps.sh
+
+      - name: Ensure Qt5 Lazarus unit directory
+        run: ./scripts/ensure-lazarus-qt5-units-dir.sh
+
+      - name: Link LCA and terminal packages (Qt5)
+        run: ./scripts/install-lca-lazarus.sh --link-only --widgetset=qt5
+
+      - name: lazbuild
+        run: LCL_WIDGETSET=qt5 ./scripts/ci-lazbuild.sh lazycodingagent.lpi
+
+      - name: Post-build deploy
+        run: |
+          LIB_DIR="$(./scripts/linux-fpc-target-triple.sh)"
+          LIB_DIR="lib/${LIB_DIR}"
+          ./scripts/post-build.sh . "$LIB_DIR"
+
   build-windows:
     runs-on: windows-latest
     steps:

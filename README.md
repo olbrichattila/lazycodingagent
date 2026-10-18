@@ -138,7 +138,7 @@ chmod +x scripts/rebuild-lazarus-ide-qt5.sh
 ./scripts/rebuild-lazarus-ide-qt5.sh
 ```
 
-That script creates `units/x86_64-linux/qt5` with `sudo` (one-time), then runs `lazbuild --widgetset=qt5 --build-ide` so **your** IDE (SynEdit, LCA Design, etc. from `~/.lazarus`) is linked into `~/.lazarus/bin/lazarus`. **Do not copy** `/usr/share/lazarus/4.8.0/lazarus` over that file — the system binary is a smaller stock build without your installed design packages. `startlazarus` and the desktop entry use `~/.lazarus/bin/lazarus`; `/usr/share/.../lazarus` is only the apt source tree.
+That script creates a writable `units/<cpu>-linux/qt5` directory (see `fpc -iTP`; or run [`ensure-lazarus-qt5-units-dir.sh`](scripts/ensure-lazarus-qt5-units-dir.sh)) with `sudo` when needed, then runs `lazbuild --widgetset=qt5 --build-ide` so **your** IDE (SynEdit, LCA Design, etc. from `~/.lazarus`) is linked into `~/.lazarus/bin/lazarus`. **Do not copy** `/usr/share/lazarus/4.8.0/lazarus` over that file — the system binary is a smaller stock build without your installed design packages. `startlazarus` and the desktop entry use `~/.lazarus/bin/lazarus`; `/usr/share/.../lazarus` is only the apt source tree.
 
 For **LCA Design** packages on Qt5, pass the same widgetset to the install script:
 
@@ -171,12 +171,34 @@ On **Linux**, prefer the **Qt5** LCL widgetset (`lazbuild --widgetset=qt5 lazyco
 
 **Running on Linux:** `make` runs `post-build.sh` automatically. Start the app with `./scripts/run-linux.sh` (on Wayland: sets `QT_QPA_PLATFORM=xcb` for Qt5 builds or `GDK_BACKEND=x11` for GTK2). You can also run `./lazycodingagent` directly; Qt5 builds set `QT_QPA_PLATFORM=xcb` in [`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas) **before** the LCL loads Qt (same effect as IDE **Run** env). GTK2 builds set `GDK_BACKEND=x11` the same way when `WAYLAND_DISPLAY` is set.
 
+### Raspberry Pi 4/5 (64-bit Linux / aarch64)
+
+LazyCodingAgent is not tuned for low-RAM boards, but the same **Linux aarch64** build applies on **Raspberry Pi OS (64-bit)** and similar distros. You need **Lazarus 3.0+** (TurboPower IPro in the Lazarus tree); if apt’s Lazarus is too old, use [fpcupdeluxe](https://github.com/LongDirtyAnimAlf/fpcupdeluxe) for a current FPC/Lazarus install.
+
+**Packages (Debian / Raspberry Pi OS bookworm+):** `git`, `fpc`, `lazarus`, `lcl`, `libqt5pas-dev`, `qtbase5-dev`, `libssl-dev`, `build-essential`, and the same SynEdit/IPro prep as desktop Linux. For the integrated terminal, ensure **util-linux** / **bsdutils** (`forkpty`).
+
+**Build on the Pi (native, Qt5 recommended):**
+
+```bash
+git clone <your-fork-or-upstream> lazycodingagent && cd lazycodingagent
+chmod +x scripts/*.sh
+./scripts/ensure-lazarus-qt5-units-dir.sh   # once, if apt Lazarus needs a writable qt5 unit dir
+./scripts/install-lca-lazarus.sh --link-only --widgetset=qt5
+lazbuild --widgetset=qt5 lazycodingagent.lpi
+./scripts/post-build.sh
+./scripts/run-linux.sh
+```
+
+The binary is under `lib/aarch64-linux/lazycodingagent`. Use **Qt5 + XWayland** (`run-linux.sh` sets `QT_QPA_PLATFORM=xcb` on Wayland) for the same windowing behavior as desktop Linux. Expect long `lazbuild` times on Pi hardware; 4 GB RAM may need swap during linking.
+
+**Releases:** tagged builds publish an **`arm64` `.deb`** for Pi / ARM64 Linux (system Qt5 via `Depends`). The portable **AppImage** remains **x86_64** only.
+
 **Linux troubleshooting:**
 
 - **No window on Wayland (GTK2 build):** The process runs but nothing appears (not even the splash). Default `lazbuild` on Linux uses GTK2, which often fails to map windows on Wayland. Use `GDK_BACKEND=x11 ./lazycodingagent`, `./scripts/run-linux.sh`, rebuild with the **Qt5** widgetset, or use an X11 session. Requires XWayland (`echo $DISPLAY` should be set, e.g. `:0`). If a window still does not appear on X11, check multi-monitor or saved off-screen bounds in workspace state under your config directory.
 - **Title bar drag / resize works in IDE Run but not when launching the built exe (Qt5 + Wayland):** IDE **Run** injects `QT_QPA_PLATFORM=xcb`; rebuild after pulling fixes so startup sets the same, or use `./scripts/run-linux.sh` / `QT_QPA_PLATFORM=xcb ./lazycodingagent`.
 - **Canberra Gtk-Message:** `Failed to load module "canberra-gtk-module"` is an optional event-sound module; the GUI still runs. Install with `sudo apt install libcanberra-gtk-module` (Debian/Ubuntu, GTK2 builds), or `GTK_MODULES= ./lazycodingagent`.
-- **`install-lca-lazarus.sh` / `mkdir: Permission denied` on `--build-ide`:** With **apt** Lazarus (`/usr/share/lazarus`), rebuilding the IDE for a **new** widgetset (e.g. **qt5**) tries to create `units/x86_64-linux/qt5` under the system tree, which is root-owned. Use **`--link-only --widgetset=qt5`** for command-line builds, or create the directory once: `sudo install -d -o "$USER" -g "$USER" /usr/share/lazarus/4.8.0/units/x86_64-linux/qt5`, then rerun the full install (Lazarus closed). A user-writable Lazarus install (fpcupdeluxe) avoids this entirely.
+- **`install-lca-lazarus.sh` / `mkdir: Permission denied` on `--build-ide`:** With **apt** Lazarus (`/usr/share/lazarus`), rebuilding the IDE for a **new** widgetset (e.g. **qt5**) tries to create `units/<cpu>-linux/qt5` under the system tree (see `fpc -iTP`), which is root-owned. Use **`--link-only --widgetset=qt5`** for command-line builds, or run **`./scripts/ensure-lazarus-qt5-units-dir.sh`** once (sudo), then rerun the full install (Lazarus closed). A user-writable Lazarus install (fpcupdeluxe) avoids this entirely.
 - **Lazarus exits when opening `lazycodingagent.lpi`:** Access violation in **`TryLoadOwlIconInto`** while the designer loads **`mainunit`**. Rebuild LCA for **qt5**, then **`lazbuild --widgetset=qt5 --build-ide`** (close Lazarus first; **`--link-only` does not update the IDE**). Or run **`./scripts/install-lca-lazarus.sh --widgetset=qt5`**. On Wayland/Qt5, use **`./scripts/run-lazarus-linux.sh`** if the IDE dies with a Wayland protocol error. Match **Project → Compiler Options → Widget set: qt5**. Emergency: **`./scripts/recover-lazarus-ide.sh`**.
 
 **Windows:**
@@ -187,7 +209,7 @@ lazbuild lazycodingagent.lpi
 scripts\post-build.cmd
 ```
 
-**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux, Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux and Windows use distro/Chocolatey Lazarus; macOS installs pinned Lazarus 4.8 from SourceForge on **`macos-14`** (Apple Silicon / `aarch64`) and **`macos-15-intel`** (Intel / `x86_64`; GitHub plans to retire Intel macOS runners around 2027). The Homebrew Lazarus cask is disabled for CI. [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo). On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
+**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux (**x86_64** and **aarch64** / `ubuntu-24.04-arm` with Qt5), Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux and Windows use distro/Chocolatey Lazarus; macOS installs pinned Lazarus 4.8 from SourceForge on **`macos-14`** (Apple Silicon / `aarch64`) and **`macos-15-intel`** (Intel / `x86_64`; GitHub plans to retire Intel macOS runners around 2027). The Homebrew Lazarus cask is disabled for CI. [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo). On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
 
 ### Releasing
 
@@ -195,15 +217,16 @@ Pushing a version tag builds Windows, Linux, and macOS packages and publishes a 
 
 1. Choose the release version (for example `0.1.0`).
 2. Tag and push: `git tag v0.1.0` then `git push origin v0.1.0`.
-3. Open **Actions → Release** on GitHub and wait for `build-windows`, `build-linux`, `build-macos-aarch64`, `build-macos-x86_64`, and `publish` to finish.
+3. Open **Actions → Release** on GitHub and wait for `build-windows`, `build-linux`, `build-linux-aarch64`, `build-macos-aarch64`, `build-macos-x86_64`, and `publish` to finish.
 4. Download assets from the release page for that tag:
    - **`LazyCodingAgent-0.1.0-win64-Setup.exe`** — Windows installer ([Inno Setup](https://jrsoftware.org/isinfo.php))
-   - **`LazyCodingAgent-0.1.0-amd64.deb`** — Debian/Ubuntu/Mint package (system Qt5 runtime via `Depends`)
-   - **`LazyCodingAgent-0.1.0-x86_64.AppImage`** — portable Linux build (Qt5 bundled via [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy))
+   - **`LazyCodingAgent-0.1.0-amd64.deb`** — Debian/Ubuntu/Mint on **x86_64** (system Qt5 runtime via `Depends`)
+   - **`LazyCodingAgent-0.1.0-arm64.deb`** — Debian/Ubuntu/Raspberry Pi OS **64-bit** (ARM64; system Qt5 via `Depends`)
+   - **`LazyCodingAgent-0.1.0-x86_64.AppImage`** — portable Linux build on **x86_64** (Qt5 bundled via [linuxdeploy](https://github.com/linuxdeploy/linuxdeploy))
    - **`LazyCodingAgent-0.1.0-aarch64.dmg`** — macOS Apple Silicon (Cocoa app bundle; drag **Lazy Coding Agent** to Applications)
    - **`LazyCodingAgent-0.1.0-x86_64.dmg`** — macOS Intel (same install flow; pick the DMG that matches your Mac)
 
-The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
+The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux **amd64** uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). Linux **arm64** uses **`ubuntu-24.04-arm`**, the same Qt5 release build, and an **`arm64` `.deb`** only (no AppImage). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
 
 **Linux QA (manual):** CI smoke-tests the AppImage under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
 

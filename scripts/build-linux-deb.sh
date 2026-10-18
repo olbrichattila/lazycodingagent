@@ -15,6 +15,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DEB_ARCH="${DEB_ARCH:-$("$SCRIPT_DIR/linux-deb-architecture.sh")}"
 if [[ -z "${SOURCE_DIR:-}" ]]; then
   SOURCE_DIR="$("$SCRIPT_DIR/resolve-lazycodingagent-output.sh" "$ROOT" "" build-linux-deb)"
 fi
@@ -74,7 +75,7 @@ cat > "$SHLIB_WORK/debian/control" <<EOF
 Source: ${PKG_NAME}
 Package: ${PKG_NAME}
 Version: ${VERSION}
-Architecture: amd64
+Architecture: ${DEB_ARCH}
 EOF
 
 SHLIBS_RAW="$(
@@ -97,7 +98,7 @@ Package: ${PKG_NAME}
 Version: ${VERSION}
 Section: devel
 Priority: optional
-Architecture: amd64
+Architecture: ${DEB_ARCH}
 Maintainer: LazyCodingAgent Contributors
 ${SHLIBS}
 Homepage: https://github.com/olbrichattila/lazycodingagent
@@ -106,7 +107,7 @@ Description: AI coding assistant and editor (Lazarus LCL)
 EOF
 
 mkdir -p "$DIST"
-OUT_DEB="$DIST/LazyCodingAgent-${VERSION}-amd64.deb"
+OUT_DEB="$DIST/LazyCodingAgent-${VERSION}-${DEB_ARCH}.deb"
 dpkg-deb --build --root-owner-group "$STAGING" "$OUT_DEB"
 
 echo "build-linux-deb: $OUT_DEB"

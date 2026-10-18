@@ -3,9 +3,23 @@
 set -euo pipefail
 
 LAZBUILD="${LAZBUILD:-lazbuild}"
-LAZARUS_UNITS_QT5="/usr/share/lazarus/4.8.0/units/x86_64-linux/qt5"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FPC_TRIPLE="$("$SCRIPT_DIR/linux-fpc-target-triple.sh")"
+LAZARUS_UNITS_QT5=""
+LAZARUS_SYS=""
+for base in /usr/share/lazarus/* /usr/lib/lazarus/*; do
+  [[ -d "$base" ]] || continue
+  if [[ -f "$base/lazarus" || -x "$base/lazarus" ]]; then
+    LAZARUS_SYS="$base/lazarus"
+    LAZARUS_UNITS_QT5="$base/units/${FPC_TRIPLE}/qt5"
+    break
+  fi
+done
+if [[ -z "$LAZARUS_UNITS_QT5" ]]; then
+  echo "Could not find system Lazarus under /usr/share/lazarus or /usr/lib/lazarus." >&2
+  exit 1
+fi
 LAZARUS_USER="${HOME}/.lazarus/bin/lazarus"
-LAZARUS_SYS="/usr/share/lazarus/4.8.0/lazarus"
 
 if ! command -v "$LAZBUILD" >/dev/null 2>&1; then
   echo "lazbuild not found. Set LAZBUILD." >&2
