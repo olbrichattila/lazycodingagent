@@ -95,6 +95,8 @@ function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
 function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;
 function MenuItemDisplayCaption(const ACaption: string): string;
 function ScaledEditorFontSize(AControl: TControl): Integer;
+function ThemedMonospaceFontName: string;
+procedure ApplyThemedMonospaceFont(AFont: TFont; AMetricsControl: TControl);
 function ThemedComboCornerRadius(AControl: TControl): Integer;
 function ThemedComboChevronGutter(AControl: TControl): Integer;
 
@@ -181,7 +183,7 @@ uses
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
-  {$IFDEF LCLcocoa}, CocoaAll, CocoaGDIObjects{$ENDIF}
+  {$IFDEF LCLcocoa}, CocoaAll, CocoaUtils{$ENDIF}
   ;
 
 function ParentFormHandlesReady(AControl: TControl): Boolean;
@@ -271,6 +273,39 @@ end;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedEditorFontSizeBase);
+end;
+
+function ThemedMonospaceFontName: string;
+
+  function PickFirstAvailable(const ANames: array of string): string;
+  var
+    I: Integer;
+  begin
+    for I := Low(ANames) to High(ANames) do
+      if Screen.Fonts.IndexOf(ANames[I]) >= 0 then
+        Exit(ANames[I]);
+    Result := 'Monospace';
+  end;
+
+begin
+  {$IFDEF LCLcocoa}
+  Result := PickFirstAvailable(['Menlo', 'SF Mono', 'Monaco', 'Courier New', 'Monospace']);
+  {$ELSE}
+  {$IFDEF WINDOWS}
+  Result := PickFirstAvailable(['Cascadia Mono', 'Consolas', 'Courier New', 'DejaVu Sans Mono']);
+  {$ELSE}
+  Result := PickFirstAvailable(['DejaVu Sans Mono', 'Liberation Mono', 'FreeMono', 'Monospace',
+    'Courier New']);
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+procedure ApplyThemedMonospaceFont(AFont: TFont; AMetricsControl: TControl);
+begin
+  if not Assigned(AFont) then Exit;
+  AFont.Name := ThemedMonospaceFontName;
+  AFont.Pitch := fpFixed;
+  AFont.Size := ScaledEditorFontSize(AMetricsControl);
 end;
 
 function ThemedComboCornerRadius(AControl: TControl): Integer;
@@ -1330,7 +1365,7 @@ var
 var
   Scroll: NSScrollView;
   Table: NSTableView;
-  Clip: NSView;
+  Clip: NSClipView;
   Bg: NSColor;
 {$ENDIF}
 begin
@@ -1358,11 +1393,11 @@ begin
   {$IFDEF LCLcocoa}
   Scroll := NSScrollView(Pointer(AList.Handle));
   if Scroll <> nil then begin
-    Bg := ColorToNSColor(ColorToRGB(AList.Color));
+    Bg := TCocoaColorUtil.toColor(ColorToRGB(AList.Color));
     Table := NSTableView(Scroll.documentView);
     if Table <> nil then
       Table.setBackgroundColor(Bg);
-    Clip := Scroll.contentView;
+    Clip := NSClipView(Scroll.contentView);
     if Clip <> nil then begin
       Clip.setDrawsBackground(True);
       Clip.setBackgroundColor(Bg);

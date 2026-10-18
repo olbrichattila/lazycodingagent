@@ -102,8 +102,8 @@ begin
   FView := TTerminalLCLView.Create(Self);
   FView.Parent := Self;
   FView.Align := alClient;
-  FView.FontName := 'DejaVu Sans Mono';
-  FView.FontSize := 10;
+  FView.FontName := ThemedMonospaceFontName;
+  FView.FontSize := ScaledEditorFontSize(Self);
   FView.OnShellExit := @ShellExited;
 end;
 
@@ -234,6 +234,8 @@ begin
   FView.DefaultFGColor := P.Text;
   FView.SelectionFGColor := P.AccentText;
   FView.SelectionBGColor := P.Accent;
+  FView.FontName := ThemedMonospaceFontName;
+  FView.FontSize := ScaledEditorFontSize(Self);
   ApplyPlatformScrollableTheme(FView, ATheme);
   FView.Invalidate;
 end;

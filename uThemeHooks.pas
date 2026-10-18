@@ -66,7 +66,8 @@ begin
   P := ThemePalette(ATheme);
   Ed.Color := P.SurfaceAlt;
   Ed.Font.Color := P.Text;
-  Ed.Font.Size := ScaledEditorFontSize(Ed);
+  ApplyThemedMonospaceFont(Ed.Font, Ed);
+  Ed.ExtraCharSpacing := 0;
   if Ed.HandleAllocated then begin
     ApplySynEditGutterTheme(Ed, ATheme);
     ApplyPlatformScrollableTheme(Ed, ATheme);

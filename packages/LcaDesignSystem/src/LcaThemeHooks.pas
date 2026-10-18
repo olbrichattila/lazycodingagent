@@ -77,6 +77,8 @@ begin
   P := ThemePalette(ATheme);
   View.Color := P.SurfaceAlt;
   View.Font.Color := P.Text;
+  View.FontName := ThemedMonospaceFontName;
+  View.FontSize := ScaledEditorFontSize(View);
   View.Invalidate;
   Result := True;
 end;

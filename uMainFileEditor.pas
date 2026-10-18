@@ -54,10 +54,8 @@ begin
     FEditor.TabWidth := 2;
     FEditor.VisibleSpecialChars := [vscSpace, vscTabAtLast];
     FEditor.BracketHighlightStyle := sbhsBoth;
-    if FEditor.Font.Name = '' then
-      FEditor.Font.Name := 'Consolas';
-    if FEditor.Font.Size = 0 then
-      FEditor.Font.Size := ScaledEditorFontSize(FEditor);
+    ApplyThemedMonospaceFont(FEditor.Font, FEditor);
+    FEditor.ExtraCharSpacing := 0;
   end;
 end;
 
@@ -149,7 +147,8 @@ begin
   if Assigned(FEditor) then begin
     FEditor.Color := P.SurfaceAlt;
     FEditor.Font.Color := P.Text;
-    FEditor.Font.Size := ScaledEditorFontSize(FEditor);
+    ApplyThemedMonospaceFont(FEditor.Font, FEditor);
+    FEditor.ExtraCharSpacing := 0;
     ApplySynEditGutterTheme(FEditor, ATheme);
     ApplyPlatformScrollableTheme(FEditor, ATheme);
   end;

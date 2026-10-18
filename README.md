@@ -34,6 +34,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 | Nav rail icons + accent selection | Yes | Yes | Yes |
 | List rows: accent text, no blue band | Yes | Yes | Yes |
 | List empty / below-last-row background matches theme | Yes | Yes | Yes (Cocoa `NSTableView` sync) |
+| Editor + terminal monospace (no wide char gaps) | Consolas / Cascadia | DejaVu / Liberation | Menlo / SF Mono |
 | Primary / Cancel / Stop buttons (`TLcaThemedButton` / `TButton` + `LcaTheme`) | Custom-painted via `LcaThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
 | Scrollbars matching app light/dark palette | OS theme | OS GTK theme | OS AppKit theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
