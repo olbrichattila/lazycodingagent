@@ -1,6 +1,7 @@
 unit LcaFormChrome;
 
 {$mode objfpc}{$H+}
+{$IFDEF LCLcocoa}{$modeswitch objectivec1}{$ENDIF}
 
 interface
 
@@ -36,10 +37,6 @@ uses
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
   {$IFDEF LCLcocoa}, CocoaAll{$ENDIF}
   ;
-
-{$IFDEF LCLcocoa}
-{$modeswitch objectivec1}
-{$ENDIF}
 
 const
   HTCLIENT = 1;
@@ -332,6 +329,8 @@ begin
   Result := True;
 end;
 {$ELSE}
+{$Push}
+{$H-}
 function TryGtk3BeginMove(AForm: TCustomForm; AButton: TMouseButton;
   const AScreenPos: TPoint): Boolean;
 begin
@@ -343,6 +342,7 @@ function TryGtk3BeginResize(AForm: TCustomForm; AHit: Integer;
 begin
   Result := False;
 end;
+{$Pop}
 {$ENDIF}
 
 {$IFDEF LCLcocoa}
