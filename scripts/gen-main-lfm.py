@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
-"""Generate mainunit.lfm for static designer layout."""
+"""Legacy scaffold for mainunit.lfm (nav rail list + menu tail only).
+
+IMPORTANT — designer-owned layout:
+  Edit [mainunit.lfm] in the Lazarus Form Designer for dock panels, Align-based
+  chrome (title alLeft / tabs alClient / actions alRight), chat header/footer rows,
+  and spacer panels. Do NOT run this script to overwrite mainunit.lfm unless you
+  have updated the generator body below to match the current LCA layout.
+
+  Safe use today: copy nav_rail / menu_tail patterns when adding rail items, then
+  merge manually in the IDE. Full regeneration requires syncing chat, chrome hosts,
+  and footer row structure with the live .lfm.
+"""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,15 +43,15 @@ for name, tag, cap in nav_items:
 """
 
 body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 5960
-  Height = 1800
-  Top = 468
-  Width = 2880
+  Left = 0
+  Height = 1606
+  Top = 0
+  Width = 2598
   Caption = 'LazyCodingAgent — AI Workspace'
-  ClientHeight = 1800
-  ClientWidth = 2880
-  Constraints.MinHeight = 1200
-  Constraints.MinWidth = 1800
+  ClientHeight = 1606
+  ClientWidth = 2598
+  Constraints.MinHeight = 600
+  Constraints.MinWidth = 901
   DesignTimePPI = 192
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
@@ -65,6 +76,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
     Width = 2880
     Align = alClient
     BevelOuter = bvNone
+    Color = clBtnFace
+    ParentBackground = False
+    ParentColor = False
     TabOrder = 0
     object pnlNavRailHost: TPanel
       Left = 0
@@ -82,6 +96,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
       Width = 500
       Align = alLeft
       BevelOuter = bvNone
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 1
       object pnlNavChrome: TPanel
         Left = 0
@@ -213,7 +230,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
       Height = 1312
       Top = 0
       Width = 10
+      Align = alLeft
       MinSize = 160
+      ResizeAnchor = akLeft
     end
     object pnlUtilityHost: TPanel
       Left = 2320
@@ -222,6 +241,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
       Width = 560
       Align = alRight
       BevelOuter = bvNone
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 2
       Visible = False
       object pnlUtilityChrome: TPanel
@@ -405,6 +427,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
       Width = 570
       Align = alRight
       BevelOuter = bvNone
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 3
       Visible = False
       object pnlReservedChrome: TPanel
@@ -469,6 +494,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
       Width = 1108
       Align = alClient
       BevelOuter = bvNone
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 5
       object pnlChatChrome: TPanel
         Left = 0
@@ -650,6 +678,12 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
             Top = 0
             Width = 1100
             Align = alClient
+            Font.Height = -14
+            Font.Name = 'DejaVu Sans Mono'
+            Font.Pitch = fpFixed
+            Font.Quality = fqNonAntialiased
+            ParentColor = False
+            ParentFont = False
             TabOrder = 0
           end
         end
@@ -688,6 +722,9 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
     Width = 2880
     Align = alBottom
     BevelOuter = bvNone
+    Color = clBtnFace
+    ParentBackground = False
+    ParentColor = False
     TabOrder = 2
     Visible = False
     object pnlTerminalChrome: TPanel

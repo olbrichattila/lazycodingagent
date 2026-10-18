@@ -155,7 +155,7 @@ Legacy scripts [`scripts/build-terminal-deps.sh`](scripts/build-terminal-deps.sh
 
 If `lazbuild` is not on `PATH`, set `$env:LAZBUILD` to your `lazbuild.exe` (for example `C:\lazarus\lazbuild.exe`).
 
-**Form designer:** Chrome controls (`TLcaThemedPageTabBar`, `TLcaMarkdownView`, `TLcaTerminalPanel`, etc.) stream on **`mainunit.lfm`** from the **LCA Design** palette after running the install script. Regenerate the main shell with `python3 scripts/gen-main-lfm.py` when changing rail items or large structure. Edit forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12).
+**Form designer:** Chrome controls (`TLcaThemedPageTabBar`, `TLcaMarkdownView`, `TLcaTerminalPanel`, etc.) stream on **`mainunit.lfm`** from the **LCA Design** palette after running the install script. **`mainunit.lfm` is the source of truth** for dock layout (Align-based panels and spacer hosts); edit it in the Lazarus IDE. Use `scripts/gen-main-lfm.py` only as a legacy nav-rail scaffold—do not overwrite the live `.lfm` without updating that script first. Open forms from the **`.pas`** unit (**View → Toggle Form Unit** / F12).
 
 Open `lazycodingagent.lpi` in Lazarus, or build from the command line:
 

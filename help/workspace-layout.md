@@ -57,7 +57,7 @@ There are **no** per-file editor tabs. Switch sessions from the Chat session tab
 ## Right and utility panels
 
 - **Guidelines / instructions** — workspace context on the right when enabled.
-- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** renders formatted HTML: accent section headers, highlighted tool names, shaded JSON blocks (pretty-printed), and prose blocks for long prompt text.
+- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** renders formatted HTML: accent section headers, highlighted tool names, shaded JSON blocks (pretty-printed), and prose blocks for long prompt text. **Plan** shows the saved plan path, a model picker and **Build** in the header, and rendered plan markdown in the body.
 
 ## Panel visibility and detach
 
@@ -71,7 +71,7 @@ Use **⧉** on navigation, chat, guidelines, utility, and terminal headers to **
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. The **application menu** lives in the custom title bar (`TLcaThemedTitleBar` / `TLcaThemedMenuBar`) on all platforms—not the macOS screen menu bar. Lists, memos, combos, menu dropdowns, and markdown preview areas follow the active theme (`LcaTheme` in the LCA Design package). Scrollbars on scrollable controls (lists, tree, memos, editor, chat history, terminal bar) follow the **OS widget theme**. Primary, cancel, and destructive action buttons use the app palette on **Windows** (custom-painted buttons via `LcaThemeWin32Buttons.pas`); on **Linux and macOS**, those buttons use the native widget set. Custom tab strips (`TLcaThemedPageTabBar`) are painted by the app.
+**View → Toggle Light / Dark Theme** switches the in-app palette. The **application menu** lives in the custom title bar (`TLcaThemedTitleBar` / `TLcaThemedMenuBar`) on all platforms—not the macOS screen menu bar. Lists, memos, combos, menu dropdowns, and markdown preview areas follow the active theme (`LcaTheme` in the LCA Design package). Scrollbars on scrollable controls (lists, tree, memos, editor, chat history, terminal bar) follow the **OS widget theme**. Primary, cancel, and destructive **`TLcaThemedButton`** controls use the same custom-painted chrome on **Windows, Linux, and macOS** (`PaintThemedButton` in `LcaTheme`, with platform paint hooks in `LcaThemeWin32Buttons.pas` and `LcaThemedButtonPaint.pas`). Custom tab strips (`TLcaThemedPageTabBar`) are painted by the app.
 
 ## Tips
 

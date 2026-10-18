@@ -146,14 +146,12 @@ begin
   Gtk2SetWidgetFgBg(BtnWidget, GTK_STATE_ACTIVE, TextPressed, FillPressed);
   Gtk2SetWidgetFgBg(BtnWidget, GTK_STATE_INSENSITIVE, TextNormal, FillNormal);
 
+  gtk_button_set_label(PGtkButton(BtnWidget), '');
+
   if GTK_IS_BIN(BtnWidget) then begin
     LblWidget := GTK_BIN(BtnWidget)^.child;
-    if LblWidget <> nil then begin
-      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_NORMAL, TextNormal, clNone);
-      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_PRELIGHT, TextHover, clNone);
-      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_ACTIVE, TextPressed, clNone);
-      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_INSENSITIVE, TextNormal, clNone);
-    end;
+    if (LblWidget <> nil) and GTK_IS_LABEL(LblWidget) then
+      gtk_label_set_text(PGtkLabel(LblWidget), '');
   end;
 
   gtk_widget_queue_draw(BtnWidget);
@@ -174,6 +172,7 @@ begin
   if (GtkBtn = nil) or not GtkBtn.IsWidgetOk then Exit;
 
   gtk_button_set_relief(PGtkButton(GtkBtn.Widget), GTK_RELIEF_NONE);
+  gtk_button_set_label(PGtkButton(GtkBtn.Widget), '');
   GtkBtn.Color := FillNormal;
   GtkBtn.FontColor := TextNormal;
   gtk_widget_queue_draw(GtkBtn.Widget);
@@ -210,14 +209,14 @@ begin
   Radius := '6px';
 
   Sheet := WideString(
-    'QPushButton { color: ' + NativeButtonColorToStyleHex(TextNormal) + ' !important; ' +
+    'QPushButton { color: rgba(0,0,0,0) !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillNormal) + ' !important; ' +
-    BorderRule + 'border-radius: ' + Radius + '; padding: 4px 8px; min-height: 0; } ' +
-    'QPushButton:hover { color: ' + NativeButtonColorToStyleHex(TextHover) + ' !important; ' +
+    BorderRule + 'border-radius: ' + Radius + '; padding: 0; min-height: 0; } ' +
+    'QPushButton:hover { color: rgba(0,0,0,0) !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillHover) + ' !important; } ' +
-    'QPushButton:pressed { color: ' + NativeButtonColorToStyleHex(TextPressed) + ' !important; ' +
+    'QPushButton:pressed { color: rgba(0,0,0,0) !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillPressed) + ' !important; } ' +
-    'QPushButton:disabled { color: ' + NativeButtonColorToStyleHex(TextNormal) + ' !important; ' +
+    'QPushButton:disabled { color: rgba(0,0,0,0) !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillNormal) + ' !important; }');
   QtBtn.StyleSheet := Sheet;
 end;
@@ -348,7 +347,7 @@ begin
     Focused := FButton.Focused;
     Canvas.Font.Assign(FButton.Font);
     PaintThemedButton(Canvas, R, FTheme, FRole, DisplayCaption, Enabled, FHover and Enabled,
-      IsPressed, Focused, ThemedButtonCornerRadius(FButton), FButton.Font.Size, 0);
+      IsPressed, Focused, ThemedButtonCornerRadius(FButton), FButton.Font.Size, 0, FButton);
   finally
     Canvas.Free;
   end;

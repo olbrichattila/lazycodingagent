@@ -43,6 +43,7 @@ begin
     Application.ProcessMessages;
     Application.CreateForm(TLazyCodingAgentForm, LazyCodingAgentForm);
     LazyCodingAgentForm.PrepareVisibleStartup;
+    LazyCodingAgentForm.FinishThemingBehindSplash;
     Splash.HoldVisible(SplashPostLoadDelayMs);
   finally
     SetActiveSplashForm(nil);

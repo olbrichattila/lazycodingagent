@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, Controls, Graphics, Forms, StdCtrls, ExtCtrls, ComCtrls, Buttons,
-  Menus, LCLType;
+  Menus, LCLType, Types;
 
 type
   TThemeKind = (tkDark, tkLight);
@@ -65,16 +65,24 @@ const
   ThemedComboChevronGutterBase = 22;
   ThemedButtonFontSizeBase = 9;
   ThemedButtonHorizPadBase = 14;
+  ThemedButtonVertPadBase = 2;
+  ThemedButtonDescentSafetyBase = 1;
   ThemedButtonHeightBase = 28;
   { Code editor — logical pt; LCL scales Font.Size on DPI-aware forms. }
   ThemedEditorFontSizeBase = 6;
   { Utility Execution Detail memo — logical pt; LCL scales on DPI-aware forms (no MulDiv). }
   ThemedExecDetailFontSizeBase = 10;
+  { Main form left nav list boxes — owner-draw row metrics. }
+  ThemedNavListItemHeight = 40;
+  ThemedNavListPadLeft = 14;
+  ThemedNavListPadV = 4;
+  ThemedNavListRowGap = 2;
 
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
 function ThemedButtonFontSize(AControl: TControl): Integer;
 function ThemedButtonHorizPad(AControl: TControl): Integer;
+function ThemedButtonVertPad(AControl: TControl): Integer;
 function ScaledThemedButtonHeight(AControl: TControl): Integer;
 function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
   ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
@@ -113,7 +121,7 @@ procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: st
 
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
-  ACornerRadius, AFontSize, AHorizPad: Integer);
+  ACornerRadius, AFontSize, AHorizPad: Integer; AMetricsControl: TControl = nil);
 
 procedure PaintThemedComboField(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   const AText: string; AEnabled, AFocused, ADropped, AShowFocusRing: Boolean;
@@ -136,6 +144,8 @@ procedure SyncThemedEditWidget(AEdit: TCustomEdit);
 procedure SyncThemedListBoxWidget(AList: TCustomListBox);
 procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 
 procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
 procedure ApplyWin32ScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
@@ -153,6 +163,8 @@ procedure RegisterThemeCustomApply(const AProc: TThemeCustomApplyProc);
 procedure ApplyThemedButtonControl(ABtn: TButton; ATheme: TThemeKind);
 procedure ApplyThemedControlTree(ARoot: TWinControl; ATheme: TThemeKind);
 procedure ApplyThemedForm(AForm: TCustomForm; ATheme: TThemeKind);
+{ Ensures panel background paints on Cocoa/GTK (ParentColor off) and sets default text color. }
+procedure ApplyThemedPanelColors(APanel: TPanel; AColor: TColor; ATheme: TThemeKind);
 
 type
   TThemedButtonFrameApplyProc = procedure(AControl: TControl; ATheme: TThemeKind);
@@ -282,6 +294,11 @@ end;
 function ThemedButtonHorizPad(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedButtonHorizPadBase);
+end;
+
+function ThemedButtonVertPad(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedButtonVertPadBase);
 end;
 
 function ScaledThemedButtonHeight(AControl: TControl): Integer;
@@ -890,14 +907,15 @@ end;
 
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
-  ACornerRadius, AFontSize, AHorizPad: Integer);
+  ACornerRadius, AFontSize, AHorizPad: Integer; AMetricsControl: TControl);
 var
   P: TThemePalette;
-  R: TRect;
+  R, TextR: TRect;
   FillColor, TextColor, BorderColor: TColor;
   DrawBorder: Boolean;
-  TextTop: Integer;
+  TextTop, TextH, LayoutH, VertPad, DescentSafety: Integer;
   Rad: Integer;
+  Ext: TSize;
 begin
   P := ThemePalette(ATheme);
   R := ARect;
@@ -1004,13 +1022,31 @@ begin
 
   Canvas.Font.Color := TextColor;
 
-  TextTop := R.Top + ((R.Bottom - R.Top - Canvas.TextHeight(ACaption)) div 2);
-  if (AHorizPad > 0) and (R.Width > AHorizPad * 2) then
-    Canvas.TextOut(R.Left + AHorizPad +
-      Max(0, (R.Width - AHorizPad * 2 - Canvas.TextWidth(ACaption)) div 2),
+  TextR := R;
+  if Assigned(AMetricsControl) then begin
+    VertPad := ThemedButtonVertPad(AMetricsControl);
+    Inc(TextR.Top, VertPad);
+    Dec(TextR.Bottom, VertPad);
+  end;
+  if TextR.Bottom <= TextR.Top then
+    TextR := R;
+
+  TextH := Canvas.TextHeight(ACaption);
+  Ext := Canvas.TextExtent(ACaption);
+  LayoutH := Max(TextH, Ext.Cy);
+  if Assigned(AMetricsControl) then
+    DescentSafety := ScaledThemedTabMetric(AMetricsControl, ThemedButtonDescentSafetyBase)
+  else
+    DescentSafety := 0;
+  TextTop := TextR.Top + Max(0, (TextR.Bottom - TextR.Top - LayoutH - DescentSafety) div 2);
+
+  if (AHorizPad > 0) and (TextR.Width > AHorizPad * 2) then
+    Canvas.TextRect(TextR, TextR.Left + AHorizPad +
+      Max(0, (TextR.Width - AHorizPad * 2 - Canvas.TextWidth(ACaption)) div 2),
       TextTop, ACaption)
   else
-    Canvas.TextOut(R.Left + (R.Width - Canvas.TextWidth(ACaption)) div 2, TextTop, ACaption);
+    Canvas.TextRect(TextR, TextR.Left + (TextR.Width - Canvas.TextWidth(ACaption)) div 2,
+      TextTop, ACaption);
 end;
 
 procedure PaintThemedComboChevron(Canvas: TCanvas; const ARect: TRect; AColor: TColor);
@@ -1501,6 +1537,56 @@ begin
   LBox.Canvas.TextRect(ARect, ARect.Left + 8, TextTop, TextStr);
 end;
 
+procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+var
+  LBox: TListBox;
+  P: TThemePalette;
+  TextStr: string;
+  TextColor: TColor;
+  TextTop: Integer;
+  ContentRect: TRect;
+  InsetV: Integer;
+  Selected: Boolean;
+begin
+  if not (Control is TListBox) then Exit;
+  LBox := TListBox(Control);
+  P := ThemePalette(ATheme);
+
+  LBox.Canvas.Brush.Style := bsSolid;
+  LBox.Canvas.Brush.Color := LBox.Color;
+  LBox.Canvas.Pen.Color := LBox.Color;
+  LBox.Canvas.FillRect(ARect);
+
+  if (Index < 0) or (Index >= LBox.Items.Count) then Exit;
+
+  InsetV := ThemedNavListPadV + (ThemedNavListRowGap div 2);
+  ContentRect := ARect;
+  ContentRect.Top := ContentRect.Top + InsetV;
+  ContentRect.Bottom := ContentRect.Bottom - InsetV;
+  if ContentRect.Bottom <= ContentRect.Top then
+    ContentRect := ARect;
+
+  Selected := (odSelected in State) or (odFocused in State);
+  if Selected then begin
+    LBox.Canvas.Brush.Color := P.AccentActive;
+    LBox.Canvas.Pen.Color := P.AccentActive;
+    LBox.Canvas.FillRect(ContentRect);
+  end;
+
+  TextStr := LBox.Items[Index];
+  LBox.Canvas.Font.Assign(LBox.Font);
+  if Selected then
+    TextColor := P.Accent
+  else
+    TextColor := P.Text;
+  LBox.Canvas.Font.Color := TextColor;
+
+  TextTop := ContentRect.Top +
+    ((ContentRect.Bottom - ContentRect.Top - LBox.Canvas.TextHeight(TextStr)) div 2);
+  LBox.Canvas.TextRect(ContentRect, ContentRect.Left + ThemedNavListPadLeft, TextTop, TextStr);
+end;
+
 procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
 {$IFDEF WINDOWS}
 var
@@ -1698,6 +1784,21 @@ begin
   StyleThemedButtonRole(ABtn, ATheme, ResolveThemedButtonRole(ABtn));
 end;
 
+procedure ApplyThemedPanelColors(APanel: TPanel; AColor: TColor; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(APanel) then Exit;
+  P := ThemePalette(ATheme);
+  APanel.Color := AColor;
+  APanel.ParentColor := False;
+  {$IFDEF WINDOWS}
+  APanel.ParentBackground := False;
+  {$ENDIF}
+  APanel.Font.Color := P.Text;
+  APanel.Invalidate;
+end;
+
 procedure ApplyThemedControlTree(ARoot: TWinControl; ATheme: TThemeKind);
 var
   P: TThemePalette;
@@ -1738,9 +1839,9 @@ begin
       TLabel(C).Font.Color := P.Text
     else if C is TPanel then begin
       if Pos('Chrome', C.Name) > 0 then
-        TPanel(C).Color := P.HeaderBg
+        ApplyThemedPanelColors(TPanel(C), P.HeaderBg, ATheme)
       else
-        TPanel(C).Color := P.Surface;
+        ApplyThemedPanelColors(TPanel(C), P.Surface, ATheme);
     end
     else if C is TScrollBox then begin
       TScrollBox(C).Color := P.Surface;

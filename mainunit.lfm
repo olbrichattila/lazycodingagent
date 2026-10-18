@@ -1,15 +1,16 @@
 object LazyCodingAgentForm: TLazyCodingAgentForm
-  Left = 6366
-  Height = 1606
-  Top = 698
-  Width = 2598
+  Left = 744
+  Height = 1204
+  Top = 232
+  Width = 1948
   BorderStyle = bsNone
   Caption = 'LazyCodingAgent — AI Workspace'
-  ClientHeight = 1606
-  ClientWidth = 2598
-  Constraints.MinHeight = 600
-  Constraints.MinWidth = 901
-  DesignTimePPI = 192
+  ClientHeight = 1204
+  ClientWidth = 1948
+  Constraints.MinHeight = 450
+  Constraints.MinWidth = 676
+  DesignTimePPI = 144
+  Position = poScreenCenter
   LCLVersion = '4.8.0.0'
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
@@ -17,13 +18,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   OnShow = FormShow
   object lcaTitleBar: TLcaThemedTitleBar
     Left = 0
-    Height = 42
+    Height = 32
     Top = 0
-    Width = 2598
+    Width = 1948
     Align = alTop
     BevelOuter = bvNone
-    ClientHeight = 42
-    ClientWidth = 2598
+    ClientHeight = 32
+    ClientWidth = 1948
     Color = 16118512
     DoubleBuffered = True
     Font.Color = 2366488
@@ -36,24 +37,26 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   end
   object pnlMainContainer: TPanel
     Left = 0
-    Height = 1004
-    Top = 42
-    Width = 2598
+    Height = 746
+    Top = 32
+    Width = 1948
     Align = alClient
-    BorderSpacing.Bottom = 21
     BevelOuter = bvNone
-    ClientHeight = 1004
-    ClientWidth = 2598
+    ClientHeight = 746
+    ClientWidth = 1948
+    Color = clBtnFace
+    ParentBackground = False
+    ParentColor = False
     TabOrder = 0
     object pnlNavRailHost: TPanel
       Left = 0
-      Height = 1004
+      Height = 746
       Top = 0
-      Width = 102
+      Width = 76
       Align = alLeft
       BevelOuter = bvNone
-      ClientHeight = 1004
-      ClientWidth = 102
+      ClientHeight = 746
+      ClientWidth = 76
       Color = clBtnFace
       ParentBackground = False
       ParentColor = False
@@ -61,17 +64,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavBrain: TLcaNavRailButton
         Tag = 10
         Left = 0
-        Height = 54
-        Top = 586
-        Width = 102
+        Height = 40
+        Top = 440
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '◉'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -80,17 +83,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavKnowledge: TLcaNavRailButton
         Tag = 9
         Left = 0
-        Height = 54
-        Top = 522
-        Width = 102
+        Height = 40
+        Top = 392
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '📖'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -99,17 +102,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavExecPlans: TLcaNavRailButton
         Tag = 8
         Left = 0
-        Height = 54
-        Top = 458
-        Width = 102
+        Height = 40
+        Top = 344
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '☑'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -118,17 +121,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavMultiAgent: TLcaNavRailButton
         Tag = 7
         Left = 0
-        Height = 54
-        Top = 662
-        Width = 102
+        Height = 40
+        Top = 496
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 22
+        BorderSpacing.Top = 16
         Caption = '⬡'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -137,17 +140,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavToolErrors: TLcaNavRailButton
         Tag = 6
         Left = 0
-        Height = 54
-        Top = 394
-        Width = 102
+        Height = 40
+        Top = 296
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '⚠'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -156,17 +159,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavTasks: TLcaNavRailButton
         Tag = 5
         Left = 0
-        Height = 54
-        Top = 330
-        Width = 102
+        Height = 40
+        Top = 248
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '☰'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -175,17 +178,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavTools: TLcaNavRailButton
         Tag = 4
         Left = 0
-        Height = 54
-        Top = 266
-        Width = 102
+        Height = 40
+        Top = 200
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '◈'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -194,17 +197,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavBots: TLcaNavRailButton
         Tag = 3
         Left = 0
-        Height = 54
-        Top = 202
-        Width = 102
+        Height = 40
+        Top = 152
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '✦'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -213,17 +216,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavSessions: TLcaNavRailButton
         Tag = 2
         Left = 0
-        Height = 54
-        Top = 138
-        Width = 102
+        Height = 40
+        Top = 104
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '✉'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -232,17 +235,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       object sbtnNavProjects: TLcaNavRailButton
         Tag = 1
         Left = 0
-        Height = 54
-        Top = 74
-        Width = 102
+        Height = 40
+        Top = 56
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '◫'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -250,17 +253,17 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
       object sbtnNavHome: TLcaNavRailButton
         Left = 0
-        Height = 54
-        Top = 10
-        Width = 102
+        Height = 40
+        Top = 8
+        Width = 76
         Align = alTop
         AllowAllUp = True
-        BorderSpacing.Top = 10
+        BorderSpacing.Top = 8
         Caption = '⌂'
         Color = clDefault
         Flat = True
         Font.Color = clWindowText
-        Font.Height = -32
+        Font.Height = -24
         GroupIndex = 1
         Layout = blGlyphTop
         ParentFont = False
@@ -268,104 +271,146 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object pnlNavHost: TPanel
-      Left = 102
-      Height = 1004
+      Left = 76
+      Height = 746
       Top = 0
-      Width = 501
+      Width = 376
       Align = alLeft
       BevelOuter = bvNone
-      ClientHeight = 1004
-      ClientWidth = 501
+      ClientHeight = 746
+      ClientWidth = 376
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 1
       object pnlNavChrome: TPanel
         Left = 0
-        Height = 69
+        Height = 52
         Top = 0
-        Width = 501
+        Width = 376
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 69
-        ClientWidth = 501
+        ClientHeight = 52
+        ClientWidth = 376
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 0
-        object lblNavTitle: TLabel
-          Left = 16
-          Height = 36
-          Top = 18
-          Width = 141
-          Caption = 'Navigation'
-        end
-        object btnNavDetach: TLcaThemedButton
-          Left = 357
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '⧉'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
+        object pnlNavChromeTitleHost: TPanel
+          Left = 0
+          Height = 52
+          Top = 0
+          Width = 160
+          Align = alLeft
+          BevelOuter = bvNone
+          ClientHeight = 52
+          ClientWidth = 160
+          Color = clBtnFace
+          ParentBackground = False
+          ParentColor = False
           TabOrder = 0
-          OnClick = PanelDetachClick
-          ButtonRole = tbrGhost
+          object lblNavTitle: TLabel
+            Left = 12
+            Height = 25
+            Top = 14
+            Width = 136
+            Align = alClient
+            BorderSpacing.Left = 12
+            BorderSpacing.Right = 8
+            Caption = 'Navigation'
+            Layout = tlCenter
+          end
         end
-        object btnNavHide: TLcaThemedButton
-          Left = 429
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '✕'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
+        object pnlNavChromeActions: TPanel
+          Left = 272
+          Height = 52
+          Top = 0
+          Width = 104
+          Align = alRight
+          BevelOuter = bvNone
+          ClientHeight = 52
+          ClientWidth = 104
+          Color = clBtnFace
+          ParentBackground = False
+          ParentColor = False
           TabOrder = 1
-          OnClick = PanelHideClick
-          ButtonRole = tbrGhost
+          object btnNavDetach: TLcaThemedButton
+            Left = 0
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alRight
+            BorderSpacing.Right = 4
+            Caption = '⧉'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 0
+            OnClick = PanelDetachClick
+            ButtonRole = tbrGhost
+          end
+          object btnNavHide: TLcaThemedButton
+            Left = 52
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alRight
+            Caption = '✕'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 1
+            OnClick = PanelHideClick
+            ButtonRole = tbrGhost
+          end
         end
       end
       object pnlNavContent: TPanel
         Left = 0
-        Height = 935
-        Top = 69
-        Width = 501
+        Height = 694
+        Top = 52
+        Width = 376
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 935
-        ClientWidth = 501
+        ClientHeight = 694
+        ClientWidth = 376
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 1
         object lblNavViewTitle: TLabel
-          Left = 14
-          Height = 32
+          Left = 10
+          Height = 28
           Top = 0
-          Width = 487
+          Width = 366
           Align = alTop
-          BorderSpacing.Left = 14
+          BorderSpacing.Left = 10
           Caption = 'Workspaces'
-          Font.Height = -26
+          Font.Height = -20
           Font.Style = [fsBold]
           Layout = tlCenter
           ParentFont = False
         end
         object lblNavViewSub: TLabel
-          Left = 14
-          Height = 36
-          Top = 32
-          Width = 487
+          Left = 10
+          Height = 25
+          Top = 28
+          Width = 366
           Align = alTop
-          BorderSpacing.Left = 14
+          BorderSpacing.Left = 10
           Caption = 'Select a workspace'
           Layout = tlCenter
         end
         object lblNavComingSoon: TLabel
-          Left = 14
-          Height = 27
-          Top = 74
-          Width = 487
+          Left = 10
+          Height = 23
+          Top = 57
+          Width = 366
           Align = alTop
-          BorderSpacing.Left = 14
-          BorderSpacing.Top = 6
+          BorderSpacing.Left = 10
+          BorderSpacing.Top = 4
           Caption = 'COMING SOON'
-          Font.Height = -22
+          Font.Height = -17
           Font.Style = [fsBold]
           Layout = tlCenter
           ParentFont = False
@@ -373,9 +418,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object btnNavPrimary: TLcaThemedButton
           Left = 0
-          Height = 59
-          Top = 876
-          Width = 501
+          Height = 44
+          Top = 650
+          Width = 376
           Align = alBottom
           Caption = 'Action'
           Color = 15426341
@@ -386,9 +431,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object btnNavSecondary: TLcaThemedButton
           Left = 0
-          Height = 64
-          Top = 812
-          Width = 501
+          Height = 48
+          Top = 602
+          Width = 376
           Align = alBottom
           Caption = 'Secondary'
           Color = clWhite
@@ -399,19 +444,18 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavFile: TListBox
           Left = 0
-          Height = 711
-          Top = 101
-          Width = 501
+          Height = 522
+          Top = 80
+          Width = 376
           Align = alClient
           ItemHeight = 0
           TabOrder = 2
-          TopIndex = -1
         end
         object tvNavProjects: TTreeView
           Left = 0
-          Height = 711
-          Top = 101
-          Width = 501
+          Height = 522
+          Top = 80
+          Width = 376
           Align = alClient
           ReadOnly = True
           TabOrder = 3
@@ -420,72 +464,78 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object lstNavLog: TListBox
           Left = 0
-          Height = 711
-          Top = 101
-          Width = 501
+          Height = 522
+          Top = 80
+          Width = 376
           Align = alClient
           ItemHeight = 0
           TabOrder = 4
-          TopIndex = -1
           Visible = False
         end
         object lstNavErrors: TListBox
-          Left = 14
-          Height = 711
-          Top = 101
-          Width = 487
+          Left = 10
+          Height = 522
+          Top = 80
+          Width = 366
           Align = alClient
-          BorderSpacing.Left = 14
+          BorderSpacing.Left = 10
           ItemHeight = 0
           TabOrder = 5
-          TopIndex = -1
           Visible = False
         end
       end
     end
     object splNav: TSplitter
-      Left = 603
-      Height = 1004
+      Left = 452
+      Height = 746
       Top = 0
-      Width = 10
+      Width = 8
+      Align = alLeft
       MinSize = 160
+      ResizeAnchor = akLeft
     end
     object pnlUtilityHost: TPanel
-      Left = 2038
-      Height = 1004
+      Left = 1528
+      Height = 746
       Top = 0
-      Width = 560
+      Width = 420
       Align = alRight
       BevelOuter = bvNone
-      ClientHeight = 1004
-      ClientWidth = 560
+      ClientHeight = 746
+      ClientWidth = 420
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 2
       Visible = False
       object pnlUtilityChrome: TPanel
         Left = 0
-        Height = 69
+        Height = 52
         Top = 0
-        Width = 560
+        Width = 420
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 69
-        ClientWidth = 560
+        ClientHeight = 52
+        ClientWidth = 420
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 0
         object pnlUtilityTabStripHost: TPanel
           Left = 0
-          Height = 69
+          Height = 52
           Top = 0
-          Width = 560
+          Width = 316
           Align = alClient
           BevelOuter = bvNone
-          ClientHeight = 69
-          ClientWidth = 560
+          ClientHeight = 52
+          ClientWidth = 316
           TabOrder = 0
           object lcaUtilityTabBar: TLcaThemedPageTabBar
             Left = 0
-            Height = 69
+            Height = 52
             Top = 0
-            Width = 560
+            Width = 316
             Align = alClient
             BevelOuter = bvNone
             Color = 16118512
@@ -501,52 +551,70 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             AddTabCaption = '+'
           end
         end
-        object btnUtilityDetach: TLcaThemedButton
-          Tag = 3
-          Left = 416
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '⧉'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
+        object pnlUtilityChromeActions: TPanel
+          Left = 316
+          Height = 52
+          Top = 0
+          Width = 104
+          Align = alRight
+          BevelOuter = bvNone
+          ClientHeight = 52
+          ClientWidth = 104
+          Color = clBtnFace
+          ParentBackground = False
+          ParentColor = False
           TabOrder = 1
-          OnClick = PanelDetachClick
-          ButtonRole = tbrGhost
-        end
-        object btnUtilityHide: TLcaThemedButton
-          Tag = 3
-          Left = 488
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '✕'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
-          TabOrder = 2
-          OnClick = PanelHideClick
-          ButtonRole = tbrGhost
+          object btnUtilityDetach: TLcaThemedButton
+            Tag = 3
+            Left = 0
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alRight
+            BorderSpacing.Right = 4
+            Caption = '⧉'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 0
+            OnClick = PanelDetachClick
+            ButtonRole = tbrGhost
+          end
+          object btnUtilityHide: TLcaThemedButton
+            Tag = 3
+            Left = 52
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alRight
+            Caption = '✕'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 1
+            OnClick = PanelHideClick
+            ButtonRole = tbrGhost
+          end
         end
       end
       object pnlUtilityContent: TPanel
         Left = 0
-        Height = 935
-        Top = 69
-        Width = 560
+        Height = 694
+        Top = 52
+        Width = 420
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 935
-        ClientWidth = 560
+        ClientHeight = 694
+        ClientWidth = 420
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 1
         object pgcUtility: TPageControl
           Left = 0
-          Height = 935
+          Height = 694
           Top = 0
-          Width = 560
+          Width = 420
           ActivePage = tsUtilityScratch
           Align = alClient
           ShowTabs = False
@@ -554,13 +622,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           TabOrder = 0
           object tsUtilityScratch: TTabSheet
             Caption = 'Scratchpad'
-            ClientHeight = 931
-            ClientWidth = 556
+            ClientHeight = 686
+            ClientWidth = 412
             object memUtilityScratch: TMemo
               Left = 0
-              Height = 931
+              Height = 686
               Top = 0
-              Width = 556
+              Width = 412
               Align = alClient
               ScrollBars = ssVertical
               TabOrder = 0
@@ -568,13 +636,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityExecDetail: TTabSheet
             Caption = 'Execution Detail'
-            ClientHeight = 222
-            ClientWidth = 74
+            ClientHeight = 686
+            ClientWidth = 412
             object pnlUtilityExecDetailHost: TPanel
               Left = 0
-              Height = 222
+              Height = 686
               Top = 0
-              Width = 74
+              Width = 412
               Align = alClient
               BevelOuter = bvNone
               TabOrder = 0
@@ -582,50 +650,54 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           end
           object tsUtilityPlan: TTabSheet
             Caption = 'Plan'
-            ClientHeight = 222
-            ClientWidth = 74
+            ClientHeight = 686
+            ClientWidth = 412
             object pnlPlanHeader: TPanel
               Left = 0
-              Height = 91
+              Height = 82
               Top = 0
-              Width = 74
+              Width = 412
               Align = alTop
+              AutoSize = True
               BevelOuter = bvNone
-              ClientHeight = 91
-              ClientWidth = 74
+              ClientHeight = 82
+              ClientWidth = 412
               TabOrder = 0
               object lblPlanPath: TLabel
-                Left = 9
-                Height = 71
-                Top = 9
-                Width = 56
+                Left = 7
+                Height = 25
+                Top = 7
+                Width = 398
                 Align = alTop
-                BorderSpacing.Left = 9
-                BorderSpacing.Top = 9
-                BorderSpacing.Right = 9
+                AutoSize = True
+                BorderSpacing.Left = 7
+                BorderSpacing.Top = 7
+                BorderSpacing.Right = 7
                 Caption = 'Plan file:'
                 WordWrap = True
               end
               object pnlPlanToolbar: TPanel
-                Left = 9
-                Height = 46
-                Top = 80
-                Width = 56
+                Left = 7
+                Height = 44
+                Top = 32
+                Width = 398
                 Align = alTop
-                BorderSpacing.Left = 9
-                BorderSpacing.Right = 9
-                BorderSpacing.Bottom = 9
+                BorderSpacing.Left = 7
+                BorderSpacing.Right = 7
+                BorderSpacing.Bottom = 7
                 BevelOuter = bvNone
-                ClientHeight = 46
-                ClientWidth = 56
+                ClientHeight = 44
+                ClientWidth = 398
                 TabOrder = 0
                 object btnPlanBuild: TLcaThemedButton
-                  Left = -16
-                  Height = 46
-                  Top = 0
-                  Width = 72
+                  Left = 344
+                  Height = 32
+                  Top = 6
+                  Width = 54
                   Align = alRight
-                  BorderSpacing.Left = 9
+                  BorderSpacing.Left = 7
+                  BorderSpacing.Top = 6
+                  BorderSpacing.Bottom = 6
                   Caption = 'Build'
                   Color = 15426341
                   Font.Color = clWhite
@@ -634,18 +706,18 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                   ButtonRole = tbrPrimary
                 end
                 object cboPlanModel: TLcaThemedComboBox
-                  Left = -2
-                  Height = 36
-                  Top = 5
-                  Width = 0
+                  Left = 0
+                  Height = 32
+                  Top = 6
+                  Width = 337
                   Align = alClient
-                  BorderSpacing.Top = 5
-                  BorderSpacing.Bottom = 5
+                  BorderSpacing.Top = 6
+                  BorderSpacing.Bottom = 6
                   Color = 16447734
                   Font.Color = 2366488
-                  Font.Height = -24
+                  Font.Height = -18
                   Font.Name = 'Segoe UI'
-                  ItemHeight = 34
+                  ItemHeight = 26
                   ParentFont = False
                   Style = csOwnerDrawFixed
                   TabOrder = 0
@@ -654,9 +726,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             end
             object lcaPlanBody: TLcaMarkdownView
               Left = 0
-              Height = 131
-              Top = 91
-              Width = 74
+              Height = 604
+              Top = 82
+              Width = 412
               Align = alClient
               BevelOuter = bvNone
               Color = 16184563
@@ -669,89 +741,131 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object splUtility: TSplitter
-      Left = 2028
-      Height = 1004
+      Left = 1520
+      Height = 746
       Top = 0
-      Width = 10
+      Width = 8
       Align = alRight
       MinSize = 160
       ResizeAnchor = akRight
       Visible = False
     end
     object pnlReservedHost: TPanel
-      Left = 1458
-      Height = 1004
+      Left = 1092
+      Height = 746
       Top = 0
-      Width = 570
+      Width = 428
       Align = alRight
       BevelOuter = bvNone
-      ClientHeight = 1004
-      ClientWidth = 570
+      ClientHeight = 746
+      ClientWidth = 428
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 3
       Visible = False
       object pnlReservedChrome: TPanel
         Left = 0
-        Height = 69
+        Height = 52
         Top = 0
-        Width = 570
+        Width = 428
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 69
-        ClientWidth = 570
+        ClientHeight = 52
+        ClientWidth = 428
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 0
-        object lblReservedTitle: TLabel
-          Left = 16
-          Height = 36
-          Top = 18
-          Width = 136
-          Caption = 'Guidelines'
-        end
-        object btnReservedDetach: TLcaThemedButton
-          Tag = 2
-          Left = 424
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '⧉'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
+        object pnlReservedChromeTitleHost: TPanel
+          Left = 0
+          Height = 52
+          Top = 0
+          Width = 160
+          Align = alLeft
+          BevelOuter = bvNone
+          ClientHeight = 52
+          ClientWidth = 160
+          Color = clBtnFace
+          ParentBackground = False
+          ParentColor = False
           TabOrder = 0
-          OnClick = PanelDetachClick
-          ButtonRole = tbrGhost
+          object lblReservedTitle: TLabel
+            Left = 12
+            Height = 25
+            Top = 14
+            Width = 136
+            Align = alClient
+            BorderSpacing.Left = 12
+            BorderSpacing.Right = 8
+            Caption = 'Guidelines'
+            Layout = tlCenter
+          end
         end
-        object btnReservedHide: TLcaThemedButton
-          Tag = 2
-          Left = 498
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '✕'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
+        object pnlReservedChromeActions: TPanel
+          Left = 324
+          Height = 52
+          Top = 0
+          Width = 104
+          Align = alRight
+          BevelOuter = bvNone
+          ClientHeight = 52
+          ClientWidth = 104
+          Color = clBtnFace
+          ParentBackground = False
+          ParentColor = False
           TabOrder = 1
-          OnClick = PanelHideClick
-          ButtonRole = tbrGhost
+          object btnReservedDetach: TLcaThemedButton
+            Tag = 2
+            Left = 0
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alRight
+            BorderSpacing.Right = 4
+            Caption = '⧉'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 0
+            OnClick = PanelDetachClick
+            ButtonRole = tbrGhost
+          end
+          object btnReservedHide: TLcaThemedButton
+            Tag = 2
+            Left = 52
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alRight
+            Caption = '✕'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 1
+            OnClick = PanelHideClick
+            ButtonRole = tbrGhost
+          end
         end
       end
       object pnlReservedContent: TPanel
         Left = 0
-        Height = 935
-        Top = 69
-        Width = 570
+        Height = 694
+        Top = 52
+        Width = 428
         Align = alClient
         BevelOuter = bvNone
-        ClientHeight = 935
-        ClientWidth = 570
+        ClientHeight = 694
+        ClientWidth = 428
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 1
         object memReserved: TMemo
           Left = 0
-          Height = 935
+          Height = 694
           Top = 0
-          Width = 570
+          Width = 428
           Align = alClient
           BorderStyle = bsNone
           ScrollBars = ssVertical
@@ -760,50 +874,56 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
     object splReserved: TSplitter
-      Left = 1448
-      Height = 1004
+      Left = 1084
+      Height = 746
       Top = 0
-      Width = 10
+      Width = 8
       Align = alRight
       MinSize = 180
       ResizeAnchor = akRight
       Visible = False
     end
     object pnlChatHost: TPanel
-      Left = 613
-      Height = 1004
+      Left = 460
+      Height = 746
       Top = 0
-      Width = 835
+      Width = 624
       Align = alClient
       BevelOuter = bvNone
-      ClientHeight = 1004
-      ClientWidth = 835
+      ClientHeight = 746
+      ClientWidth = 624
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 5
       object pnlChatChrome: TPanel
         Left = 0
-        Height = 69
+        Height = 52
         Top = 0
-        Width = 835
+        Width = 624
         Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 69
-        ClientWidth = 835
+        ClientHeight = 52
+        ClientWidth = 624
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 0
         object pnlCenterTabStripHost: TPanel
           Left = 0
-          Height = 69
+          Height = 52
           Top = 0
-          Width = 835
+          Width = 568
           Align = alClient
           BevelOuter = bvNone
-          ClientHeight = 69
-          ClientWidth = 835
+          ClientHeight = 52
+          ClientWidth = 568
           TabOrder = 0
           object lcaCenterTabBar: TLcaThemedPageTabBar
             Left = 0
-            Height = 69
+            Height = 52
             Top = 0
-            Width = 835
+            Width = 568
             Align = alClient
             BevelOuter = bvNone
             Color = 16118512
@@ -819,27 +939,43 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             AddTabCaption = '+'
           end
         end
-        object btnChatDetach: TLcaThemedButton
-          Tag = 1
-          Left = 749
-          Height = 50
-          Top = 8
-          Width = 64
-          Anchors = [akTop, akRight]
-          Caption = '⧉'
-          Color = 16118512
-          Font.Color = 8220260
-          ParentFont = False
+        object pnlCenterChromeActions: TPanel
+          Left = 568
+          Height = 52
+          Top = 0
+          Width = 56
+          Align = alRight
+          BevelOuter = bvNone
+          ClientHeight = 52
+          ClientWidth = 56
+          Color = clBtnFace
+          ParentBackground = False
+          ParentColor = False
           TabOrder = 1
-          OnClick = PanelDetachClick
-          ButtonRole = tbrGhost
+          object btnChatDetach: TLcaThemedButton
+            Tag = 1
+            Left = 4
+            Height = 38
+            Top = 7
+            Width = 48
+            Align = alClient
+            BorderSpacing.Left = 4
+            BorderSpacing.Right = 4
+            Caption = '⧉'
+            Color = 16118512
+            Font.Color = 8220260
+            ParentFont = False
+            TabOrder = 0
+            OnClick = PanelDetachClick
+            ButtonRole = tbrGhost
+          end
         end
       end
       object pgcCenter: TPageControl
         Left = 0
-        Height = 935
-        Top = 69
-        Width = 835
+        Height = 694
+        Top = 52
+        Width = 624
         ActivePage = tsChat
         Align = alClient
         ShowTabs = False
@@ -847,23 +983,23 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         TabOrder = 1
         object tsChat: TTabSheet
           Caption = 'Chat'
-          ClientHeight = 931
-          ClientWidth = 831
+          ClientHeight = 686
+          ClientWidth = 616
           object pnlChatSessionTabStripHost: TPanel
             Left = 0
-            Height = 69
+            Height = 52
             Top = 0
-            Width = 831
+            Width = 616
             Align = alTop
             BevelOuter = bvNone
-            ClientHeight = 69
-            ClientWidth = 831
-            TabOrder = 1
+            ClientHeight = 52
+            ClientWidth = 616
+            TabOrder = 0
             object lcaChatSessionTabBar: TLcaThemedPageTabBar
               Left = 0
-              Height = 69
+              Height = 52
               Top = 0
-              Width = 831
+              Width = 616
               Align = alClient
               BevelOuter = bvNone
               Color = 16118512
@@ -878,168 +1014,299 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               AddTabCaption = '+'
             end
           end
-          object lblChatHeading: TLabel
-            Left = 16
-            Height = 36
-            Top = 8
-            Width = 292
-            Caption = 'What should we build?'
-          end
-          object lblChatSession: TLabel
-            Left = 16
-            Height = 36
-            Top = 43
-            Width = 105
-            Caption = 'Session:'
-          end
-          object lblChatSub: TLabel
-            Left = 16
-            Height = 36
-            Top = 69
-            Width = 429
-            Caption = 'Autonomous AI agent workspace'
+          object pnlChatHeader: TPanel
+            Left = 0
+            Height = 96
+            Top = 52
+            Width = 616
+            Align = alTop
+            BevelOuter = bvNone
+            ClientHeight = 96
+            ClientWidth = 616
+            TabOrder = 1
+            object lblChatHeading: TLabel
+              Left = 12
+              Height = 25
+              Top = 8
+              Width = 592
+              Align = alTop
+              BorderSpacing.Left = 12
+              BorderSpacing.Top = 8
+              BorderSpacing.Right = 12
+              Caption = 'What should we build?'
+            end
+            object lblChatSession: TLabel
+              Left = 12
+              Height = 25
+              Top = 33
+              Width = 592
+              Align = alTop
+              BorderSpacing.Left = 12
+              BorderSpacing.Top = 4
+              BorderSpacing.Right = 12
+              Caption = 'Session:'
+            end
+            object lblChatSub: TLabel
+              Left = 12
+              Height = 25
+              Top = 62
+              Width = 592
+              Align = alTop
+              BorderSpacing.Left = 12
+              BorderSpacing.Top = 4
+              BorderSpacing.Right = 12
+              BorderSpacing.Bottom = 8
+              Caption = 'Autonomous AI agent workspace'
+            end
           end
           object pnlChatComposer: TPanel
             Left = 0
-            Height = 447
-            Top = 484
-            Width = 831
+            Height = 335
+            Top = 351
+            Width = 616
             Align = alBottom
             BevelOuter = bvNone
-            ClientHeight = 447
-            ClientWidth = 831
-            TabOrder = 0
+            ClientHeight = 335
+            ClientWidth = 616
+            TabOrder = 2
             object lblChatWorkspaceTag: TLabel
-              Left = 11
-              Height = 43
-              Top = 11
-              Width = 809
+              Left = 8
+              Height = 32
+              Top = 8
+              Width = 600
               Align = alTop
               AutoSize = False
-              BorderSpacing.Around = 11
+              BorderSpacing.Around = 8
               Caption = 'PROJECT'
             end
             object memChatPrompt: TMemo
               Left = 0
-              Height = 202
-              Top = 65
-              Width = 831
+              Height = 153
+              Top = 48
+              Width = 616
               Align = alClient
               ScrollBars = ssVertical
               TabOrder = 0
             end
             object pnlChatFooter: TPanel
-              Left = 11
-              Height = 158
-              Top = 278
-              Width = 809
+              Left = 0
+              Height = 118
+              Top = 209
+              Width = 616
               Align = alBottom
-              BorderSpacing.Around = 11
+              BorderSpacing.Around = 8
               BevelOuter = bvNone
-              ClientHeight = 158
-              ClientWidth = 809
+              ClientHeight = 118
+              ClientWidth = 616
               TabOrder = 1
-              object btnChatAttachImage: TLcaThemedButton
-                Left = 16
-                Height = 43
-                Top = 16
-                Width = 200
-                Caption = 'Attach image'
-                Color = clWhite
-                Font.Color = 8220260
-                ParentFont = False
+              object pnlChatFooterRowActions: TPanel
+                Left = 0
+                Height = 44
+                Top = 0
+                Width = 616
+                Align = alTop
+                BevelOuter = bvNone
+                ClientHeight = 44
+                ClientWidth = 616
                 TabOrder = 0
+                object pnlWrapChatAttach: TPanel
+                  Left = 0
+                  Height = 44
+                  Top = 0
+                  Width = 158
+                  Align = alLeft
+                  BevelOuter = bvNone
+                  ClientHeight = 44
+                  ClientWidth = 158
+                  TabOrder = 0
+                  object btnChatAttachImage: TLcaThemedButton
+                    Left = 0
+                    Height = 32
+                    Top = 6
+                    Width = 150
+                    Align = alClient
+                    BorderSpacing.Left = 4
+                    BorderSpacing.Top = 6
+                    BorderSpacing.Right = 4
+                    BorderSpacing.Bottom = 6
+                    Caption = 'Attach image'
+                    Color = clWhite
+                    Font.Color = 8220260
+                    ParentFont = False
+                    TabOrder = 0
+                  end
+                end
+                object pnlWrapChatMode: TPanel
+                  Left = 158
+                  Height = 44
+                  Top = 0
+                  Width = 112
+                  Align = alLeft
+                  BevelOuter = bvNone
+                  ClientHeight = 44
+                  ClientWidth = 112
+                  TabOrder = 1
+                  object cboChatMode: TLcaThemedComboBox
+                    Left = 0
+                    Height = 32
+                    Top = 6
+                    Width = 104
+                    Align = alClient
+                    BorderSpacing.Left = 4
+                    BorderSpacing.Top = 6
+                    BorderSpacing.Right = 4
+                    BorderSpacing.Bottom = 6
+                    Color = 16447734
+                    Font.Color = 2366488
+                    Font.Height = -18
+                    Font.Name = 'Segoe UI'
+                    ItemHeight = 26
+                    ParentFont = False
+                    Style = csOwnerDrawFixed
+                    TabOrder = 0
+                  end
+                end
+                object pnlWrapChatModel: TPanel
+                  Left = 270
+                  Height = 44
+                  Top = 0
+                  Width = 146
+                  Align = alClient
+                  BevelOuter = bvNone
+                  ClientHeight = 44
+                  ClientWidth = 146
+                  TabOrder = 2
+                  object cboChatModel: TLcaThemedComboBox
+                    Left = 0
+                    Height = 32
+                    Top = 6
+                    Width = 138
+                    Align = alClient
+                    BorderSpacing.Left = 4
+                    BorderSpacing.Top = 6
+                    BorderSpacing.Right = 4
+                    BorderSpacing.Bottom = 6
+                    Color = 16447734
+                    Font.Color = 2366488
+                    Font.Height = -18
+                    Font.Name = 'Segoe UI'
+                    ItemHeight = 26
+                    ParentFont = False
+                    Style = csOwnerDrawFixed
+                    TabOrder = 0
+                  end
+                end
+                object pnlWrapChatStop: TPanel
+                  Left = 416
+                  Height = 44
+                  Top = 0
+                  Width = 92
+                  Align = alRight
+                  BevelOuter = bvNone
+                  ClientHeight = 44
+                  ClientWidth = 92
+                  TabOrder = 3
+                  object btnChatStop: TLcaThemedButton
+                    Left = 0
+                    Height = 32
+                    Top = 6
+                    Width = 84
+                    Align = alClient
+                    BorderSpacing.Left = 4
+                    BorderSpacing.Top = 6
+                    BorderSpacing.Right = 4
+                    BorderSpacing.Bottom = 6
+                    Caption = 'Stop'
+                    Color = 14869246
+                    Font.Color = 1842361
+                    ParentFont = False
+                    TabOrder = 0
+                    Visible = False
+                    ButtonRole = tbrDestructive
+                  end
+                end
+                object pnlWrapChatSend: TPanel
+                  Left = 508
+                  Height = 44
+                  Top = 0
+                  Width = 148
+                  Align = alRight
+                  BevelOuter = bvNone
+                  ClientHeight = 44
+                  ClientWidth = 148
+                  TabOrder = 4
+                  object btnChatSend: TLcaThemedButton
+                    Left = 0
+                    Height = 32
+                    Top = 6
+                    Width = 140
+                    Align = alClient
+                    BorderSpacing.Left = 4
+                    BorderSpacing.Top = 6
+                    BorderSpacing.Right = 4
+                    BorderSpacing.Bottom = 6
+                    Caption = 'Run Agent'
+                    Color = 15426341
+                    Font.Color = clWhite
+                    ParentFont = False
+                    TabOrder = 0
+                    ButtonRole = tbrPrimary
+                  end
+                end
               end
-              object cboChatMode: TLcaThemedComboBox
-                Left = 232
-                Height = 38
-                Top = 16
-                Width = 139
-                Color = 16447734
-                Font.Color = 2366488
-                Font.Height = -24
-                Font.Name = 'Segoe UI'
-                ItemHeight = 34
-                ParentFont = False
-                Style = csOwnerDrawFixed
+              object pnlChatFooterRowCheck: TPanel
+                Left = 0
+                Height = 32
+                Top = 44
+                Width = 616
+                Align = alTop
+                BevelOuter = bvNone
+                ClientHeight = 32
+                ClientWidth = 616
                 TabOrder = 1
-              end
-              object cboChatModel: TLcaThemedComboBox
-                Left = 392
-                Height = 38
-                Top = 16
-                Width = 315
-                Color = 16447734
-                Font.Color = 2366488
-                Font.Height = -24
-                Font.Name = 'Segoe UI'
-                ItemHeight = 34
-                ParentFont = False
-                Style = csOwnerDrawFixed
-                TabOrder = 2
-              end
-              object btnChatStop: TLcaThemedButton
-                Left = 483
-                Height = 43
-                Top = 16
-                Width = 112
-                Anchors = [akTop, akRight]
-                Caption = 'Stop'
-                Color = 14869246
-                Font.Color = 1842361
-                ParentFont = False
-                TabOrder = 3
-                Visible = False
-                ButtonRole = tbrDestructive
-              end
-              object btnChatSend: TLcaThemedButton
-                Left = 612
-                Height = 43
-                Top = 16
-                Width = 186
-                Anchors = [akTop, akRight]
-                Caption = 'Run Agent'
-                Color = 15426341
-                Font.Color = clWhite
-                ParentFont = False
-                TabOrder = 4
-                ButtonRole = tbrPrimary
-              end
-              object chkChatAllowModifyOutside: TCheckBox
-                Left = 16
-                Height = 29
-                Top = 75
-                Width = 28
-                TabOrder = 5
-                OnClick = ChkChatAllowModifyOutsideClick
-              end
-              object lblChatAllowModifyOutside: TLabel
-                Cursor = crHandPoint
-                Left = 53
-                Height = 36
-                Top = 72
-                Width = 809
-                Anchors = [akTop, akLeft, akRight]
-                Caption = 'Allow modify outside the working directory'
-                OnClick = LblChatAllowModifyOutsideClick
+                object chkChatAllowModifyOutside: TCheckBox
+                  Left = 8
+                  Height = 24
+                  Top = 4
+                  Width = 25
+                  Align = alLeft
+                  BorderSpacing.Left = 8
+                  BorderSpacing.Top = 4
+                  BorderSpacing.Bottom = 4
+                  TabOrder = 0
+                  OnClick = ChkChatAllowModifyOutsideClick
+                end
+                object lblChatAllowModifyOutside: TLabel
+                  Cursor = crHandPoint
+                  Left = 33
+                  Height = 25
+                  Top = 4
+                  Width = 575
+                  Align = alClient
+                  BorderSpacing.Top = 4
+                  BorderSpacing.Right = 8
+                  BorderSpacing.Bottom = 4
+                  Caption = 'Allow modify outside the working directory'
+                  OnClick = LblChatAllowModifyOutsideClick
+                end
               end
             end
           end
           object pnlChatHistoryHost: TPanel
             Left = 0
-            Height = 415
-            Top = 69
-            Width = 831
+            Height = 299
+            Top = 148
+            Width = 616
             Align = alClient
             BevelOuter = bvNone
-            ClientHeight = 415
-            ClientWidth = 831
-            TabOrder = 2
+            ClientHeight = 299
+            ClientWidth = 616
+            TabOrder = 3
             object lcaChatHistory: TLcaMarkdownView
               Left = 0
-              Height = 415
+              Height = 299
               Top = 0
-              Width = 831
+              Width = 616
               Align = alClient
               BevelOuter = bvNone
               Color = 16184563
@@ -1051,22 +1318,22 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         end
         object tsEditor: TTabSheet
           Caption = 'Editor'
-          ClientHeight = 222
-          ClientWidth = 246
+          ClientHeight = 686
+          ClientWidth = 616
           inline synEditor: TSynEdit
             Left = 0
-            Height = 222
+            Height = 686
             Top = 0
-            Width = 246
+            Width = 616
             Align = alClient
-            Font.Height = 14
+            Font.Height = -11
             Font.Name = 'DejaVu Sans Mono'
             Font.Pitch = fpFixed
             Font.Quality = fqNonAntialiased
             ParentColor = False
             ParentFont = False
             TabOrder = 0
-            Gutter.Width = 0
+            Gutter.Width = 75
             Gutter.MouseActions = <>
             RightGutter.Width = 0
             RightGutter.MouseActions = <>
@@ -1094,18 +1361,59 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             LineHighlightColor.Background = clNone
             LineHighlightColor.Foreground = clNone
             inline SynLeftGutterPartList1: TSynGutterPartList
+              object SynGutterMarks1: TSynGutterMarks
+                Width = 36
+                MouseActions = <>
+                MaxExtraMarksColums = 0
+                Options = [sgmoDeDuplicateMarksOnOverflow]
+                MarkupInfo.Background = clBtnFace
+                MarkupInfo.Foreground = clNone
+              end
+              object SynGutterLineNumber1: TSynGutterLineNumber
+                Width = 15
+                MouseActions = <>
+                MarkupInfo.Background = clBtnFace
+                MarkupInfo.Foreground = clNone
+                DigitCount = 2
+                ShowOnlyLineNumbersMultiplesOf = 1
+                ZeroStart = False
+                LeadingZeros = False
+              end
+              object SynGutterChanges1: TSynGutterChanges
+                Width = 6
+                MouseActions = <>
+                ModifiedColor = 59900
+                SavedColor = clGreen
+                MarkupInfo.Background = clNone
+                MarkupInfo.Foreground = clGreen
+                MarkupInfo.FrameColor = 59900
+              end
+              object SynGutterSeparator1: TSynGutterSeparator
+                Width = 3
+                MouseActions = <>
+                MarkupInfo.Background = clWhite
+                MarkupInfo.Foreground = clGray
+              end
+              object SynGutterCodeFolding1: TSynGutterCodeFolding
+                Width = 15
+                MouseActions = <>
+                MarkupInfo.Background = clNone
+                MarkupInfo.Foreground = clGray
+                MouseActionsExpanded = <>
+                MouseActionsCollapsed = <>
+              end
             end
           end
         end
         object tsMarkdown: TTabSheet
           Caption = 'Markdown'
-          ClientHeight = 222
-          ClientWidth = 246
+          ClientHeight = 686
+          ClientWidth = 616
           object pnlMarkdownPreviewHost: TPanel
             Left = 0
-            Height = 222
+            Height = 686
             Top = 0
-            Width = 246
+            Width = 616
             Align = alClient
             BevelOuter = bvNone
             TabOrder = 0
@@ -1117,9 +1425,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   object splTerminal: TSplitter
     Cursor = crVSplit
     Left = 0
-    Height = 10
-    Top = 1115
-    Width = 2598
+    Height = 8
+    Top = 830
+    Width = 1948
     Align = alBottom
     MinSize = 120
     ResizeAnchor = akBottom
@@ -1128,80 +1436,120 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
   end
   object pnlTerminalHost: TPanel
     Left = 0
-    Height = 440
-    Top = 1125
-    Width = 2598
+    Height = 330
+    Top = 838
+    Width = 1948
     Align = alBottom
     BevelOuter = bvNone
-    ClientHeight = 440
-    ClientWidth = 2598
+    ClientHeight = 330
+    ClientWidth = 1948
+    Color = clBtnFace
+    ParentBackground = False
+    ParentColor = False
     TabOrder = 2
     Visible = False
-    OnResize = PnlTerminalHostResize
     object pnlTerminalChrome: TPanel
       Left = 0
-      Height = 69
+      Height = 52
       Top = 0
-      Width = 2598
+      Width = 1948
       Align = alTop
       BevelOuter = bvNone
-      ClientHeight = 69
-      ClientWidth = 2598
+      ClientHeight = 52
+      ClientWidth = 1948
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 0
-      OnResize = PnlTerminalChromeResize
-      object lblTerminalTitle: TLabel
-        Left = 16
-        Height = 36
-        Top = 18
-        Width = 113
-        Caption = 'Terminal'
-      end
-      object btnTerminalDetach: TLcaThemedButton
-        Tag = 4
-        Left = 2454
-        Height = 50
-        Top = 8
-        Width = 64
-        Anchors = [akTop, akRight]
-        Caption = '⧉'
-        Color = 16118512
-        Font.Color = 8220260
-        ParentFont = False
+      object pnlTerminalChromeTitleHost: TPanel
+        Left = 0
+        Height = 52
+        Top = 0
+        Width = 160
+        Align = alLeft
+        BevelOuter = bvNone
+        ClientHeight = 52
+        ClientWidth = 160
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 0
-        OnClick = PanelDetachClick
-        ButtonRole = tbrGhost
+        object lblTerminalTitle: TLabel
+          Left = 12
+          Height = 25
+          Top = 14
+          Width = 136
+          Align = alClient
+          BorderSpacing.Left = 12
+          BorderSpacing.Right = 8
+          Caption = 'Terminal'
+          Layout = tlCenter
+        end
       end
-      object btnTerminalHide: TLcaThemedButton
-        Tag = 4
-        Left = 2526
-        Height = 50
-        Top = 8
-        Width = 64
-        Anchors = [akTop, akRight]
-        Caption = '✕'
-        Color = 16118512
-        Font.Color = 8220260
-        ParentFont = False
+      object pnlTerminalChromeActions: TPanel
+        Left = 1844
+        Height = 52
+        Top = 0
+        Width = 104
+        Align = alRight
+        BevelOuter = bvNone
+        ClientHeight = 52
+        ClientWidth = 104
+        Color = clBtnFace
+        ParentBackground = False
+        ParentColor = False
         TabOrder = 1
-        OnClick = PanelHideClick
-        ButtonRole = tbrGhost
+        object btnTerminalDetach: TLcaThemedButton
+          Tag = 4
+          Left = 0
+          Height = 38
+          Top = 7
+          Width = 48
+          Align = alRight
+          BorderSpacing.Right = 4
+          Caption = '⧉'
+          Color = 16118512
+          Font.Color = 8220260
+          ParentFont = False
+          TabOrder = 0
+          OnClick = PanelDetachClick
+          ButtonRole = tbrGhost
+        end
+        object btnTerminalHide: TLcaThemedButton
+          Tag = 4
+          Left = 52
+          Height = 38
+          Top = 7
+          Width = 48
+          Align = alRight
+          Caption = '✕'
+          Color = 16118512
+          Font.Color = 8220260
+          ParentFont = False
+          TabOrder = 1
+          OnClick = PanelHideClick
+          ButtonRole = tbrGhost
+        end
       end
     end
     object pnlTerminalContent: TPanel
       Left = 0
-      Height = 371
-      Top = 69
-      Width = 2598
+      Height = 278
+      Top = 52
+      Width = 1948
       Align = alClient
       BevelOuter = bvNone
-      ClientHeight = 371
-      ClientWidth = 2598
+      ClientHeight = 278
+      ClientWidth = 1948
+      Color = clBtnFace
+      ParentBackground = False
+      ParentColor = False
       TabOrder = 1
       object lblTerminalStatus: TLabel
         Left = 0
         Height = 1
         Top = 0
-        Width = 2598
+        Width = 1948
         Align = alTop
         Color = 16184563
         Font.Color = 8220260
@@ -1211,9 +1559,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
       object lcaTerminalPanel: TLcaTerminalPanel
         Left = 0
-        Height = 370
+        Height = 277
         Top = 1
-        Width = 2598
+        Width = 1948
         Align = alClient
         BevelOuter = bvNone
         Color = 16184563
@@ -1224,26 +1572,27 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       end
     end
   end
-  object StatusBar1: TStatusBar
-    Left = 0
-    Height = 41
-    Top = 1565
-    Width = 2598
-    Panels = <>
-  end
   object pnlChatAttachmentStrip: TPanel
     Left = 0
-    Height = 48
-    Top = 1067
-    Width = 2598
+    Height = 36
+    Top = 794
+    Width = 1948
     Align = alBottom
     BevelOuter = bvNone
     TabOrder = 5
     Visible = False
   end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 36
+    Top = 1168
+    Width = 1948
+    Align = alBottom
+    Panels = <>
+  end
   object lcaMainMenu: TLcaThemedMainMenu
-    Left = 720
-    Top = 24
+    Left = 540
+    Top = 18
     object mnuFile: TMenuItem
       Caption = '&File'
       object mnuFileNew: TMenuItem

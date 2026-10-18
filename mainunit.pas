@@ -6,15 +6,15 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
-  ComCtrls, Menus, FileUtil, SynEdit, SynEditTypes, SynGutterBase,
+  ComCtrls, Menus, FileUtil, SynEdit,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
   LcaThemedComboBox, LcaNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
   uChatPanel, uMainFileEditor, uPlanView,
-  uAgentEngine, frmSettings, frmNewWorkspace, frmWorkspaceRules,
+  uAgentEngine,
   uAgentExecutionLog, uAgentToolErrorLog,
-  uSyntaxSchemeRegistry, frmSyntaxSchemes,
-  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, LcaMarkdownView, uPanelDetach, uThemeHooks,
+  uSyntaxSchemeRegistry,
+  LcaMarkdownView, uPanelDetach, uThemeHooks,
   LcaThemedMessageBox,
   fpjson, jsonparser;
 
@@ -78,7 +78,9 @@ type
     sbtnNavBrain: TLcaNavRailButton;
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
+    pnlNavChromeTitleHost: TPanel;
     lblNavTitle: TLabel;
+    pnlNavChromeActions: TPanel;
     btnNavDetach: TLcaThemedButton;
     btnNavHide: TLcaThemedButton;
     pnlNavContent: TPanel;
@@ -96,6 +98,7 @@ type
     pnlUtilityChrome: TPanel;
     pnlUtilityTabStripHost: TPanel;
     lcaUtilityTabBar: TLcaThemedPageTabBar;
+    pnlUtilityChromeActions: TPanel;
     btnUtilityDetach: TLcaThemedButton;
     btnUtilityHide: TLcaThemedButton;
     pnlUtilityContent: TPanel;
@@ -114,7 +117,9 @@ type
     splUtility: TSplitter;
     pnlReservedHost: TPanel;
     pnlReservedChrome: TPanel;
+    pnlReservedChromeTitleHost: TPanel;
     lblReservedTitle: TLabel;
+    pnlReservedChromeActions: TPanel;
     btnReservedDetach: TLcaThemedButton;
     btnReservedHide: TLcaThemedButton;
     pnlReservedContent: TPanel;
@@ -124,11 +129,13 @@ type
     pnlChatChrome: TPanel;
     pnlCenterTabStripHost: TPanel;
     lcaCenterTabBar: TLcaThemedPageTabBar;
+    pnlCenterChromeActions: TPanel;
     btnChatDetach: TLcaThemedButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
     pnlChatSessionTabStripHost: TPanel;
     lcaChatSessionTabBar: TLcaThemedPageTabBar;
+    pnlChatHeader: TPanel;
     lblChatHeading: TLabel;
     lblChatSession: TLabel;
     lblChatSub: TLabel;
@@ -136,6 +143,13 @@ type
     lblChatWorkspaceTag: TLabel;
     memChatPrompt: TMemo;
     pnlChatFooter: TPanel;
+    pnlChatFooterRowActions: TPanel;
+    pnlWrapChatAttach: TPanel;
+    pnlWrapChatMode: TPanel;
+    pnlWrapChatModel: TPanel;
+    pnlWrapChatStop: TPanel;
+    pnlWrapChatSend: TPanel;
+    pnlChatFooterRowCheck: TPanel;
     pnlChatHistoryHost: TPanel;
     lcaChatHistory: TLcaMarkdownView;
     tsEditor: TTabSheet;
@@ -145,7 +159,9 @@ type
     splTerminal: TSplitter;
     pnlTerminalHost: TPanel;
     pnlTerminalChrome: TPanel;
+    pnlTerminalChromeTitleHost: TPanel;
     lblTerminalTitle: TLabel;
+    pnlTerminalChromeActions: TPanel;
     btnTerminalDetach: TLcaThemedButton;
     btnTerminalHide: TLcaThemedButton;
     pnlTerminalContent: TPanel;
@@ -164,8 +180,6 @@ type
     procedure MnuViewResetLayoutClick(Sender: TObject);
     procedure MnuViewTerminalClick(Sender: TObject);
     procedure SplTerminalMoved(Sender: TObject);
-    procedure PnlTerminalHostResize(Sender: TObject);
-    procedure PnlTerminalChromeResize(Sender: TObject);
     procedure MnuFileNewClick(Sender: TObject);
     procedure MnuFileOpenClick(Sender: TObject);
     procedure MnuFileSaveClick(Sender: TObject);
@@ -195,7 +209,6 @@ type
     FTerminalStartQueued: Boolean;
     FTerminalRetryTimer: TTimer;
     FTerminalRetryCount: Integer;
-    FTerminalChromeLayout: Boolean;
     FFormChrome: TLcaFormChrome;
 
     FNavRailBtns: array[TNavigationItem] of TLcaNavRailButton;
@@ -299,11 +312,11 @@ type
     procedure TerminalStatus(Sender: TObject; const AMessage: string);
     function IsTerminalSurfaceVisible: Boolean;
     function EffectiveTerminalDockHeight: Integer;
-    procedure LayoutTerminalChromeControls;
     procedure ApplyAllThemes;
     procedure ApplyPlatformChromeThemes;
     procedure SchedulePostShowStartup;
     procedure PostShowStartup(Sender: TObject);
+    procedure ApplyInitialStartupThemes;
     procedure RebuildWindowMenu;
 
     procedure PanelHideClickAction(AId: TPanelId);
@@ -346,6 +359,7 @@ type
     procedure EnsureFormOnScreen;
   public
     procedure PrepareVisibleStartup;
+    procedure FinishThemingBehindSplash;
     procedure RevealAfterSplash;
     property State: TWorkspaceState read FState;
     property Agent: TAgentEngine read ActiveAgent;
@@ -357,7 +371,9 @@ var
 implementation
 
 uses
-  uExecutionDetailHtml, frmSplash, uAppIcon, LCLIntf
+  uExecutionDetailHtml, frmSplash, uAppIcon, LCLIntf,
+  frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes,
+  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 {$R *.lfm}
@@ -708,6 +724,35 @@ begin
     FPendingInitialDockLayout := False;
     ApplyDockPanelsLayout;
   end;
+  ReportSplashLoadProgress(88);
+end;
+
+procedure TLazyCodingAgentForm.ApplyInitialStartupThemes;
+begin
+  FDeferThemesUntilShown := False;
+  ApplyAllThemes;
+  EnforcePageControlHiddenTabs(pgcCenter);
+  EnforcePageControlHiddenTabs(pgcUtility);
+  if Assigned(lcaCenterTabBar) then
+    lcaCenterTabBar.RefreshFromPageControl;
+  if Assigned(lcaUtilityTabBar) then
+    lcaUtilityTabBar.RefreshFromPageControl;
+  DeferredEnforceHiddenPageTabs(0);
+  DeferredRefreshThemedChromeButtons(0);
+  if Assigned(Application) then
+    Application.ProcessMessages;
+end;
+
+procedure TLazyCodingAgentForm.FinishThemingBehindSplash;
+begin
+  if csDesigning in ComponentState then Exit;
+  if not FDeferThemesUntilShown then Exit;
+  ReportSplashLoadProgress(92);
+  if not HandleAllocated then
+    HandleNeeded;
+  if Assigned(FFormChrome) then
+    FFormChrome.EnsurePlatformChrome;
+  ApplyInitialStartupThemes;
   ReportSplashLoadProgress(100);
 end;
 
@@ -739,19 +784,8 @@ begin
   if csDestroying in ComponentState then Exit;
   if not HandleAllocated then Exit;
 
-  if FDeferThemesUntilShown then begin
-    FDeferThemesUntilShown := False;
-    ApplyAllThemes;
-    ApplyEditorTheme;
-    EnforcePageControlHiddenTabs(pgcCenter);
-    EnforcePageControlHiddenTabs(pgcUtility);
-    if Assigned(lcaCenterTabBar) then
-      lcaCenterTabBar.RefreshFromPageControl;
-    if Assigned(lcaUtilityTabBar) then
-      lcaUtilityTabBar.RefreshFromPageControl;
-    Application.QueueAsyncCall(@DeferredEnforceHiddenPageTabs, 0);
-    Application.QueueAsyncCall(@DeferredRefreshThemedChromeButtons, 0);
-  end;
+  if FDeferThemesUntilShown then
+    ApplyInitialStartupThemes;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
     if Trim(FRegistry.ActiveWorkspaceId) <> '' then
@@ -1128,45 +1162,6 @@ begin
 end;
 
 
-procedure TLazyCodingAgentForm.LayoutTerminalChromeControls;
-const
-  CHROME_MARGIN = 6;
-var
-  HideLeft, DetachLeft: Integer;
-  BtnW: Integer;
-begin
-  if FTerminalChromeLayout then Exit;
-  if not Assigned(btnTerminalHide) or not Assigned(pnlTerminalChrome) then Exit;
-  FTerminalChromeLayout := True;
-  try
-    BtnW := btnTerminalHide.Width;
-    HideLeft := pnlTerminalChrome.ClientWidth - BtnW - CHROME_MARGIN;
-    if HideLeft < 0 then
-      HideLeft := 0;
-    if btnTerminalHide.Left <> HideLeft then
-      btnTerminalHide.Left := HideLeft;
-    if Assigned(btnTerminalDetach) then begin
-      DetachLeft := HideLeft - BtnW - CHROME_MARGIN;
-      if DetachLeft < 0 then
-        DetachLeft := 0;
-      if btnTerminalDetach.Left <> DetachLeft then
-        btnTerminalDetach.Left := DetachLeft;
-    end;
-  finally
-    FTerminalChromeLayout := False;
-  end;
-end;
-
-procedure TLazyCodingAgentForm.PnlTerminalHostResize(Sender: TObject);
-begin
-  LayoutTerminalChromeControls;
-end;
-
-procedure TLazyCodingAgentForm.PnlTerminalChromeResize(Sender: TObject);
-begin
-  LayoutTerminalChromeControls;
-end;
-
 procedure TLazyCodingAgentForm.ApplyDockPanelsLayout;
 begin
   pnlNavHost.Visible := FState.IsPanelVisible(piNavigation) and
@@ -1186,10 +1181,8 @@ begin
   splTerminal.Visible := pnlTerminalHost.Visible;
   if Assigned(FPanelDetach) then
     FPanelDetach.ApplyLayout;
-  if pnlTerminalHost.Visible then begin
+  if pnlTerminalHost.Visible then
     pnlTerminalHost.Height := EffectiveTerminalDockHeight;
-    LayoutTerminalChromeControls;
-  end;
 
   if FState.IsPanelVisible(piTerminal) and not FDeferThemesUntilShown
      and not FPendingInitialWorkspaceUI then
@@ -1400,20 +1393,37 @@ end;
 procedure TLazyCodingAgentForm.ApplyAllThemes;
 var
   P: TThemePalette;
+  Theme: TThemeKind;
 begin
   if not HandleAllocated then Exit;
-  P := ThemePalette(FState.Theme);
+  Theme := FState.Theme;
+  P := ThemePalette(Theme);
 
   Color := P.Background;
   Font.Color := P.Text;
-  pnlMainContainer.Color := P.Background;
 
-  pnlNavRailHost.Color := P.RailBg;
-  pnlNavHost.Color := P.Surface;
-  pnlChatHost.Color := P.Background;
-  pnlReservedHost.Color := P.Surface;
-  pnlUtilityHost.Color := P.Surface;
-  pnlTerminalHost.Color := P.Surface;
+  ApplyThemedControlTree(pnlMainContainer, FState.Theme);
+
+  ApplyThemedPanelColors(pnlMainContainer, P.Background, Theme);
+  ApplyThemedPanelColors(pnlNavRailHost, P.RailBg, Theme);
+  ApplyThemedPanelColors(pnlNavHost, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlNavChrome, P.HeaderBg, Theme);
+  if Assigned(pnlNavContent) then
+    ApplyThemedPanelColors(pnlNavContent, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlChatHost, P.Background, Theme);
+  ApplyThemedPanelColors(pnlChatChrome, P.HeaderBg, Theme);
+  ApplyThemedPanelColors(pnlReservedHost, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlReservedChrome, P.HeaderBg, Theme);
+  if Assigned(pnlReservedContent) then
+    ApplyThemedPanelColors(pnlReservedContent, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlUtilityHost, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlUtilityChrome, P.HeaderBg, Theme);
+  if Assigned(pnlUtilityContent) then
+    ApplyThemedPanelColors(pnlUtilityContent, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlTerminalHost, P.Surface, Theme);
+  ApplyThemedPanelColors(pnlTerminalChrome, P.HeaderBg, Theme);
+  if Assigned(pnlTerminalContent) then
+    ApplyThemedPanelColors(pnlTerminalContent, P.Surface, Theme);
 
   splNav.Color := P.Border;
   splReserved.Color := P.Border;
@@ -1422,17 +1432,6 @@ begin
 
   StatusBar1.Color := P.Surface;
   StatusBar1.Font.Color := P.TextMuted;
-
-  pnlNavChrome.Color := P.HeaderBg;
-  pnlNavChrome.Font.Color := P.Text;
-  if Assigned(pnlNavContent) then
-    pnlNavContent.Color := P.Surface;
-  pnlChatChrome.Color := P.HeaderBg;
-  pnlReservedChrome.Color := P.HeaderBg;
-  pnlUtilityChrome.Color := P.HeaderBg;
-  pnlTerminalChrome.Color := P.HeaderBg;
-
-  ApplyThemedControlTree(pnlMainContainer, FState.Theme);
   if Assigned(FPanelDetach) then
     FPanelDetach.ApplyThemes(FState.Theme);
 
@@ -1825,6 +1824,8 @@ begin
   if not Assigned(FPlanView) then Exit;
   FState.SetPanelVisible(piUtility, True);
   ApplyDockPanelsLayout;
+  if Assigned(pgcUtility) then
+    pgcUtility.ActivePage := tsUtilityPlan;
   FPlanView.LoadPlan(APath, AContent);
   SetLength(Models, FState.SavedModelCount(FState.Provider));
   for I := 0 to High(Models) do
@@ -1835,8 +1836,6 @@ begin
   else
     FPlanView.SetModel(FState.Model);
   FPlanView.ApplyTheme(FState.Theme);
-  if Assigned(pgcUtility) then
-    pgcUtility.ActivePage := tsUtilityPlan;
 end;
 
 procedure TLazyCodingAgentForm.TrySaveProposedPlanFromChat;

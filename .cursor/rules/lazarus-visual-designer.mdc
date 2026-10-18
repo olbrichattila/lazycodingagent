@@ -51,7 +51,7 @@ Do **not** add new `TPanel` subclasses in the app that `Create` child controls i
 - **Tab bars:** **`TLcaThemedPageTabBar`** on `pnl*TabStripHost` panels.
 - **Terminal:** **`TLcaTerminalPanel`** inside `pnlTerminalContent`.
 
-Regenerate the shell from [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) when adding rail items or large structural changes; preserve the `MainMenu1` tail and LCA component entries.
+Prefer editing [`mainunit.lfm`](mainunit.lfm) in the Form Designer (Align-based panel hosts). [`scripts/gen-main-lfm.py`](scripts/gen-main-lfm.py) is a legacy nav-rail scaffold—do not regenerate over the live `.lfm` unless the script body matches current chrome/chat layout.
 
 ## Theming (dark and light)
 

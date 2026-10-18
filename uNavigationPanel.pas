@@ -125,7 +125,6 @@ implementation
 
 const
   NavListFontSize = 11;
-  NavListItemHeight = 32;
 
 constructor TNavContentControl.Create(AOwner: TComponent);
 begin
@@ -322,7 +321,7 @@ end;
 procedure TNavContentControl.FileListDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState);
 begin
-  ThemedListBoxDrawItem(Control, Index, ARect, State, FTheme);
+  ThemedNavListBoxDrawItem(Control, Index, ARect, State, FTheme);
 end;
 
 procedure TNavContentControl.ApplyNavListMetrics;
@@ -330,23 +329,23 @@ begin
   if Assigned(FFileList) then begin
     ConfigureThemedListBox(FFileList, FTheme);
     FFileList.Font.Size := NavListFontSize;
-    FFileList.ItemHeight := NavListItemHeight;
+    FFileList.ItemHeight := ThemedNavListItemHeight;
   end;
   if Assigned(FLogList) then begin
     ConfigureThemedListBox(FLogList, FTheme);
     FLogList.Font.Size := NavListFontSize;
-    FLogList.ItemHeight := NavListItemHeight;
+    FLogList.ItemHeight := ThemedNavListItemHeight;
   end;
   if Assigned(FErrorLogList) then begin
     ConfigureThemedListBox(FErrorLogList, FTheme);
     FErrorLogList.Font.Size := NavListFontSize;
-    FErrorLogList.ItemHeight := NavListItemHeight;
+    FErrorLogList.ItemHeight := ThemedNavListItemHeight;
   end;
   if Assigned(FTreeView) then begin
     ConfigureThemedTreeView(FTreeView, FTheme);
     FTreeView.Font.Size := NavListFontSize;
     FTreeView.Options := FTreeView.Options - [tvoAutoItemHeight];
-    FTreeView.DefaultItemHeight := NavListItemHeight;
+    FTreeView.DefaultItemHeight := ThemedNavListItemHeight;
   end;
 end;
 

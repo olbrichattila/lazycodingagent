@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, Dialogs, LCLType,
-  SynEdit, SynEditTypes, SynHighlighterAny,
+  SynEdit, SynEditTypes, SynEditMarkupBracket, SynHighlighterAny,
   uAppTypes, LcaTheme, LcaThemedMessageBox, uThemeHooks, uSyntaxScheme, uSynGenericClike;
 
 type
@@ -52,6 +52,8 @@ begin
     FEditor.OnKeyDown := @EditorKeyDown;
     FEditor.Options := FEditor.Options + [eoScrollPastEol, eoTabsToSpaces];
     FEditor.TabWidth := 2;
+    FEditor.VisibleSpecialChars := [vscSpace, vscTabAtLast];
+    FEditor.BracketHighlightStyle := sbhsBoth;
     if FEditor.Font.Name = '' then
       FEditor.Font.Name := 'Consolas';
     if FEditor.Font.Size = 0 then

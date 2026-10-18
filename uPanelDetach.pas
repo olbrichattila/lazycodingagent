@@ -224,15 +224,11 @@ procedure TPanelDetachManager.ApplyThemes(ATheme: TThemeKind);
 var
   P: TPanelId;
   FF: TForm;
-  Pal: TThemePalette;
 begin
-  Pal := ThemePalette(ATheme);
   for P := Low(TPanelId) to High(TPanelId) do begin
     FF := FFloatForm[P];
     if not Assigned(FF) then Continue;
-    FF.Color := Pal.Background;
-    FF.Font.Color := Pal.Text;
-    ApplyControlTheme(FF, ATheme);
+    ApplyThemedForm(FF, ATheme);
   end;
 end;
 

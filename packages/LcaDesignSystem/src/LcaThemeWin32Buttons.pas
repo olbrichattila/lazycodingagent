@@ -217,7 +217,7 @@ begin
     Pressed := (SendMessage(FButton.Handle, BM_GETSTATE, 0, 0) and BST_PUSHED) <> 0;
     Canvas.Font.Assign(FButton.Font);
     PaintThemedButton(Canvas, R, FTheme, FRole, DisplayCaption, Enabled, FHover and Enabled,
-      Pressed, Focused, ThemedButtonCornerRadius(FButton), FButton.Font.Size, 0);
+      Pressed, Focused, ThemedButtonCornerRadius(FButton), FButton.Font.Size, 0, FButton);
   finally
     Canvas.Handle := 0;
     Canvas.Free;
