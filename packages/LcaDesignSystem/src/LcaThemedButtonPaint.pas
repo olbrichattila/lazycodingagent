@@ -129,6 +129,7 @@ procedure ApplyGtk2NativeButtonTheme(ABtn: TButton; ATheme: TThemeKind; ARole: T
 var
   EventBox, BtnWidget, LblWidget: PGtkWidget;
   FillNormal, TextNormal, FillHover, TextHover, FillPressed, TextPressed: TColor;
+  LabelUtf8: UTF8String;
 begin
   if not Assigned(ABtn) or not ABtn.HandleAllocated then Exit;
   ResolveThemedButtonNativeColors(ATheme, ARole, ABtn.Enabled, FillNormal, TextNormal, FillHover,
@@ -146,12 +147,17 @@ begin
   Gtk2SetWidgetFgBg(BtnWidget, GTK_STATE_ACTIVE, TextPressed, FillPressed);
   Gtk2SetWidgetFgBg(BtnWidget, GTK_STATE_INSENSITIVE, TextNormal, FillNormal);
 
-  gtk_button_set_label(PGtkButton(BtnWidget), '');
+  LabelUtf8 := UTF8Encode(ThemedButtonDisplayCaption(ABtn.Caption));
+  gtk_button_set_label(PGtkButton(BtnWidget), PAnsiChar(LabelUtf8));
 
   if GTK_IS_BIN(BtnWidget) then begin
     LblWidget := GTK_BIN(BtnWidget)^.child;
-    if (LblWidget <> nil) and GTK_IS_LABEL(LblWidget) then
-      gtk_label_set_text(PGtkLabel(LblWidget), '');
+    if (LblWidget <> nil) and GTK_IS_LABEL(LblWidget) then begin
+      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_NORMAL, TextNormal, clNone);
+      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_PRELIGHT, TextHover, clNone);
+      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_ACTIVE, TextPressed, clNone);
+      Gtk2SetWidgetFgBg(LblWidget, GTK_STATE_INSENSITIVE, TextNormal, clNone);
+    end;
   end;
 
   gtk_widget_queue_draw(BtnWidget);
@@ -163,6 +169,7 @@ procedure ApplyGtk3NativeButtonTheme(ABtn: TButton; ATheme: TThemeKind; ARole: T
 var
   GtkBtn: TGtk3Button;
   FillNormal, TextNormal, FillHover, TextHover, FillPressed, TextPressed: TColor;
+  LabelUtf8: UTF8String;
 begin
   if not Assigned(ABtn) or not ABtn.HandleAllocated then Exit;
   ResolveThemedButtonNativeColors(ATheme, ARole, ABtn.Enabled, FillNormal, TextNormal, FillHover,
@@ -172,7 +179,8 @@ begin
   if (GtkBtn = nil) or not GtkBtn.IsWidgetOk then Exit;
 
   gtk_button_set_relief(PGtkButton(GtkBtn.Widget), GTK_RELIEF_NONE);
-  gtk_button_set_label(PGtkButton(GtkBtn.Widget), '');
+  LabelUtf8 := UTF8Encode(ThemedButtonDisplayCaption(ABtn.Caption));
+  gtk_button_set_label(PGtkButton(GtkBtn.Widget), PAnsiChar(LabelUtf8));
   GtkBtn.Color := FillNormal;
   GtkBtn.FontColor := TextNormal;
   gtk_widget_queue_draw(GtkBtn.Widget);
@@ -209,14 +217,14 @@ begin
   Radius := '6px';
 
   Sheet := WideString(
-    'QPushButton { color: rgba(0,0,0,0) !important; ' +
+    'QPushButton { color: ' + NativeButtonColorToStyleHex(TextNormal) + ' !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillNormal) + ' !important; ' +
     BorderRule + 'border-radius: ' + Radius + '; padding: 0; min-height: 0; } ' +
-    'QPushButton:hover { color: rgba(0,0,0,0) !important; ' +
+    'QPushButton:hover { color: ' + NativeButtonColorToStyleHex(TextHover) + ' !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillHover) + ' !important; } ' +
-    'QPushButton:pressed { color: rgba(0,0,0,0) !important; ' +
+    'QPushButton:pressed { color: ' + NativeButtonColorToStyleHex(TextPressed) + ' !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillPressed) + ' !important; } ' +
-    'QPushButton:disabled { color: rgba(0,0,0,0) !important; ' +
+    'QPushButton:disabled { color: ' + NativeButtonColorToStyleHex(TextNormal) + ' !important; ' +
     'background-color: ' + NativeButtonColorToStyleHex(FillNormal) + ' !important; }');
   QtBtn.StyleSheet := Sheet;
 end;
@@ -485,7 +493,19 @@ begin
   ApplyWin32ThemedButtonPaint(ABtn, ATheme, ARole);
   {$ELSE}
   if not ABtn.HandleAllocated then Exit;
+  {$IFDEF LCLGtk2}
+  ApplyNativePlatformButtonTheme(ABtn, ATheme, ARole);
+  {$ELSE}
+  {$IFDEF LCLGtk3}
+  ApplyNativePlatformButtonTheme(ABtn, ATheme, ARole);
+  {$ELSE}
+  {$IFDEF LCLQt5}
+  ApplyNativePlatformButtonTheme(ABtn, ATheme, ARole);
+  {$ELSE}
   ApplyLclThemedButtonPaint(ABtn, ATheme, ARole);
+  {$ENDIF}
+  {$ENDIF}
+  {$ENDIF}
   {$ENDIF}
 end;
 

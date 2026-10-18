@@ -1424,6 +1424,7 @@ begin
   ApplyThemedPanelColors(pnlTerminalChrome, P.HeaderBg, Theme);
   if Assigned(pnlTerminalContent) then
     ApplyThemedPanelColors(pnlTerminalContent, P.Surface, Theme);
+  ApplyThemedControlTree(pnlTerminalHost, FState.Theme);
 
   splNav.Color := P.Border;
   splReserved.Color := P.Border;
