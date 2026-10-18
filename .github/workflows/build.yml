@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/lazarus-ci-win64
-          key: windows-lazarus-4.8-${{ hashFiles('scripts/ci-install-lazarus-windows.ps1') }}
+          key: windows-lazarus-4.8-installer-v2-${{ hashFiles('scripts/ci-install-lazarus-windows.ps1') }}
 
       - name: Install Free Pascal and Lazarus (SourceForge 4.8)
         shell: pwsh
