@@ -1364,8 +1364,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               object SynGutterMarks1: TSynGutterMarks
                 Width = 36
                 MouseActions = <>
-                MaxExtraMarksColums = 0
-                Options = [sgmoDeDuplicateMarksOnOverflow]
               end
               object SynGutterLineNumber1: TSynGutterLineNumber
                 Width = 15

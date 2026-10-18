@@ -17,7 +17,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             git fpc lazarus lcl fp-units-rtl fp-units-fcl fp-units-misc \
             libgtk2.0-dev libgdk-pixbuf2.0-dev libglib2.0-dev libnotify-dev \
-            libxml2-dev libxslt1-dev
+            libxml2-dev libxslt1-dev xvfb
 
       - name: Prepare SynEdit and TurboPower IPro
         run: |
@@ -33,6 +33,9 @@ jobs:
       - name: Post-build deploy
         run: ./scripts/post-build.sh
 
+      - name: Smoke test binary (xvfb)
+        run: ./scripts/smoke-linux-binary.sh
+
   build-linux-aarch64:
     runs-on: ubuntu-24.04-arm
     steps:
@@ -44,7 +47,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             git fpc lazarus lcl fp-units-rtl fp-units-fcl fp-units-misc \
             libqt5pas-dev qtbase5-dev \
-            libglib2.0-dev libgdk-pixbuf2.0-dev libxml2-dev libxslt1-dev
+            libglib2.0-dev libgdk-pixbuf2.0-dev libxml2-dev libxslt1-dev xvfb
 
       - name: Prepare SynEdit and TurboPower IPro
         run: |
@@ -65,6 +68,9 @@ jobs:
           LIB_DIR="$(./scripts/linux-fpc-target-triple.sh)"
           LIB_DIR="lib/${LIB_DIR}"
           ./scripts/post-build.sh . "$LIB_DIR"
+
+      - name: Smoke test binary (xvfb)
+        run: LCL_WIDGETSET=qt5 ./scripts/smoke-linux-binary.sh
 
   build-windows:
     runs-on: windows-latest

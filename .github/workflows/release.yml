@@ -121,6 +121,9 @@ jobs:
           chmod +x scripts/*.sh
           ./scripts/ci-linux-qt5-release-build.sh
 
+      - name: Smoke test binary (xvfb)
+        run: LCL_WIDGETSET=qt5 ./scripts/smoke-linux-binary.sh
+
       - name: Build DEB package
         run: ./scripts/build-linux-deb.sh
 
@@ -177,6 +180,9 @@ jobs:
         run: |
           chmod +x scripts/*.sh
           ./scripts/ci-linux-qt5-release-build.sh
+
+      - name: Smoke test binary (xvfb)
+        run: LCL_WIDGETSET=qt5 ./scripts/smoke-linux-binary.sh
 
       - name: Build arm64 DEB package
         run: ./scripts/build-linux-deb.sh
