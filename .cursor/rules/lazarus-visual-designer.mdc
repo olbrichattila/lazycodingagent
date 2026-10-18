@@ -24,7 +24,7 @@ alwaysApply: true
 
 ### Components
 
-- **Theme tokens and tree apply:** [`packages/LcaDesignSystem/src/LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas) (`ThemePalette`, `ApplyThemedForm`, `Style*` helpers). App-specific hooks: [`uThemeHooks.pas`](uThemeHooks.pas) (SynEdit).
+- **Theme tokens and tree apply:** [`packages/LcaDesignSystem/src/LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas) (`ThemePalette`, `ApplyThemedForm`, `Style*` helpers). App-specific hooks: [`uThemeHooks.pas`](uThemeHooks.pas) (SynEdit). Do **not** stream SynEdit gutter **`MarkupInfo.*`** on inline gutter parts in `.lfm` (CI/release SynEdit may reject them at form load); set gutter colors in **`uThemeHooks.pas`** only.
 - **Buttons:** prefer **`TLcaThemedButton`** on the form, or stock **`TButton`** + `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from **LcaTheme**. On **Windows**, primary/cancel/destructive fills use **LcaThemeWin32Buttons** via LcaTheme.
 - **Tabs:** **`TPageControl`** / **`TTabSheet`** with **`ShowTabs = False`**; **`TLcaThemedPageTabBar`** on tab-strip host panels (`Align = alClient`, `PageControl` set in the designer).
 - **Terminal:** **`TLcaTerminalPanel`** on the terminal content area (`StatusLabel` → status label on the form).

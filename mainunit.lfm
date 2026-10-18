@@ -1366,14 +1366,10 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 MouseActions = <>
                 MaxExtraMarksColums = 0
                 Options = [sgmoDeDuplicateMarksOnOverflow]
-                MarkupInfo.Background = clBtnFace
-                MarkupInfo.Foreground = clNone
               end
               object SynGutterLineNumber1: TSynGutterLineNumber
                 Width = 15
                 MouseActions = <>
-                MarkupInfo.Background = clBtnFace
-                MarkupInfo.Foreground = clNone
                 DigitCount = 2
                 ShowOnlyLineNumbersMultiplesOf = 1
                 ZeroStart = False
@@ -1384,21 +1380,14 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 MouseActions = <>
                 ModifiedColor = 59900
                 SavedColor = clGreen
-                MarkupInfo.Background = clNone
-                MarkupInfo.Foreground = clGreen
-                MarkupInfo.FrameColor = 59900
               end
               object SynGutterSeparator1: TSynGutterSeparator
                 Width = 3
                 MouseActions = <>
-                MarkupInfo.Background = clWhite
-                MarkupInfo.Foreground = clGray
               end
               object SynGutterCodeFolding1: TSynGutterCodeFolding
                 Width = 15
                 MouseActions = <>
-                MarkupInfo.Background = clNone
-                MarkupInfo.Foreground = clGray
                 MouseActionsExpanded = <>
                 MouseActionsCollapsed = <>
               end

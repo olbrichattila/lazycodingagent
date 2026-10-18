@@ -28,8 +28,15 @@ jobs:
           "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Host "Release version: $version"
 
-      - name: Install Lazarus (Chocolatey)
-        run: choco install lazarus -y --no-progress
+      - name: Cache Lazarus SourceForge install
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/lazarus-ci-win64
+          key: windows-lazarus-4.8-${{ hashFiles('scripts/ci-install-lazarus-windows.ps1') }}
+
+      - name: Install Free Pascal and Lazarus (SourceForge 4.8)
+        shell: pwsh
+        run: ./scripts/ci-install-lazarus-windows.ps1
 
       - name: Prepare SynEdit and TurboPower IPro
         shell: pwsh
@@ -69,6 +76,10 @@ jobs:
       - name: Post-build deploy
         shell: pwsh
         run: ./scripts/post-build.ps1
+
+      - name: Smoke test EXE
+        shell: pwsh
+        run: ./scripts/smoke-windows-exe.ps1
 
       - name: Install Inno Setup (Chocolatey)
         run: choco install innosetup -y --no-progress
