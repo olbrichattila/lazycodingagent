@@ -330,14 +330,17 @@ var
   Sz: TSize;
   CanScrollDown: Boolean;
 begin
-  Result := True;
+  Result := False;
   if not Assigned(FHtmlPanel) then Exit;
   if csDestroying in FHtmlPanel.ComponentState then Exit;
   Panel := TIpHtmlPanel(FHtmlPanel);
+  if Panel.ClientHeight <= 0 then Exit;
   Sz := Panel.GetContentSize;
   if Sz.cy <= 0 then Exit;
-  if Panel.ClientHeight <= 0 then Exit;
-  if Sz.cy <= Panel.ClientHeight then Exit;
+  if Sz.cy <= Panel.ClientHeight then begin
+    Result := True;
+    Exit;
+  end;
   CanScrollDown := Panel.Scroll(hsaDown, 1);
   Result := not CanScrollDown;
   if CanScrollDown then
@@ -347,15 +350,17 @@ end;
 procedure TLcaMarkdownView.ScrollDocumentToEnd;
 var
   Panel: TIpHtmlPanel;
+  I: Integer;
 begin
   if not Assigned(FHtmlPanel) then Exit;
   if csDestroying in FHtmlPanel.ComponentState then Exit;
   Panel := TIpHtmlPanel(FHtmlPanel);
   Panel.Scroll(hsaEnd);
-{$IFDEF MSWINDOWS}
   Application.ProcessMessages;
   Panel.Scroll(hsaEnd);
-{$ENDIF}
+  if IsDocumentScrolledToEnd then Exit;
+  for I := 1 to 50 do
+    if not Panel.Scroll(hsaDown, Panel.ClientHeight) then Break;
 end;
 
 procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
@@ -459,9 +464,16 @@ procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string; AScrollToEndAfte
 begin
   FUseRawHtml := False;
   FRawHtml := '';
-  FMarkdown := AMarkdown;
   if AScrollToEndAfterRender then
-    FScrollToEndPending := True;
+    FScrollToEndPending := True
+  else
+    FScrollToEndPending := False;
+  if FMarkdown = AMarkdown then begin
+    if AScrollToEndAfterRender then
+      ScheduleScrollToEndAfterRender;
+    Exit;
+  end;
+  FMarkdown := AMarkdown;
   Render;
 end;
 

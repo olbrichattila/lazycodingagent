@@ -1,7 +1,7 @@
 object SettingsForm: TSettingsForm
-  Left = 6288
+  Left = 6318
   Height = 1040
-  Top = 404
+  Top = 626
   Width = 1120
   BorderStyle = bsDialog
   Caption = 'Settings'
@@ -43,8 +43,13 @@ object SettingsForm: TSettingsForm
         Width = 1072
         Align = alClient
         BevelOuter = bvNone
+        Color = 16118512
         DoubleBuffered = True
+        Font.Color = 2366488
+        ParentBackground = False
+        ParentColor = False
         ParentDoubleBuffered = False
+        ParentFont = False
         TabOrder = 0
         PageControl = pgcSettings
         ShowAddTab = False
@@ -84,9 +89,13 @@ object SettingsForm: TSettingsForm
           end
           object cboProvider: TLcaThemedComboBox
             Left = 32
-            Height = 44
+            Height = 38
             Top = 72
             Width = 1008
+            Color = 16447734
+            Font.Color = 2366488
+            Font.Height = -24
+            Font.Name = 'Segoe UI'
             ItemHeight = 36
             ItemIndex = 0
             Items.Strings = (
@@ -97,7 +106,8 @@ object SettingsForm: TSettingsForm
               'Nous Research'
               'Custom / OpenAI Compatible'
             )
-            Style = csDropDownList
+            ParentFont = False
+            Style = csOwnerDrawFixed
             TabOrder = 0
             Text = 'OpenRouter'
             OnChange = cboProviderChange
@@ -158,6 +168,9 @@ object SettingsForm: TSettingsForm
             Top = 672
             Width = 240
             Caption = 'Fetch Models...'
+            Color = 15426341
+            Font.Color = clWhite
+            ParentFont = False
             TabOrder = 4
             OnClick = btnFetchModelsClick
             ButtonRole = tbrPrimary
@@ -168,6 +181,9 @@ object SettingsForm: TSettingsForm
             Top = 672
             Width = 176
             Caption = 'Edit...'
+            Color = clWhite
+            Font.Color = 8220260
+            ParentFont = False
             TabOrder = 5
             OnClick = btnEditModelClick
           end
@@ -178,6 +194,9 @@ object SettingsForm: TSettingsForm
             Top = 672
             Width = 176
             Caption = 'Delete'
+            Color = 14869246
+            Font.Color = 1842361
+            ParentFont = False
             TabOrder = 6
             OnClick = btnDeleteModelClick
             ButtonRole = tbrDestructive
@@ -195,30 +214,30 @@ object SettingsForm: TSettingsForm
       end
       object tsAgent: TTabSheet
         Caption = 'Agent Behavior'
-        ClientHeight = 832
-        ClientWidth = 1068
+        ClientHeight = 0
+        ClientWidth = 0
         object scrAgentTab: TScrollBox
           Left = 0
-          Height = 832
+          Height = 0
           Top = 0
-          Width = 1068
+          Width = 0
           HorzScrollBar.Page = 1
           HorzScrollBar.Visible = False
-          VertScrollBar.Page = 832
+          VertScrollBar.Page = 1
           Align = alClient
           BorderStyle = bsNone
-          ClientHeight = 832
-          ClientWidth = 1040
+          ClientHeight = 0
+          ClientWidth = 0
           TabOrder = 0
           object pnlTabAgent: TPanel
             Left = 0
             Height = 944
             Top = 0
-            Width = 1040
+            Width = 0
             Align = alTop
             BevelOuter = bvNone
             ClientHeight = 944
-            ClientWidth = 1040
+            ClientWidth = 0
             TabOrder = 0
             object lblTemp: TLabel
               Left = 32
@@ -363,17 +382,17 @@ object SettingsForm: TSettingsForm
       end
       object tsWorkspace: TTabSheet
         Caption = 'Workspace'
-        ClientHeight = 832
-        ClientWidth = 1068
+        ClientHeight = 0
+        ClientWidth = 0
         object pnlTabWorkspace: TPanel
           Left = 0
-          Height = 832
+          Height = 0
           Top = 0
-          Width = 1068
+          Width = 0
           Align = alClient
           BevelOuter = bvNone
-          ClientHeight = 832
-          ClientWidth = 1068
+          ClientHeight = 0
+          ClientWidth = 0
           TabOrder = 0
           object lblWorkspaceRoot: TLabel
             Left = 32
@@ -395,6 +414,9 @@ object SettingsForm: TSettingsForm
             Top = 72
             Width = 160
             Caption = 'Browse...'
+            Color = clWhite
+            Font.Color = 8220260
+            ParentFont = False
             TabOrder = 1
             OnClick = btnBrowseWorkspaceClick
           end
@@ -435,6 +457,9 @@ object SettingsForm: TSettingsForm
       Width = 160
       Anchors = [akTop, akRight]
       Caption = 'OK'
+      Color = 15426341
+      Font.Color = clWhite
+      ParentFont = False
       TabOrder = 0
       OnClick = btnOKClick
       ButtonRole = tbrPrimary
@@ -446,6 +471,9 @@ object SettingsForm: TSettingsForm
       Width = 160
       Anchors = [akTop, akRight]
       Caption = 'Cancel'
+      Color = clWhite
+      Font.Color = 8220260
+      ParentFont = False
       TabOrder = 1
       OnClick = btnCancelClick
     end
