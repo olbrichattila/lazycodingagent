@@ -106,6 +106,7 @@ function ThemedTabCloseColumn(AControl: TControl): Integer;
 function ThemedTabHorizPad(AControl: TControl): Integer;
 function ThemedTabCloseHitRect(const ARect: TRect; AControl: TControl): TRect;
 function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
+function ScaledThemedWindowChromeButtonWidth(AControl: TControl): Integer;
 function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;
 function MenuItemDisplayCaption(const ACaption: string): string;
 function ScaledEditorFontSize(AControl: TControl): Integer;
@@ -293,6 +294,11 @@ end;
 function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedMenuBarBaseHeight);
+end;
+
+function ScaledThemedWindowChromeButtonWidth(AControl: TControl): Integer;
+begin
+  Result := ScaledLayoutMetric(AControl, ThemedWindowChromeButtonBaseWidth);
 end;
 
 function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;

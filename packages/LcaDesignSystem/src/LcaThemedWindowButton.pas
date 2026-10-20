@@ -5,22 +5,22 @@ unit LcaThemedWindowButton;
 interface
 
 uses
-  Classes, SysUtils, Controls, Graphics, Forms, LCLType, LcaTheme;
+  Classes, SysUtils, Controls, Graphics, Forms, LCLType, LcaThemedControl, LcaTheme;
 
 type
   TThemedWindowButtonRole = (twbMinimize, twbMaximize, twbRestore, twbClose);
 
-  TLcaThemedWindowButton = class(TCustomControl)
+  TLcaThemedWindowButton = class(TLcaThemedControl)
   private
-    FTheme: TThemeKind;
     FRole: TThemedWindowButtonRole;
     FHover: Boolean;
     FPressed: Boolean;
-    procedure SetThemeKind(AValue: TThemeKind);
     procedure SetButtonRole(AValue: TThemedWindowButtonRole);
     function HostForm: TCustomForm;
     procedure ExecuteRole;
   protected
+    procedure DoApplyThemeColors(const P: TThemePalette); override;
+    procedure PaintThemedClient(const ARect: TRect; const P: TThemePalette); override;
     procedure Paint; override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
@@ -29,10 +29,9 @@ type
     procedure ChangeScale(M, D: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
-    procedure ApplyTheme(ATheme: TThemeKind);
   published
-    property ThemeKind: TThemeKind read FTheme write SetThemeKind default tkDark;
     property ButtonRole: TThemedWindowButtonRole read FRole write SetButtonRole default twbMinimize;
+    property ThemeKind;
   end;
 
 function ScaledWindowChromeButtonWidth(AControl: TControl): Integer;
@@ -40,23 +39,16 @@ function ScaledWindowChromeButtonWidth(AControl: TControl): Integer;
 implementation
 
 uses
-  Math;
+  Math, Types;
 
 function ScaledWindowChromeButtonWidth(AControl: TControl): Integer;
 begin
-  Result := ScaledLayoutMetric(AControl, ThemedWindowChromeButtonBaseWidth);
+  Result := ScaledThemedWindowChromeButtonWidth(AControl);
 end;
 
 function TLcaThemedWindowButton.HostForm: TCustomForm;
 begin
   Result := GetParentForm(Self);
-end;
-
-procedure TLcaThemedWindowButton.SetThemeKind(AValue: TThemeKind);
-begin
-  if FTheme = AValue then Exit;
-  FTheme := AValue;
-  ApplyTheme(FTheme);
 end;
 
 procedure TLcaThemedWindowButton.SetButtonRole(AValue: TThemedWindowButtonRole);
@@ -69,19 +61,15 @@ end;
 constructor TLcaThemedWindowButton.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  ControlStyle := ControlStyle + [csOpaque];
-  DoubleBuffered := True;
-  FTheme := tkDark;
   FRole := twbMinimize;
   Width := ScaledWindowChromeButtonWidth(Self);
   Height := ScaledThemedMenuBarHeight(Self);
   Cursor := crHandPoint;
 end;
 
-procedure TLcaThemedWindowButton.ApplyTheme(ATheme: TThemeKind);
+procedure TLcaThemedWindowButton.DoApplyThemeColors(const {%H-}P: TThemePalette);
 begin
-  FTheme := ATheme;
-  Invalidate;
+  { Fully custom-painted; base CardBg would flash behind chrome glyphs. }
 end;
 
 procedure TLcaThemedWindowButton.ExecuteRole;
@@ -103,15 +91,13 @@ begin
   end;
 end;
 
-procedure TLcaThemedWindowButton.Paint;
+procedure TLcaThemedWindowButton.PaintThemedClient(const ARect: TRect; const P: TThemePalette);
 var
-  P: TThemePalette;
   R: TRect;
   CX, CY, S, I: Integer;
   HoverBg, IconColor, BarBg: TColor;
 begin
-  P := ThemePalette(EffectiveControlTheme(Self, FTheme));
-  R := ClientRect;
+  R := ARect;
   if Assigned(Parent) and (CompareText(Parent.ClassName, 'TLcaThemedTitleBar') = 0) then
     BarBg := P.TitleBarBg
   else
@@ -177,6 +163,16 @@ begin
         Canvas.LineTo(CX - I, CY + I);
       end;
   end;
+end;
+
+procedure TLcaThemedWindowButton.Paint;
+var
+  P: TThemePalette;
+  R: TRect;
+begin
+  P := EffectivePalette;
+  R := ClientRect;
+  PaintThemedClient(R, P);
 end;
 
 procedure TLcaThemedWindowButton.MouseEnter;
