@@ -68,6 +68,10 @@
         <UnitName Value="LcaPaintSurface"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaPaintButton.pas"/>
+        <UnitName Value="LcaPaintButton"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaScrollHost.pas"/>
         <UnitName Value="LcaScrollHost"/>
       </Item>

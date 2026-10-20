@@ -11,7 +11,7 @@ uses
   LcaTheme, LcaThemedButtonPaint, LcaThemeWin32Buttons, frmThemedMessage, 
   LcaThemedMessageBox, LcaThemeWin32Combo, LcaThemedPageTabBar, 
   LcaThemedButton, LcaThemedComboBox, LcaThemedControl, LcaNavRailButton, 
-  LcaSurfacePanel, LcaPaintSurface, LcaScrollHost, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, 
+  LcaSurfacePanel, LcaPaintSurface, LcaPaintButton, LcaScrollHost, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, 
   LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedMenuFlyout, LcaOwlIconRes, 
   LcaThemedWindowButton, LcaFormChrome, LcaThemedTitleBar;
 
