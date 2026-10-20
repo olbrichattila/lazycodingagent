@@ -34,7 +34,7 @@ object ThemedMessageForm: TThemedMessageForm
     ClientHeight = 52
     ClientWidth = 440
     TabOrder = 0
-    object btnThird: TLcaThemedButton
+    object btnThird: TLcaPaintButton
       Left = 16
       Height = 28
       Top = 12
@@ -44,7 +44,7 @@ object ThemedMessageForm: TThemedMessageForm
       Visible = False
       ButtonRole = tbrCancel
     end
-    object btnSecond: TLcaThemedButton
+    object btnSecond: TLcaPaintButton
       Left = 256
       Height = 28
       Top = 12
@@ -55,7 +55,7 @@ object ThemedMessageForm: TThemedMessageForm
       Visible = False
       ButtonRole = tbrCancel
     end
-    object btnFirst: TLcaThemedButton
+    object btnFirst: TLcaPaintButton
       Left = 344
       Height = 28
       Top = 12

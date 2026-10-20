@@ -61,6 +61,8 @@ type
     FShowHBar: Boolean;
     FViewportW: Integer;
     FViewportH: Integer;
+    FViewportFillColor: TColor;
+    function ClientAreaFillColor(const P: TThemePalette): TColor;
     procedure SetContent(AValue: TControl);
     procedure SetContentWidth(AValue: Integer);
     procedure SetContentHeight(AValue: Integer);
@@ -121,6 +123,9 @@ type
     procedure SetScrollPosition(AX, AY: Integer);
     procedure ScrollContentToEnd;
     function ContentScrolledToEnd: Boolean;
+    function SyncedContentExtent: TSize;
+    procedure SetViewportFillColor(AColor: TColor);
+    function ViewportFillColor: TColor;
   published
     property Content: TControl read FContent write SetContent;
     property ContentWidth: Integer read FContentWidth write SetContentWidth default 0;
@@ -514,6 +519,11 @@ begin
   Result := FScrollY >= MaxY;
 end;
 
+function TLcaScrollHost.SyncedContentExtent: TSize;
+begin
+  Result := Size(FContentWidth, FContentHeight);
+end;
+
 procedure TLcaScrollHost.LayoutFromScroll;
 var
   CW, CH: Integer;
@@ -722,6 +732,7 @@ begin
   FScrollX := 0;
   FScrollY := 0;
   FDragAxis := lsaNone;
+  FViewportFillColor := clNone;
 
   FViewport := TLcaScrollViewport.Create(Self, Self);
 
@@ -731,11 +742,36 @@ begin
   FHGutter.Visible := False;
 end;
 
+function TLcaScrollHost.ClientAreaFillColor(const P: TThemePalette): TColor;
+begin
+  if FViewportFillColor <> clNone then
+    Result := FViewportFillColor
+  else
+    Result := P.CardBg;
+end;
+
+function TLcaScrollHost.ViewportFillColor: TColor;
+begin
+  Result := FViewportFillColor;
+end;
+
+procedure TLcaScrollHost.SetViewportFillColor(AColor: TColor);
+begin
+  if FViewportFillColor = AColor then Exit;
+  FViewportFillColor := AColor;
+  if not (csLoading in ComponentState) and HandleAllocated then
+    ApplyTheme(ThemeKind);
+end;
+
 procedure TLcaScrollHost.DoApplyThemeColors(const P: TThemePalette);
+var
+  Fill: TColor;
 begin
   inherited DoApplyThemeColors(P);
+  Fill := ClientAreaFillColor(P);
+  Color := Fill;
   if Assigned(FViewport) then begin
-    FViewport.Color := P.CardBg;
+    FViewport.Color := Fill;
     FViewport.Font.Color := P.Text;
   end;
   if Assigned(FVGutter) then begin
@@ -779,7 +815,7 @@ end;
 
 procedure TLcaScrollHost.PaintThemedClient(const ARect: TRect; const P: TThemePalette);
 begin
-  Canvas.Brush.Color := P.CardBg;
+  Canvas.Brush.Color := ClientAreaFillColor(P);
   Canvas.FillRect(ARect);
   if LcaInDesignContext(Self) and (csDesigning in ComponentState) then begin
     Canvas.Font.Color := P.TextMuted;

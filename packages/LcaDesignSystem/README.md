@@ -4,20 +4,32 @@ Lazy Coding Agent **design system** for Lazarus: theme tokens and palette compon
 
 ## Palette (`LCA Design`)
 
+The **main window** and **app dialogs** (Settings, rules, model search, themed message box, etc.) use the **painted** stack (`TLcaPaint*`, `TLcaScrollHost` inside markdown/lists). Legacy `TLcaThemed*` types remain on the palette for older forms or gradual migration.
+
 | Component | Purpose |
 |-----------|---------|
-| `TLcaThemedPageTabBar` | Themed tab strip for `TPageControl` with `ShowTabs = False` |
-| `TLcaThemedButton` | Primary / cancel / destructive / ghost roles; custom paint on Windows |
-| `TLcaThemedComboBox` | Rounded field + chevron (Windows), owner-draw list; set `Height`/`ItemHeight` in the form |
-| `TLcaNavRailButton` | Navigation rail cell with optional caption |
+| `TLcaThemedPageTabBar` | Painted tab strip for `TPageControl` with `ShowTabs = False` |
+| `TLcaPaintButton` | Primary / cancel / destructive / ghost — fully custom-painted on all platforms |
+| `TLcaPaintComboBox` | Painted field + dropdown list; set `Height`/`ItemHeight` in the form |
+| `TLcaPaintNavRailButton` | Navigation rail cell (icon caption, `Active` state) |
+| `TLcaPaintNavList` | Painted nav list with `TLcaScrollHost` scrollbars |
+| `TLcaPaintSurface` | Themed fill/border surface (`TLcaThemedControl`) |
+| `TLcaScrollHost` | Painted scroll container (used inside markdown view and nav list) |
+| `TLcaThemedButton` | Legacy `TButton` + theme roles (dialogs, older forms) |
+| `TLcaThemedComboBox` | Legacy owner-draw `TComboBox` (e.g. Settings) |
+| `TLcaNavRailButton` | Legacy `TSpeedButton` rail cell |
 | `TLcaSurfacePanel` | Card surface with optional accent border |
-| `TLcaMarkdownView` | Markdown subset preview (TurboPower IPro) |
+| `TLcaMarkdownView` | Markdown preview (TurboPower IPro) with LCA scrollbars |
 | `TLcaTerminalPanel` | Embedded PTY terminal (requires TerminalEmulator packages) |
 | `TLcaThemedMainMenu` | In-window main menu (pairs with `TLcaThemedTitleBar` / menu bar) |
 | `TLcaThemedMenuBar` | Top menu strip inside the custom title bar |
 | `TLcaThemedTitleBar` | Frameless window chrome: logo, menu, drag region, min/max/close |
 
 Theme API lives in **`LcaTheme`** (`TThemeKind`, `ThemePalette`, `ApplyThemedForm`, etc.).
+
+### Palette icons
+
+Every class on **LCA Design** must have a **dedicated 24×24 IDE glyph** (not the generic LCL default). Sources live in `res/glyphs/`; build `res/lca_design_glyphs.res` with [`scripts/build-lca-glyphs.sh`](../../scripts/build-lca-glyphs.sh) (or `.bat`). Wire-up is design-time only via `LcaDesignReg.pas` / `LcaDesignSystemDesign`. See [PALETTE-ICONS.md](../../docs/delivery/lca-painted-controls/PALETTE-ICONS.md). After adding or changing glyphs, **close Lazarus** and re-run [`scripts/install-lca-lazarus.sh`](../../scripts/install-lca-lazarus.sh) with `--build-ide` (e.g. `--widgetset=qt5` on Linux).
 
 ## Opening in Lazarus (Form Designer)
 

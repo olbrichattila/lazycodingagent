@@ -71,7 +71,19 @@ Use **⧉** on navigation, chat, guidelines, utility, and terminal headers to **
 
 ## Theme
 
-**View → Toggle Light / Dark Theme** switches the in-app palette. The **application menu** lives in the custom title bar (`TLcaThemedTitleBar` / `TLcaThemedMenuBar`) on all platforms—not the macOS screen menu bar. Lists, memos, combos, menu dropdowns, and markdown preview areas follow the active theme (`LcaTheme` in the LCA Design package). Scrollbars on scrollable controls (lists, tree, memos, editor, chat history, terminal bar) follow the **OS widget theme**. Primary, cancel, and destructive **`TLcaThemedButton`** controls use the same custom-painted chrome on **Windows, Linux, and macOS** (`PaintThemedButton` in `LcaTheme`, with platform paint hooks in `LcaThemeWin32Buttons.pas` and `LcaThemedButtonPaint.pas`). Custom tab strips (`TLcaThemedPageTabBar`) are painted by the app.
+**View → Toggle Light / Dark Theme** switches the in-app palette. The **application menu** lives in the custom title bar (`TLcaThemedTitleBar` / `TLcaThemedMenuBar`) on all platforms—not the macOS screen menu bar.
+
+**Painted LCA chrome** on the main window (all platforms): navigation rail buttons, panel chrome buttons, chat/plan combos and send/stop buttons, navigation file/log/error lists, tab strips, and chat/plan markdown preview. Those controls use `LcaTheme` tokens and custom paint so they look the same on Windows, Linux, and macOS.
+
+**Native islands** (stock LCL / OS styling where noted):
+
+- **Code editor** (`TSynEdit`) — syntax colors via theme hooks; scrollbars follow the OS.
+- **Chat prompt** (`TMemo`) — native text field and scrollbars.
+- **Projects tree** (`TTreeView`) — native tree widget.
+- **Terminal** (`TLcaTerminalPanel`) — embedded shell view; terminal scrollbars follow the OS.
+- **Settings and dialogs** — use the same painted buttons and combos as the main window (`TLcaPaintButton`, `TLcaPaintComboBox`).
+
+**Scrollbars:** Chat history, plan body, and navigation lists use **LCA-painted** scrollbars. The editor, prompt, tree, and terminal use **OS widget** scrollbars. Menu dropdowns may follow the OS theme even when the title bar is themed.
 
 ## Tips
 

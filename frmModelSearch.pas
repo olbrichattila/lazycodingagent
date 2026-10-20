@@ -5,7 +5,7 @@ unit frmModelSearch;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaPaintButton, LcaPaintComboBox,
   uAppTypes, uLlmClient, LcaTheme;
 
 type
@@ -18,8 +18,8 @@ type
     edtSearch: TEdit;
     lstModels: TListBox;
     pnlBottom: TPanel;
-    btnAdd: TLcaThemedButton;
-    btnClose: TLcaThemedButton;
+    btnAdd: TLcaPaintButton;
+    btnClose: TLcaPaintButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

@@ -6,9 +6,9 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
-  ComCtrls, Menus, FileUtil, SynEdit, SynGutterBase,
-  uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
+  ComCtrls, Menus, FileUtil, SynEdit,
+  uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaPaintButton,
+  LcaPaintComboBox, LcaPaintNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
   uChatPanel, uMainFileEditor, uPlanView,
   uAgentEngine,
@@ -23,11 +23,11 @@ type
 
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
-    btnChatSend: TLcaThemedButton;
-    btnChatAttachImage: TLcaThemedButton;
-    btnChatStop: TLcaThemedButton;
-    cboChatMode: TLcaThemedComboBox;
-    cboChatModel: TLcaThemedComboBox;
+    btnChatSend: TLcaPaintButton;
+    btnChatAttachImage: TLcaPaintButton;
+    btnChatStop: TLcaPaintButton;
+    cboChatMode: TLcaPaintComboBox;
+    cboChatModel: TLcaPaintComboBox;
     chkChatAllowModifyOutside: TCheckBox;
     lblChatAllowModifyOutside: TLabel;
     lcaTitleBar: TLcaThemedTitleBar;
@@ -65,30 +65,30 @@ type
 
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
-    sbtnNavHome: TLcaNavRailButton;
-    sbtnNavProjects: TLcaNavRailButton;
-    sbtnNavSessions: TLcaNavRailButton;
-    sbtnNavBots: TLcaNavRailButton;
-    sbtnNavTools: TLcaNavRailButton;
-    sbtnNavTasks: TLcaNavRailButton;
-    sbtnNavToolErrors: TLcaNavRailButton;
-    sbtnNavMultiAgent: TLcaNavRailButton;
-    sbtnNavExecPlans: TLcaNavRailButton;
-    sbtnNavKnowledge: TLcaNavRailButton;
-    sbtnNavBrain: TLcaNavRailButton;
+    sbtnNavHome: TLcaPaintNavRailButton;
+    sbtnNavProjects: TLcaPaintNavRailButton;
+    sbtnNavSessions: TLcaPaintNavRailButton;
+    sbtnNavBots: TLcaPaintNavRailButton;
+    sbtnNavTools: TLcaPaintNavRailButton;
+    sbtnNavTasks: TLcaPaintNavRailButton;
+    sbtnNavToolErrors: TLcaPaintNavRailButton;
+    sbtnNavMultiAgent: TLcaPaintNavRailButton;
+    sbtnNavExecPlans: TLcaPaintNavRailButton;
+    sbtnNavKnowledge: TLcaPaintNavRailButton;
+    sbtnNavBrain: TLcaPaintNavRailButton;
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
     pnlNavChromeTitleHost: TPanel;
     lblNavTitle: TLabel;
     pnlNavChromeActions: TPanel;
-    btnNavDetach: TLcaThemedButton;
-    btnNavHide: TLcaThemedButton;
+    btnNavDetach: TLcaPaintButton;
+    btnNavHide: TLcaPaintButton;
     pnlNavContent: TPanel;
     lblNavViewTitle: TLabel;
     lblNavViewSub: TLabel;
     lblNavComingSoon: TLabel;
-    btnNavPrimary: TLcaThemedButton;
-    btnNavSecondary: TLcaThemedButton;
+    btnNavPrimary: TLcaPaintButton;
+    btnNavSecondary: TLcaPaintButton;
     lstNavFile: TLcaPaintNavList;
     tvNavProjects: TTreeView;
     lstNavLog: TLcaPaintNavList;
@@ -99,8 +99,8 @@ type
     pnlUtilityTabStripHost: TPanel;
     lcaUtilityTabBar: TLcaThemedPageTabBar;
     pnlUtilityChromeActions: TPanel;
-    btnUtilityDetach: TLcaThemedButton;
-    btnUtilityHide: TLcaThemedButton;
+    btnUtilityDetach: TLcaPaintButton;
+    btnUtilityHide: TLcaPaintButton;
     pnlUtilityContent: TPanel;
     pgcUtility: TPageControl;
     tsUtilityScratch: TTabSheet;
@@ -111,8 +111,8 @@ type
     pnlPlanHeader: TPanel;
     lblPlanPath: TLabel;
     pnlPlanToolbar: TPanel;
-    cboPlanModel: TLcaThemedComboBox;
-    btnPlanBuild: TLcaThemedButton;
+    cboPlanModel: TLcaPaintComboBox;
+    btnPlanBuild: TLcaPaintButton;
     lcaPlanBody: TLcaMarkdownView;
     splUtility: TSplitter;
     pnlReservedHost: TPanel;
@@ -120,8 +120,8 @@ type
     pnlReservedChromeTitleHost: TPanel;
     lblReservedTitle: TLabel;
     pnlReservedChromeActions: TPanel;
-    btnReservedDetach: TLcaThemedButton;
-    btnReservedHide: TLcaThemedButton;
+    btnReservedDetach: TLcaPaintButton;
+    btnReservedHide: TLcaPaintButton;
     pnlReservedContent: TPanel;
     memReserved: TMemo;
     splReserved: TSplitter;
@@ -130,7 +130,7 @@ type
     pnlCenterTabStripHost: TPanel;
     lcaCenterTabBar: TLcaThemedPageTabBar;
     pnlCenterChromeActions: TPanel;
-    btnChatDetach: TLcaThemedButton;
+    btnChatDetach: TLcaPaintButton;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
     pnlChatSessionTabStripHost: TPanel;
@@ -162,8 +162,8 @@ type
     pnlTerminalChromeTitleHost: TPanel;
     lblTerminalTitle: TLabel;
     pnlTerminalChromeActions: TPanel;
-    btnTerminalDetach: TLcaThemedButton;
-    btnTerminalHide: TLcaThemedButton;
+    btnTerminalDetach: TLcaPaintButton;
+    btnTerminalHide: TLcaPaintButton;
     pnlTerminalContent: TPanel;
     lblTerminalStatus: TLabel;
     lcaTerminalPanel: TLcaTerminalPanel;
@@ -211,7 +211,7 @@ type
     FTerminalRetryCount: Integer;
     FFormChrome: TLcaFormChrome;
 
-    FNavRailBtns: array[TNavigationItem] of TLcaNavRailButton;
+    FNavRailBtns: array[TNavigationItem] of TLcaPaintNavRailButton;
     FNavContent: TNavContentControl;
     FChatPanel: TChatPanel;
     FSyntaxSchemes: TSyntaxSchemeRegistry;
@@ -498,6 +498,7 @@ begin
   if not Assigned(FActiveHub) then Exit;
 
   E := FActiveHub.GetOrCreateEngine(ASessionId);
+  Msgs := nil;
   SetLength(Msgs, E.GetMessageCount);
   for I := 0 to E.GetMessageCount - 1 do
     Msgs[I] := E.GetMessage(I);
@@ -873,7 +874,7 @@ end;
 procedure TLazyCodingAgentForm.InitNavRailButtons;
 var
   Nav: TNavigationItem;
-  Btn: TLcaNavRailButton;
+  Btn: TLcaPaintNavRailButton;
 begin
   FNavRailBtns[niHome] := sbtnNavHome;
   FNavRailBtns[niProjects] := sbtnNavProjects;
@@ -896,14 +897,14 @@ end;
 
 procedure TLazyCodingAgentForm.NavRailBtnClick(Sender: TObject);
 begin
-  if Sender is TLcaNavRailButton then
-    FState.SetNavigation(TNavigationItem(TLcaNavRailButton(Sender).Tag));
+  if Sender is TLcaPaintNavRailButton then
+    FState.SetNavigation(TNavigationItem(TLcaPaintNavRailButton(Sender).Tag));
 end;
 
 procedure TLazyCodingAgentForm.UpdateNavRailSelection;
 var
   Nav: TNavigationItem;
-  Btn: TLcaNavRailButton;
+  Btn: TLcaPaintNavRailButton;
 begin
   for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
     Btn := FNavRailBtns[Nav];
@@ -1219,7 +1220,7 @@ begin
   Application.QueueAsyncCall(@DeferredEnsureTerminal, 0);
 end;
 
-procedure TLazyCodingAgentForm.DeferredEnforceHiddenPageTabs(Data: PtrInt);
+procedure TLazyCodingAgentForm.DeferredEnforceHiddenPageTabs({%H-}Data: PtrInt);
 begin
   EnforcePageControlHiddenTabs(pgcCenter);
   EnforcePageControlHiddenTabs(pgcUtility);
@@ -1237,14 +1238,14 @@ begin
   if not Assigned(ARoot) then Exit;
   for I := 0 to ARoot.ControlCount - 1 do begin
     C := ARoot.Controls[I];
-    if C is TLcaThemedButton then
-      TLcaThemedButton(C).ApplyTheme(FState.Theme);
+    if C is TLcaPaintButton then
+      TLcaPaintButton(C).ApplyTheme(FState.Theme);
     if C is TWinControl then
       RefreshThemedButtonsRecursive(TWinControl(C));
   end;
 end;
 
-procedure TLazyCodingAgentForm.DeferredRefreshThemedChromeButtons(Data: PtrInt);
+procedure TLazyCodingAgentForm.DeferredRefreshThemedChromeButtons({%H-}Data: PtrInt);
 begin
   if csDesigning in ComponentState then Exit;
   if csDestroying in ComponentState then Exit;
@@ -1253,7 +1254,7 @@ begin
   RefreshThemedButtonsRecursive(pnlMainContainer);
 end;
 
-procedure TLazyCodingAgentForm.DeferredEnsureTerminal(Data: PtrInt);
+procedure TLazyCodingAgentForm.DeferredEnsureTerminal({%H-}Data: PtrInt);
 begin
   FTerminalStartQueued := False;
   if csDesigning in ComponentState then Exit;
@@ -1354,6 +1355,7 @@ begin
 
     if Assigned(FChatPanel) then begin
       N := FState.SavedModelCount(FState.Provider);
+      Models := nil;
       SetLength(Models, N);
       for I := 0 to N - 1 do
         Models[I] := FState.GetSavedModel(FState.Provider, I);
@@ -1476,7 +1478,7 @@ end;
 procedure TLazyCodingAgentForm.RebuildWindowMenu;
 var
   P: TPanelId;
-  Item, SubItem: TMenuItem;
+  Item: TMenuItem;
 begin
   mnuPanelsVisibility.Clear;
   for P := Low(TPanelId) to High(TPanelId) do begin
@@ -1571,7 +1573,7 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.HubToolCall(Sender: TObject; const ASessionId: string;
-  const AToolName, AArgs: string);
+  const AToolName, {%H-}AArgs: string);
 begin
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FChatPanel) and (Trim(AToolName) <> '') then
@@ -1579,7 +1581,7 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.HubToolResult(Sender: TObject; const ASessionId: string;
-  const AToolName, AArgsJson: string; const AResult: TToolExecutionResult);
+  const AToolName, {%H-}AArgsJson: string; const AResult: TToolExecutionResult);
 var
   PlanPath, PlanContent: string;
 begin
@@ -1823,6 +1825,7 @@ var
   Models: array of TSavedModel;
 begin
   if not Assigned(FPlanView) then Exit;
+  Models := nil;
   FState.SetPanelVisible(piUtility, True);
   ApplyDockPanelsLayout;
   if Assigned(pgcUtility) then
@@ -2096,6 +2099,8 @@ var
   Closable: array of Boolean;
 begin
   if not Assigned(lcaChatSessionTabBar) then Exit;
+  Caps := nil;
+  Closable := nil;
   FChatSessionTabIds.Clear;
   SelIdx := -1;
   SetLength(Caps, 0);

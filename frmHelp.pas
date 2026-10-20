@@ -5,8 +5,8 @@ unit frmHelp;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
-  uAppTypes, LcaTheme, uHelpContent, LcaMarkdownView;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaPaintButton, LcaPaintComboBox,
+  LcaTheme, uHelpContent, LcaMarkdownView;
 
 type
   { THelpForm }
@@ -19,7 +19,7 @@ type
     lstTopics: TListBox;
     pnlPreviewHost: TPanel;
     pnlBottom: TPanel;
-    btnClose: TLcaThemedButton;
+    btnClose: TLcaPaintButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure edtSearchChange(Sender: TObject);

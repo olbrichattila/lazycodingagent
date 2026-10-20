@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  LcaThemedButton, LcaThemedComboBox,
+  LcaPaintButton, LcaPaintComboBox,
   uAppTypes, LcaTheme, LcaThemedMessageBox;
 
 type
@@ -14,8 +14,8 @@ type
   TEditRuleForm = class(TForm)
     memoRule: TMemo;
     pnlBottom: TPanel;
-    btnOK: TLcaThemedButton;
-    btnCancel: TLcaThemedButton;
+    btnOK: TLcaPaintButton;
+    btnCancel: TLcaPaintButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

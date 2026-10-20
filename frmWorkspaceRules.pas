@@ -5,7 +5,7 @@ unit frmWorkspaceRules;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaPaintButton, LcaPaintComboBox,
   uAppTypes, LcaTheme, LcaThemedMessageBox, uAgentRules, frmEditRule;
 
 type
@@ -14,11 +14,11 @@ type
     lblRules: TLabel;
     lstRules: TListBox;
     pnlActions: TPanel;
-    btnAddRule: TLcaThemedButton;
-    btnEditRule: TLcaThemedButton;
-    btnDeleteRule: TLcaThemedButton;
+    btnAddRule: TLcaPaintButton;
+    btnEditRule: TLcaPaintButton;
+    btnDeleteRule: TLcaPaintButton;
     pnlBottom: TPanel;
-    btnClose: TLcaThemedButton;
+    btnClose: TLcaPaintButton;
     procedure btnAddRuleClick(Sender: TObject);
     procedure btnEditRuleClick(Sender: TObject);
     procedure btnDeleteRuleClick(Sender: TObject);

@@ -20,7 +20,6 @@ object OpenMarkdownForm: TOpenMarkdownForm
     Anchors = [akTop, akLeft, akRight]
     AutoSize = False
     Caption = 'filename.md'
-    Layout = tlCenter
   end
   object lblHint: TLabel
     Left = 24
@@ -42,28 +41,22 @@ object OpenMarkdownForm: TOpenMarkdownForm
     ClientHeight = 54
     ClientWidth = 672
     TabOrder = 0
-    object btnPreview: TLcaThemedButton
+    object btnPreview: TLcaPaintButton
       Left = 0
       Height = 42
       Top = 6
       Width = 180
       Caption = 'Preview'
-      Color = 15426341
-      Font.Color = clWhite
-      ParentFont = False
       TabOrder = 0
       OnClick = btnPreviewClick
       ButtonRole = tbrPrimary
     end
-    object btnSource: TLcaThemedButton
+    object btnSource: TLcaPaintButton
       Left = 192
       Height = 42
       Top = 6
       Width = 180
       Caption = 'Edit source'
-      Color = 15426341
-      Font.Color = clWhite
-      ParentFont = False
       TabOrder = 1
       OnClick = btnSourceClick
       ButtonRole = tbrPrimary
@@ -79,16 +72,13 @@ object OpenMarkdownForm: TOpenMarkdownForm
     ClientHeight = 66
     ClientWidth = 720
     TabOrder = 1
-    object btnCancel: TLcaThemedButton
+    object btnCancel: TLcaPaintButton
       Left = 576
       Height = 42
       Top = 12
       Width = 120
       Anchors = [akTop, akRight]
       Caption = 'Cancel'
-      Color = clWhite
-      Font.Color = 8220260
-      ParentFont = False
       TabOrder = 0
       OnClick = btnCancelClick
     end

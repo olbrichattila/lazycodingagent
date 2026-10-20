@@ -80,15 +80,11 @@ object SettingsForm: TSettingsForm
             Width = 172
             Caption = 'LLM Provider'
           end
-          object cboProvider: TLcaThemedComboBox
+          object cboProvider: TLcaPaintComboBox
             Left = 32
             Height = 38
             Top = 72
             Width = 1008
-            Color = 16447734
-            Font.Color = 2366488
-            Font.Height = -24
-            Font.Name = 'Segoe UI'
             ItemHeight = 36
             ItemIndex = 0
             Items.Strings = (
@@ -99,8 +95,6 @@ object SettingsForm: TSettingsForm
               'Nous Research'
               'Custom / OpenAI Compatible'
             )
-            ParentFont = False
-            Style = csOwnerDrawFixed
             TabOrder = 0
             Text = 'OpenRouter'
             OnChange = cboProviderChange
@@ -154,42 +148,33 @@ object SettingsForm: TSettingsForm
             OnClick = lstModelsClick
             OnDrawItem = lstModelsDrawItem
           end
-          object btnFetchModels: TLcaThemedButton
+          object btnFetchModels: TLcaPaintButton
             Tag = 1
             Left = 32
             Height = 56
             Top = 672
             Width = 240
             Caption = 'Fetch Models...'
-            Color = 15426341
-            Font.Color = clWhite
-            ParentFont = False
             TabOrder = 4
             OnClick = btnFetchModelsClick
             ButtonRole = tbrPrimary
           end
-          object btnEditModel: TLcaThemedButton
+          object btnEditModel: TLcaPaintButton
             Left = 288
             Height = 56
             Top = 672
             Width = 176
             Caption = 'Edit...'
-            Color = clWhite
-            Font.Color = 8220260
-            ParentFont = False
             TabOrder = 5
             OnClick = btnEditModelClick
           end
-          object btnDeleteModel: TLcaThemedButton
+          object btnDeleteModel: TLcaPaintButton
             Tag = 2
             Left = 480
             Height = 56
             Top = 672
             Width = 176
             Caption = 'Delete'
-            Color = 14869246
-            Font.Color = 1842361
-            ParentFont = False
             TabOrder = 6
             OnClick = btnDeleteModelClick
             ButtonRole = tbrDestructive
@@ -401,15 +386,12 @@ object SettingsForm: TSettingsForm
             Width = 832
             TabOrder = 0
           end
-          object btnBrowseWorkspace: TLcaThemedButton
+          object btnBrowseWorkspace: TLcaPaintButton
             Left = 880
             Height = 46
             Top = 72
             Width = 160
             Caption = 'Browse...'
-            Color = clWhite
-            Font.Color = 8220260
-            ParentFont = False
             TabOrder = 1
             OnClick = btnBrowseWorkspaceClick
           end
@@ -442,7 +424,7 @@ object SettingsForm: TSettingsForm
     ClientHeight = 88
     ClientWidth = 1120
     TabOrder = 1
-    object btnOK: TLcaThemedButton
+    object btnOK: TLcaPaintButton
       Tag = 1
       Left = 752
       Height = 56
@@ -450,23 +432,17 @@ object SettingsForm: TSettingsForm
       Width = 160
       Anchors = [akTop, akRight]
       Caption = 'OK'
-      Color = 15426341
-      Font.Color = clWhite
-      ParentFont = False
       TabOrder = 0
       OnClick = btnOKClick
       ButtonRole = tbrPrimary
     end
-    object btnCancel: TLcaThemedButton
+    object btnCancel: TLcaPaintButton
       Left = 928
       Height = 56
       Top = 16
       Width = 160
       Anchors = [akTop, akRight]
       Caption = 'Cancel'
-      Color = clWhite
-      Font.Color = 8220260
-      ParentFont = False
       TabOrder = 1
       OnClick = btnCancelClick
     end

@@ -69,6 +69,7 @@ const
   ThemedButtonCornerBase = 8;
   ThemedComboCornerBase = 6;
   ThemedComboChevronGutterBase = 22;
+  { Logical pt for button captions — like ThemedTabFontSize; LCL scales on DPI-aware forms. }
   ThemedButtonFontSizeBase = 9;
   ThemedButtonHorizPadBase = 14;
   ThemedButtonVertPadBase = 2;
@@ -79,10 +80,10 @@ const
   { Utility Execution Detail memo — logical pt; LCL scales on DPI-aware forms (no MulDiv). }
   ThemedExecDetailFontSizeBase = 10;
   { Main form left nav list boxes — owner-draw row metrics. }
-  ThemedNavListItemHeight = 40;
+  ThemedNavListItemHeight = 32;
   ThemedNavListPadLeft = 14;
-  ThemedNavListPadV = 4;
-  ThemedNavListRowGap = 2;
+  ThemedNavListPadV = 2;
+  ThemedNavListRowGap = 0;
   { Painted scroll host (TLcaScrollHost) — bar thickness at 96 DPI. }
   ThemedScrollbarThicknessBase = 12;
   { Frameless title bar window buttons (min/max/close). }
@@ -393,9 +394,9 @@ begin
   Result := ScaledThemedTabMetric(AControl, ThemedButtonCornerBase);
 end;
 
-function ThemedButtonFontSize(AControl: TControl): Integer;
+function ThemedButtonFontSize({%H-}AControl: TControl): Integer;
 begin
-  Result := ScaledThemedTabMetric(AControl, ThemedButtonFontSizeBase);
+  Result := ThemedButtonFontSizeBase;
 end;
 
 function ThemedButtonHorizPad(AControl: TControl): Integer;
@@ -1130,6 +1131,15 @@ begin
     Canvas.Brush.Style := bsSolid;
   end;
 
+  Canvas.Font.Name := 'Segoe UI';
+  if AFontSize > 0 then
+    Canvas.Font.Size := AFontSize
+  else
+    Canvas.Font.Size := ThemedButtonFontSizeBase;
+  if ARole in [tbrPrimary, tbrDestructive] then
+    Canvas.Font.Style := [fsBold]
+  else
+    Canvas.Font.Style := [];
   Canvas.Font.Color := TextColor;
 
   TextR := R;

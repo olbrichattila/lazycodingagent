@@ -5,7 +5,7 @@ unit frmOpenMarkdown;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaPaintButton, LcaPaintComboBox,
   uAppTypes, LcaTheme;
 
 type
@@ -16,10 +16,10 @@ type
     lblFile: TLabel;
     lblHint: TLabel;
     pnlActions: TPanel;
-    btnPreview: TLcaThemedButton;
-    btnSource: TLcaThemedButton;
+    btnPreview: TLcaPaintButton;
+    btnSource: TLcaPaintButton;
     pnlBottom: TPanel;
-    btnCancel: TLcaThemedButton;
+    btnCancel: TLcaPaintButton;
     procedure btnPreviewClick(Sender: TObject);
     procedure btnSourceClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);

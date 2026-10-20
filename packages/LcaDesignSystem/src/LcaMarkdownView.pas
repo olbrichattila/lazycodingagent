@@ -11,16 +11,22 @@ uses
 const
   LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
   LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT = 512;
+  LCA_MARKDOWN_CONTENT_HEIGHT_SLACK = 3;
 
 type
+  TLcaMarkdownView = class;
+
   { Forwards wheel to TLcaScrollHost; IPro must not keep native scroll. }
   TLcaMarkdownHtmlPanel = class(TIpHtmlPanel)
   private
     FScrollHost: TLcaScrollHost;
+    FOwnerView: TLcaMarkdownView;
   public
     procedure BindScrollHost(AHost: TLcaScrollHost);
+    procedure BindOwnerView(AView: TLcaMarkdownView);
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
       MousePos: TPoint): Boolean; override;
+    procedure Click; override;
   end;
 
   TLcaMarkdownView = class(TPanel)
@@ -41,6 +47,8 @@ type
     FScrollDeferRetries: Integer;
     FScrollDeferQueued: Boolean;
     FContentSyncQueued: Boolean;
+    FContentSyncDeferRetries: Integer;
+    FContentStabilityMeasureH: Integer;
     procedure SetThemeKind(AValue: TThemeKind);
     function HostReadyForRender: Boolean;
     procedure EnsureViewer;
@@ -52,9 +60,10 @@ type
     function IsDocumentScrolledToEnd: Boolean;
     procedure ScheduleScrollToEndAfterRender;
     procedure Render;
-    procedure SyncContentLayout;
+    function SyncContentLayout: Boolean;
     procedure ScheduleDeferredContentSync;
     procedure DeferredContentSync(Data: PtrInt);
+    procedure ResetContentLayoutState;
     procedure EnsureScrollHostFillsClient;
     procedure DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
     procedure HtmlDocumentOpened(Sender: TObject);
@@ -70,6 +79,7 @@ type
     procedure SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean = False);
     procedure SetHtmlBody(const AFullHtml: string);
     procedure ApplyTheme(ATheme: TThemeKind);
+    procedure NotifyContentMaybeResized;
   published
     property ThemeKind: TThemeKind read FThemeKind write SetThemeKind default tkDark;
     property Align;
@@ -329,11 +339,25 @@ begin
   FLastSyncedContentW := 0;
   FLastSyncedContentH := 0;
   FContentSyncQueued := False;
+  FContentSyncDeferRetries := 0;
+  FContentStabilityMeasureH := -1;
 end;
 
 procedure TLcaMarkdownHtmlPanel.BindScrollHost(AHost: TLcaScrollHost);
 begin
   FScrollHost := AHost;
+end;
+
+procedure TLcaMarkdownHtmlPanel.BindOwnerView(AView: TLcaMarkdownView);
+begin
+  FOwnerView := AView;
+end;
+
+procedure TLcaMarkdownHtmlPanel.Click;
+begin
+  inherited Click;
+  if Assigned(FOwnerView) then
+    FOwnerView.NotifyContentMaybeResized;
 end;
 
 function TLcaMarkdownHtmlPanel.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
@@ -376,11 +400,24 @@ begin
 end;
 
 function TLcaMarkdownView.IsDocumentScrolledToEnd: Boolean;
+var
+  Panel: TIpHtmlPanel;
+  Sz, Synced: TSize;
 begin
   Result := False;
-  if not Assigned(FScrollHost) then Exit;
+  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
   if csDestroying in ComponentState then Exit;
-  Result := FScrollHost.ContentScrolledToEnd;
+  Panel := TIpHtmlPanel(FHtmlPanel);
+  Sz := Panel.GetContentSize;
+  if Sz.cy <= 0 then Exit;
+  Synced := FScrollHost.SyncedContentExtent;
+  if Sz.cy > Synced.cy + LCA_MARKDOWN_CONTENT_HEIGHT_SLACK then begin
+    ScheduleDeferredContentSync;
+    Exit;
+  end;
+  if Synced.cy <= 0 then Exit;
+  if not FScrollHost.ContentScrolledToEnd then Exit;
+  Result := True;
 end;
 
 procedure TLcaMarkdownView.ScrollDocumentToEnd;
@@ -425,6 +462,22 @@ begin
   ScheduleDeferredContentSync;
 end;
 
+procedure TLcaMarkdownView.NotifyContentMaybeResized;
+begin
+  if csDestroying in ComponentState then Exit;
+  ScheduleDeferredContentSync;
+end;
+
+procedure TLcaMarkdownView.ResetContentLayoutState;
+begin
+  FLastSyncedContentW := 0;
+  FLastSyncedContentH := 0;
+  FContentSyncDeferRetries := 0;
+  FContentStabilityMeasureH := -1;
+  if Assigned(FScrollHost) then
+    FScrollHost.UpdateContentExtent(0, 0);
+end;
+
 procedure TLcaMarkdownView.ScheduleDeferredContentSync;
 begin
   if FContentSyncQueued then Exit;
@@ -434,13 +487,15 @@ begin
 end;
 
 procedure TLcaMarkdownView.DeferredContentSync(Data: PtrInt);
+var
+  Settled: Boolean;
 begin
   FContentSyncQueued := False;
   if PtrInt(Self) <> Data then Exit;
   if csDestroying in ComponentState then Exit;
   if not Assigned(FHtmlPanel) or not Assigned(FScrollHost) then Exit;
-  SyncContentLayout;
-  if FScrollToEndPending then
+  Settled := SyncContentLayout;
+  if FScrollToEndPending and Settled then
     ScheduleScrollToEndAfterRender;
 end;
 
@@ -455,12 +510,14 @@ begin
   FScrollHost.Update;
 end;
 
-procedure TLcaMarkdownView.SyncContentLayout;
+function TLcaMarkdownView.SyncContentLayout: Boolean;
 var
   Panel: TIpHtmlPanel;
   Sz, ViewSz: TSize;
-  ViewW, CW, CH: Integer;
+  ViewW, CW, CH, LayPanelH: Integer;
+  NeedUpdate: Boolean;
 begin
+  Result := False;
   if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
   if csDestroying in ComponentState then Exit;
   EnsureScrollHostFillsClient;
@@ -468,23 +525,50 @@ begin
   ViewSz := FScrollHost.LayoutViewportSize;
   ViewW := Max(1, ViewSz.cx);
   FLastLayoutViewportW := ViewW;
+  LayPanelH := Max(LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT, Max(FLastSyncedContentH,
+    Max(1, ViewSz.cy)));
+  if (Panel.Width <> ViewW) or (Panel.Height < LayPanelH) then
+    Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
   Sz := Panel.GetContentSize;
-  if Sz.cy <= 0 then
+  if Sz.cy <= 0 then begin
+    if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
+      Inc(FContentSyncDeferRetries);
+      ScheduleDeferredContentSync;
+    end;
     Exit;
+  end;
+  FContentSyncDeferRetries := 0;
   CH := Sz.cy;
   if Sz.cx > ViewW then
     CW := Sz.cx
   else
     CW := ViewW;
-  if (FLastSyncedContentW = CW) and (FLastSyncedContentH = CH) then
+  NeedUpdate := False;
+  if (CH > FLastSyncedContentH) or (CW <> FLastSyncedContentW) then
+    NeedUpdate := True
+  else if (FLastSyncedContentW <> CW) or (FLastSyncedContentH <> CH) then begin
+    if (FLastSyncedContentH <= 0) or (Abs(CH - FLastSyncedContentH) >= LCA_MARKDOWN_CONTENT_HEIGHT_SLACK) then
+      NeedUpdate := True;
+  end;
+  if not NeedUpdate then begin
+    if FContentStabilityMeasureH = CH then
+      Result := True
+    else begin
+      FContentStabilityMeasureH := CH;
+      ScheduleDeferredContentSync;
+    end;
     Exit;
-  if (FLastSyncedContentH > 0) and (Abs(CH - FLastSyncedContentH) < 3) and
-     (CW = FLastSyncedContentW) then
-    Exit;
+  end;
   FLastSyncedContentW := CW;
   FLastSyncedContentH := CH;
   FScrollHost.UpdateContentExtent(CW, CH);
   DisableIpHtmlNativeScroll(Panel);
+  if FContentStabilityMeasureH = CH then
+    Result := True
+  else begin
+    FContentStabilityMeasureH := CH;
+    ScheduleDeferredContentSync;
+  end;
 end;
 
 procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
@@ -506,6 +590,10 @@ begin
   if csDestroying in ComponentState then Exit;
   if not FScrollToEndPending then Exit;
   if not Assigned(FHtmlPanel) or not HostReadyForRender then begin
+    ScheduleDeferredScrollToEnd;
+    Exit;
+  end;
+  if not SyncContentLayout then begin
     ScheduleDeferredScrollToEnd;
     Exit;
   end;
@@ -537,12 +625,14 @@ begin
       FScrollHost := TLcaScrollHost.Create(Self);
       FScrollHost.Parent := Self;
       FScrollHost.ThemeKind := FThemeKind;
+      FScrollHost.SetViewportFillColor(ThemePalette(FThemeKind).Background);
       FScrollHost.AutoSize := False;
       EnsureScrollHostFillsClient;
     end;
     Html := TLcaMarkdownHtmlPanel.Create(Self);
     Html.Parent := FScrollHost;
     Html.BindScrollHost(FScrollHost);
+    Html.BindOwnerView(Self);
     Html.BorderStyle := bsNone;
     Html.AllowTextSelect := True;
     Html.DefaultTypeFace := 'Segoe UI';
@@ -584,6 +674,7 @@ begin
   FRendering := True;
   DisableAutoSizing;
   try
+    ResetContentLayoutState;
     EnsureScrollHostFillsClient;
     Panel.BgColor := ThemePalette(FThemeKind).Background;
     Panel.TextColor := ThemePalette(FThemeKind).Text;
@@ -639,6 +730,7 @@ begin
   Color := P.Background;
   if csDesigning in ComponentState then Exit;
   if Assigned(FScrollHost) then begin
+    FScrollHost.SetViewportFillColor(P.Background);
     FScrollHost.ThemeKind := ATheme;
     FScrollHost.ApplyTheme(ATheme);
   end;
@@ -674,6 +766,7 @@ begin
   if ViewW <= 0 then Exit;
   WidthChanged := (FLastLayoutViewportW > 0) and (ViewW <> FLastLayoutViewportW);
   if WidthChanged then begin
+    FContentStabilityMeasureH := -1;
     FLastSyncedContentW := 0;
     FLastSyncedContentH := 0;
     if (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> '')) then

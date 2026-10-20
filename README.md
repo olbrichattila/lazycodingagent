@@ -13,32 +13,31 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - **LCA Design** palette ([`packages/LcaDesignSystem/`](packages/LcaDesignSystem/)): themed tab bars, buttons, combos, markdown view, terminal panel, and surfaces stream on `.lfm` forms after running [`scripts/install-lca-lazarus`](scripts/install-lca-lazarus.sh) (or `.bat` on Windows).
 - Published event handlers hooked cleanly into the state management and theme engine ([`LcaTheme`](packages/LcaDesignSystem/src/LcaTheme.pas), [`uThemeHooks.pas`](uThemeHooks.pas)).
 
-### 2. Modern Dark-First Design & Cohesive Dropdowns
+### 2. Modern Dark-First Design & Painted Chrome
 - Crisp, modern theme with prominent boundary lines (`BorderStrong` and `Border` tokens) and high-contrast styling.
-- **Custom-styled dark dropdown menus**: Combo box dropdowns in the chat composer match the sleek black-style design flow on dark mode and adjust cleanly for light mode.
-- **Stable cross-platform combo layout**: combo **Height** and **ItemHeight** come from the form resource (`.lfm`); `StyleComboBox` in [`LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas) applies owner-draw theming without resizing controls. `EffectiveThemedComboBoxHeight` is for layout estimates only.
-- **Designer-first layout**: the main window streams **LCA Design** and stock LCL controls in `.lfm` files (`TLcaThemedPageTabBar`, `TLcaThemedButton`, `TLcaThemedComboBox`, `TLcaMarkdownView`, `TLcaTerminalPanel`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout.
-- **Native tabs and buttons** on Linux/macOS; on **Windows**, `Style*` helpers custom-paint primary/cancel/destructive button fills via [`LcaThemeWin32Buttons.pas`](packages/LcaDesignSystem/src/LcaThemeWin32Buttons.pas).
+- **Painted main-window chrome** (all platforms): nav rail (`TLcaPaintNavRailButton`), action/chrome buttons (`TLcaPaintButton`), composer combos (`TLcaPaintComboBox`), nav lists (`TLcaPaintNavList`), and tab strips (`TLcaThemedPageTabBar`) use LCA custom paint — no native Qt/GTK button or combo styling on those controls.
+- **Stable cross-platform combo layout**: combo **Height** and **ItemHeight** come from the form resource (`.lfm`); painted combos do not resize at theme apply time. Legacy `TLcaThemedComboBox` in dialogs still uses `StyleComboBox` in [`LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas).
+- **Designer-first layout**: the main window streams **LCA Design** and stock LCL controls in `.lfm` files (`TLcaPaint*`, `TLcaMarkdownView`, `TLcaTerminalPanel`, `TSynEdit`, etc.). Open `mainunit.pas` in Lazarus (F12) to edit the full layout.
+- **Native islands** (intentionally stock LCL): code editor (`TSynEdit`), chat prompt (`TMemo`), project tree (`TTreeView`), embedded terminal (`TLcaTerminalPanel` PTY view), and some Settings/dialog controls.
 - **Clean Minimalist Top**: Full vertical viewport space for navigation, chat, and guidelines panels, with comprehensive menu bar and status bar controls.
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
-- **Navigation rail** built from `TSpeedButton` controls on the main form (icon captions, tooltips, accent selection indicator).
-- **Accent text selection** on chat and navigation lists (owner-drawn rows — blue text, no OS highlight band).
-- **Themed action buttons**: `TLcaThemedButton` and stock `TButton` controls styled with `StyleThemedButtonRole` / `StylePrimaryButton` in [`LcaTheme.pas`](packages/LcaDesignSystem/src/LcaTheme.pas). On **Windows**, fills are drawn by `PaintThemedButton` through a Win32 paint subclass in [`LcaThemeWin32Buttons.pas`](packages/LcaDesignSystem/src/LcaThemeWin32Buttons.pas). On **Linux (GTK)** and **macOS (Cocoa)**, `TButton.Color` tints the native widget; no custom paint hook.
-- **Cross-platform UI**: icon-only nav rail, owner-draw list accent selection, and theme tokens apply on all LCL targets.
-- **Scrollbars / title chrome**: scrollbars on lists, memos, the editor, markdown preview, and similar controls follow the **OS widget theme** on all platforms (align system dark mode with the in-app dark theme on Windows, GTK, and Cocoa for best results). On **Windows**, the immersive dark title bar uses `ApplyPlatformChrome`; combo/edit fields still use Explorer subthemes where needed.
+- **Navigation rail**: icon captions, tooltips, and accent `Active` state on painted rail buttons.
+- **Accent text selection** on navigation lists (painted rows — accent text, no OS highlight band).
+- **LCA-painted scrollbars** on chat/plan markdown (`TLcaMarkdownView` + `TLcaScrollHost`) and nav file/log/error lists. Scrollbars on the editor, prompt memo, tree, and terminal still follow the **OS widget theme**.
+- **Linux**: **Qt5** widgetset is recommended (`./scripts/install-lca-lazarus.sh --widgetset=qt5`, `lazbuild --widgetset=qt5`) for consistent LCL behavior with painted controls.
 - **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme. **macOS** uses the native menu bar (no in-app menubar sync).
 - Clean splitters allowing custom width resizing between all panels.
 
 #### Platform verification checklist
 
-| Check | Windows | Linux (GTK) | macOS (Cocoa) |
-|-------|---------|-------------|---------------|
+| Check | Windows | Linux (Qt5 recommended) | macOS (Cocoa) |
+|-------|---------|-------------------------|---------------|
 | Nav rail icons + accent selection | Yes | Yes | Yes |
-| List rows: accent text, no blue band | Yes | Yes | Yes |
-| List empty / below-last-row background matches theme | Yes | Yes | Yes (Cocoa `NSTableView` sync) |
+| List rows: accent text, painted scroll | Yes | Yes | Yes |
 | Editor + terminal monospace (no wide char gaps) | Consolas / Cascadia | DejaVu / Liberation | Menlo / SF Mono |
-| Primary / Cancel / Stop buttons (`TLcaThemedButton` / `TButton` + `LcaTheme`) | Custom-painted via `LcaThemeWin32Buttons` | Native GTK (`TButton.Color`) | Native Cocoa (`TButton.Color`) |
-| Scrollbars matching app light/dark palette | OS theme | OS GTK theme | OS AppKit theme |
+| Primary / Cancel / Stop (main form `TLcaPaintButton`) | Painted | Painted | Painted |
+| Markdown + nav list scrollbars | LCA painted | LCA painted | LCA painted |
+| Editor / prompt / tree scrollbars | OS theme | OS theme | OS theme |
 | Light/dark toggle coherent | Yes | Yes | Yes |
 | Main menubar readable in app dark mode | Yes | Yes (Qt5/GTK) | OS menu |
 

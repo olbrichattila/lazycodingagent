@@ -41,7 +41,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
     Anchors = [akTop, akLeft, akRight]
     TabOrder = 1
   end
-  object btnBrowse: TLcaThemedButton
+  object btnBrowse: TLcaPaintButton
     ButtonRole = tbrCancel
     Left = 384
     Height = 28
@@ -62,7 +62,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
     ClientHeight = 44
     ClientWidth = 504
     TabOrder = 4
-    object btnOK: TLcaThemedButton
+    object btnOK: TLcaPaintButton
       ButtonRole = tbrPrimary
       Left = 320
       Height = 28
@@ -73,7 +73,7 @@ object NewWorkspaceForm: TNewWorkspaceForm
       OnClick = btnOKClick
       TabOrder = 0
     end
-    object btnCancel: TLcaThemedButton
+    object btnCancel: TLcaPaintButton
       ButtonRole = tbrCancel
       Left = 408
       Height = 28

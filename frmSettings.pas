@@ -5,7 +5,7 @@ unit frmSettings;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaPaintButton, LcaPaintComboBox,
   LcaThemedPageTabBar,
   uAppTypes, uAgentTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceState, uWorkspaceRegistry,
   
@@ -15,8 +15,8 @@ type
   { TSettingsForm }
   TSettingsForm = class(TForm)
     pnlBottom: TPanel;
-    btnOK: TLcaThemedButton;
-    btnCancel: TLcaThemedButton;
+    btnOK: TLcaPaintButton;
+    btnCancel: TLcaPaintButton;
     pnlSettingsTabsHost: TPanel;
     pnlSettingsTabStripHost: TPanel;
     lcaSettingsTabBar: TLcaThemedPageTabBar;
@@ -30,16 +30,16 @@ type
     pnlTabWorkspace: TPanel;
 
     lblProvider: TLabel;
-    cboProvider: TLcaThemedComboBox;
+    cboProvider: TLcaPaintComboBox;
     lblApiKey: TLabel;
     edtApiKey: TEdit;
     lblBaseUrl: TLabel;
     edtBaseUrl: TEdit;
     lblModels: TLabel;
     lstModels: TListBox;
-    btnFetchModels: TLcaThemedButton;
-    btnEditModel: TLcaThemedButton;
-    btnDeleteModel: TLcaThemedButton;
+    btnFetchModels: TLcaPaintButton;
+    btnEditModel: TLcaPaintButton;
+    btnDeleteModel: TLcaPaintButton;
     lblNotice: TLabel;
 
     lblTemp: TLabel;
@@ -62,7 +62,7 @@ type
 
     lblWorkspaceRoot: TLabel;
     edtWorkspaceRoot: TEdit;
-    btnBrowseWorkspace: TLcaThemedButton;
+    btnBrowseWorkspace: TLcaPaintButton;
     lblWorkspaceName: TLabel;
     edtWorkspaceName: TEdit;
 

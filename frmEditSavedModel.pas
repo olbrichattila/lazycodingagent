@@ -5,7 +5,7 @@ unit frmEditSavedModel;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaPaintButton, LcaPaintComboBox,
   uAppTypes, LcaTheme, LcaThemedMessageBox;
 
 type
@@ -16,8 +16,8 @@ type
     lblModelId: TLabel;
     edtModelId: TEdit;
     pnlBottom: TPanel;
-    btnOK: TLcaThemedButton;
-    btnCancel: TLcaThemedButton;
+    btnOK: TLcaPaintButton;
+    btnCancel: TLcaPaintButton;
     procedure FormShow(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);

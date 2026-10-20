@@ -88,7 +88,7 @@ object HelpForm: THelpForm
     ClientHeight = 48
     ClientWidth = 884
     TabOrder = 3
-    object btnClose: TLcaThemedButton
+    object btnClose: TLcaPaintButton
       ButtonRole = tbrCancel
       Left = 788
       Height = 28

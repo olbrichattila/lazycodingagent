@@ -8,7 +8,7 @@ unit LcaPaintButton;
 interface
 
 uses
-  Classes, Controls, Graphics, LMessages, LcaThemedControl, LcaTheme, LcaThemedButtonPaint;
+  Classes, Controls, Graphics, Forms, LMessages, LcaThemedControl, LcaTheme, LcaThemedButtonPaint;
 
 type
   TLcaPaintButton = class(TLcaThemedControl)
@@ -19,7 +19,9 @@ type
     FHover: Boolean;
     FPressed: Boolean;
     FOnClick: TNotifyEvent;
+    FModalResult: TModalResult;
     procedure SetCaption(const AValue: string);
+    procedure SetModalResult(AValue: TModalResult);
     procedure SetButtonRole(AValue: TThemedButtonRole);
     procedure SetShowFocusRing(AValue: Boolean);
   protected
@@ -40,6 +42,7 @@ type
     property ButtonRole: TThemedButtonRole read FButtonRole write SetButtonRole default tbrCancel;
     property ShowFocusRing: Boolean read FShowFocusRing write SetShowFocusRing default True;
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
+    property ModalResult: TModalResult read FModalResult write SetModalResult default mrNone;
     property Align;
     property Anchors;
     property Left;
@@ -79,10 +82,16 @@ begin
   Invalidate;
 end;
 
+procedure TLcaPaintButton.SetModalResult(AValue: TModalResult);
+begin
+  FModalResult := AValue;
+end;
+
 constructor TLcaPaintButton.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FCaption := 'Button';
+  FModalResult := mrNone;
   FButtonRole := tbrCancel;
   FShowFocusRing := True;
   TabStop := True;
@@ -95,6 +104,10 @@ procedure TLcaPaintButton.DoApplyThemeColors(const {%H-}P: TThemePalette);
 begin
   Font.Name := 'Segoe UI';
   Font.Size := ThemedButtonFontSize(Self);
+  if FButtonRole in [tbrPrimary, tbrDestructive] then
+    Font.Style := [fsBold]
+  else
+    Font.Style := [];
 end;
 
 procedure TLcaPaintButton.PaintThemedClient(const ARect: TRect; const {%H-}P: TThemePalette);
@@ -104,7 +117,6 @@ var
 begin
   Theme := EffectiveControlTheme(Self, ThemeKind);
   ShowFocus := FShowFocusRing and Focused;
-  Canvas.Font.Assign(Font);
   PaintThemedButton(Canvas, ARect, Theme, FButtonRole, ThemedButtonDisplayCaption(FCaption),
     Enabled, FHover and Enabled, FPressed and Enabled, ShowFocus,
     ThemedButtonCornerRadius(Self), ThemedButtonFontSize(Self),
@@ -167,10 +179,17 @@ begin
 end;
 
 procedure TLcaPaintButton.Click;
+var
+  F: TCustomForm;
 begin
   inherited Click;
   if Assigned(FOnClick) then
     FOnClick(Self);
+  if FModalResult <> mrNone then begin
+    F := GetParentForm(Self);
+    if Assigned(F) then
+      F.ModalResult := FModalResult;
+  end;
 end;
 
 procedure TLcaPaintButton.CMEnabledChanged(var {%H-}Message: TLMessage);

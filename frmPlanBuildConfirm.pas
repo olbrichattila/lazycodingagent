@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType,
-  LcaThemedButton, uAppTypes, LcaTheme, LcaFormChrome;
+  LcaPaintButton, uAppTypes, LcaTheme, LcaFormChrome;
 
 type
   { TPlanBuildConfirmForm }
@@ -15,8 +15,8 @@ type
     chkAllowModifyOutside: TCheckBox;
     lblAllowModifyOutside: TLabel;
     pnlBottom: TPanel;
-    btnBuild: TLcaThemedButton;
-    btnCancel: TLcaThemedButton;
+    btnBuild: TLcaPaintButton;
+    btnCancel: TLcaPaintButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);

@@ -5,7 +5,7 @@ unit frmNewWorkspace;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, FileUtil, LcaPaintButton, LcaPaintComboBox,
   uAppTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceRegistry;
 
 type
@@ -14,10 +14,10 @@ type
     edtDisplayName: TEdit;
     lblFolder: TLabel;
     edtFolder: TEdit;
-    btnBrowse: TLcaThemedButton;
+    btnBrowse: TLcaPaintButton;
     pnlBottom: TPanel;
-    btnOK: TLcaThemedButton;
-    btnCancel: TLcaThemedButton;
+    btnOK: TLcaPaintButton;
+    btnCancel: TLcaPaintButton;
     procedure FormShow(Sender: TObject);
     procedure btnBrowseClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);

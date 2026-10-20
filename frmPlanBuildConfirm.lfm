@@ -50,30 +50,24 @@ object PlanBuildConfirmForm: TPlanBuildConfirmForm
     ClientHeight = 66
     ClientWidth = 780
     TabOrder = 1
-    object btnBuild: TLcaThemedButton
+    object btnBuild: TLcaPaintButton
       Left = 504
       Height = 42
       Top = 12
       Width = 120
       Anchors = [akTop, akRight]
       Caption = 'Build'
-      Color = 15426341
-      Font.Color = clWhite
-      ParentFont = False
       TabOrder = 0
       OnClick = btnBuildClick
       ButtonRole = tbrPrimary
     end
-    object btnCancel: TLcaThemedButton
+    object btnCancel: TLcaPaintButton
       Left = 636
       Height = 42
       Top = 12
       Width = 120
       Anchors = [akTop, akRight]
       Caption = 'Cancel'
-      Color = clWhite
-      Font.Color = 8220260
-      ParentFont = False
       TabOrder = 1
       OnClick = btnCancelClick
     end

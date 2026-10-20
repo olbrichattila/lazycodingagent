@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs, Forms, Buttons,
   LCLType, Clipbrd, fpjson, jsonparser,
-  uAppTypes, LcaTheme, LcaThemedButton, LcaThemedComboBox, LcaThemedMessageBox, uAgentTypes,
+  uAppTypes, LcaTheme, LcaPaintButton, LcaPaintComboBox, LcaThemedMessageBox, uAgentTypes,
   uWorkspaceState,
   LcaMarkdownView;
 
@@ -41,12 +41,12 @@ type
     FHistoryView: TLcaMarkdownView;
     FWorkspaceTag: TLabel;
     FPromptMemo: TMemo;
-    FModeCombo: TLcaThemedComboBox;
-    FModelCombo: TLcaThemedComboBox;
+    FModeCombo: TLcaPaintComboBox;
+    FModelCombo: TLcaPaintComboBox;
     FModelIds: TStringList;
-    FSendBtn: TLcaThemedButton;
-    FStopBtn: TLcaThemedButton;
-    FAttachBtn: TLcaThemedButton;
+    FSendBtn: TLcaPaintButton;
+    FStopBtn: TLcaPaintButton;
+    FAttachBtn: TLcaPaintButton;
     FAttachmentStrip: TPanel;
     FAllowModifyOutsideCheck: TCheckBox;
     FAllowModifyOutsideLabel: TLabel;
@@ -80,8 +80,8 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
-      APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-      ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
+      APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaPaintComboBox;
+      ASendBtn, AStopBtn, AAttachBtn: TLcaPaintButton; AAttachmentStrip: TPanel;
       AAllowModifyOutside: TCheckBox; AAllowModifyOutsideLabel: TLabel = nil);
     procedure SetAllowModifyOutsideChecked(AValue: Boolean);
     function GetAllowModifyOutsideChecked: Boolean;
@@ -204,8 +204,8 @@ begin
 end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
-  APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaThemedComboBox;
-  ASendBtn, AStopBtn, AAttachBtn: TLcaThemedButton; AAttachmentStrip: TPanel;
+  APrompt: TMemo; AWorkspaceTag: TLabel; AModeCombo, AModelCombo: TLcaPaintComboBox;
+  ASendBtn, AStopBtn, AAttachBtn: TLcaPaintButton; AAttachmentStrip: TPanel;
   AAllowModifyOutside: TCheckBox; AAllowModifyOutsideLabel: TLabel);
 var
   M: TWorkspaceMode;
@@ -233,11 +233,9 @@ begin
       FModeCombo.Items.Add(WorkspaceModeCaption(M));
     FModeCombo.ItemIndex := Ord(FMode);
     FModeCombo.OnChange := @ModeComboChange;
-    FModeCombo.Style := csDropDownList;
   end;
   if Assigned(FModelCombo) then begin
     FModelCombo.OnChange := @ModelComboChange;
-    FModelCombo.Style := csDropDownList;
   end;
   if Assigned(FSendBtn) then
     FSendBtn.OnClick := @SendBtnClick;
@@ -381,6 +379,7 @@ var
   Att: TChatAttachment;
 begin
   Result := '';
+  AAttachments := nil;
   SetLength(AAttachments, 0);
   if FPendingImagePaths.Count = 0 then Exit;
   if Trim(FSessionId) = '' then begin

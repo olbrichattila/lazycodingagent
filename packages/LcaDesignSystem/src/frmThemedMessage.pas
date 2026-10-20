@@ -7,15 +7,15 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, LCLType,
   LcaTheme,
-  LcaThemedButton;
+  LcaPaintButton;
 
 type
   TThemedMessageForm = class(TForm)
     lblMessage: TLabel;
     pnlFooter: TPanel;
-    btnFirst: TLcaThemedButton;
-    btnSecond: TLcaThemedButton;
-    btnThird: TLcaThemedButton;
+    btnFirst: TLcaPaintButton;
+    btnSecond: TLcaPaintButton;
+    btnThird: TLcaPaintButton;
     procedure FormCreate(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure btnFirstClick(Sender: TObject);

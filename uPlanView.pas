@@ -5,8 +5,8 @@ unit uPlanView;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, StdCtrls, Graphics, uAppTypes, LcaTheme, LcaThemedButton,
-  LcaThemedComboBox, LcaMarkdownView, uWorkspaceState;
+  Classes, SysUtils, Controls, StdCtrls, Graphics, LcaTheme, LcaPaintButton,
+  LcaPaintComboBox, LcaMarkdownView, uWorkspaceState;
 
 type
   TPlanBuildEvent = procedure(Sender: TObject; const APlanPath, APlanContent, AModelId: string) of object;
@@ -15,10 +15,10 @@ type
   private
     FTheme: TThemeKind;
     FLblPath: TLabel;
-    FModelCombo: TLcaThemedComboBox;
+    FModelCombo: TLcaPaintComboBox;
     FModelIds: TStringList;
     FModel: string;
-    FBuildBtn: TLcaThemedButton;
+    FBuildBtn: TLcaPaintButton;
     FBodyMarkdown: TLcaMarkdownView;
     FPlanPath: string;
     FPlanContent: string;
@@ -28,7 +28,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Bind(ALblPath: TLabel; AModelCombo: TLcaThemedComboBox; ABuildBtn: TLcaThemedButton;
+    procedure Bind(ALblPath: TLabel; AModelCombo: TLcaPaintComboBox; ABuildBtn: TLcaPaintButton;
       ABody: TLcaMarkdownView);
     procedure LoadPlan(const APath, AContent: string);
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -63,17 +63,15 @@ begin
   inherited Destroy;
 end;
 
-procedure TPlanView.Bind(ALblPath: TLabel; AModelCombo: TLcaThemedComboBox; ABuildBtn: TLcaThemedButton;
+procedure TPlanView.Bind(ALblPath: TLabel; AModelCombo: TLcaPaintComboBox; ABuildBtn: TLcaPaintButton;
   ABody: TLcaMarkdownView);
 begin
   FLblPath := ALblPath;
   FModelCombo := AModelCombo;
   FBuildBtn := ABuildBtn;
   FBodyMarkdown := ABody;
-  if Assigned(FModelCombo) then begin
-    FModelCombo.Style := csDropDownList;
+  if Assigned(FModelCombo) then
     FModelCombo.OnChange := @ModelComboChange;
-  end;
   if Assigned(FBuildBtn) then
     FBuildBtn.OnClick := @BuildClick;
 end;

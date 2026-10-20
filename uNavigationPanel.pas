@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
-  ComCtrls, LCLType, uAppTypes, LcaTheme, LcaThemedButton, LcaThemedMessageBox,
+  ComCtrls, LCLType, uAppTypes, LcaTheme, LcaPaintButton, LcaThemedMessageBox,
   uCodingAgentPresets,
   uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, LcaPaintNavList;
 
@@ -39,8 +39,8 @@ type
     FErrorLogList: TControl;
     FExecutionLog: TAgentExecutionLog;
     FToolErrorLog: TAgentToolErrorLog;
-    FActionBtn: TLcaThemedButton;
-    FSecondaryActionBtn: TLcaThemedButton;
+    FActionBtn: TLcaPaintButton;
+    FSecondaryActionBtn: TLcaPaintButton;
     FWorkspaceIds: TStringList;
     FSessionIds: TStringList;
     FSessionArchived: TStringList;
@@ -86,7 +86,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel; AFileList: TControl;
-      ATree: TTreeView; ALogList, AErrorLogList: TControl; APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
+      ATree: TTreeView; ALogList, AErrorLogList: TControl; APrimaryBtn, ASecondaryBtn: TLcaPaintButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -230,7 +230,7 @@ end;
 
 procedure TNavContentControl.Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel;
   AFileList: TControl; ATree: TTreeView; ALogList, AErrorLogList: TControl;
-  APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
+  APrimaryBtn, ASecondaryBtn: TLcaPaintButton);
 begin
   FTitleLabel := ATitle;
   FSubLabel := ASub;
@@ -381,7 +381,7 @@ begin
   end;
 end;
 
-procedure TNavContentControl.FileListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TNavContentControl.FileListKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
 var
   Idx: Integer;
 begin
@@ -568,7 +568,7 @@ begin
     TryOpenSelectedTreeFile;
 end;
 
-procedure TNavContentControl.TreeViewKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+procedure TNavContentControl.TreeViewKeyDown(Sender: TObject; var Key: Word; {%H-}Shift: TShiftState);
 begin
   if (Key = VK_RETURN) and (FSelected = niProjects) then
     TryOpenSelectedTreeFile;

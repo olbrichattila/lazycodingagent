@@ -5,7 +5,7 @@ unit frmSyntaxSchemes;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaThemedButton, LcaThemedComboBox,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LcaPaintButton, LcaPaintComboBox,
   uAppTypes, LcaTheme, LcaThemedMessageBox, uSyntaxSchemeRegistry;
 
 type
@@ -14,11 +14,11 @@ type
     lblHint: TLabel;
     lstSchemes: TListBox;
     pnlActions: TPanel;
-    btnAdd: TLcaThemedButton;
-    btnRemove: TLcaThemedButton;
-    btnSetActive: TLcaThemedButton;
+    btnAdd: TLcaPaintButton;
+    btnRemove: TLcaPaintButton;
+    btnSetActive: TLcaPaintButton;
     pnlBottom: TPanel;
-    btnClose: TLcaThemedButton;
+    btnClose: TLcaPaintButton;
     procedure btnAddClick(Sender: TObject);
     procedure btnRemoveClick(Sender: TObject);
     procedure btnSetActiveClick(Sender: TObject);
