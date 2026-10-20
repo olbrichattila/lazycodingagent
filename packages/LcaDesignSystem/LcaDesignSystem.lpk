@@ -76,6 +76,10 @@
         <UnitName Value="LcaPaintNavRailButton"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaPaintComboBox.pas"/>
+        <UnitName Value="LcaPaintComboBox"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaScrollHost.pas"/>
         <UnitName Value="LcaScrollHost"/>
       </Item>

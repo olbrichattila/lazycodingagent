@@ -128,9 +128,12 @@ procedure ThemedMenuPopupDrawItem(ACanvas: TCanvas; const ARect: TRect;
 procedure StyleComboBox(ACombo: TComboBox; ATheme: TThemeKind);
 // Read-only row height estimate for panels around a combo (do not pass to SetBounds height).
 function EffectiveThemedComboBoxHeight(ACombo: TComboBox): Integer;
+function ThemedComboItemHeightForControl(ADesignHeight, ADesignItemHeight: Integer): Integer;
 // Unified DrawItem handler for styled ComboBoxes (Black style on dark mode, clean on light mode)
 procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+procedure PaintThemedComboListItem(Canvas: TCanvas; const ARect: TRect;
+  const AText: string; State: TOwnerDrawState; ATheme: TThemeKind);
 
 procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
 { Re-apply ShowTabs=False for TLcaThemedPageTabBar hosts (GTK may ignore until relayout). }
@@ -801,42 +804,45 @@ begin
     ACombo.Invalidate;
 end;
 
+procedure PaintThemedComboListItem(Canvas: TCanvas; const ARect: TRect;
+  const AText: string; State: TOwnerDrawState; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  TextTop: Integer;
+begin
+  P := ThemePalette(ATheme);
+  if (odSelected in State) or (odFocused in State) then begin
+    Canvas.Brush.Color := P.AccentActive;
+    Canvas.Pen.Color := P.Accent;
+  end else begin
+    Canvas.Brush.Color := P.SurfaceAlt;
+    Canvas.Pen.Color := P.SurfaceAlt;
+  end;
+  Canvas.FillRect(ARect);
+  if AText = '' then Exit;
+  Canvas.Font.Name := 'Segoe UI';
+  Canvas.Font.Size := 9;
+  if (odSelected in State) and (ATheme = tkLight) then
+    Canvas.Font.Color := P.Accent
+  else
+    Canvas.Font.Color := P.Text;
+  TextTop := ARect.Top + ((ARect.Bottom - ARect.Top - Canvas.TextHeight(AText)) div 2);
+  Canvas.TextRect(ARect, ARect.Left + 8, TextTop, AText);
+end;
+
 procedure StyleComboBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 var
   Combo: TComboBox;
-  P: TThemePalette;
   TextStr: string;
-  TextTop: Integer;
 begin
   if not (Control is TComboBox) then Exit;
   Combo := TComboBox(Control);
-  P := ThemePalette(ATheme);
-
-  // Background selection / hover highlight
-  if (odSelected in State) or (odFocused in State) then begin
-    Combo.Canvas.Brush.Color := P.AccentActive;
-    Combo.Canvas.Pen.Color := P.Accent;
-  end else begin
-    Combo.Canvas.Brush.Color := P.SurfaceAlt;
-    Combo.Canvas.Pen.Color := P.SurfaceAlt;
-  end;
-
-  Combo.Canvas.FillRect(ARect);
-
-  // Draw item text
-  if (Index >= 0) and (Index < Combo.Items.Count) then begin
-    TextStr := Combo.Items[Index];
-    Combo.Canvas.Font.Name := 'Segoe UI';
-    Combo.Canvas.Font.Size := 9;
-    if (odSelected in State) and (ATheme = tkLight) then
-      Combo.Canvas.Font.Color := P.Accent
-    else
-      Combo.Canvas.Font.Color := P.Text;
-
-    TextTop := ARect.Top + ((ARect.Bottom - ARect.Top - Combo.Canvas.TextHeight(TextStr)) div 2);
-    Combo.Canvas.TextRect(ARect, ARect.Left + 8, TextTop, TextStr);
-  end;
+  if (Index >= 0) and (Index < Combo.Items.Count) then
+    TextStr := Combo.Items[Index]
+  else
+    TextStr := '';
+  PaintThemedComboListItem(Combo.Canvas, ARect, TextStr, State, ATheme);
 end;
 
 procedure StylePageControl(APageControl: TPageControl; ATheme: TThemeKind);
