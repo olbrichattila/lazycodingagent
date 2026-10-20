@@ -52,6 +52,10 @@
         <UnitName Value="LcaThemedComboBox"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaThemedControl.pas"/>
+        <UnitName Value="LcaThemedControl"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaNavRailButton.pas"/>
         <UnitName Value="LcaNavRailButton"/>
       </Item>
