@@ -64,6 +64,10 @@
         <UnitName Value="LcaSurfacePanel"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaPaintSurface.pas"/>
+        <UnitName Value="LcaPaintSurface"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaMarkdownView.pas"/>
         <UnitName Value="LcaMarkdownView"/>
       </Item>
