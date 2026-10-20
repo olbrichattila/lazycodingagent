@@ -14,7 +14,7 @@ uses
   uAgentEngine,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry,
-  LcaMarkdownView, uPanelDetach, uThemeHooks,
+  LcaMarkdownView, LcaPaintNavList, uPanelDetach, uThemeHooks,
   LcaThemedMessageBox,
   fpjson, jsonparser;
 
@@ -89,10 +89,10 @@ type
     lblNavComingSoon: TLabel;
     btnNavPrimary: TLcaThemedButton;
     btnNavSecondary: TLcaThemedButton;
-    lstNavFile: TListBox;
+    lstNavFile: TLcaPaintNavList;
     tvNavProjects: TTreeView;
-    lstNavLog: TListBox;
-    lstNavErrors: TListBox;
+    lstNavLog: TLcaPaintNavList;
+    lstNavErrors: TLcaPaintNavList;
     splNav: TSplitter;
     pnlUtilityHost: TPanel;
     pnlUtilityChrome: TPanel;

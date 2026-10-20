@@ -17,7 +17,7 @@ Progressive delivery of theme-aware, custom-painted LCA components for consisten
 
 ## Current status
 
-Step 010 complete. Remaining items are pending.
+Step 011 complete. Remaining items are pending.
 
 ## Progress
 
@@ -31,7 +31,7 @@ Step 010 complete. Remaining items are pending.
 - [x] [008 — Painted page tab bar](008-painted-page-tab-bar.md)
 - [x] [009 — Painted combo box](009-painted-combo-box.md)
 - [x] [010 — Markdown scroll integration](010-markdown-scroll-integration.md)
-- [ ] [011 — Painted nav list](011-painted-nav-list.md)
+- [x] [011 — Painted nav list](011-painted-nav-list.md)
 - [ ] [012 — App migration and docs](012-app-migration-and-docs.md)
 
 ## Out of scope (future initiative)

@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
   ComCtrls, LCLType, uAppTypes, LcaTheme, LcaThemedButton, LcaThemedMessageBox,
   uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder;
+  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, LcaPaintNavList;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -33,10 +33,10 @@ type
     FTitleLabel: TLabel;
     FSubLabel: TLabel;
     FComingSoonLabel: TLabel;
-    FFileList: TListBox;
+    FFileList: TControl;
     FTreeView: TTreeView;
-    FLogList: TListBox;
-    FErrorLogList: TListBox;
+    FLogList: TControl;
+    FErrorLogList: TControl;
     FExecutionLog: TAgentExecutionLog;
     FToolErrorLog: TAgentToolErrorLog;
     FActionBtn: TLcaThemedButton;
@@ -85,8 +85,8 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel; AFileList: TListBox;
-      ATree: TTreeView; ALogList, AErrorLogList: TListBox; APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
+    procedure Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel; AFileList: TControl;
+      ATree: TTreeView; ALogList, AErrorLogList: TControl; APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -126,6 +126,87 @@ implementation
 const
   NavListFontSize = 11;
 
+function NavListItems(ACtrl: TControl): TStrings;
+begin
+  if not Assigned(ACtrl) then Exit(nil);
+  if ACtrl is TLcaPaintNavList then
+    Exit(TLcaPaintNavList(ACtrl).Items);
+  if ACtrl is TListBox then
+    Exit(TListBox(ACtrl).Items);
+  Result := nil;
+end;
+
+function NavListItemIndex(ACtrl: TControl): Integer;
+begin
+  if ACtrl is TLcaPaintNavList then
+    Exit(TLcaPaintNavList(ACtrl).ItemIndex);
+  if ACtrl is TListBox then
+    Exit(TListBox(ACtrl).ItemIndex);
+  Result := -1;
+end;
+
+procedure NavListSetItemIndex(ACtrl: TControl; AIndex: Integer);
+begin
+  if ACtrl is TLcaPaintNavList then
+    TLcaPaintNavList(ACtrl).ItemIndex := AIndex
+  else if ACtrl is TListBox then
+    TListBox(ACtrl).ItemIndex := AIndex;
+end;
+
+procedure NavListItemsBeginUpdate(ACtrl: TControl);
+var
+  S: TStrings;
+begin
+  S := NavListItems(ACtrl);
+  if Assigned(S) then
+    S.BeginUpdate;
+end;
+
+procedure NavListItemsEndUpdate(ACtrl: TControl);
+var
+  S: TStrings;
+begin
+  S := NavListItems(ACtrl);
+  if Assigned(S) then
+    S.EndUpdate;
+end;
+
+procedure NavListApplyMetrics(ACtrl: TControl; ATheme: TThemeKind);
+begin
+  if not Assigned(ACtrl) then Exit;
+  if ACtrl is TLcaPaintNavList then begin
+    TLcaPaintNavList(ACtrl).Font.Size := NavListFontSize;
+    TLcaPaintNavList(ACtrl).ItemHeight := ThemedNavListItemHeight;
+    TLcaPaintNavList(ACtrl).ApplyTheme(ATheme);
+  end else if ACtrl is TListBox then begin
+    ConfigureThemedListBox(TListBox(ACtrl), ATheme);
+    TListBox(ACtrl).Font.Size := NavListFontSize;
+    TListBox(ACtrl).ItemHeight := ThemedNavListItemHeight;
+  end;
+end;
+
+procedure NavListWireClick(ACtrl: TControl; AHandler: TNotifyEvent);
+begin
+  if ACtrl is TLcaPaintNavList then
+    TLcaPaintNavList(ACtrl).OnClick := AHandler
+  else if ACtrl is TListBox then
+    TListBox(ACtrl).OnClick := AHandler;
+end;
+
+procedure NavListWireKeyDown(ACtrl: TControl; AHandler: TKeyEvent);
+begin
+  if ACtrl is TLcaPaintNavList then
+    TLcaPaintNavList(ACtrl).OnKeyDown := AHandler
+  else if ACtrl is TListBox then
+    TListBox(ACtrl).OnKeyDown := AHandler;
+end;
+
+procedure NavListWireDrawItem(ACtrl: TControl; AHandler: TDrawItemEvent);
+begin
+  if ACtrl is TListBox then
+    TListBox(ACtrl).OnDrawItem := AHandler;
+end;
+
 constructor TNavContentControl.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -148,7 +229,7 @@ begin
 end;
 
 procedure TNavContentControl.Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel;
-  AFileList: TListBox; ATree: TTreeView; ALogList, AErrorLogList: TListBox;
+  AFileList: TControl; ATree: TTreeView; ALogList, AErrorLogList: TControl;
   APrimaryBtn, ASecondaryBtn: TLcaThemedButton);
 begin
   FTitleLabel := ATitle;
@@ -162,21 +243,21 @@ begin
   FSecondaryActionBtn := ASecondaryBtn;
 
   if Assigned(FFileList) then begin
-    FFileList.OnDrawItem := @FileListDrawItem;
-    FFileList.OnClick := @FileListClick;
-    FFileList.OnKeyDown := @FileListKeyDown;
+    NavListWireDrawItem(FFileList, @FileListDrawItem);
+    NavListWireClick(FFileList, @FileListClick);
+    NavListWireKeyDown(FFileList, @FileListKeyDown);
   end;
   if Assigned(FTreeView) then begin
     FTreeView.OnDblClick := @TreeViewDblClick;
     FTreeView.OnKeyDown := @TreeViewKeyDown;
   end;
   if Assigned(FLogList) then begin
-    FLogList.OnClick := @LogListClick;
-    FLogList.OnDrawItem := @FileListDrawItem;
+    NavListWireClick(FLogList, @LogListClick);
+    NavListWireDrawItem(FLogList, @FileListDrawItem);
   end;
   if Assigned(FErrorLogList) then begin
-    FErrorLogList.OnClick := @ErrorLogListClick;
-    FErrorLogList.OnDrawItem := @FileListDrawItem;
+    NavListWireClick(FErrorLogList, @ErrorLogListClick);
+    NavListWireDrawItem(FErrorLogList, @FileListDrawItem);
   end;
   if Assigned(FActionBtn) then
     FActionBtn.OnClick := @ActionBtnClick;
@@ -201,20 +282,20 @@ begin
   end;
   if FSelected <> niHome then Exit;
 
-  FFileList.Items.BeginUpdate;
+  NavListItemsBeginUpdate(FFileList);
   try
-    FFileList.Items.Clear;
+    NavListItems(FFileList).Clear;
     if Assigned(ACaptions) then
-      FFileList.Items.Assign(ACaptions);
+      NavListItems(FFileList).Assign(ACaptions);
     SelIdx := -1;
     for I := 0 to FWorkspaceIds.Count - 1 do
       if SameText(FWorkspaceIds[I], AActiveId) then begin
         SelIdx := I;
         Break;
       end;
-    FFileList.ItemIndex := SelIdx;
+    NavListSetItemIndex(FFileList, SelIdx);
   finally
-    FFileList.Items.EndUpdate;
+    NavListItemsEndUpdate(FFileList);
   end;
 end;
 
@@ -232,20 +313,20 @@ begin
     FSessionArchived.Assign(AArchived);
   if FSelected <> niSessions then Exit;
 
-  FFileList.Items.BeginUpdate;
+  NavListItemsBeginUpdate(FFileList);
   try
-    FFileList.Items.Clear;
+    NavListItems(FFileList).Clear;
     if Assigned(ACaptions) then
-      FFileList.Items.Assign(ACaptions);
+      NavListItems(FFileList).Assign(ACaptions);
     SelIdx := -1;
     for I := 0 to FSessionIds.Count - 1 do
       if SameText(FSessionIds[I], AActiveId) then begin
         SelIdx := I;
         Break;
       end;
-    FFileList.ItemIndex := SelIdx;
+    NavListSetItemIndex(FFileList, SelIdx);
   finally
-    FFileList.Items.EndUpdate;
+    NavListItemsEndUpdate(FFileList);
   end;
   UpdateSessionSecondaryAction;
 end;
@@ -256,7 +337,7 @@ var
   Archived: Boolean;
 begin
   if not Assigned(FSecondaryActionBtn) then Exit;
-  Idx := FFileList.ItemIndex;
+  Idx := NavListItemIndex(FFileList);
   Archived := False;
   if (Idx >= 0) and (Idx < FSessionArchived.Count) then
     Archived := SameText(FSessionArchived[Idx], '1');
@@ -272,7 +353,7 @@ var
   Archived: Boolean;
 begin
   if FSelected <> niSessions then Exit;
-  Idx := FFileList.ItemIndex;
+  Idx := NavListItemIndex(FFileList);
   if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
   Archived := (Idx < FSessionArchived.Count) and SameText(FSessionArchived[Idx], '1');
   if Archived then begin
@@ -287,12 +368,12 @@ var
   Idx: Integer;
 begin
   if FSelected = niHome then begin
-    Idx := FFileList.ItemIndex;
+    Idx := NavListItemIndex(FFileList);
     if (Idx < 0) or (Idx >= FWorkspaceIds.Count) then Exit;
     if Assigned(FOnWorkspaceSelect) then
       FOnWorkspaceSelect(Self, FWorkspaceIds[Idx]);
   end else if FSelected = niSessions then begin
-    Idx := FFileList.ItemIndex;
+    Idx := NavListItemIndex(FFileList);
     if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
     if Assigned(FOnSessionSelect) then
       FOnSessionSelect(Self, FSessionIds[Idx]);
@@ -306,12 +387,12 @@ var
 begin
   if Key <> VK_DELETE then Exit;
   if FSelected = niHome then begin
-    Idx := FFileList.ItemIndex;
+    Idx := NavListItemIndex(FFileList);
     if (Idx < 0) or (Idx >= FWorkspaceIds.Count) then Exit;
     if Assigned(FOnWorkspaceDelete) then
       FOnWorkspaceDelete(Self, FWorkspaceIds[Idx]);
   end else if FSelected = niSessions then begin
-    Idx := FFileList.ItemIndex;
+    Idx := NavListItemIndex(FFileList);
     if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
     if Assigned(FOnSessionDelete) then
       FOnSessionDelete(Self, FSessionIds[Idx]);
@@ -326,21 +407,9 @@ end;
 
 procedure TNavContentControl.ApplyNavListMetrics;
 begin
-  if Assigned(FFileList) then begin
-    ConfigureThemedListBox(FFileList, FTheme);
-    FFileList.Font.Size := NavListFontSize;
-    FFileList.ItemHeight := ThemedNavListItemHeight;
-  end;
-  if Assigned(FLogList) then begin
-    ConfigureThemedListBox(FLogList, FTheme);
-    FLogList.Font.Size := NavListFontSize;
-    FLogList.ItemHeight := ThemedNavListItemHeight;
-  end;
-  if Assigned(FErrorLogList) then begin
-    ConfigureThemedListBox(FErrorLogList, FTheme);
-    FErrorLogList.Font.Size := NavListFontSize;
-    FErrorLogList.ItemHeight := ThemedNavListItemHeight;
-  end;
+  NavListApplyMetrics(FFileList, FTheme);
+  NavListApplyMetrics(FLogList, FTheme);
+  NavListApplyMetrics(FErrorLogList, FTheme);
   if Assigned(FTreeView) then begin
     ConfigureThemedTreeView(FTreeView, FTheme);
     FTreeView.Font.Size := NavListFontSize;
@@ -372,14 +441,15 @@ end;
 
 procedure TNavContentControl.ApplyPlatformChrome(ATheme: TThemeKind);
 begin
-  if Assigned(FFileList) then
-    ApplyPlatformScrollableTheme(FFileList, ATheme);
+  if Assigned(FFileList) and (FFileList is TWinControl) and not (FFileList is TLcaPaintNavList) then
+    ApplyPlatformScrollableTheme(TWinControl(FFileList), ATheme);
   if Assigned(FTreeView) then
     ApplyPlatformScrollableTheme(FTreeView, ATheme);
-  if Assigned(FLogList) then
-    ApplyPlatformScrollableTheme(FLogList, ATheme);
-  if Assigned(FErrorLogList) then
-    ApplyPlatformScrollableTheme(FErrorLogList, ATheme);
+  if Assigned(FLogList) and (FLogList is TWinControl) and not (FLogList is TLcaPaintNavList) then
+    ApplyPlatformScrollableTheme(TWinControl(FLogList), ATheme);
+  if Assigned(FErrorLogList) and (FErrorLogList is TWinControl) and
+     not (FErrorLogList is TLcaPaintNavList) then
+    ApplyPlatformScrollableTheme(TWinControl(FErrorLogList), ATheme);
 end;
 
 procedure TNavContentControl.SetSelected(AItem: TNavigationItem; const AWorkspaceName,
@@ -403,36 +473,36 @@ var
   I: Integer;
 begin
   if not Assigned(FLogList) then Exit;
-  FLogList.Items.Clear;
+  NavListItems(FLogList).Clear;
   if not Assigned(FExecutionLog) then Exit;
   for I := 0 to FExecutionLog.Count - 1 do
-    FLogList.Items.Add(FExecutionLog.Entry(I).Caption);
+    NavListItems(FLogList).Add(FExecutionLog.Entry(I).Caption);
 end;
 
 procedure TNavContentControl.AppendExecutionLogEntry(AIndex: Integer; AFollowSelection: Boolean);
 begin
   if not Assigned(FExecutionLog) or not Assigned(FLogList) then Exit;
   if (AIndex < 0) or (AIndex >= FExecutionLog.Count) then Exit;
-  if FLogList.Items.Count <> FExecutionLog.Count then
+  if NavListItems(FLogList).Count <> FExecutionLog.Count then
     RefreshExecutionLogList
   else
-    FLogList.Items[AIndex] := FExecutionLog.Entry(AIndex).Caption;
-  if AFollowSelection and (AIndex < FLogList.Items.Count) then
-    FLogList.ItemIndex := AIndex;
+    NavListItems(FLogList)[AIndex] := FExecutionLog.Entry(AIndex).Caption;
+  if AFollowSelection and (AIndex < NavListItems(FLogList).Count) then
+    NavListSetItemIndex(FLogList, AIndex);
 end;
 
 procedure TNavContentControl.LogListClick(Sender: TObject);
 begin
   if not Assigned(FOnLogEntrySelected) then Exit;
-  if FLogList.ItemIndex < 0 then Exit;
-  FOnLogEntrySelected(Self, FLogList.ItemIndex);
+  if NavListItemIndex(FLogList) < 0 then Exit;
+  FOnLogEntrySelected(Self, NavListItemIndex(FLogList));
 end;
 
 procedure TNavContentControl.ErrorLogListClick(Sender: TObject);
 begin
   if not Assigned(FOnToolErrorEntrySelected) then Exit;
-  if FErrorLogList.ItemIndex < 0 then Exit;
-  FOnToolErrorEntrySelected(Self, FErrorLogList.ItemIndex);
+  if NavListItemIndex(FErrorLogList) < 0 then Exit;
+  FOnToolErrorEntrySelected(Self, NavListItemIndex(FErrorLogList));
 end;
 
 procedure TNavContentControl.BindToolErrorLog(ALog: TAgentToolErrorLog);
@@ -446,22 +516,22 @@ var
   I: Integer;
 begin
   if not Assigned(FErrorLogList) then Exit;
-  FErrorLogList.Items.Clear;
+  NavListItems(FErrorLogList).Clear;
   if not Assigned(FToolErrorLog) then Exit;
   for I := 0 to FToolErrorLog.Count - 1 do
-    FErrorLogList.Items.Add(FToolErrorLog.Entry(I).Caption);
+    NavListItems(FErrorLogList).Add(FToolErrorLog.Entry(I).Caption);
 end;
 
 procedure TNavContentControl.AppendToolErrorLogEntry(AIndex: Integer);
 begin
   if not Assigned(FToolErrorLog) or not Assigned(FErrorLogList) then Exit;
   if (AIndex < 0) or (AIndex >= FToolErrorLog.Count) then Exit;
-  if FErrorLogList.Items.Count <> FToolErrorLog.Count then
+  if NavListItems(FErrorLogList).Count <> FToolErrorLog.Count then
     RefreshToolErrorLogList
   else
-    FErrorLogList.Items[AIndex] := FToolErrorLog.Entry(AIndex).Caption;
-  if AIndex < FErrorLogList.Items.Count then
-    FErrorLogList.ItemIndex := AIndex;
+    NavListItems(FErrorLogList)[AIndex] := FToolErrorLog.Entry(AIndex).Caption;
+  if AIndex < NavListItems(FErrorLogList).Count then
+    NavListSetItemIndex(FErrorLogList, AIndex);
 end;
 
 procedure TNavContentControl.FreeFileTreeNodePaths;
@@ -593,7 +663,7 @@ end;
 procedure TNavContentControl.FillTaskListBox;
 begin
   if not Assigned(FFileList) then Exit;
-  FFileList.Items.Assign(FSessionTaskCaptions);
+  NavListItems(FFileList).Assign(FSessionTaskCaptions);
 end;
 
 procedure TNavContentControl.UpdateSessionTasks(const ACaptions: TStrings);
@@ -662,15 +732,15 @@ begin
         FFileList.Visible := True;
         FTitleLabel.Caption := 'Coding Agent Personas';
         FSubLabel.Caption := 'Modes & pre-defined models (OpenRouter)';
-        FFileList.Items.Clear;
-        FFileList.Items.Add('⚡ Autopilot Agent (wmAgent)');
-        FFileList.Items.Add('📋 Architect & Planner (wmPlan)');
-        FFileList.Items.Add('💡 Code Assistant & Q&A (wmAsk)');
-        FFileList.Items.Add('');
-        FFileList.Items.Add('── Pre-defined coding agents ──');
+        NavListItems(FFileList).Clear;
+        NavListItems(FFileList).Add('⚡ Autopilot Agent (wmAgent)');
+        NavListItems(FFileList).Add('📋 Architect & Planner (wmPlan)');
+        NavListItems(FFileList).Add('💡 Code Assistant & Q&A (wmAsk)');
+        NavListItems(FFileList).Add('');
+        NavListItems(FFileList).Add('── Pre-defined coding agents ──');
         for I := 0 to CodingAgentPresetCount - 1 do begin
           Preset := GetCodingAgentPreset(I);
-          FFileList.Items.Add(Format('🧠 %s — %s (%s)', [Preset.Vendor, Preset.Caption, Preset.ModelId]));
+          NavListItems(FFileList).Add(Format('🧠 %s — %s (%s)', [Preset.Vendor, Preset.Caption, Preset.ModelId]));
         end;
         FActionBtn.Caption := '⚙ Agent Settings...';
       end;
@@ -699,8 +769,8 @@ begin
         FTitleLabel.Caption := 'Task List & Checklist';
         FSubLabel.Caption := 'Chat-local tasks from the todo tool';
         FillTaskListBox;
-        if FFileList.Items.Count = 0 then
-          FFileList.Items.Add('No tasks tracked for this session.');
+        if NavListItems(FFileList).Count = 0 then
+          NavListItems(FFileList).Add('No tasks tracked for this session.');
         FActionBtn.Caption := '🔄 Refresh Tasks';
       end;
     niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain:
@@ -712,7 +782,7 @@ begin
           FComingSoonLabel.Caption := 'COMING SOON';
           FComingSoonLabel.Visible := True;
         end;
-        PopulateFutureFeatureNavList(FSelected, FFileList.Items);
+        PopulateFutureFeatureNavList(FSelected, NavListItems(FFileList));
         FActionBtn.Visible := False;
       end;
   end;

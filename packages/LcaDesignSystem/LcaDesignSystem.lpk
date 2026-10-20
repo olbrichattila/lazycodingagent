@@ -84,6 +84,10 @@
         <UnitName Value="LcaScrollHost"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaPaintNavList.pas"/>
+        <UnitName Value="LcaPaintNavList"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaMarkdownView.pas"/>
         <UnitName Value="LcaMarkdownView"/>
       </Item>

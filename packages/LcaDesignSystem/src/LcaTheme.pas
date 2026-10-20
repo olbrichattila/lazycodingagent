@@ -171,6 +171,9 @@ procedure ThemedListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
 procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;
   ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+procedure PaintThemedNavListItem(Canvas: TCanvas; const ARect: TRect;
+  const AText: string; State: TOwnerDrawState; ATheme: TThemeKind;
+  AMetricsControl: TControl = nil);
 
 procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
 procedure ApplyWin32ScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
@@ -1667,30 +1670,35 @@ begin
   LBox.Canvas.TextRect(ARect, ARect.Left + 8, TextTop, TextStr);
 end;
 
-procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;
-  ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+procedure PaintThemedNavListItem(Canvas: TCanvas; const ARect: TRect;
+  const AText: string; State: TOwnerDrawState; ATheme: TThemeKind;
+  AMetricsControl: TControl);
 var
-  LBox: TListBox;
   P: TThemePalette;
-  TextStr: string;
   TextColor: TColor;
   TextTop: Integer;
   ContentRect: TRect;
-  InsetV: Integer;
+  InsetV, PadLeft: Integer;
   Selected: Boolean;
+  BgColor: TColor;
 begin
-  if not (Control is TListBox) then Exit;
-  LBox := TListBox(Control);
   P := ThemePalette(ATheme);
+  if Assigned(AMetricsControl) then begin
+    InsetV := ScaledThemedNavListPadV(AMetricsControl) +
+      (ScaledThemedNavListRowGap(AMetricsControl) div 2);
+    PadLeft := ScaledThemedNavListPadLeft(AMetricsControl);
+    BgColor := AMetricsControl.Color;
+  end else begin
+    InsetV := ThemedNavListPadV + (ThemedNavListRowGap div 2);
+    PadLeft := ThemedNavListPadLeft;
+    BgColor := P.Surface;
+  end;
 
-  LBox.Canvas.Brush.Style := bsSolid;
-  LBox.Canvas.Brush.Color := LBox.Color;
-  LBox.Canvas.Pen.Color := LBox.Color;
-  LBox.Canvas.FillRect(ARect);
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := BgColor;
+  Canvas.Pen.Color := BgColor;
+  Canvas.FillRect(ARect);
 
-  if (Index < 0) or (Index >= LBox.Items.Count) then Exit;
-
-  InsetV := ThemedNavListPadV + (ThemedNavListRowGap div 2);
   ContentRect := ARect;
   ContentRect.Top := ContentRect.Top + InsetV;
   ContentRect.Bottom := ContentRect.Bottom - InsetV;
@@ -1699,22 +1707,39 @@ begin
 
   Selected := (odSelected in State) or (odFocused in State);
   if Selected then begin
-    LBox.Canvas.Brush.Color := P.AccentActive;
-    LBox.Canvas.Pen.Color := P.AccentActive;
-    LBox.Canvas.FillRect(ContentRect);
+    Canvas.Brush.Color := P.AccentActive;
+    Canvas.Pen.Color := P.AccentActive;
+    Canvas.FillRect(ContentRect);
   end;
 
-  TextStr := LBox.Items[Index];
-  LBox.Canvas.Font.Assign(LBox.Font);
+  if AText = '' then Exit;
+
   if Selected then
     TextColor := P.Accent
   else
     TextColor := P.Text;
-  LBox.Canvas.Font.Color := TextColor;
+  Canvas.Font.Color := TextColor;
 
   TextTop := ContentRect.Top +
-    ((ContentRect.Bottom - ContentRect.Top - LBox.Canvas.TextHeight(TextStr)) div 2);
-  LBox.Canvas.TextRect(ContentRect, ContentRect.Left + ThemedNavListPadLeft, TextTop, TextStr);
+    ((ContentRect.Bottom - ContentRect.Top - Canvas.TextHeight(AText)) div 2);
+  Canvas.TextRect(ContentRect, ContentRect.Left + PadLeft, TextTop, AText);
+end;
+
+procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;
+  ARect: TRect; State: TOwnerDrawState; ATheme: TThemeKind);
+var
+  LBox: TListBox;
+  TextStr: string;
+begin
+  if not (Control is TListBox) then Exit;
+  LBox := TListBox(Control);
+  if (Index < 0) or (Index >= LBox.Items.Count) then begin
+    PaintThemedNavListItem(LBox.Canvas, ARect, '', State, ATheme, LBox);
+    Exit;
+  end;
+  TextStr := LBox.Items[Index];
+  LBox.Canvas.Font.Assign(LBox.Font);
+  PaintThemedNavListItem(LBox.Canvas, ARect, TextStr, State, ATheme, LBox);
 end;
 
 procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
