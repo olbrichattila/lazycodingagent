@@ -551,24 +551,23 @@ begin
       NeedUpdate := True;
   end;
   if not NeedUpdate then begin
-    if FContentStabilityMeasureH = CH then
-      Result := True
-    else begin
-      FContentStabilityMeasureH := CH;
+    Result := (FLastSyncedContentH > 0) and (FContentStabilityMeasureH = CH);
+    if Result then Exit;
+    if FContentStabilityMeasureH <> CH then
+      FContentStabilityMeasureH := CH
+    else if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
+      Inc(FContentSyncDeferRetries);
       ScheduleDeferredContentSync;
-    end;
+    end else
+      Result := True;
     Exit;
   end;
   FLastSyncedContentW := CW;
   FLastSyncedContentH := CH;
   FScrollHost.UpdateContentExtent(CW, CH);
   DisableIpHtmlNativeScroll(Panel);
-  if FContentStabilityMeasureH = CH then
-    Result := True
-  else begin
-    FContentStabilityMeasureH := CH;
-    ScheduleDeferredContentSync;
-  end;
+  FContentStabilityMeasureH := CH;
+  Result := True;
 end;
 
 procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
@@ -628,6 +627,9 @@ begin
       FScrollHost.SetViewportFillColor(ThemePalette(FThemeKind).Background);
       FScrollHost.AutoSize := False;
       EnsureScrollHostFillsClient;
+      {$IFDEF LCLQt5}
+      FScrollHost.DoubleBuffered := False;
+      {$ENDIF}
     end;
     Html := TLcaMarkdownHtmlPanel.Create(Self);
     Html.Parent := FScrollHost;

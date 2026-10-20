@@ -6,7 +6,7 @@ Every component on the **LCA Design** palette must show a **custom glyph** in th
 
 | Situation | When to add the icon |
 |-----------|----------------------|
-| New painted control registered in a delivery step | Same step as `RegisterComponents` in [`LcaDesignReg.pas`](../../../packages/LcaDesignSystem/src/LcaDesignReg.pas) |
+| New painted control registered in a delivery step | Same step as `RegisterComponents` in [`LcaDesignReg.pas`](../../../packages/LcaDesignSystem/design/LcaDesignReg.pas) |
 | Existing LCA types already on the palette | Step **012** backfill (see list below) |
 
 ## Asset specification
@@ -26,7 +26,7 @@ PNG sources  →  lazres  →  .res resource  →  LcaDesignSystemDesign  →  I
 2. Build a resource file with Lazarus `lazres`, e.g. `lca_design_glyphs.res`, with resource names matching class names (same as PNG basename).
 3. Link the resource from the **design-time** package only:
    - [`LcaDesignSystemDesign.lpk`](../../../packages/LcaDesignSystem/LcaDesignSystemDesign.lpk) (include the `.res` in package files), and/or
-   - `{$R lca_design_glyphs.res}` in [`LcaDesignReg.pas`](../../../packages/LcaDesignSystem/src/LcaDesignReg.pas) implementation.
+   - `{$R lca_design_glyphs.res}` in [`LcaDesignReg.pas`](../../../packages/LcaDesignSystem/design/LcaDesignReg.pas) implementation.
 4. Do **not** add `{$R ...}` glyph resources to the **runtime** [`LcaDesignSystem.lpk`](../../../packages/LcaDesignSystem/LcaDesignSystem.lpk) — icons are IDE-only.
 
 Optional convenience (when implementing): `scripts/build-lca-glyphs.sh` that runs `lazres` over `res/glyphs/*.png`.

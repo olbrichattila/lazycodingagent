@@ -18,6 +18,7 @@ type
     FShowFocusRing: Boolean;
     FHover: Boolean;
     FPressed: Boolean;
+    FInClick: Boolean;
     FOnClick: TNotifyEvent;
     FModalResult: TModalResult;
     procedure SetCaption(const AValue: string);
@@ -161,8 +162,6 @@ procedure TLcaPaintButton.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button = mbLeft then begin
-    if FPressed and Enabled and (X >= 0) and (Y >= 0) and (X < Width) and (Y < Height) then
-      Click;
     FPressed := False;
     Invalidate;
   end;
@@ -182,13 +181,19 @@ procedure TLcaPaintButton.Click;
 var
   F: TCustomForm;
 begin
-  inherited Click;
-  if Assigned(FOnClick) then
-    FOnClick(Self);
-  if FModalResult <> mrNone then begin
-    F := GetParentForm(Self);
-    if Assigned(F) then
-      F.ModalResult := FModalResult;
+  if FInClick then Exit;
+  FInClick := True;
+  try
+    inherited Click;
+    if Assigned(FOnClick) then
+      FOnClick(Self);
+    if FModalResult <> mrNone then begin
+      F := GetParentForm(Self);
+      if Assigned(F) then
+        F.ModalResult := FModalResult;
+    end;
+  finally
+    FInClick := False;
   end;
 end;
 

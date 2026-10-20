@@ -28,6 +28,8 @@ type
     FModel: string;
     FIsRunning: Boolean;
     FHistoryText: string;
+    FHistoryRefreshQueued: Boolean;
+    FHistoryScrollToEndPending: Boolean;
 
     FOnPrompt: TPromptEvent;
     FOnModeChange: TModeChangeEvent;
@@ -74,6 +76,9 @@ type
     procedure InitWelcomeText;
     procedure EnsureHistoryView;
     procedure AppendToHistory(const ARoleLabel, ABody: string);
+    procedure ApplyHistoryViewNow(AScrollToEnd: Boolean);
+    procedure ScheduleHistoryRefresh;
+    procedure DeferredHistoryRefresh(Data: PtrInt);
     procedure RefreshHistoryView;
     function ToolMessageBody(const AMsg: TChatMessage): string;
   public
@@ -459,11 +464,37 @@ begin
   SetComposerEnabled(FPromptMemo.Enabled);
 end;
 
-procedure TChatPanel.RefreshHistoryView;
+procedure TChatPanel.ApplyHistoryViewNow(AScrollToEnd: Boolean);
 begin
   EnsureHistoryView;
   if Assigned(FHistoryView) then
-    FHistoryView.SetMarkdown(FHistoryText, True);
+    FHistoryView.SetMarkdown(FHistoryText, AScrollToEnd);
+end;
+
+procedure TChatPanel.ScheduleHistoryRefresh;
+begin
+  if FHistoryRefreshQueued then Exit;
+  if csDestroying in ComponentState then Exit;
+  FHistoryRefreshQueued := True;
+  Application.QueueAsyncCall(@DeferredHistoryRefresh, PtrInt(Self));
+end;
+
+procedure TChatPanel.DeferredHistoryRefresh(Data: PtrInt);
+var
+  Scroll: Boolean;
+begin
+  FHistoryRefreshQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  Scroll := FHistoryScrollToEndPending;
+  FHistoryScrollToEndPending := False;
+  ApplyHistoryViewNow(Scroll);
+end;
+
+procedure TChatPanel.RefreshHistoryView;
+begin
+  FHistoryScrollToEndPending := True;
+  ScheduleHistoryRefresh;
 end;
 
 procedure TChatPanel.AppendToHistory(const ARoleLabel, ABody: string);

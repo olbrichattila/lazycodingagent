@@ -29,7 +29,7 @@ Theme API lives in **`LcaTheme`** (`TThemeKind`, `ThemePalette`, `ApplyThemedFor
 
 ### Palette icons
 
-Every class on **LCA Design** must have a **dedicated 24×24 IDE glyph** (not the generic LCL default). Sources live in `res/glyphs/`; build `res/lca_design_glyphs.res` with [`scripts/build-lca-glyphs.sh`](../../scripts/build-lca-glyphs.sh) (or `.bat`). Wire-up is design-time only via `LcaDesignReg.pas` / `LcaDesignSystemDesign`. See [PALETTE-ICONS.md](../../docs/delivery/lca-painted-controls/PALETTE-ICONS.md). After adding or changing glyphs, **close Lazarus** and re-run [`scripts/install-lca-lazarus.sh`](../../scripts/install-lca-lazarus.sh) with `--build-ide` (e.g. `--widgetset=qt5` on Linux).
+Every class on **LCA Design** must have a **dedicated 24×24 IDE glyph** (not the generic LCL default). Sources live in `res/glyphs/`; build `res/lca_design_glyphs.res` with [`scripts/build-lca-glyphs.sh`](../../scripts/build-lca-glyphs.sh) (or `.bat`). Wire-up is design-time only via [`design/LcaDesignReg.pas`](design/LcaDesignReg.pas) / `LcaDesignSystemDesign`. See [PALETTE-ICONS.md](../../docs/delivery/lca-painted-controls/PALETTE-ICONS.md). After adding or changing glyphs, **close Lazarus** and re-run [`scripts/install-lca-lazarus.sh`](../../scripts/install-lca-lazarus.sh) with `--build-ide` (e.g. `--widgetset=qt5` on Linux).
 
 ## Opening in Lazarus (Form Designer)
 
@@ -98,7 +98,15 @@ If it still hangs with **Coding Agent Chat** restored on the desktop, set that I
 
 ## Package
 
-- **`LcaDesignSystem.lpk`** — **RunTimeOnly** (app + `lazbuild`; all component units)
-- **`LcaDesignSystemDesign.lpk`** — **DesignTime** (`LcaDesignReg` only; **LCA Design** palette). Compile-time **`OtherUnitFiles=src`** is required so `LcaDesignReg` resolves; **`UsageOptions` / `UnitPath`** must stay **`$(PkgOutDir)` only** (do not publish `src` to the IDE — types come from the linked runtime package). After changing either `.lpk`, close Lazarus and re-run **`scripts/install-lca-lazarus`**.
+- **`LcaDesignSystem.lpk`** — **RunTimeOnly** (app + `lazbuild`; all component units under `src/`). **`OtherUnitFiles=src`** is required at compile time (removing it breaks with `Can't find unit LcaTheme`).
+- **`LcaDesignSystemDesign.lpk`** — **DesignTime** ([`design/LcaDesignReg.pas`](design/LcaDesignReg.pas) only; **LCA Design** palette). Uses **`OtherUnitFiles=design`** (not `src`) so the IDE does not duplicate the runtime `src` search path. **`UsageOptions` / `UnitPath`** must stay **`$(PkgOutDir)` only** — component types come from the linked runtime package.
 
-If the IDE warns that the runtime unit path contains `...\LcaDesignSystem\src`, reinstall the design package with Lazarus closed so only `lib\$(TargetCPU)-$(TargetOS)` is used at run/build time.
+### Windows form designer (main form)
+
+1. Close Lazarus completely.
+2. Run **`scripts/install-lca-lazarus.ps1`** (or `.bat`) **without** `-LinkOnly` so **`LcaDesignSystemDesign`** is installed and **`lazbuild --build-ide`** runs.
+3. In the IDE, confirm **Package → Install/Uninstall packages**: **LcaDesignSystem**, **LcaDesignSystemDesign**, and **SynEditDsgn** (required by `lazycodingagent.lpi`).
+4. Open `mainunit.pas` and press **F12**. If there is still no form tab, check **View → IDE Internals → Debug Output** for the first `mainunit.lfm` / `TLca` / `SynEdit` error.
+5. Verify streaming locally: **`python scripts/verify-main-form-streaming.py`** (published field order must match `mainunit.lfm` DFS).
+
+After changing either `.lpk`, close Lazarus and re-run **`scripts/install-lca-lazarus`**.

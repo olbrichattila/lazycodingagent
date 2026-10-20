@@ -23,59 +23,21 @@ type
 
   { TLazyCodingAgentForm }
   TLazyCodingAgentForm = class(TForm)
-    btnChatSend: TLcaPaintButton;
-    btnChatAttachImage: TLcaPaintButton;
-    btnChatStop: TLcaPaintButton;
-    cboChatMode: TLcaPaintComboBox;
-    cboChatModel: TLcaPaintComboBox;
-    chkChatAllowModifyOutside: TCheckBox;
-    lblChatAllowModifyOutside: TLabel;
+  published
     lcaTitleBar: TLcaThemedTitleBar;
-    lcaMainMenu: TLcaThemedMainMenu;
-    mnuFile: TMenuItem;
-    mnuFileNew: TMenuItem;
-    mnuFileOpen: TMenuItem;
-    mnuFileSave: TMenuItem;
-    mnuFileSaveFile: TMenuItem;
-    mnuFileSep1: TMenuItem;
-    mnuFileExit: TMenuItem;
-    mnuView: TMenuItem;
-    mnuViewToggleTheme: TMenuItem;
-    mnuViewResetLayout: TMenuItem;
-    mnuViewTerminal: TMenuItem;
-    mnuViewSyntaxSep: TMenuItem;
-    mnuViewSyntaxSchemes: TMenuItem;
-    mnuViewActiveSchemes: TMenuItem;
-    mnuWindow: TMenuItem;
-    mnuPanelsVisibility: TMenuItem;
-    mnuWorkspace: TMenuItem;
-    mnuWorkspaceSepRules: TMenuItem;
-    mnuWorkspaceProjectRules: TMenuItem;
-    mnuAgent: TMenuItem;
-    mnuAgentClearHistory: TMenuItem;
-    mnuAgentStop: TMenuItem;
-    mnuSettings: TMenuItem;
-    mnuSettingsOptions: TMenuItem;
-    mnuHelp: TMenuItem;
-    mnuHelpUserGuide: TMenuItem;
-    mnuHelpAbout: TMenuItem;
-    pnlChatAttachmentStrip: TPanel;
-
-    StatusBar1: TStatusBar;
-
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
-    sbtnNavHome: TLcaPaintNavRailButton;
-    sbtnNavProjects: TLcaPaintNavRailButton;
-    sbtnNavSessions: TLcaPaintNavRailButton;
-    sbtnNavBots: TLcaPaintNavRailButton;
-    sbtnNavTools: TLcaPaintNavRailButton;
-    sbtnNavTasks: TLcaPaintNavRailButton;
-    sbtnNavToolErrors: TLcaPaintNavRailButton;
-    sbtnNavMultiAgent: TLcaPaintNavRailButton;
-    sbtnNavExecPlans: TLcaPaintNavRailButton;
-    sbtnNavKnowledge: TLcaPaintNavRailButton;
     sbtnNavBrain: TLcaPaintNavRailButton;
+    sbtnNavKnowledge: TLcaPaintNavRailButton;
+    sbtnNavExecPlans: TLcaPaintNavRailButton;
+    sbtnNavMultiAgent: TLcaPaintNavRailButton;
+    sbtnNavToolErrors: TLcaPaintNavRailButton;
+    sbtnNavTasks: TLcaPaintNavRailButton;
+    sbtnNavTools: TLcaPaintNavRailButton;
+    sbtnNavBots: TLcaPaintNavRailButton;
+    sbtnNavSessions: TLcaPaintNavRailButton;
+    sbtnNavProjects: TLcaPaintNavRailButton;
+    sbtnNavHome: TLcaPaintNavRailButton;
     pnlNavHost: TPanel;
     pnlNavChrome: TPanel;
     pnlNavChromeTitleHost: TPanel;
@@ -111,8 +73,8 @@ type
     pnlPlanHeader: TPanel;
     lblPlanPath: TLabel;
     pnlPlanToolbar: TPanel;
-    cboPlanModel: TLcaPaintComboBox;
     btnPlanBuild: TLcaPaintButton;
+    cboPlanModel: TLcaPaintComboBox;
     lcaPlanBody: TLcaMarkdownView;
     splUtility: TSplitter;
     pnlReservedHost: TPanel;
@@ -131,6 +93,7 @@ type
     lcaCenterTabBar: TLcaThemedPageTabBar;
     pnlCenterChromeActions: TPanel;
     btnChatDetach: TLcaPaintButton;
+    pnlCenterContent: TPanel;
     pgcCenter: TPageControl;
     tsChat: TTabSheet;
     pnlChatSessionTabStripHost: TPanel;
@@ -145,11 +108,18 @@ type
     pnlChatFooter: TPanel;
     pnlChatFooterRowActions: TPanel;
     pnlWrapChatAttach: TPanel;
+    btnChatAttachImage: TLcaPaintButton;
     pnlWrapChatMode: TPanel;
+    cboChatMode: TLcaPaintComboBox;
     pnlWrapChatModel: TPanel;
+    cboChatModel: TLcaPaintComboBox;
     pnlWrapChatStop: TPanel;
+    btnChatStop: TLcaPaintButton;
     pnlWrapChatSend: TPanel;
+    btnChatSend: TLcaPaintButton;
     pnlChatFooterRowCheck: TPanel;
+    chkChatAllowModifyOutside: TCheckBox;
+    lblChatAllowModifyOutside: TLabel;
     pnlChatHistoryHost: TPanel;
     lcaChatHistory: TLcaMarkdownView;
     tsEditor: TTabSheet;
@@ -167,6 +137,36 @@ type
     pnlTerminalContent: TPanel;
     lblTerminalStatus: TLabel;
     lcaTerminalPanel: TLcaTerminalPanel;
+    pnlChatAttachmentStrip: TPanel;
+    StatusBar1: TStatusBar;
+    lcaMainMenu: TLcaThemedMainMenu;
+    mnuFile: TMenuItem;
+    mnuFileNew: TMenuItem;
+    mnuFileOpen: TMenuItem;
+    mnuFileSave: TMenuItem;
+    mnuFileSaveFile: TMenuItem;
+    mnuFileSep1: TMenuItem;
+    mnuFileExit: TMenuItem;
+    mnuView: TMenuItem;
+    mnuViewToggleTheme: TMenuItem;
+    mnuViewResetLayout: TMenuItem;
+    mnuViewTerminal: TMenuItem;
+    mnuViewSyntaxSep: TMenuItem;
+    mnuViewSyntaxSchemes: TMenuItem;
+    mnuViewActiveSchemes: TMenuItem;
+    mnuWorkspace: TMenuItem;
+    mnuWorkspaceSepRules: TMenuItem;
+    mnuWorkspaceProjectRules: TMenuItem;
+    mnuAgent: TMenuItem;
+    mnuAgentClearHistory: TMenuItem;
+    mnuAgentStop: TMenuItem;
+    mnuSettings: TMenuItem;
+    mnuSettingsOptions: TMenuItem;
+    mnuWindow: TMenuItem;
+    mnuPanelsVisibility: TMenuItem;
+    mnuHelp: TMenuItem;
+    mnuHelpUserGuide: TMenuItem;
+    mnuHelpAbout: TMenuItem;
 
     procedure PanelHideClick(Sender: TObject);
     procedure PanelDetachClick(Sender: TObject);
@@ -294,6 +294,7 @@ type
     procedure PopulateMenusAndCombos;
     procedure StateChanged(Sender: TObject);
     procedure ApplyDockPanelsLayout;
+    procedure PanelDetachFloatChanged(Sender: TObject; AId: TPanelId; AFloating: Boolean);
     procedure SyncCenterAddTabNav;
     procedure WireThemedTabBars;
     procedure InitCenterTabStrip;
@@ -641,8 +642,9 @@ begin
   InitWorkspaceSubControls;
   ReportSplashLoadProgress(75);
   FPanelDetach := TPanelDetachManager.Create(Self, Self, FState);
+  FPanelDetach.OnPanelFloat := @PanelDetachFloatChanged;
   FPanelDetach.Bind(piNavigation, pnlNavHost, pnlNavContent);
-  FPanelDetach.Bind(piChat, pnlChatHost, pgcCenter);
+  FPanelDetach.Bind(piChat, pnlChatHost, pnlCenterContent);
   FPanelDetach.Bind(piReserved, pnlReservedHost, pnlReservedContent);
   FPanelDetach.Bind(piUtility, pnlUtilityHost, pnlUtilityContent);
   FPanelDetach.Bind(piTerminal, pnlTerminalHost, pnlTerminalContent);
@@ -927,6 +929,16 @@ begin
     PanelHideClickAction(TPanelId(TControl(Sender).Tag));
 end;
 
+procedure TLazyCodingAgentForm.PanelDetachFloatChanged(Sender: TObject; AId: TPanelId;
+  AFloating: Boolean);
+begin
+  if (AId <> piChat) or not Assigned(lcaCenterTabBar) then Exit;
+  if AFloating then
+    lcaCenterTabBar.PageControl := nil
+  else
+    lcaCenterTabBar.PageControl := pgcCenter;
+end;
+
 procedure TLazyCodingAgentForm.PanelDetachClick(Sender: TObject);
 var
   Id: TPanelId;
@@ -936,7 +948,13 @@ begin
   if not (Sender is TControl) then Exit;
   Id := TPanelId(TControl(Sender).Tag);
   WasFloating := FState.IsPanelFloating(Id);
-  FPanelDetach.ToggleDetach(Id);
+  FUpdatingState := True;
+  try
+    FPanelDetach.ToggleDetach(Id);
+    ApplyDockPanelsLayout;
+  finally
+    FUpdatingState := False;
+  end;
   if (Id = piTerminal) and not WasFloating and FState.IsPanelFloating(piTerminal) and
      Assigned(lcaTerminalPanel) then
     lcaTerminalPanel.FocusTerminal;
@@ -1370,8 +1388,6 @@ begin
     if not FPendingInitialDockLayout then
       ApplyDockPanelsLayout;
 
-    if not FDeferThemesUntilShown then
-      ApplyAllThemes;
     RebuildWindowMenu;
     if Assigned(mnuViewTerminal) then
       mnuViewTerminal.Checked := FState.IsPanelVisible(piTerminal);
@@ -1414,6 +1430,8 @@ begin
     ApplyThemedPanelColors(pnlNavContent, P.Surface, Theme);
   ApplyThemedPanelColors(pnlChatHost, P.Background, Theme);
   ApplyThemedPanelColors(pnlChatChrome, P.HeaderBg, Theme);
+  if Assigned(pnlCenterContent) then
+    ApplyThemedPanelColors(pnlCenterContent, P.Surface, Theme);
   ApplyThemedPanelColors(pnlReservedHost, P.Surface, Theme);
   ApplyThemedPanelColors(pnlReservedChrome, P.HeaderBg, Theme);
   if Assigned(pnlReservedContent) then
@@ -1957,6 +1975,8 @@ begin
     FState.SetTheme(tkLight)
   else
     FState.SetTheme(tkDark);
+  if not FDeferThemesUntilShown then
+    ApplyAllThemes;
 end;
 
 procedure TLazyCodingAgentForm.MnuViewResetLayoutClick(Sender: TObject);
@@ -2066,7 +2086,7 @@ procedure TLazyCodingAgentForm.ApplyWorkspaceChatVisibility;
 begin
   if FState.HasActiveWorkspace then
     FState.SetPanelVisible(piChat, True)
-  else
+  else if not FState.IsPanelFloating(piChat) then
     FState.SetPanelVisible(piChat, False);
 end;
 

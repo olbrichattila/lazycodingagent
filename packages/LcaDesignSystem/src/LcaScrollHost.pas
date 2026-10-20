@@ -62,6 +62,13 @@ type
     FViewportW: Integer;
     FViewportH: Integer;
     FViewportFillColor: TColor;
+    FLastLayoutViewportW: Integer;
+    FLastLayoutViewportH: Integer;
+    FLastLayoutScrollX: Integer;
+    FLastLayoutScrollY: Integer;
+    FLastLayoutShowVBar: Boolean;
+    FLastLayoutShowHBar: Boolean;
+    FLastContentLayoutBounds: TRect;
     function ClientAreaFillColor(const P: TThemePalette): TColor;
     procedure SetContent(AValue: TControl);
     procedure SetContentWidth(AValue: Integer);
@@ -528,6 +535,11 @@ procedure TLcaScrollHost.LayoutFromScroll;
 var
   CW, CH: Integer;
   VTrack, HTrack: TRect;
+  ShowV, ShowH: Boolean;
+  ContentBounds: TRect;
+  NeedHostPaint: Boolean;
+  VGutterChanged, HGutterChanged: Boolean;
+  PriorContentBounds: TRect;
 begin
   if FLayoutGuard or InDesignMode then Exit;
   FLayoutGuard := True;
@@ -536,39 +548,76 @@ begin
     RefreshContentReference;
     ComputeScrollLayout;
     ClampScroll;
-    if Assigned(FViewport) then
-      FViewport.SetBounds(0, 0, FViewportW, FViewportH);
+    ShowV := ShowVerticalBar;
+    ShowH := ShowHorizontalBar;
+    NeedHostPaint := (FViewportW <> FLastLayoutViewportW) or (FViewportH <> FLastLayoutViewportH) or
+      (FScrollX <> FLastLayoutScrollX) or (FScrollY <> FLastLayoutScrollY) or
+      (ShowV <> FLastLayoutShowVBar) or (ShowH <> FLastLayoutShowHBar);
+    if Assigned(FViewport) then begin
+      if (FViewport.Width <> FViewportW) or (FViewport.Height <> FViewportH) then
+        FViewport.SetBounds(0, 0, FViewportW, FViewportH);
+    end;
     CW := EffectiveContentWidth;
     CH := EffectiveContentHeight;
-    if Assigned(FContent) then
-      FContent.SetBounds(-FScrollX, -FScrollY, CW, CH);
+    PriorContentBounds := FLastContentLayoutBounds;
+    ContentBounds := Rect(-FScrollX, -FScrollY, -FScrollX + CW, -FScrollY + CH);
+    if Assigned(FContent) then begin
+      if not EqualRect(ContentBounds, PriorContentBounds) then
+        FContent.SetBounds(-FScrollX, -FScrollY, CW, CH);
+    end;
+    if not EqualRect(ContentBounds, PriorContentBounds) then
+      NeedHostPaint := True;
+    FLastContentLayoutBounds := ContentBounds;
+    VGutterChanged := False;
+    HGutterChanged := False;
     if Assigned(FVGutter) then begin
-      if ShowVerticalBar then begin
+      if ShowV then begin
         VTrack := VerticalTrackRect;
         FVGutter.Align := alNone;
-        if ShowHorizontalBar then
+        if ShowH then
           FVGutter.Anchors := [akTop, akRight]
         else
           FVGutter.Anchors := [akTop, akRight, akBottom];
-        FVGutter.SetBounds(VTrack.Left, VTrack.Top, VTrack.Width, VTrack.Bottom - VTrack.Top);
+        if (FVGutter.Left <> VTrack.Left) or (FVGutter.Top <> VTrack.Top) or
+           (FVGutter.Width <> VTrack.Width) or (FVGutter.Height <> VTrack.Bottom - VTrack.Top) or
+           not FVGutter.Visible then begin
+          FVGutter.SetBounds(VTrack.Left, VTrack.Top, VTrack.Width, VTrack.Bottom - VTrack.Top);
+          VGutterChanged := True;
+        end;
         FVGutter.Visible := True;
         FVGutter.BringToFront;
-      end else
+      end else if FVGutter.Visible then begin
         FVGutter.Visible := False;
+        VGutterChanged := True;
+      end;
     end;
     if Assigned(FHGutter) then begin
-      if ShowHorizontalBar then begin
+      if ShowH then begin
         HTrack := HorizontalTrackRect;
-        FHGutter.SetBounds(HTrack.Left, HTrack.Top, HTrack.Width, HTrack.Height);
+        if (FHGutter.Left <> HTrack.Left) or (FHGutter.Top <> HTrack.Top) or
+           (FHGutter.Width <> HTrack.Width) or (FHGutter.Height <> HTrack.Height) or
+           not FHGutter.Visible then begin
+          FHGutter.SetBounds(HTrack.Left, HTrack.Top, HTrack.Width, HTrack.Height);
+          HGutterChanged := True;
+        end;
         FHGutter.Visible := True;
         FHGutter.BringToFront;
-      end else
+      end else if FHGutter.Visible then begin
         FHGutter.Visible := False;
+        HGutterChanged := True;
+      end;
     end;
-    Invalidate;
-    if Assigned(FVGutter) and FVGutter.Visible then
+    FLastLayoutViewportW := FViewportW;
+    FLastLayoutViewportH := FViewportH;
+    FLastLayoutScrollX := FScrollX;
+    FLastLayoutScrollY := FScrollY;
+    FLastLayoutShowVBar := ShowV;
+    FLastLayoutShowHBar := ShowH;
+    if NeedHostPaint then
+      Invalidate;
+    if VGutterChanged and Assigned(FVGutter) and FVGutter.Visible then
       FVGutter.Invalidate;
-    if Assigned(FHGutter) and FHGutter.Visible then
+    if HGutterChanged and Assigned(FHGutter) and FHGutter.Visible then
       FHGutter.Invalidate;
   finally
     FLayoutGuard := False;
@@ -733,8 +782,17 @@ begin
   FScrollY := 0;
   FDragAxis := lsaNone;
   FViewportFillColor := clNone;
+  FLastLayoutViewportW := -1;
+  FLastLayoutViewportH := -1;
+  FLastLayoutScrollX := -1;
+  FLastLayoutScrollY := -1;
+  FLastContentLayoutBounds := Rect(-1, -1, -1, -1);
 
   FViewport := TLcaScrollViewport.Create(Self, Self);
+  {$IFDEF LCLQt5}
+  DoubleBuffered := False;
+  FViewport.DoubleBuffered := False;
+  {$ENDIF}
 
   FVGutter := TLcaScrollGutter.Create(Self, Self, lsaVertical);
   FHGutter := TLcaScrollGutter.Create(Self, Self, lsaHorizontal);
