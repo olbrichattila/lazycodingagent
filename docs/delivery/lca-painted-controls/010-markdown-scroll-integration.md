@@ -17,6 +17,7 @@ Integrate [`TLcaMarkdownView`](../../../packages/LcaDesignSystem/src/LcaMarkdown
 
 - Custom markdown layout without HTML.
 - Chat panel wiring changes beyond what `TLcaMarkdownView` encapsulates.
+- **Palette icons:** no new registration in this step; `TLcaMarkdownView` icon backfill is step **012** ([PALETTE-ICONS.md](PALETTE-ICONS.md)).
 
 ## Touch list
 

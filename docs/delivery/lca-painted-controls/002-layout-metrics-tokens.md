@@ -14,6 +14,7 @@ Centralize **fixed layout metrics** (scrollbar thickness, tab/button padding, de
   - Reuse or align with existing `ScaledThemedTabMetric` / `ScaledWindowChromeButtonWidth` patterns in [`LcaThemedWindowButton.pas`](../../../packages/LcaDesignSystem/src/LcaThemedWindowButton.pas)
 - Document in code comments: **geometry owner** = streamed `.lfm` sizes + these tokens; theme routines must not fight layout (per workspace LCL layout rules).
 - No visual change to the shipping app required in this step.
+- **Palette icons:** none in this step unless a new component class is registered (see [PALETTE-ICONS.md](PALETTE-ICONS.md)).
 
 ## Out of scope
 

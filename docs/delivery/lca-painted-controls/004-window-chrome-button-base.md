@@ -16,6 +16,7 @@ Refactor [`TLcaThemedWindowButton`](../../../packages/LcaDesignSystem/src/LcaThe
 
 - Title bar layout changes.
 - New button roles.
+- **Palette icons:** none unless a new palette class is registered (`TLcaThemedWindowButton` is not on the public palette today; see [PALETTE-ICONS.md](PALETTE-ICONS.md)).
 
 ## Touch list
 

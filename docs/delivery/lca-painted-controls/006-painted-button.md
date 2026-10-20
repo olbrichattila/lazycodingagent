@@ -12,6 +12,7 @@ Add **`TLcaPaintButton`** — fully custom-painted button (`TCustomControl` / `T
 - Caption from `Caption` property; keyboard focus and `Click` / `OnClick`.
 - `ApplyTheme` + `ThemeKind` published.
 - Register on palette; **do not** remove `TLcaThemedButton` yet.
+- **Palette icon:** `TLcaPaintButton.png` (or final class name) per [PALETTE-ICONS.md](PALETTE-ICONS.md).
 
 ## Out of scope
 
@@ -28,7 +29,8 @@ Add **`TLcaPaintButton`** — fully custom-painted button (`TCustomControl` / `T
 1. Test form: primary, cancel, destructive, ghost roles in dark and light.
 2. Compare approximate size to streamed `TLcaThemedButton` heights in chat footer (visual sanity only).
 3. Linux Qt5 + Windows if available: same chrome geometry; no native theme leakage.
+4. Rebuild IDE design package; **LCA Design** palette shows custom icon for `TLcaPaintButton`.
 
 ## Done when
 
-`TLcaPaintButton` is usable on forms and theming is entirely under LCA paint code.
+`TLcaPaintButton` is usable on forms, theming is entirely under LCA paint code, and its palette icon is present and distinct from `TLcaThemedButton`.

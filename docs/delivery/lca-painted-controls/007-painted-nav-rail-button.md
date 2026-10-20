@@ -12,6 +12,7 @@ Nav rail cell control with parity to [`TLcaNavRailButton`](../../../packages/Lca
 - Designer-visible default appearance when `csDesigning`.
 - Published: `ThemeKind`, `NavCaption`, `Active`.
 - Keep `TLcaNavRailButton` on [`mainunit.lfm`](../../../mainunit.lfm) until step 012.
+- **Palette icon:** for the new nav rail class per [PALETTE-ICONS.md](PALETTE-ICONS.md).
 
 ## Out of scope
 
@@ -28,7 +29,8 @@ Nav rail cell control with parity to [`TLcaNavRailButton`](../../../packages/Lca
 1. Test form: toggle `Active`; dark/light theme.
 2. Designer: readable on dark-first `.lfm` backgrounds.
 3. Click raises `OnClick` reliably.
+4. **LCA Design** palette shows custom icon for the new nav rail component.
 
 ## Done when
 
-Nav rail painted control matches existing nav button UX closely enough for migration in step 012.
+Nav rail painted control matches existing nav button UX closely enough for migration in step 012; palette icon present and distinct from `TLcaNavRailButton`.

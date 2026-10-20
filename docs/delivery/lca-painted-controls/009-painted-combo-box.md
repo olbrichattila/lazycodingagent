@@ -12,6 +12,7 @@
 - Popup list: owner-painted items, keyboard navigation (arrows, enter, escape).
 - `Items`, `ItemIndex`, `Text`, `OnChange` / `OnSelect` parity for chat mode/model use cases.
 - Do not call `StyleComboBox` resizing on the new control type.
+- **Palette icon:** `TLcaPaintComboBox.png` (or final class name) per [PALETTE-ICONS.md](PALETTE-ICONS.md).
 
 ## Out of scope
 
@@ -28,7 +29,8 @@
 1. Test form: stream `Height`/`ItemHeight`; theme apply does not change height.
 2. Open list, select item; no `ChangeBounds loop detected` on resize.
 3. Dark/light; Linux Qt5 and Windows if available.
+4. **LCA Design** palette shows custom icon for the paint combo class.
 
 ## Done when
 
-Paint combo is palette-ready and satisfies the chat/settings combo layout contract from project rules.
+Paint combo is palette-ready, satisfies the chat/settings combo layout contract from project rules, and has a distinct palette icon from `TLcaThemedComboBox`.

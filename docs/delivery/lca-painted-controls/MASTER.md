@@ -13,6 +13,7 @@ Progressive delivery of theme-aware, custom-painted LCA components for consisten
 3. **Manual QA gate** — You run manual testing (and optional fixes) after each step before saying “implement delivery 00N” or “next step”.
 4. **Strict order** — Complete steps in numeric order unless you explicitly reprioritize and edit this file.
 5. **Branch** — Keep implementation commits on `feature/lca-painted-controls` until merge.
+6. **Palette icons** — Every class registered on the **LCA Design** palette must have a **dedicated Lazarus component icon** (not the generic default). Add the glyph in the **same delivery** that registers the class. See [PALETTE-ICONS.md](PALETTE-ICONS.md). **Backfill** icons for pre-existing palette types is required in step **012** before that step may be ticked complete.
 
 ## Current status
 
