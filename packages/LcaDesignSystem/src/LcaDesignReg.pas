@@ -13,7 +13,7 @@ implementation
 
 uses
   TypInfo, PropEdits, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
-  LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaPaintSurface, LcaPaintButton, LcaScrollHost,
+  LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaPaintSurface, LcaPaintButton, LcaPaintNavRailButton, LcaScrollHost,
   LcaMarkdownView,
   LcaTerminalPanel, LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedTitleBar;
 
@@ -29,6 +29,7 @@ begin
     TLcaSurfacePanel,
     TLcaPaintSurface,
     TLcaPaintButton,
+    TLcaPaintNavRailButton,
     TLcaScrollHost,
     TLcaMarkdownView,
     TLcaTerminalPanel,
@@ -47,6 +48,7 @@ begin
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaPaintSurface, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaPaintButton, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemedButtonRole), TLcaPaintButton, 'ButtonRole', TEnumPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaPaintNavRailButton, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaScrollHost, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaMarkdownView, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaTerminalPanel, 'ThemeKind', TEnumPropertyEditor);

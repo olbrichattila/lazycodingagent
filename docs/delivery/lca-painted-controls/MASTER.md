@@ -17,7 +17,7 @@ Progressive delivery of theme-aware, custom-painted LCA components for consisten
 
 ## Current status
 
-Step 006 complete. Remaining items are pending.
+Step 007 complete. Remaining items are pending.
 
 ## Progress
 
@@ -27,7 +27,7 @@ Step 006 complete. Remaining items are pending.
 - [x] [004 — Window chrome button base](004-window-chrome-button-base.md)
 - [x] [005 — Scroll host](005-scroll-host.md)
 - [x] [006 — Painted button](006-painted-button.md)
-- [ ] [007 — Painted nav rail button](007-painted-nav-rail-button.md)
+- [x] [007 — Painted nav rail button](007-painted-nav-rail-button.md)
 - [ ] [008 — Painted page tab bar](008-painted-page-tab-bar.md)
 - [ ] [009 — Painted combo box](009-painted-combo-box.md)
 - [ ] [010 — Markdown scroll integration](010-markdown-scroll-integration.md)
