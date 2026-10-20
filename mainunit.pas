@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
-  ComCtrls, Menus, FileUtil, SynEdit,
+  ComCtrls, Menus, FileUtil, SynEdit, SynGutterBase,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
   LcaThemedComboBox, LcaNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,

@@ -64,6 +64,8 @@ const
   ThemedTabHorizPadBase = 8;
   ThemedTabMinWidthBase = 72;
   ThemedTabMinWidthClosableBase = 96;
+  ThemedTabVertInsetBase = 2;
+  ThemedTabBetweenGapBase = 4;
   ThemedButtonCornerBase = 8;
   ThemedComboCornerBase = 6;
   ThemedComboChevronGutterBase = 22;
@@ -104,6 +106,8 @@ function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 function ThemedTabCloseColumn(AControl: TControl): Integer;
 function ThemedTabHorizPad(AControl: TControl): Integer;
+function ThemedTabVertInset(AControl: TControl): Integer;
+function ThemedTabBetweenGap(AControl: TControl): Integer;
 function ThemedTabCloseHitRect(const ARect: TRect; AControl: TControl): TRect;
 function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
 function ScaledThemedWindowChromeButtonWidth(AControl: TControl): Integer;
@@ -272,6 +276,16 @@ end;
 function ThemedTabHorizPad(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedTabHorizPadBase);
+end;
+
+function ThemedTabVertInset(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedTabVertInsetBase);
+end;
+
+function ThemedTabBetweenGap(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedTabBetweenGapBase);
 end;
 
 function ThemedTabCloseHitRect(const ARect: TRect; AControl: TControl): TRect;

@@ -5,7 +5,7 @@ unit LcaThemedPageTabBar;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, ExtCtrls, ComCtrls, Graphics, LCLType, LcaTheme;
+  Classes, SysUtils, Types, Controls, ComCtrls, Graphics, LCLType, LcaThemedControl, LcaTheme;
 
 type
   TLcaTabCloseEvent = procedure(Sender: TObject; TabSheet: TTabSheet;
@@ -17,10 +17,9 @@ type
 
   { Themed tab strip for a PageControl with ShowTabs = False, or manual captions when
     PageControl is nil. }
-  TLcaThemedPageTabBar = class(TPanel)
+  TLcaThemedPageTabBar = class(TLcaThemedControl)
   private
     FPageControl: TPageControl;
-    FTheme: TThemeKind;
     FShowAddTab: Boolean;
     FAddTabCaption: string;
     FHoverTabIndex: Integer;
@@ -45,12 +44,11 @@ type
     procedure LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
     procedure PaintTabStrip;
     procedure SetPageControl(AControl: TPageControl);
-    procedure SetThemeKind(AValue: TThemeKind);
     function UsesParentForHeight: Boolean;
     class function FindMetaIndex(ASheet: TTabSheet): Integer; static;
     class procedure EnsureMeta(ASheet: TTabSheet); static;
   protected
-    procedure Loaded; override;
+    procedure DoApplyThemeColors(const P: TThemePalette); override;
     procedure Paint; override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
@@ -59,7 +57,6 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure ApplyTheme(ATheme: TThemeKind);
     procedure RefreshFromPageControl;
     procedure SetManualTabs(const ACaptions: array of string;
       const AAllowClose: array of Boolean; ASelectedIndex: Integer);
@@ -68,7 +65,6 @@ type
     class function TabIsHidden(ASheet: TTabSheet): Boolean; static;
     class function TabAllowsClose(ASheet: TTabSheet): Boolean; static;
   published
-    property ThemeKind: TThemeKind read FTheme write SetThemeKind default tkDark;
     property PageControl: TPageControl read FPageControl write SetPageControl;
     property ShowAddTab: Boolean read FShowAddTab write FShowAddTab;
     property AddTabCaption: string read FAddTabCaption write FAddTabCaption;
@@ -78,6 +74,19 @@ type
       write FOnManualTabSelect;
     property OnManualTabClose: TLcaManualTabCloseEvent read FOnManualTabClose
       write FOnManualTabClose;
+    property Align;
+    property Anchors;
+    property Left;
+    property Top;
+    property Width;
+    property Height;
+    property Visible;
+    property Enabled;
+    property TabOrder;
+    property Font;
+    property Hint;
+    property ShowHint;
+    property ThemeKind;
   end;
 
 implementation
@@ -168,9 +177,6 @@ end;
 constructor TLcaThemedPageTabBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  BevelOuter := bvNone;
-  ControlStyle := ControlStyle + [csOpaque];
-  FTheme := tkDark;
   FHoverTabIndex := -1;
   FHoverCloseIndex := -1;
   FShowAddTab := False;
@@ -179,7 +185,6 @@ begin
   FManualCaptions := TStringList.Create;
   if not UsesParentForHeight then
     Height := ScaledThemedTabBarHeight(Self);
-  DoubleBuffered := True;
 end;
 
 destructor TLcaThemedPageTabBar.Destroy;
@@ -212,12 +217,6 @@ begin
   Invalidate;
 end;
 
-procedure TLcaThemedPageTabBar.SetThemeKind(AValue: TThemeKind);
-begin
-  if FTheme = AValue then Exit;
-  ApplyTheme(AValue);
-end;
-
 procedure TLcaThemedPageTabBar.SetPageControl(AControl: TPageControl);
 begin
   if FPageControl = AControl then Exit;
@@ -231,21 +230,10 @@ begin
   RefreshFromPageControl;
 end;
 
-procedure TLcaThemedPageTabBar.Loaded;
+procedure TLcaThemedPageTabBar.DoApplyThemeColors(const {%H-}P: TThemePalette);
 begin
-  inherited Loaded;
-  ApplyTheme(FTheme);
-end;
-
-procedure TLcaThemedPageTabBar.ApplyTheme(ATheme: TThemeKind);
-var
-  P: TThemePalette;
-begin
-  FTheme := ATheme;
-  P := ThemePalette(EffectiveControlTheme(Self, ATheme));
   Color := P.HeaderBg;
   Font.Color := P.Text;
-  Invalidate;
 end;
 
 function TLcaThemedPageTabBar.VisibleTabCount: Integer;
@@ -345,21 +333,22 @@ end;
 
 procedure TLcaThemedPageTabBar.LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
 var
-  TabW: Integer;
+  TabW, VertInset: Integer;
 begin
   FAddTabRect := Rect(0, 0, 0, 0);
   if not FShowAddTab then Exit;
+  VertInset := ThemedTabVertInset(Self);
   TabW := AMeasureCanvas.TextWidth(FAddTabCaption) + 16;
   if TabW < 32 then TabW := 32;
   FAddTabRect.Left := AX;
-  FAddTabRect.Top := 2;
+  FAddTabRect.Top := VertInset;
   FAddTabRect.Right := AX + TabW;
-  FAddTabRect.Bottom := Height - 2;
+  FAddTabRect.Bottom := Height - VertInset;
 end;
 
 procedure TLcaThemedPageTabBar.LayoutTabs;
 var
-  I, Count, TabW, X, Pad, MinW, MinWClose, HorizPad, CloseCol: Integer;
+  I, Count, TabW, X, Pad, MinW, MinWClose, HorizPad, CloseCol, VertInset, TabGap: Integer;
   MeasureCanvas: TControlCanvas;
 begin
   SetLength(FTabRects, 0);
@@ -367,6 +356,8 @@ begin
   Count := VisibleTabCount;
   if (Count = 0) and not FShowAddTab then Exit;
 
+  VertInset := ThemedTabVertInset(Self);
+  TabGap := ThemedTabBetweenGap(Self);
   MeasureCanvas := TControlCanvas.Create;
   try
     MeasureCanvas.Control := Self;
@@ -392,10 +383,10 @@ begin
         end else if TabW < MinW then
           TabW := MinW;
         FTabRects[I].Left := X;
-        FTabRects[I].Top := 2;
+        FTabRects[I].Top := VertInset;
         FTabRects[I].Right := X + TabW;
-        FTabRects[I].Bottom := Height - 2;
-        X := FTabRects[I].Right + 4;
+        FTabRects[I].Bottom := Height - VertInset;
+        X := FTabRects[I].Right + TabGap;
       end;
     end;
     LayoutAddTabRect(MeasureCanvas, X);
@@ -415,7 +406,7 @@ var
   I: Integer;
   EffTheme: TThemeKind;
 begin
-  EffTheme := EffectiveControlTheme(Self, FTheme);
+  EffTheme := EffectiveControlTheme(Self, ThemeKind);
   LayoutTabs;
   for I := 0 to High(FTabRects) do
     PaintThemedTab(Canvas, FTabRects[I], TabCaptionAt(I), TabIsSelectedAt(I),
@@ -426,8 +417,14 @@ begin
 end;
 
 procedure TLcaThemedPageTabBar.Paint;
+var
+  P: TThemePalette;
+  R: TRect;
 begin
-  inherited Paint;
+  P := EffectivePalette;
+  R := ClientRect;
+  Canvas.Brush.Color := P.HeaderBg;
+  Canvas.FillRect(R);
   PaintTabStrip;
 end;
 

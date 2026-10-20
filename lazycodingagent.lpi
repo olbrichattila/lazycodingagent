@@ -36,6 +36,9 @@
     </RunParams>
     <RequiredPackages>
       <Item>
+        <PackageName Value="SynEditDsgn"/>
+      </Item>
+      <Item>
         <PackageName Value="LCL"/>
       </Item>
       <Item>

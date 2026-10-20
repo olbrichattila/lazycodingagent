@@ -42,14 +42,7 @@ object SettingsForm: TSettingsForm
         Top = 0
         Width = 1072
         Align = alClient
-        BevelOuter = bvNone
-        Color = 16118512
-        DoubleBuffered = True
         Font.Color = 2366488
-        ParentBackground = False
-        ParentColor = False
-        ParentDoubleBuffered = False
-        ParentFont = False
         TabOrder = 0
         PageControl = pgcSettings
         ShowAddTab = False

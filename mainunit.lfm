@@ -537,14 +537,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Top = 0
             Width = 316
             Align = alClient
-            BevelOuter = bvNone
-            Color = 16118512
-            DoubleBuffered = True
             Font.Color = 2366488
-            ParentBackground = False
-            ParentColor = False
-            ParentDoubleBuffered = False
-            ParentFont = False
             TabOrder = 0
             PageControl = pgcUtility
             ShowAddTab = False
@@ -925,14 +918,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Top = 0
             Width = 568
             Align = alClient
-            BevelOuter = bvNone
-            Color = 16118512
-            DoubleBuffered = True
             Font.Color = 2366488
-            ParentBackground = False
-            ParentColor = False
-            ParentDoubleBuffered = False
-            ParentFont = False
             TabOrder = 0
             PageControl = pgcCenter
             ShowAddTab = False
@@ -1001,14 +987,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               Top = 0
               Width = 616
               Align = alClient
-              BevelOuter = bvNone
-              Color = 16118512
-              DoubleBuffered = True
               Font.Color = 2366488
-              ParentBackground = False
-              ParentColor = False
-              ParentDoubleBuffered = False
-              ParentFont = False
               TabOrder = 0
               ShowAddTab = True
               AddTabCaption = '+'
@@ -1360,36 +1339,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             MouseLinkColor.Foreground = clBlue
             LineHighlightColor.Background = clNone
             LineHighlightColor.Foreground = clNone
-            inline SynLeftGutterPartList1: TSynGutterPartList
-              object SynGutterMarks1: TSynGutterMarks
-                Width = 36
-                MouseActions = <>
-              end
-              object SynGutterLineNumber1: TSynGutterLineNumber
-                Width = 15
-                MouseActions = <>
-                DigitCount = 2
-                ShowOnlyLineNumbersMultiplesOf = 1
-                ZeroStart = False
-                LeadingZeros = False
-              end
-              object SynGutterChanges1: TSynGutterChanges
-                Width = 6
-                MouseActions = <>
-                ModifiedColor = 59900
-                SavedColor = clGreen
-              end
-              object SynGutterSeparator1: TSynGutterSeparator
-                Width = 3
-                MouseActions = <>
-              end
-              object SynGutterCodeFolding1: TSynGutterCodeFolding
-                Width = 15
-                MouseActions = <>
-                MouseActionsExpanded = <>
-                MouseActionsCollapsed = <>
-              end
-            end
           end
         end
         object tsMarkdown: TTabSheet
