@@ -1005,7 +1005,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             TabOrder = 1
             object lblChatHeading: TLabel
               Left = 12
-              Height = 25
+              Height = 28
               Top = 8
               Width = 592
               Align = alTop
@@ -1013,6 +1013,10 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               BorderSpacing.Top = 8
               BorderSpacing.Right = 12
               Caption = 'What should we build?'
+              Font.Height = -20
+              Font.Style = [fsBold]
+              Layout = tlCenter
+              ParentFont = False
             end
             object lblChatSession: TLabel
               Left = 12

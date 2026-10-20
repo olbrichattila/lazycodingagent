@@ -11,7 +11,7 @@ unit LcaScrollHost;
 interface
 
 uses
-  Classes, Controls, ExtCtrls, Graphics, LcaThemedControl, LcaTheme;
+  Classes, Controls, ExtCtrls, Graphics, Types, LcaThemedControl, LcaTheme;
 
 type
   TLcaScrollAxis = (lsaNone, lsaVertical, lsaHorizontal);
@@ -96,7 +96,8 @@ type
     procedure HandleHostMouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure HandleHostMouseMove(Shift: TShiftState; X, Y: Integer);
     procedure HandleHostMouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
-    function HandleHostWheel(Shift: TShiftState; WheelDelta: Integer): Boolean;
+    function HostClientWidth: Integer;
+    function HostClientHeight: Integer;
   protected
     procedure DoApplyThemeColors(const P: TThemePalette); override;
     procedure PaintThemedClient(const ARect: TRect; const P: TThemePalette); override;
@@ -110,8 +111,16 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
+    function HandleHostWheel(Shift: TShiftState; WheelDelta: Integer): Boolean;
     procedure UpdateContentExtent(AWidth, AHeight: Integer);
     procedure PaintGutter(AGutter: TLcaScrollGutter; ACanvas: TCanvas);
+    function ViewportClientSize: TSize;
+    function LayoutViewportSize: TSize;
+    function ScrollPosition: TPoint;
+    function MaxScrollPosition: TPoint;
+    procedure SetScrollPosition(AX, AY: Integer);
+    procedure ScrollContentToEnd;
+    function ContentScrolledToEnd: Boolean;
   published
     property Content: TControl read FContent write SetContent;
     property ContentWidth: Integer read FContentWidth write SetContentWidth default 0;
@@ -130,7 +139,7 @@ type
 implementation
 
 uses
-  Math, Types, LCLType;
+  Math, LCLType;
 
 { TLcaScrollViewport }
 
@@ -145,6 +154,8 @@ begin
   Align := alNone;
   Anchors := [akLeft, akTop];
   Visible := False;
+  DoubleBuffered := True;
+  ControlStyle := ControlStyle + [csOpaque];
   SetSubComponent(True);
 end;
 
@@ -168,6 +179,7 @@ begin
   Caption := '';
   Parent := AHost;
   Align := alNone;
+  AutoSize := False;
   SetSubComponent(True);
 end;
 
@@ -218,6 +230,30 @@ end;
 function TLcaScrollHost.ScrollbarThickness: Integer;
 begin
   Result := ScaledThemedScrollbarThickness(Self);
+end;
+
+function TLcaScrollHost.HostClientWidth: Integer;
+var
+  R: TRect;
+begin
+  R := ClientRect;
+  Result := R.Right - R.Left;
+  if Result <= 0 then
+    Result := Width;
+  if Result <= 0 then
+    Result := ClientWidth;
+end;
+
+function TLcaScrollHost.HostClientHeight: Integer;
+var
+  R: TRect;
+begin
+  R := ClientRect;
+  Result := R.Bottom - R.Top;
+  if Result <= 0 then
+    Result := Height;
+  if Result <= 0 then
+    Result := ClientHeight;
 end;
 
 function TLcaScrollHost.MeasureContentExtent(AControl: TControl): TPoint;
@@ -338,8 +374,8 @@ begin
   BarW := ScrollbarThickness;
   CW := EffectiveContentWidth;
   CH := EffectiveContentHeight;
-  FViewportW := ClientWidth;
-  FViewportH := ClientHeight;
+  FViewportW := HostClientWidth;
+  FViewportH := HostClientHeight;
   FShowVBar := CH > FViewportH;
   if FShowVBar then
     Dec(FViewportW, BarW);
@@ -414,6 +450,70 @@ begin
   LayoutFromScroll;
 end;
 
+function TLcaScrollHost.ViewportClientSize: TSize;
+begin
+  if InDesignMode then
+    Exit(Size(Max(0, ClientWidth), Max(0, ClientHeight)));
+  ComputeScrollLayout;
+  Result := Size(FViewportW, FViewportH);
+end;
+
+function TLcaScrollHost.LayoutViewportSize: TSize;
+var
+  BarW, W, H: Integer;
+begin
+  W := HostClientWidth;
+  H := HostClientHeight;
+  if W < 0 then W := 0;
+  if H < 0 then H := 0;
+  if InDesignMode then
+    Exit(Size(W, H));
+  BarW := ScrollbarThickness;
+  if W > BarW then
+    Dec(W, BarW)
+  else
+    W := 0;
+  Result := Size(W, H);
+end;
+
+function TLcaScrollHost.ScrollPosition: TPoint;
+begin
+  Result := Point(FScrollX, FScrollY);
+end;
+
+function TLcaScrollHost.MaxScrollPosition: TPoint;
+begin
+  ComputeScrollLayout;
+  Result := Point(MaxScrollX, MaxScrollY);
+end;
+
+procedure TLcaScrollHost.SetScrollPosition(AX, AY: Integer);
+begin
+  if InDesignMode then Exit;
+  FScrollX := AX;
+  FScrollY := AY;
+  ClampScroll;
+  LayoutFromScroll;
+end;
+
+procedure TLcaScrollHost.ScrollContentToEnd;
+var
+  MaxP: TPoint;
+begin
+  MaxP := MaxScrollPosition;
+  SetScrollPosition(ScrollPosition.X, MaxP.Y);
+end;
+
+function TLcaScrollHost.ContentScrolledToEnd: Boolean;
+var
+  MaxY: Integer;
+begin
+  MaxY := MaxScrollPosition.Y;
+  if MaxY <= 0 then
+    Exit(True);
+  Result := FScrollY >= MaxY;
+end;
+
 procedure TLcaScrollHost.LayoutFromScroll;
 var
   CW, CH: Integer;
@@ -435,7 +535,12 @@ begin
     if Assigned(FVGutter) then begin
       if ShowVerticalBar then begin
         VTrack := VerticalTrackRect;
-        FVGutter.SetBounds(VTrack.Left, VTrack.Top, VTrack.Width, VTrack.Height);
+        FVGutter.Align := alNone;
+        if ShowHorizontalBar then
+          FVGutter.Anchors := [akTop, akRight]
+        else
+          FVGutter.Anchors := [akTop, akRight, akBottom];
+        FVGutter.SetBounds(VTrack.Left, VTrack.Top, VTrack.Width, VTrack.Bottom - VTrack.Top);
         FVGutter.Visible := True;
         FVGutter.BringToFront;
       end else
@@ -466,22 +571,23 @@ var
 begin
   BarW := ScrollbarThickness;
   TopY := 0;
-  BottomY := ClientHeight;
+  BottomY := HostClientHeight;
   if ShowHorizontalBar then
     Dec(BottomY, BarW);
-  Result := Rect(ClientWidth - BarW, TopY, ClientWidth, BottomY);
+  Result := Rect(HostClientWidth - BarW, TopY, HostClientWidth, BottomY);
 end;
 
 function TLcaScrollHost.HorizontalTrackRect: TRect;
 var
-  BarW, LeftX, RightX: Integer;
+  BarW, LeftX, RightX, HostH: Integer;
 begin
   BarW := ScrollbarThickness;
   LeftX := 0;
-  RightX := ClientWidth;
+  RightX := HostClientWidth;
+  HostH := HostClientHeight;
   if ShowVerticalBar then
     Dec(RightX, BarW);
-  Result := Rect(LeftX, ClientHeight - BarW, RightX, ClientHeight);
+  Result := Rect(LeftX, HostH - BarW, RightX, HostH);
 end;
 
 function TLcaScrollHost.VerticalThumbRect: TRect;
@@ -608,6 +714,7 @@ end;
 constructor TLcaScrollHost.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  AutoSize := False;
   ControlStyle := ControlStyle + [csAcceptsControls, csCaptureMouse, csClickEvents,
     csDoubleClicks];
   FContentWidth := 0;
