@@ -5,7 +5,7 @@ unit LcaThemedControl;
 { Base for custom-painted LCA controls (delivery 001+).
   Descendants: override DoApplyThemeColors / PaintThemedClient; use EffectivePalette in Paint.
   Geometry: streamed .lfm Align/Anchors/Width/Height — do not mix Align with manual SetBounds here.
-  DPI metric scaling: ChangeScale defers to inherited until layout tokens land in step 002. }
+  DPI chrome: ChangeScale calls inherited only; use ScaledLayoutMetric / ScaledThemed* from LcaTheme. }
 
 interface
 

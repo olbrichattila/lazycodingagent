@@ -46,6 +46,9 @@ function LazarusIdeHostExecutable: Boolean;
 function ParentFormHandlesReady(AControl: TControl): Boolean;
 
 const
+  { Layout metrics (delivery 002+): logical px at 96 DPI — scale with ScaledLayoutMetric.
+    Geometry owner = streamed .lfm Width/Height/Align/Anchors plus these tokens.
+    Theme/paint helpers must not SetBounds on controls whose geometry lives in .lfm. }
   { Fallback until the widget handle exists; GTK/Qt often normalize to 25. }
   ThemedComboBoxHeight = 25;
   ThemedComboBoxItemHeight = 22;
@@ -78,8 +81,19 @@ const
   ThemedNavListPadLeft = 14;
   ThemedNavListPadV = 4;
   ThemedNavListRowGap = 2;
+  { Painted scroll host (TLcaScrollHost) — bar thickness at 96 DPI. }
+  ThemedScrollbarThicknessBase = 12;
+  { Frameless title bar window buttons (min/max/close). }
+  ThemedWindowChromeButtonBaseWidth = 46;
 
+function ThemedLayoutPixelsPerInch(AControl: TControl): Integer;
+function ScaledLayoutMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
+function ScaledThemedScrollbarThickness(AControl: TControl): Integer;
+function ScaledThemedNavListItemHeight(AControl: TControl): Integer;
+function ScaledThemedNavListPadLeft(AControl: TControl): Integer;
+function ScaledThemedNavListPadV(AControl: TControl): Integer;
+function ScaledThemedNavListRowGap(AControl: TControl): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
 function ThemedButtonFontSize(AControl: TControl): Integer;
 function ThemedButtonHorizPad(AControl: TControl): Integer;
@@ -196,7 +210,7 @@ begin
   Result := Assigned(F) and F.HandleAllocated;
 end;
 
-function ThemedTabStripPixelsPerInch(AControl: TControl): Integer;
+function ThemedLayoutPixelsPerInch(AControl: TControl): Integer;
 var
   F: TCustomForm;
 begin
@@ -209,9 +223,39 @@ begin
     Result := Screen.PixelsPerInch;
 end;
 
+function ScaledLayoutMetric(AControl: TControl; ABaseAt96: Integer): Integer;
+begin
+  Result := MulDiv(ABaseAt96, ThemedLayoutPixelsPerInch(AControl), 96);
+end;
+
 function ScaledThemedTabMetric(AControl: TControl; ABaseAt96: Integer): Integer;
 begin
-  Result := MulDiv(ABaseAt96, ThemedTabStripPixelsPerInch(AControl), 96);
+  Result := ScaledLayoutMetric(AControl, ABaseAt96);
+end;
+
+function ScaledThemedScrollbarThickness(AControl: TControl): Integer;
+begin
+  Result := ScaledLayoutMetric(AControl, ThemedScrollbarThicknessBase);
+end;
+
+function ScaledThemedNavListItemHeight(AControl: TControl): Integer;
+begin
+  Result := ScaledLayoutMetric(AControl, ThemedNavListItemHeight);
+end;
+
+function ScaledThemedNavListPadLeft(AControl: TControl): Integer;
+begin
+  Result := ScaledLayoutMetric(AControl, ThemedNavListPadLeft);
+end;
+
+function ScaledThemedNavListPadV(AControl: TControl): Integer;
+begin
+  Result := ScaledLayoutMetric(AControl, ThemedNavListPadV);
+end;
+
+function ScaledThemedNavListRowGap(AControl: TControl): Integer;
+begin
+  Result := ScaledLayoutMetric(AControl, ThemedNavListRowGap);
 end;
 
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;

@@ -42,12 +42,9 @@ implementation
 uses
   Math;
 
-const
-  WindowChromeButtonBaseWidth = 46;
-
 function ScaledWindowChromeButtonWidth(AControl: TControl): Integer;
 begin
-  Result := ScaledThemedTabMetric(AControl, WindowChromeButtonBaseWidth);
+  Result := ScaledLayoutMetric(AControl, ThemedWindowChromeButtonBaseWidth);
 end;
 
 function TLcaThemedWindowButton.HostForm: TCustomForm;
