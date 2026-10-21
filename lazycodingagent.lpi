@@ -56,9 +56,6 @@
       <Item>
         <PackageName Value="LcaDesignSystem"/>
       </Item>
-      <Item>
-        <PackageName Value="LcaDesignSystemDesign"/>
-      </Item>
     </RequiredPackages>
     <Units>
       <Unit>
