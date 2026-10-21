@@ -72,6 +72,7 @@ type
     FWheelAccumX: Integer;
     FWheelAccumY: Integer;
     FWheelFlushQueued: Boolean;
+    FSuppressChromeInvalidate: Boolean;
     procedure ScheduleWheelFlush;
     procedure WheelFlush(Data: PtrInt);
     procedure InvalidateScrollGutters;
@@ -140,6 +141,9 @@ type
     function SyncedContentExtent: TSize;
     procedure SetViewportFillColor(AColor: TColor);
     function ViewportFillColor: TColor;
+    function ViewportPanel: TControl;
+    property SuppressChromeInvalidate: Boolean read FSuppressChromeInvalidate
+      write FSuppressChromeInvalidate;
   published
     property Content: TControl read FContent write SetContent;
     property ContentWidth: Integer read FContentWidth write SetContentWidth default 0;
@@ -639,12 +643,14 @@ begin
     FLastLayoutScrollY := FScrollY;
     FLastLayoutShowVBar := ShowV;
     FLastLayoutShowHBar := ShowH;
-    if NeedHostPaint then
+    if NeedHostPaint and not FSuppressChromeInvalidate then
       Invalidate;
-    if VGutterChanged or HGutterChanged then
-      InvalidateScrollGutters
-    else if ScrollChanged and (ShowV or ShowH) then
-      InvalidateScrollGutters;
+    if not FSuppressChromeInvalidate then begin
+      if VGutterChanged or HGutterChanged then
+        InvalidateScrollGutters
+      else if ScrollChanged and (ShowV or ShowH) then
+        InvalidateScrollGutters;
+    end;
   finally
     FLayoutGuard := False;
     Elapsed := GetTickCount64 - T0;
@@ -839,6 +845,11 @@ end;
 function TLcaScrollHost.ViewportFillColor: TColor;
 begin
   Result := FViewportFillColor;
+end;
+
+function TLcaScrollHost.ViewportPanel: TControl;
+begin
+  Result := FViewport;
 end;
 
 procedure TLcaScrollHost.SetViewportFillColor(AColor: TColor);
