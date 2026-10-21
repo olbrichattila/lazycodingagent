@@ -13,6 +13,8 @@ const
   LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT = 512;
   LCA_MARKDOWN_CONTENT_HEIGHT_SLACK = 3;
   LCA_MARKDOWN_RESIZE_QUIESCENCE_MS = 120;
+  { LCL SendMoveSizeMessages rejects control sizes above ~32767 on Win32. }
+  LCA_MARKDOWN_MAX_CONTENT_EXTENT = 32767;
 
 type
   TLcaMarkdownView = class;
@@ -511,6 +513,16 @@ begin
   B.Attach(HP, FScrollHost);
 end;
 
+function ClampMarkdownContentExtent(AValue: Integer): Integer;
+begin
+  if AValue <= 0 then
+    Result := AValue
+  else if AValue > LCA_MARKDOWN_MAX_CONTENT_EXTENT then
+    Result := LCA_MARKDOWN_MAX_CONTENT_EXTENT
+  else
+    Result := AValue;
+end;
+
 function TLcaMarkdownView.HostReadyForRender: Boolean;
 begin
   Result := HandleAllocated and Showing and (ClientWidth > 0) and (ClientHeight > 0);
@@ -713,6 +725,8 @@ begin
     Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
   LcaUiProfileRecordMarkdownGetContentSize;
   Sz := Panel.GetContentSize;
+  Sz.cx := ClampMarkdownContentExtent(Sz.cx);
+  Sz.cy := ClampMarkdownContentExtent(Sz.cy);
   if Sz.cy <= 0 then begin
     if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
       Inc(FContentSyncDeferRetries);
@@ -726,6 +740,8 @@ begin
     CW := Sz.cx
   else
     CW := ViewW;
+  CW := ClampMarkdownContentExtent(CW);
+  CH := ClampMarkdownContentExtent(CH);
   NeedUpdate := False;
   if (CH > FLastSyncedContentH) or (CW <> FLastSyncedContentW) then
     NeedUpdate := True

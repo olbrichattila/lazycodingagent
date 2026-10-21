@@ -168,6 +168,19 @@ implementation
 uses
   SysUtils, Math, LCLType, Forms, LcaUiPaintProfile, LcaUiScrollBuffer;
 
+const
+  LCA_SCROLL_HOST_MAX_CONTROL_SPAN = 32767;
+
+function ClampScrollHostControlSpan(AValue: Integer): Integer;
+begin
+  if AValue <= 0 then
+    Result := AValue
+  else if AValue > LCA_SCROLL_HOST_MAX_CONTROL_SPAN then
+    Result := LCA_SCROLL_HOST_MAX_CONTROL_SPAN
+  else
+    Result := AValue;
+end;
+
 { TLcaScrollViewport }
 
 constructor TLcaScrollViewport.Create(AOwner: TComponent; AHost: TLcaScrollHost);
@@ -478,8 +491,8 @@ end;
 
 procedure TLcaScrollHost.UpdateContentExtent(AWidth, AHeight: Integer);
 begin
-  FContentWidth := AWidth;
-  FContentHeight := AHeight;
+  FContentWidth := ClampScrollHostControlSpan(AWidth);
+  FContentHeight := ClampScrollHostControlSpan(AHeight);
   LayoutFromScroll;
 end;
 
@@ -591,8 +604,8 @@ begin
       if (FViewport.Width <> FViewportW) or (FViewport.Height <> FViewportH) then
         FViewport.SetBounds(0, 0, FViewportW, FViewportH);
     end;
-    CW := EffectiveContentWidth;
-    CH := EffectiveContentHeight;
+    CW := ClampScrollHostControlSpan(EffectiveContentWidth);
+    CH := ClampScrollHostControlSpan(EffectiveContentHeight);
     PriorContentBounds := FLastContentLayoutBounds;
     if FViewportOnlyContent then
       ContentBounds := Rect(0, 0, FViewportW, FViewportH)

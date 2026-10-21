@@ -128,7 +128,8 @@ begin
   Result :=
     '<html><head><meta charset="utf-8"><style>' +
     'body { font-family: Segoe UI, sans-serif; font-size: 10pt; margin: 8px; ' +
-    'background: ' + ColorToHex(P.Background) + '; color: ' + ColorToHex(P.Text) + '; } ' +
+    'background: ' + ColorToHex(P.Background) + '; color: ' + ColorToHex(P.Text) + '; ' +
+    'overflow-wrap: break-word; word-break: break-word; } ' +
     'h3.exec-section { color: ' + ColorToHex(P.Accent) + '; font-size: 11pt; ' +
     'margin: 1em 0 0.4em; padding-bottom: 4px; border-bottom: 1px solid ' +
     ColorToHex(P.Border) + '; } ' +
@@ -142,13 +143,15 @@ begin
     'border-radius: 3px; padding: 0 6px; margin-left: 6px; vertical-align: middle; } ' +
     'pre.json-block { background: ' + ColorToHex(P.SurfaceAlt) + '; ' +
     'border: 1px solid ' + ColorToHex(P.Border) + '; border-radius: 4px; ' +
-    'padding: 8px 10px; margin: 6px 0 12px; overflow-x: auto; ' +
+    'padding: 8px 10px; margin: 6px 0 12px; overflow-x: auto; max-width: 100%; ' +
+    'box-sizing: border-box; overflow-wrap: anywhere; ' +
     'font-family: Consolas, monospace; font-size: 10pt; line-height: 1.35; white-space: pre-wrap; } ' +
     'pre.json-block code { background: transparent; } ' +
     '.json-key { color: ' + ColorToHex(P.TextMuted) + '; } ' +
     'pre.prose-block { background: ' + ColorToHex(P.Surface) + '; ' +
     'border: 1px solid ' + ColorToHex(P.Border) + '; border-radius: 4px; ' +
-    'padding: 8px 10px; margin: 6px 0 12px; overflow-x: auto; ' +
+    'padding: 8px 10px; margin: 6px 0 12px; overflow-x: auto; max-width: 100%; ' +
+    'box-sizing: border-box; overflow-wrap: anywhere; ' +
     'font-family: Consolas, monospace; font-size: 10pt; line-height: 1.35; white-space: pre-wrap; } ' +
     'p.prose-empty { color: ' + ColorToHex(P.TextMuted) + '; font-style: italic; margin: 4px 0; } ' +
     '</style></head><body>' + ABodyHtml + '</body></html>';
