@@ -52,23 +52,16 @@ type
     FContentSyncQueued: Boolean;
     FContentSyncDeferRetries: Integer;
     FContentStabilityMeasureH: Integer;
-    FResizeBatchDepth: Integer;
-    FResizeQuiescenceQueued: Boolean;
-    FResizeQuiescenceDeadline: QWord;
-    FPendingViewportReflow: Boolean;
-    FContentSyncAfterResize: Boolean;
+    FViewportReflowQueued: Boolean;
+    FViewportReflowDeadline: QWord;
     FLastRenderedMarkdownLen: Integer;
     FLastRenderedRawHtmlLen: Integer;
     function ShouldResetLayoutBeforeRender: Boolean;
-    function ResizeBatchActive: Boolean;
-    procedure SetWin32ControlRedraw(AControl: TWinControl; AActive: Boolean);
-    procedure SetViewerRedrawActive(AActive: Boolean);
-    procedure BeginResizeBatchRedraw;
-    procedure EndResizeBatchRedraw;
-    procedure ScheduleResizeQuiescence;
-    procedure DeferredResizeQuiescence(Data: PtrInt);
+    procedure SetHtmlPanelRedrawActive(AActive: Boolean);
     procedure SetThemeKind(AValue: TThemeKind);
     procedure ApplyViewportWidthReflow;
+    procedure ScheduleDebouncedViewportReflow;
+    procedure DeferredViewportReflow(Data: PtrInt);
     function HostReadyForRender: Boolean;
     procedure EnsureViewer;
     procedure ScheduleDeferredRender;
@@ -83,11 +76,10 @@ type
     procedure ScheduleDeferredContentSync;
     procedure DeferredContentSync(Data: PtrInt);
     procedure ResetContentLayoutState;
-    procedure EnsureScrollHostFillsClient(AImmediateUpdate: Boolean = True);
+    procedure EnsureScrollHostFillsClient;
     procedure DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
     procedure HtmlDocumentOpened(Sender: TObject);
   protected
-    procedure WndProc(var Message: TLMessage); override;
     procedure Loaded; override;
     procedure Resize; override;
     procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
@@ -113,12 +105,6 @@ implementation
 uses
   Math, LCLIntf, IpHtmlTypes, StrUtils, LcaUiPaintProfile
   {$IFDEF LCLwin32}, Windows{$ENDIF};
-
-{$IFDEF LCLwin32}
-const
-  LCA_WM_ENTERSIZEMOVE = $0231;
-  LCA_WM_EXITSIZEMOVE = $0232;
-{$ENDIF}
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -368,11 +354,8 @@ begin
   FContentSyncQueued := False;
   FContentSyncDeferRetries := 0;
   FContentStabilityMeasureH := -1;
-  FResizeBatchDepth := 0;
-  FResizeQuiescenceQueued := False;
-  FResizeQuiescenceDeadline := 0;
-  FPendingViewportReflow := False;
-  FContentSyncAfterResize := False;
+  FViewportReflowQueued := False;
+  FViewportReflowDeadline := 0;
   FLastRenderedMarkdownLen := 0;
   FLastRenderedRawHtmlLen := 0;
 end;
@@ -413,8 +396,6 @@ end;
 destructor TLcaMarkdownView.Destroy;
 begin
   Application.RemoveAsyncCalls(Self);
-  while FResizeBatchDepth > 0 do
-    EndResizeBatchRedraw;
   FHtmlPanel := nil;
   FScrollHost := nil;
   inherited Destroy;
@@ -508,10 +489,6 @@ end;
 procedure TLcaMarkdownView.NotifyContentMaybeResized;
 begin
   if csDestroying in ComponentState then Exit;
-  if ResizeBatchActive then begin
-    FContentSyncAfterResize := True;
-    Exit;
-  end;
   ScheduleDeferredContentSync;
 end;
 
@@ -529,10 +506,6 @@ end;
 
 procedure TLcaMarkdownView.ScheduleDeferredContentSync;
 begin
-  if ResizeBatchActive then begin
-    FContentSyncAfterResize := True;
-    Exit;
-  end;
   if FContentSyncQueued then Exit;
   if csDestroying in ComponentState then Exit;
   FContentSyncQueued := True;
@@ -558,7 +531,7 @@ begin
   end;
 end;
 
-procedure TLcaMarkdownView.EnsureScrollHostFillsClient(AImmediateUpdate: Boolean);
+procedure TLcaMarkdownView.EnsureScrollHostFillsClient;
 begin
   if not Assigned(FScrollHost) then Exit;
   if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
@@ -566,8 +539,7 @@ begin
     FScrollHost.Align := alNone;
   FScrollHost.Anchors := [akLeft, akTop, akRight, akBottom];
   FScrollHost.SetBounds(0, 0, ClientWidth, ClientHeight);
-  if AImmediateUpdate then
-    FScrollHost.Update;
+  FScrollHost.Update;
 end;
 
 function TLcaMarkdownView.SyncContentLayout: Boolean;
@@ -581,11 +553,7 @@ begin
   if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
   if csDestroying in ComponentState then Exit;
   LcaUiProfileRecordMarkdownSyncContent;
-  if ResizeBatchActive then begin
-    FContentSyncAfterResize := True;
-    Exit(False);
-  end;
-  EnsureScrollHostFillsClient(not ResizeBatchActive);
+  EnsureScrollHostFillsClient;
   Panel := TIpHtmlPanel(FHtmlPanel);
   ViewSz := FScrollHost.LayoutViewportSize;
   ViewW := Max(1, ViewSz.cx);
@@ -619,10 +587,6 @@ begin
   if not NeedUpdate then begin
     Result := (FLastSyncedContentH > 0) and (FContentStabilityMeasureH = CH);
     if Result then Exit;
-    if ResizeBatchActive then begin
-      FContentSyncAfterResize := True;
-      Exit;
-    end;
     if FContentStabilityMeasureH <> CH then
       FContentStabilityMeasureH := CH
     else if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
@@ -731,99 +695,28 @@ begin
   Result := CurLen < LastLen;
 end;
 
-function TLcaMarkdownView.ResizeBatchActive: Boolean;
-begin
-  Result := FResizeBatchDepth > 0;
-end;
-
-procedure TLcaMarkdownView.SetWin32ControlRedraw(AControl: TWinControl; AActive: Boolean);
+procedure TLcaMarkdownView.SetHtmlPanelRedrawActive(AActive: Boolean);
+var
+  Panel: TIpHtmlPanel;
+  W: TWinControl;
 begin
   {$IFDEF LCLwin32}
-  if not Assigned(AControl) or not AControl.HandleAllocated then Exit;
+  if not Assigned(FHtmlPanel) then Exit;
+  if not (FHtmlPanel is TWinControl) then Exit;
+  W := TWinControl(FHtmlPanel);
+  if not W.HandleAllocated then Exit;
   if AActive then begin
-    SendMessage(AControl.Handle, WM_SETREDRAW, 1, 0);
-    InvalidateRect(AControl.Handle, nil, False);
+    SendMessage(W.Handle, WM_SETREDRAW, 1, 0);
+    InvalidateRect(W.Handle, nil, False);
   end else
-    SendMessage(AControl.Handle, WM_SETREDRAW, 0, 0);
+    SendMessage(W.Handle, WM_SETREDRAW, 0, 0);
+  if FHtmlPanel is TIpHtmlPanel then begin
+    Panel := TIpHtmlPanel(FHtmlPanel);
+    DisableIpHtmlPanelChromeScroll(Panel);
+  end;
   {$ELSE}
   if not AActive then ;
   {$ENDIF}
-end;
-
-procedure TLcaMarkdownView.SetViewerRedrawActive(AActive: Boolean);
-var
-  Panel: TIpHtmlPanel;
-  VP: TControl;
-begin
-  {$IFDEF LCLwin32}
-  if HandleAllocated then
-    SetWin32ControlRedraw(Self, AActive);
-  if Assigned(FScrollHost) then begin
-    SetWin32ControlRedraw(FScrollHost, AActive);
-    VP := FScrollHost.ViewportPanel;
-    if (VP is TWinControl) and TWinControl(VP).HandleAllocated then
-      SetWin32ControlRedraw(TWinControl(VP), AActive);
-  end;
-  if Assigned(FHtmlPanel) and (FHtmlPanel is TWinControl) then
-    SetWin32ControlRedraw(TWinControl(FHtmlPanel), AActive);
-  {$ENDIF}
-  if AActive and (FHtmlPanel is TIpHtmlPanel) then begin
-    Panel := TIpHtmlPanel(FHtmlPanel);
-    DisableIpHtmlNativeScroll(Panel);
-  end;
-end;
-
-procedure TLcaMarkdownView.BeginResizeBatchRedraw;
-begin
-  if FResizeBatchDepth = 0 then begin
-    SetViewerRedrawActive(False);
-    if Assigned(FScrollHost) then
-      FScrollHost.SuppressChromeInvalidate := True;
-  end;
-  Inc(FResizeBatchDepth);
-end;
-
-procedure TLcaMarkdownView.EndResizeBatchRedraw;
-begin
-  if FResizeBatchDepth <= 0 then Exit;
-  Dec(FResizeBatchDepth);
-  if FResizeBatchDepth > 0 then Exit;
-  if Assigned(FScrollHost) then
-    FScrollHost.SuppressChromeInvalidate := False;
-  SetViewerRedrawActive(True);
-end;
-
-procedure TLcaMarkdownView.ScheduleResizeQuiescence;
-begin
-  FResizeQuiescenceDeadline := GetTickCount64 + LCA_MARKDOWN_RESIZE_QUIESCENCE_MS;
-  if FResizeQuiescenceQueued then Exit;
-  if csDestroying in ComponentState then Exit;
-  FResizeQuiescenceQueued := True;
-  Application.QueueAsyncCall(@DeferredResizeQuiescence, PtrInt(Self));
-end;
-
-procedure TLcaMarkdownView.DeferredResizeQuiescence(Data: PtrInt);
-begin
-  if PtrInt(Self) <> Data then Exit;
-  if csDestroying in ComponentState then Exit;
-  if GetTickCount64 < FResizeQuiescenceDeadline then begin
-    Application.QueueAsyncCall(@DeferredResizeQuiescence, PtrInt(Self));
-    Exit;
-  end;
-  FResizeQuiescenceQueued := False;
-  if FResizeBatchDepth > 0 then
-    EndResizeBatchRedraw;
-  if FPendingViewportReflow then begin
-    FPendingViewportReflow := False;
-    FContentSyncAfterResize := False;
-    ApplyViewportWidthReflow;
-  end else begin
-    EnsureScrollHostFillsClient(True);
-    if FContentSyncAfterResize then begin
-      FContentSyncAfterResize := False;
-      ScheduleDeferredContentSync;
-    end;
-  end;
 end;
 
 procedure TLcaMarkdownView.Render;
@@ -854,11 +747,11 @@ begin
   Panel := TIpHtmlPanel(FHtmlPanel);
   FRendering := True;
   DisableAutoSizing;
-  SetViewerRedrawActive(False);
+  SetHtmlPanelRedrawActive(False);
   try
     if ShouldResetLayoutBeforeRender then
       ResetContentLayoutState;
-    EnsureScrollHostFillsClient(True);
+    EnsureScrollHostFillsClient;
     Panel.BgColor := ThemePalette(FThemeKind).Background;
     Panel.TextColor := ThemePalette(FThemeKind).Text;
     ViewSz := FScrollHost.LayoutViewportSize;
@@ -875,7 +768,7 @@ begin
       FLastRenderedMarkdownLen := Length(FMarkdown);
     ScheduleDeferredContentSync;
   finally
-    SetViewerRedrawActive(True);
+    SetHtmlPanelRedrawActive(True);
     EnableAutoSizing;
     FRendering := False;
   end;
@@ -944,7 +837,7 @@ var
 begin
   if csDesigning in ComponentState then Exit;
   if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
-  EnsureScrollHostFillsClient(True);
+  EnsureScrollHostFillsClient;
   Panel := TIpHtmlPanel(FHtmlPanel);
   ViewSz := FScrollHost.LayoutViewportSize;
   ViewW := Max(1, ViewSz.cx);
@@ -958,50 +851,49 @@ begin
   ScheduleDeferredContentSync;
 end;
 
+procedure TLcaMarkdownView.ScheduleDebouncedViewportReflow;
+begin
+  FViewportReflowDeadline := GetTickCount64 + LCA_MARKDOWN_RESIZE_QUIESCENCE_MS;
+  if FViewportReflowQueued then Exit;
+  FViewportReflowQueued := True;
+  Application.QueueAsyncCall(@DeferredViewportReflow, PtrInt(Self));
+end;
+
+procedure TLcaMarkdownView.DeferredViewportReflow(Data: PtrInt);
+begin
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  if GetTickCount64 < FViewportReflowDeadline then begin
+    Application.QueueAsyncCall(@DeferredViewportReflow, PtrInt(Self));
+    Exit;
+  end;
+  FViewportReflowQueued := False;
+  ApplyViewportWidthReflow;
+end;
+
 procedure TLcaMarkdownView.Resize;
 var
   ViewW: Integer;
   WidthChanged: Boolean;
-  HasDoc: Boolean;
 begin
   inherited Resize;
   if csDesigning in ComponentState then Exit;
   if not Assigned(FScrollHost) then Exit;
   if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
-  if FResizeBatchDepth = 0 then
-    BeginResizeBatchRedraw;
-  EnsureScrollHostFillsClient(not ResizeBatchActive);
+  EnsureScrollHostFillsClient;
   ViewW := FScrollHost.LayoutViewportSize.cx;
   if ViewW <= 0 then Exit;
-  WidthChanged := (ViewW <> FLastLayoutViewportW) and
-    ((FLastLayoutViewportW > 0) or (Assigned(FHtmlPanel) and
-    (TIpHtmlPanel(FHtmlPanel).Width <> ViewW)));
-  HasDoc := (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> ''));
-  if not HasDoc then begin
+  WidthChanged := (FLastLayoutViewportW > 0) and (ViewW <> FLastLayoutViewportW);
+  if not ((FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> ''))) then begin
     FLastLayoutViewportW := ViewW;
-    ScheduleResizeQuiescence;
     Exit;
   end;
   if WidthChanged then
-    FPendingViewportReflow := True;
-  ScheduleResizeQuiescence;
-end;
-
-procedure TLcaMarkdownView.WndProc(var Message: TLMessage);
-begin
-  {$IFDEF LCLwin32}
-  case Message.Msg of
-    LCA_WM_ENTERSIZEMOVE:
-      if FResizeBatchDepth = 0 then
-        BeginResizeBatchRedraw;
-    LCA_WM_EXITSIZEMOVE:
-      begin
-        FResizeQuiescenceDeadline := GetTickCount64;
-        ScheduleResizeQuiescence;
-      end;
-  end;
-  {$ENDIF}
-  inherited WndProc(Message);
+    ApplyViewportWidthReflow
+  else
+    EnsureScrollHostFillsClient;
+  if WidthChanged then
+    ScheduleDebouncedViewportReflow;
 end;
 
 function TLcaMarkdownView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
