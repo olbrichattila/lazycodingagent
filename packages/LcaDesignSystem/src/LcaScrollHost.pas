@@ -69,6 +69,12 @@ type
     FLastLayoutShowVBar: Boolean;
     FLastLayoutShowHBar: Boolean;
     FLastContentLayoutBounds: TRect;
+    FWheelAccumX: Integer;
+    FWheelAccumY: Integer;
+    FWheelFlushQueued: Boolean;
+    procedure ScheduleWheelFlush;
+    procedure WheelFlush(Data: PtrInt);
+    procedure InvalidateScrollGutters;
     function ClientAreaFillColor(const P: TThemePalette): TColor;
     procedure SetContent(AValue: TControl);
     procedure SetContentWidth(AValue: Integer);
@@ -120,6 +126,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     function HandleHostWheel(Shift: TShiftState; WheelDelta: Integer): Boolean;
     procedure UpdateContentExtent(AWidth, AHeight: Integer);
     procedure PaintGutter(AGutter: TLcaScrollGutter; ACanvas: TCanvas);
@@ -151,7 +158,7 @@ type
 implementation
 
 uses
-  Math, LCLType;
+  SysUtils, Math, LCLType, Forms, LcaUiPaintProfile, LcaUiScrollBuffer;
 
 { TLcaScrollViewport }
 
@@ -204,10 +211,16 @@ begin
 end;
 
 procedure TLcaScrollGutter.Paint;
+var
+  T0, Elapsed: QWord;
 begin
-  inherited Paint;
+  T0 := GetTickCount64;
   if Assigned(FHost) then
-    FHost.PaintGutter(Self, Canvas);
+    FHost.PaintGutter(Self, Canvas)
+  else
+    inherited Paint;
+  Elapsed := GetTickCount64 - T0;
+  LcaUiProfileRecordGutterPaint(Elapsed);
 end;
 
 procedure TLcaScrollGutter.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -531,6 +544,14 @@ begin
   Result := Size(FContentWidth, FContentHeight);
 end;
 
+procedure TLcaScrollHost.InvalidateScrollGutters;
+begin
+  if Assigned(FVGutter) and FVGutter.Visible then
+    FVGutter.Invalidate;
+  if Assigned(FHGutter) and FHGutter.Visible then
+    FHGutter.Invalidate;
+end;
+
 procedure TLcaScrollHost.LayoutFromScroll;
 var
   CW, CH: Integer;
@@ -538,11 +559,16 @@ var
   ShowV, ShowH: Boolean;
   ContentBounds: TRect;
   NeedHostPaint: Boolean;
+  ScrollChanged: Boolean;
   VGutterChanged, HGutterChanged: Boolean;
   PriorContentBounds: TRect;
+  ContentSetBounds: Boolean;
+  T0, Elapsed: QWord;
 begin
   if FLayoutGuard or InDesignMode then Exit;
   FLayoutGuard := True;
+  T0 := GetTickCount64;
+  ContentSetBounds := False;
   try
     AttachContentToViewport;
     RefreshContentReference;
@@ -550,8 +576,8 @@ begin
     ClampScroll;
     ShowV := ShowVerticalBar;
     ShowH := ShowHorizontalBar;
+    ScrollChanged := (FScrollX <> FLastLayoutScrollX) or (FScrollY <> FLastLayoutScrollY);
     NeedHostPaint := (FViewportW <> FLastLayoutViewportW) or (FViewportH <> FLastLayoutViewportH) or
-      (FScrollX <> FLastLayoutScrollX) or (FScrollY <> FLastLayoutScrollY) or
       (ShowV <> FLastLayoutShowVBar) or (ShowH <> FLastLayoutShowHBar);
     if Assigned(FViewport) then begin
       if (FViewport.Width <> FViewportW) or (FViewport.Height <> FViewportH) then
@@ -562,11 +588,11 @@ begin
     PriorContentBounds := FLastContentLayoutBounds;
     ContentBounds := Rect(-FScrollX, -FScrollY, -FScrollX + CW, -FScrollY + CH);
     if Assigned(FContent) then begin
-      if not EqualRect(ContentBounds, PriorContentBounds) then
+      if not EqualRect(ContentBounds, PriorContentBounds) then begin
         FContent.SetBounds(-FScrollX, -FScrollY, CW, CH);
+        ContentSetBounds := True;
+      end;
     end;
-    if not EqualRect(ContentBounds, PriorContentBounds) then
-      NeedHostPaint := True;
     FLastContentLayoutBounds := ContentBounds;
     VGutterChanged := False;
     HGutterChanged := False;
@@ -615,12 +641,14 @@ begin
     FLastLayoutShowHBar := ShowH;
     if NeedHostPaint then
       Invalidate;
-    if VGutterChanged and Assigned(FVGutter) and FVGutter.Visible then
-      FVGutter.Invalidate;
-    if HGutterChanged and Assigned(FHGutter) and FHGutter.Visible then
-      FHGutter.Invalidate;
+    if VGutterChanged or HGutterChanged then
+      InvalidateScrollGutters
+    else if ScrollChanged and (ShowV or ShowH) then
+      InvalidateScrollGutters;
   finally
     FLayoutGuard := False;
+    Elapsed := GetTickCount64 - T0;
+    LcaUiProfileRecordLayoutFromScroll(Elapsed, ContentSetBounds);
   end;
 end;
 
@@ -789,10 +817,10 @@ begin
   FLastContentLayoutBounds := Rect(-1, -1, -1, -1);
 
   FViewport := TLcaScrollViewport.Create(Self, Self);
-  {$IFDEF LCLQt5}
-  DoubleBuffered := False;
-  FViewport.DoubleBuffered := False;
-  {$ENDIF}
+  ApplyScrollHostDoubleBufferPolicy(Self, FViewport);
+  FWheelAccumX := 0;
+  FWheelAccumY := 0;
+  FWheelFlushQueued := False;
 
   FVGutter := TLcaScrollGutter.Create(Self, Self, lsaVertical);
   FHGutter := TLcaScrollGutter.Create(Self, Self, lsaHorizontal);
@@ -921,6 +949,34 @@ begin
   LayoutFromScroll;
 end;
 
+procedure TLcaScrollHost.ScheduleWheelFlush;
+begin
+  if FWheelFlushQueued then Exit;
+  FWheelFlushQueued := True;
+  Application.QueueAsyncCall(@WheelFlush, PtrInt(Self));
+end;
+
+procedure TLcaScrollHost.WheelFlush(Data: PtrInt);
+var
+  DX, DY: Integer;
+begin
+  FWheelFlushQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  DX := FWheelAccumX;
+  DY := FWheelAccumY;
+  FWheelAccumX := 0;
+  FWheelAccumY := 0;
+  if (DX = 0) and (DY = 0) then Exit;
+  ScrollByDelta(DX, DY);
+end;
+
+destructor TLcaScrollHost.Destroy;
+begin
+  Application.RemoveAsyncCalls(Self);
+  inherited Destroy;
+end;
+
 function TLcaScrollHost.HandleHostWheel(Shift: TShiftState; WheelDelta: Integer): Boolean;
 var
   Step: Integer;
@@ -929,9 +985,10 @@ begin
   Step := ScaledLayoutMetric(Self, 24);
   Delta := MulDiv(WheelDelta, Step, 120);
   if ssShift in Shift then
-    ScrollByDelta(-Delta, 0)
+    Inc(FWheelAccumX, -Delta)
   else
-    ScrollByDelta(0, -Delta);
+    Inc(FWheelAccumY, -Delta);
+  ScheduleWheelFlush;
   Result := True;
 end;
 

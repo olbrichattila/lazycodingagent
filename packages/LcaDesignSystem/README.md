@@ -96,6 +96,12 @@ scripts\recover-lazarus-ide.bat
 
 If it still hangs with **Coding Agent Chat** restored on the desktop, set that IDE window not visible in `environmentoptions.xml` (from the **lazaruscodingagent** plugin), rebuild the IDE once, then retry.
 
+## UI paint profiling (Windows / Linux)
+
+Optional counters for scroll, markdown, and themed control paint cost. Add custom define **`LCA_UI_PAINT_PROFILE`** to the app or **`LcaDesignSystem`** package (Lazarus: **Compiler Options → Custom options → `-dLCA_UI_PAINT_PROFILE`**), rebuild, run the app, and read **View → Debug Output** (once per second while the app runs).
+
+Compare idle, chat scroll, and live resize. To force double-buffered scroll hosts on Windows (default is off for large surfaces), add **`-dLCA_SCROLL_HOST_FORCE_DOUBLEBUFFER`**.
+
 ## Package
 
 - **`LcaDesignSystem.lpk`** — **RunTimeOnly** (app + `lazbuild`; all component units under `src/`). **`OtherUnitFiles=src`** is required at compile time (removing it breaks with `Can't find unit LcaTheme`).

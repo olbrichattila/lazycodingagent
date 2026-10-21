@@ -15,6 +15,14 @@
     <Version Major="0" Minor="1" Release="0"/>
     <Files>
       <Item>
+        <Filename Value="src\LcaUiPaintProfile.pas"/>
+        <UnitName Value="LcaUiPaintProfile"/>
+      </Item>
+      <Item>
+        <Filename Value="src\LcaUiScrollBuffer.pas"/>
+        <UnitName Value="LcaUiScrollBuffer"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaTheme.pas"/>
         <UnitName Value="LcaTheme"/>
       </Item>

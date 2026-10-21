@@ -8,10 +8,12 @@ unit LcaDesignSystem;
 interface
 
 uses
-  LcaTheme, LcaThemedButtonPaint, LcaThemeWin32Buttons, frmThemedMessage, 
-  LcaThemedMessageBox, LcaThemeWin32Combo, LcaThemedPageTabBar, 
-  LcaThemedButton, LcaThemedComboBox, LcaThemedControl, LcaNavRailButton, 
-  LcaSurfacePanel, LcaPaintSurface, LcaPaintButton, LcaPaintNavRailButton, LcaPaintComboBox, LcaScrollHost, LcaPaintNavList, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, 
+  LcaUiPaintProfile, LcaUiScrollBuffer, LcaTheme, LcaThemedButtonPaint, 
+  LcaThemeWin32Buttons, frmThemedMessage, LcaThemedMessageBox, 
+  LcaThemeWin32Combo, LcaThemedPageTabBar, LcaThemedButton, LcaThemedComboBox, 
+  LcaThemedControl, LcaNavRailButton, LcaSurfacePanel, LcaPaintSurface, 
+  LcaPaintButton, LcaPaintNavRailButton, LcaPaintComboBox, LcaScrollHost, 
+  LcaPaintNavList, LcaMarkdownView, LcaTerminalPanel, LcaThemeHooks, 
   LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedMenuFlyout, LcaOwlIconRes, 
   LcaThemedWindowButton, LcaFormChrome, LcaThemedTitleBar;
 

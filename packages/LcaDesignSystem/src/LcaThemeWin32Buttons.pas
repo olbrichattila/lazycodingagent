@@ -15,7 +15,7 @@ implementation
 {$IFDEF WINDOWS}
 
 uses
-  Graphics, LCLIntf, LMessages, Windows;
+  SysUtils, Graphics, LCLIntf, LMessages, Windows;
 
 type
   TWin32ThemedButtonPaint = class(TComponent)
@@ -28,6 +28,7 @@ type
     FInstalling: Boolean;
     FChainedWindowProc: Boolean;
     FPrevWindowProc: TWndMethod;
+    FClientCanvas: TCanvas;
     procedure ButtonWindowProc(var Message: TMessage);
     procedure InstallSubclass;
     procedure RemoveSubclass;
@@ -171,6 +172,7 @@ begin
   FSubclassInstalled := False;
   FInstalling := False;
   FChainedWindowProc := False;
+  FClientCanvas := TCanvas.Create;
 end;
 
 destructor TWin32ThemedButtonPaint.Destroy;
@@ -178,6 +180,10 @@ begin
   RemoveSubclass;
   if FChainedWindowProc and Assigned(FButton) then
     FButton.WindowProc := FPrevWindowProc;
+  if Assigned(FClientCanvas) then begin
+    FClientCanvas.Handle := 0;
+    FreeAndNil(FClientCanvas);
+  end;
   inherited Destroy;
 end;
 
@@ -203,24 +209,22 @@ end;
 procedure TWin32ThemedButtonPaint.PaintClient(HDC: HDC);
 var
   R: TRect;
-  Canvas: TCanvas;
   Enabled, Pressed, Focused: Boolean;
 begin
+  if not Assigned(FClientCanvas) then Exit;
   if not GetClientRect(FButton.Handle, R) then Exit;
-  Canvas := TCanvas.Create;
+  FClientCanvas.Handle := HDC;
   try
-    Canvas.Handle := HDC;
-    Canvas.Brush.Color := ParentBackgroundColor;
-    Canvas.FillRect(R);
+    FClientCanvas.Brush.Color := ParentBackgroundColor;
+    FClientCanvas.FillRect(R);
     Enabled := FButton.Enabled;
     Focused := GetFocus = FButton.Handle;
     Pressed := (SendMessage(FButton.Handle, BM_GETSTATE, 0, 0) and BST_PUSHED) <> 0;
-    Canvas.Font.Assign(FButton.Font);
-    PaintThemedButton(Canvas, R, FTheme, FRole, DisplayCaption, Enabled, FHover and Enabled,
+    FClientCanvas.Font.Assign(FButton.Font);
+    PaintThemedButton(FClientCanvas, R, FTheme, FRole, DisplayCaption, Enabled, FHover and Enabled,
       Pressed, Focused, ThemedButtonCornerRadius(FButton), FButton.Font.Size, 0, FButton);
   finally
-    Canvas.Handle := 0;
-    Canvas.Free;
+    FClientCanvas.Handle := 0;
   end;
 end;
 

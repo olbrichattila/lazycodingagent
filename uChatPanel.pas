@@ -11,6 +11,9 @@ uses
   uWorkspaceState,
   LcaMarkdownView;
 
+const
+  CHAT_HISTORY_REFRESH_MIN_MS = 120;
+
 type
   TPromptEvent = procedure(Sender: TObject; const APrompt: string;
     const AAttachments: array of TChatAttachment; AMode: TWorkspaceMode;
@@ -30,6 +33,8 @@ type
     FHistoryText: string;
     FHistoryRefreshQueued: Boolean;
     FHistoryScrollToEndPending: Boolean;
+    FHistoryRefreshDueTick: QWord;
+    FHistoryRefreshThrottleQueued: Boolean;
 
     FOnPrompt: TPromptEvent;
     FOnModeChange: TModeChangeEvent;
@@ -78,7 +83,10 @@ type
     procedure AppendToHistory(const ARoleLabel, ABody: string);
     procedure ApplyHistoryViewNow(AScrollToEnd: Boolean);
     procedure ScheduleHistoryRefresh;
+    procedure ScheduleThrottledHistoryRefresh;
     procedure DeferredHistoryRefresh(Data: PtrInt);
+    procedure DeferredThrottledHistoryRefresh(Data: PtrInt);
+    procedure FlushHistoryView;
     procedure RefreshHistoryView;
     function ToolMessageBody(const AMsg: TChatMessage): string;
   public
@@ -176,6 +184,7 @@ end;
 
 destructor TChatPanel.Destroy;
 begin
+  Application.RemoveAsyncCalls(Self);
   FHistoryView := nil;
   FOpenImageDialog.Free;
   FPendingImagePaths.Free;
@@ -456,6 +465,8 @@ end;
 
 procedure TChatPanel.SetRunning(ARunning: Boolean);
 begin
+  if (not ARunning) and FIsRunning then
+    FlushHistoryView;
   FIsRunning := ARunning;
   if Assigned(FStopBtn) then
     FStopBtn.Visible := ARunning;
@@ -469,12 +480,37 @@ begin
   EnsureHistoryView;
   if Assigned(FHistoryView) then
     FHistoryView.SetMarkdown(FHistoryText, AScrollToEnd);
+  FHistoryRefreshDueTick := GetTickCount64 + CHAT_HISTORY_REFRESH_MIN_MS;
+end;
+
+procedure TChatPanel.ScheduleThrottledHistoryRefresh;
+begin
+  if FHistoryRefreshThrottleQueued then Exit;
+  if csDestroying in ComponentState then Exit;
+  FHistoryRefreshThrottleQueued := True;
+  Application.QueueAsyncCall(@DeferredThrottledHistoryRefresh, PtrInt(Self));
+end;
+
+procedure TChatPanel.DeferredThrottledHistoryRefresh(Data: PtrInt);
+begin
+  FHistoryRefreshThrottleQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  if GetTickCount64 < FHistoryRefreshDueTick then begin
+    ScheduleThrottledHistoryRefresh;
+    Exit;
+  end;
+  ScheduleHistoryRefresh;
 end;
 
 procedure TChatPanel.ScheduleHistoryRefresh;
 begin
   if FHistoryRefreshQueued then Exit;
   if csDestroying in ComponentState then Exit;
+  if FIsRunning and (FHistoryRefreshDueTick <> 0) and (GetTickCount64 < FHistoryRefreshDueTick) then begin
+    ScheduleThrottledHistoryRefresh;
+    Exit;
+  end;
   FHistoryRefreshQueued := True;
   Application.QueueAsyncCall(@DeferredHistoryRefresh, PtrInt(Self));
 end;
@@ -489,6 +525,15 @@ begin
   Scroll := FHistoryScrollToEndPending;
   FHistoryScrollToEndPending := False;
   ApplyHistoryViewNow(Scroll);
+end;
+
+procedure TChatPanel.FlushHistoryView;
+begin
+  FHistoryRefreshThrottleQueued := False;
+  FHistoryRefreshQueued := False;
+  FHistoryRefreshDueTick := 0;
+  ApplyHistoryViewNow(FHistoryScrollToEndPending);
+  FHistoryScrollToEndPending := False;
 end;
 
 procedure TChatPanel.RefreshHistoryView;

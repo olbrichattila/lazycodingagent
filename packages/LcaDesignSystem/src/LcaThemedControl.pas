@@ -34,7 +34,7 @@ type
 implementation
 
 uses
-  SysUtils, Types;
+  SysUtils, Types, LcaUiPaintProfile;
 
 procedure TLcaThemedControl.SetThemeKind(AValue: TThemeKind);
 begin
@@ -99,7 +99,9 @@ procedure TLcaThemedControl.Paint;
 var
   P: TThemePalette;
   R: TRect;
+  T0, Elapsed: QWord;
 begin
+  T0 := GetTickCount64;
   P := EffectivePalette;
   R := ClientRect;
   PaintThemedClient(R, P);
@@ -109,6 +111,8 @@ begin
     Canvas.Brush.Style := bsClear;
     Canvas.TextOut(4, 4, ClassName);
   end;
+  Elapsed := GetTickCount64 - T0;
+  LcaUiProfileRecordThemedPaint(Elapsed);
 end;
 
 procedure TLcaThemedControl.ChangeScale(M, D: Integer);

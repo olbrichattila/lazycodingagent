@@ -44,6 +44,7 @@ type
     function EffectiveTheme: TThemeKind;
     function ScaledRowStride: Integer;
     function ContentPixelHeight: Integer;
+    function ContentScrollY: Integer;
     procedure SyncContentLayout;
     procedure ChangeItemIndex(AValue: Integer; AScrollIntoView: Boolean; AFireClick: Boolean);
     function IndexAtContentY(Y: Integer): Integer;
@@ -100,7 +101,15 @@ begin
   inherited Create(AOwner);
   FList := AList;
   ControlStyle := ControlStyle + [csOpaque, csAcceptsControls];
+  {$IFDEF LCA_SCROLL_HOST_FORCE_DOUBLEBUFFER}
   DoubleBuffered := True;
+  {$ELSE}
+  {$IFDEF LCLwin32}
+  DoubleBuffered := False;
+  {$ELSE}
+  DoubleBuffered := True;
+  {$ENDIF}
+  {$ENDIF}
   BorderStyle := bsNone;
   AutoSize := False;
   SetSubComponent(True);
@@ -108,7 +117,7 @@ end;
 
 procedure TLcaPaintNavListContent.Paint;
 var
-  I, Count, RowH: Integer;
+  I, Count, RowH, FirstRow, LastRow, ScrollY: Integer;
   R: TRect;
   State: TOwnerDrawState;
   Cap: string;
@@ -131,15 +140,18 @@ begin
     Exit;
   end;
   Count := FList.Items.Count;
-  for I := 0 to Count - 1 do begin
+  if Count <= 0 then Exit;
+  ScrollY := FList.ContentScrollY;
+  FirstRow := ScrollY div RowH;
+  if FirstRow < 0 then FirstRow := 0;
+  LastRow := (ScrollY + Height + RowH - 1) div RowH;
+  if LastRow >= Count then LastRow := Count - 1;
+  for I := FirstRow to LastRow do begin
     R := Rect(0, I * RowH, Width, (I + 1) * RowH);
     State := [];
     if I = FList.ItemIndex then
       Include(State, odSelected);
-    if I < Count then
-      Cap := FList.Items[I]
-    else
-      Cap := '';
+    Cap := FList.Items[I];
     PaintThemedNavListItem(Canvas, R, Cap, State, EffTheme, FList);
   end;
 end;
@@ -192,6 +204,13 @@ begin
   Result := ScaledLayoutMetric(Self, FItemHeight);
   if Result < 1 then
     Result := 1;
+end;
+
+function TLcaPaintNavList.ContentScrollY: Integer;
+begin
+  Result := 0;
+  if Assigned(FScrollHost) then
+    Result := FScrollHost.ScrollPosition.Y;
 end;
 
 function TLcaPaintNavList.ContentPixelHeight: Integer;

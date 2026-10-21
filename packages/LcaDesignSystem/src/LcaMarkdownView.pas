@@ -12,6 +12,7 @@ const
   LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
   LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT = 512;
   LCA_MARKDOWN_CONTENT_HEIGHT_SLACK = 3;
+  LCA_MARKDOWN_RESIZE_QUIESCENCE_MS = 120;
 
 type
   TLcaMarkdownView = class;
@@ -21,6 +22,8 @@ type
   private
     FScrollHost: TLcaScrollHost;
     FOwnerView: TLcaMarkdownView;
+  protected
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
   public
     procedure BindScrollHost(AHost: TLcaScrollHost);
     procedure BindOwnerView(AView: TLcaMarkdownView);
@@ -49,7 +52,16 @@ type
     FContentSyncQueued: Boolean;
     FContentSyncDeferRetries: Integer;
     FContentStabilityMeasureH: Integer;
+    FViewportReflowQueued: Boolean;
+    FViewportReflowDeadline: QWord;
+    FLastRenderedMarkdownLen: Integer;
+    FLastRenderedRawHtmlLen: Integer;
+    function ShouldResetLayoutBeforeRender: Boolean;
+    procedure SetHtmlPanelRedrawActive(AActive: Boolean);
     procedure SetThemeKind(AValue: TThemeKind);
+    procedure ApplyViewportWidthReflow;
+    procedure ScheduleDebouncedViewportReflow;
+    procedure DeferredViewportReflow(Data: PtrInt);
     function HostReadyForRender: Boolean;
     procedure EnsureViewer;
     procedure ScheduleDeferredRender;
@@ -91,7 +103,8 @@ function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): st
 implementation
 
 uses
-  Math, LCLIntf, IpHtmlTypes, StrUtils;
+  Math, LCLIntf, IpHtmlTypes, StrUtils, LcaUiPaintProfile
+  {$IFDEF LCLwin32}, Windows{$ENDIF};
 
 function ColorToHex(AColor: TColor): string;
 begin
@@ -341,6 +354,16 @@ begin
   FContentSyncQueued := False;
   FContentSyncDeferRetries := 0;
   FContentStabilityMeasureH := -1;
+  FViewportReflowQueued := False;
+  FViewportReflowDeadline := 0;
+  FLastRenderedMarkdownLen := 0;
+  FLastRenderedRawHtmlLen := 0;
+end;
+
+procedure TLcaMarkdownHtmlPanel.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  LcaUiProfileRecordIpHtmlSetBounds;
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
 end;
 
 procedure TLcaMarkdownHtmlPanel.BindScrollHost(AHost: TLcaScrollHost);
@@ -386,7 +409,8 @@ end;
 procedure TLcaMarkdownView.ScheduleDeferredRender;
 begin
   if FRenderDeferQueued then Exit;
-  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then Exit;
+  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then
+    Exit;
   Inc(FRenderDeferRetries);
   FRenderDeferQueued := True;
   Application.QueueAsyncCall(@DeferredRender, PtrInt(Self));
@@ -474,6 +498,8 @@ begin
   FLastSyncedContentH := 0;
   FContentSyncDeferRetries := 0;
   FContentStabilityMeasureH := -1;
+  FLastRenderedMarkdownLen := 0;
+  FLastRenderedRawHtmlLen := 0;
   if Assigned(FScrollHost) then
     FScrollHost.UpdateContentExtent(0, 0);
 end;
@@ -495,8 +521,14 @@ begin
   if csDestroying in ComponentState then Exit;
   if not Assigned(FHtmlPanel) or not Assigned(FScrollHost) then Exit;
   Settled := SyncContentLayout;
-  if FScrollToEndPending and Settled then
-    ScheduleScrollToEndAfterRender;
+  if FScrollToEndPending and Settled then begin
+    ScrollDocumentToEnd;
+    if IsDocumentScrolledToEnd then begin
+      FScrollToEndPending := False;
+      FScrollDeferRetries := 0;
+    end else
+      ScheduleDeferredScrollToEnd;
+  end;
 end;
 
 procedure TLcaMarkdownView.EnsureScrollHostFillsClient;
@@ -520,6 +552,7 @@ begin
   Result := False;
   if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
   if csDestroying in ComponentState then Exit;
+  LcaUiProfileRecordMarkdownSyncContent;
   EnsureScrollHostFillsClient;
   Panel := TIpHtmlPanel(FHtmlPanel);
   ViewSz := FScrollHost.LayoutViewportSize;
@@ -529,6 +562,7 @@ begin
     Max(1, ViewSz.cy)));
   if (Panel.Width <> ViewW) or (Panel.Height < LayPanelH) then
     Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
+  LcaUiProfileRecordMarkdownGetContentSize;
   Sz := Panel.GetContentSize;
   if Sz.cy <= 0 then begin
     if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
@@ -573,8 +607,9 @@ end;
 procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
 begin
   if FScrollDeferQueued then Exit;
-  if FScrollDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
+  if FScrollDeferRetries >= 4 then begin
     FScrollToEndPending := False;
+    FScrollDeferRetries := 0;
     Exit;
   end;
   Inc(FScrollDeferRetries);
@@ -627,9 +662,6 @@ begin
       FScrollHost.SetViewportFillColor(ThemePalette(FThemeKind).Background);
       FScrollHost.AutoSize := False;
       EnsureScrollHostFillsClient;
-      {$IFDEF LCLQt5}
-      FScrollHost.DoubleBuffered := False;
-      {$ENDIF}
     end;
     Html := TLcaMarkdownHtmlPanel.Create(Self);
     Html.Parent := FScrollHost;
@@ -646,6 +678,45 @@ begin
   finally
     EnableAutoSizing;
   end;
+end;
+
+function TLcaMarkdownView.ShouldResetLayoutBeforeRender: Boolean;
+var
+  CurLen, LastLen: Integer;
+begin
+  if FUseRawHtml then begin
+    CurLen := Length(FRawHtml);
+    LastLen := FLastRenderedRawHtmlLen;
+  end else begin
+    CurLen := Length(FMarkdown);
+    LastLen := FLastRenderedMarkdownLen;
+  end;
+  if LastLen <= 0 then Exit(True);
+  Result := CurLen < LastLen;
+end;
+
+procedure TLcaMarkdownView.SetHtmlPanelRedrawActive(AActive: Boolean);
+var
+  Panel: TIpHtmlPanel;
+  W: TWinControl;
+begin
+  {$IFDEF LCLwin32}
+  if not Assigned(FHtmlPanel) then Exit;
+  if not (FHtmlPanel is TWinControl) then Exit;
+  W := TWinControl(FHtmlPanel);
+  if not W.HandleAllocated then Exit;
+  if AActive then begin
+    SendMessage(W.Handle, WM_SETREDRAW, 1, 0);
+    InvalidateRect(W.Handle, nil, False);
+  end else
+    SendMessage(W.Handle, WM_SETREDRAW, 0, 0);
+  if FHtmlPanel is TIpHtmlPanel then begin
+    Panel := TIpHtmlPanel(FHtmlPanel);
+    DisableIpHtmlPanelChromeScroll(Panel);
+  end;
+  {$ELSE}
+  if not AActive then ;
+  {$ENDIF}
 end;
 
 procedure TLcaMarkdownView.Render;
@@ -668,6 +739,7 @@ begin
     Exit;
   end;
   if csDestroying in FHtmlPanel.ComponentState then Exit;
+  LcaUiProfileRecordMarkdownRender;
   if FUseRawHtml then
     Html := FRawHtml
   else
@@ -675,8 +747,10 @@ begin
   Panel := TIpHtmlPanel(FHtmlPanel);
   FRendering := True;
   DisableAutoSizing;
+  SetHtmlPanelRedrawActive(False);
   try
-    ResetContentLayoutState;
+    if ShouldResetLayoutBeforeRender then
+      ResetContentLayoutState;
     EnsureScrollHostFillsClient;
     Panel.BgColor := ThemePalette(FThemeKind).Background;
     Panel.TextColor := ThemePalette(FThemeKind).Text;
@@ -688,8 +762,13 @@ begin
       Panel.SetBounds(0, 0, ViewW, LayPanelH);
     Panel.SetHtmlFromStr(Html);
     DisableIpHtmlNativeScroll(Panel);
+    if FUseRawHtml then
+      FLastRenderedRawHtmlLen := Length(FRawHtml)
+    else
+      FLastRenderedMarkdownLen := Length(FMarkdown);
     ScheduleDeferredContentSync;
   finally
+    SetHtmlPanelRedrawActive(True);
     EnableAutoSizing;
     FRendering := False;
   end;
@@ -710,7 +789,7 @@ begin
     Exit;
   end;
   FMarkdown := AMarkdown;
-  Render;
+  ScheduleDeferredRender;
 end;
 
 procedure TLcaMarkdownView.SetHtmlBody(const AFullHtml: string);
@@ -718,7 +797,7 @@ begin
   FUseRawHtml := True;
   FMarkdown := '';
   FRawHtml := AFullHtml;
-  Render;
+  ScheduleDeferredRender;
 end;
 
 procedure TLcaMarkdownView.ApplyTheme(ATheme: TThemeKind);
@@ -736,12 +815,8 @@ begin
     FScrollHost.ThemeKind := ATheme;
     FScrollHost.ApplyTheme(ATheme);
   end;
-  if Assigned(FHtmlPanel) then begin
-    if FUseRawHtml and (FRawHtml <> '') then
-      Render
-    else if FMarkdown <> '' then
-      Render;
-  end;
+  if (FUseRawHtml and (FRawHtml <> '')) or (FMarkdown <> '') then
+    ScheduleDeferredRender;
 end;
 
 procedure TLcaMarkdownView.Loaded;
@@ -752,6 +827,48 @@ begin
   EnsureScrollHostFillsClient;
   if (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> '')) then
     ScheduleDeferredRender;
+end;
+
+procedure TLcaMarkdownView.ApplyViewportWidthReflow;
+var
+  Panel: TIpHtmlPanel;
+  ViewSz: TSize;
+  ViewW, LayPanelH: Integer;
+begin
+  if csDesigning in ComponentState then Exit;
+  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
+  EnsureScrollHostFillsClient;
+  Panel := TIpHtmlPanel(FHtmlPanel);
+  ViewSz := FScrollHost.LayoutViewportSize;
+  ViewW := Max(1, ViewSz.cx);
+  if (FLastLayoutViewportW > 0) and (ViewW <> FLastLayoutViewportW) then
+    FContentStabilityMeasureH := -1;
+  FLastLayoutViewportW := ViewW;
+  LayPanelH := Max(LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT, Max(FLastSyncedContentH,
+    Max(1, ViewSz.cy)));
+  if (Panel.Width <> ViewW) or (Panel.Height < LayPanelH) then
+    Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
+  ScheduleDeferredContentSync;
+end;
+
+procedure TLcaMarkdownView.ScheduleDebouncedViewportReflow;
+begin
+  FViewportReflowDeadline := GetTickCount64 + LCA_MARKDOWN_RESIZE_QUIESCENCE_MS;
+  if FViewportReflowQueued then Exit;
+  FViewportReflowQueued := True;
+  Application.QueueAsyncCall(@DeferredViewportReflow, PtrInt(Self));
+end;
+
+procedure TLcaMarkdownView.DeferredViewportReflow(Data: PtrInt);
+begin
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  if GetTickCount64 < FViewportReflowDeadline then begin
+    Application.QueueAsyncCall(@DeferredViewportReflow, PtrInt(Self));
+    Exit;
+  end;
+  FViewportReflowQueued := False;
+  ApplyViewportWidthReflow;
 end;
 
 procedure TLcaMarkdownView.Resize;
@@ -767,13 +884,16 @@ begin
   ViewW := FScrollHost.LayoutViewportSize.cx;
   if ViewW <= 0 then Exit;
   WidthChanged := (FLastLayoutViewportW > 0) and (ViewW <> FLastLayoutViewportW);
-  if WidthChanged then begin
-    FContentStabilityMeasureH := -1;
-    FLastSyncedContentW := 0;
-    FLastSyncedContentH := 0;
-    if (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> '')) then
-      ScheduleDeferredRender;
+  if not ((FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> ''))) then begin
+    FLastLayoutViewportW := ViewW;
+    Exit;
   end;
+  if WidthChanged then
+    ApplyViewportWidthReflow
+  else
+    EnsureScrollHostFillsClient;
+  if WidthChanged then
+    ScheduleDebouncedViewportReflow;
 end;
 
 function TLcaMarkdownView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
@@ -793,6 +913,7 @@ begin
   if not Showing then Exit;
   if (FMarkdown = '') and not (FUseRawHtml and (FRawHtml <> '')) then Exit;
   FRenderDeferRetries := 0;
+  FRenderDeferQueued := False;
   ScheduleDeferredRender;
 end;
 
