@@ -78,6 +78,7 @@ type
     procedure ResetContentLayoutState;
     procedure EnsureScrollHostFillsClient;
     procedure DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
+    procedure EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
     procedure HtmlDocumentOpened(Sender: TObject);
   protected
     procedure Loaded; override;
@@ -401,6 +402,115 @@ begin
   inherited Destroy;
 end;
 
+type
+  { Intercepts wheel on IPro HyperPanel before IPro marks it handled with no host scroll. }
+  TLcaIproHyperWheelBridge = class(TComponent)
+  private
+    FHyper: TIpHtmlInternalPanel;
+    FScrollHost: TLcaScrollHost;
+    FPrevWindowProc: TWndMethod;
+    FChained: Boolean;
+    procedure HyperWindowProc(var Message: TLMessage);
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  public
+    destructor Destroy; override;
+    procedure Attach(AHyper: TIpHtmlInternalPanel; AHost: TLcaScrollHost);
+    procedure Detach;
+    procedure UpdateScrollHost(AHost: TLcaScrollHost);
+    function IsBoundTo(AHyper: TIpHtmlInternalPanel): Boolean;
+  end;
+
+function TLcaIproHyperWheelBridge.IsBoundTo(AHyper: TIpHtmlInternalPanel): Boolean;
+begin
+  Result := FHyper = AHyper;
+end;
+
+destructor TLcaIproHyperWheelBridge.Destroy;
+begin
+  Detach;
+  inherited Destroy;
+end;
+
+procedure TLcaIproHyperWheelBridge.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FHyper) then
+    Detach;
+end;
+
+procedure TLcaIproHyperWheelBridge.Detach;
+begin
+  if FChained and Assigned(FHyper) then
+    FHyper.WindowProc := FPrevWindowProc;
+  FChained := False;
+  FPrevWindowProc := nil;
+  if Assigned(FHyper) then
+    FHyper.RemoveFreeNotification(Self);
+  FHyper := nil;
+  FScrollHost := nil;
+end;
+
+procedure TLcaIproHyperWheelBridge.UpdateScrollHost(AHost: TLcaScrollHost);
+begin
+  FScrollHost := AHost;
+end;
+
+procedure TLcaIproHyperWheelBridge.Attach(AHyper: TIpHtmlInternalPanel;
+  AHost: TLcaScrollHost);
+begin
+  if (FHyper = AHyper) and FChained then begin
+    UpdateScrollHost(AHost);
+    Exit;
+  end;
+  Detach;
+  FHyper := AHyper;
+  FScrollHost := AHost;
+  if not Assigned(FHyper) then Exit;
+  FHyper.FreeNotification(Self);
+  FPrevWindowProc := FHyper.WindowProc;
+  FHyper.WindowProc := @HyperWindowProc;
+  FChained := True;
+end;
+
+procedure TLcaIproHyperWheelBridge.HyperWindowProc(var Message: TLMessage);
+var
+  Ev: TLMMouseEvent absolute Message;
+  ShiftState: TShiftState;
+begin
+  if Assigned(FScrollHost) and ((Message.Msg = LM_MOUSEWHEEL) or
+    (Message.Msg = LM_MOUSEHWHEEL)) then begin
+    ShiftState := Ev.State - [ssCaps, ssNum, ssScroll];
+    if Message.Msg = LM_MOUSEHWHEEL then
+      Include(ShiftState, ssShift);
+    FScrollHost.HandleHostWheel(ShiftState, Ev.WheelDelta);
+    Message.Result := 1;
+    Exit;
+  end;
+  if Assigned(FPrevWindowProc) then
+    FPrevWindowProc(Message);
+end;
+
+procedure TLcaMarkdownView.EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
+var
+  I: Integer;
+  B: TLcaIproHyperWheelBridge;
+begin
+  if csDestroying in ComponentState then Exit;
+  if not Assigned(FScrollHost) or not Assigned(HP) then Exit;
+  for I := 0 to ComponentCount - 1 do
+    if Components[I] is TLcaIproHyperWheelBridge then begin
+      B := TLcaIproHyperWheelBridge(Components[I]);
+      if B.IsBoundTo(HP) then begin
+        B.UpdateScrollHost(FScrollHost);
+        Exit;
+      end;
+    end;
+  B := TLcaIproHyperWheelBridge.Create(Self);
+  B.Attach(HP, FScrollHost);
+end;
+
 function TLcaMarkdownView.HostReadyForRender: Boolean;
 begin
   Result := HandleAllocated and Showing and (ClientWidth > 0) and (ClientHeight > 0);
@@ -451,32 +561,71 @@ begin
   FScrollHost.ScrollContentToEnd;
 end;
 
-procedure DisableIpHtmlPanelChromeScroll(APanel: TWinControl);
-var
-  I: Integer;
-  C: TWinControl;
+procedure SuppressIpHtmlInternalScroll(HP: TIpHtmlInternalPanel);
 begin
-  { Only the viewer + IPro HyperPanel host — not embedded HTML form controls (Qt5 breaks). }
-  if not Assigned(APanel) then Exit;
-  if APanel.HandleAllocated then begin
-    ShowScrollBar(APanel.Handle, SB_VERT, False);
-    ShowScrollBar(APanel.Handle, SB_HORZ, False);
+  HP.HScroll.Visible := False;
+  HP.VScroll.Visible := False;
+  HP.HScroll.Position := 0;
+  HP.VScroll.Position := 0;
+end;
+
+{$IFDEF LCLwin32}
+procedure HideWin32ScrollChrome(AWin: TWinControl);
+var
+  Style: PtrUInt;
+const
+  GWL_STYLE_WIN32 = -16;
+begin
+  if not Assigned(AWin) or not AWin.HandleAllocated then Exit;
+  Style := GetWindowLongPtr(AWin.Handle, GWL_STYLE_WIN32);
+  if (Style and (WS_VSCROLL or WS_HSCROLL)) <> 0 then begin
+    SetWindowLongPtr(AWin.Handle, GWL_STYLE_WIN32, Style and not (WS_VSCROLL or WS_HSCROLL));
+    SetWindowPos(AWin.Handle, 0, 0, 0, 0, 0,
+      SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_FRAMECHANGED or SWP_NOACTIVATE);
   end;
-  for I := 0 to APanel.ControlCount - 1 do
-    if APanel.Controls[I] is TWinControl then begin
-      C := TWinControl(APanel.Controls[I]);
-      if C.HandleAllocated then begin
-        ShowScrollBar(C.Handle, SB_VERT, False);
-        ShowScrollBar(C.Handle, SB_HORZ, False);
-      end;
+  ShowScrollBar(AWin.Handle, SB_VERT, False);
+  ShowScrollBar(AWin.Handle, SB_HORZ, False);
+end;
+{$ENDIF}
+
+procedure DisableIpHtmlPanelChromeScroll(APanel: TWinControl; AOwnerView: TLcaMarkdownView);
+
+  procedure WalkIproHosts(AHost: TWinControl);
+  var
+    I: Integer;
+    C: TControl;
+    HP: TIpHtmlInternalPanel;
+  begin
+    if AHost is TIpHtmlInternalPanel then begin
+      HP := TIpHtmlInternalPanel(AHost);
+      SuppressIpHtmlInternalScroll(HP);
+      {$IFDEF LCLwin32}
+      HideWin32ScrollChrome(HP);
+      {$ENDIF}
+      if Assigned(AOwnerView) then
+        AOwnerView.EnsureHyperWheelBridge(HP);
     end;
+    for I := 0 to AHost.ControlCount - 1 do begin
+      C := AHost.Controls[I];
+      if C is TWinControl then
+        WalkIproHosts(TWinControl(C));
+    end;
+  end;
+
+begin
+  { IPro HyperPanel hosts only — do not ShowScrollBar on embedded HTML form controls (Qt breaks). }
+  if not Assigned(APanel) then Exit;
+  WalkIproHosts(APanel);
+  {$IFDEF LCLwin32}
+  HideWin32ScrollChrome(APanel);
+  {$ENDIF}
 end;
 
 procedure TLcaMarkdownView.DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
 begin
   if not Assigned(APanel) then Exit;
   APanel.VScrollPos := 0;
-  DisableIpHtmlPanelChromeScroll(APanel);
+  DisableIpHtmlPanelChromeScroll(APanel, Self);
 end;
 
 procedure TLcaMarkdownView.HtmlDocumentOpened(Sender: TObject);
@@ -712,7 +861,7 @@ begin
     SendMessage(W.Handle, WM_SETREDRAW, 0, 0);
   if FHtmlPanel is TIpHtmlPanel then begin
     Panel := TIpHtmlPanel(FHtmlPanel);
-    DisableIpHtmlPanelChromeScroll(Panel);
+    DisableIpHtmlNativeScroll(Panel);
   end;
   {$ELSE}
   if not AActive then ;

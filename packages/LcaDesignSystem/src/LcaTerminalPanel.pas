@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, ExtCtrls, StdCtrls, FileUtil, Forms, LCLType, LMessages, LcaTheme,
-  Terminal.Controller, Terminal.View.LCL;
+  LcaScrollHost, Terminal.Controller, Terminal.View.LCL;
 
 type
   TLcaTerminalStatusEvent = procedure(Sender: TObject; const AMessage: string) of object;
@@ -14,17 +14,22 @@ type
   { Embedded PTY terminal for the Lazarus form designer (streams on .lfm). }
   TLcaTerminalPanel = class(TPanel)
   private
+    FScrollHost: TLcaScrollHost;
     FView: TTerminalLCLView;
     FController: TTerminalController;
     FStatusLabel: TLabel;
     FShellRunning: Boolean;
     FWorkingDir: string;
     FThemeKind: TThemeKind;
+    FSyncingScroll: Boolean;
     FOnTerminalStatus: TLcaTerminalStatusEvent;
     procedure SetThemeKind(AValue: TThemeKind);
     procedure SetStatusLabel(AValue: TLabel);
     procedure ShellExited(Sender: TObject);
     procedure EnsureTerminalView;
+    procedure SyncScrollHostFromView;
+    procedure ScrollHostPositionChanged(Sender: TObject);
+    procedure TerminalScrollRangeChanged(Sender: TObject);
     function TryStartShell: Boolean;
     procedure SetStatus(const AMessage: string);
     procedure HideStatus;
@@ -49,6 +54,9 @@ type
   end;
 
 implementation
+
+uses
+  Math;
 
 {$IFDEF UNIX}
 {$linklib util}
@@ -94,17 +102,65 @@ begin
   Result := Visible;
 end;
 
+procedure TLcaTerminalPanel.SyncScrollHostFromView;
+var
+  Ch: Integer;
+begin
+  if FSyncingScroll or not Assigned(FView) or not Assigned(FScrollHost) then Exit;
+  if (FView.Parent = nil) or not ParentFormHandlesReady(Self) then Exit;
+  FSyncingScroll := True;
+  try
+    Ch := FView.CellHeight;
+    FScrollHost.SetViewportFillColor(FView.BackgroundColor);
+    FScrollHost.UpdateContentExtent(Max(1, FView.Width), FView.VirtualContentHeightPixels);
+    FScrollHost.SetScrollPosition(0, FView.ScrollPositionRows * Ch);
+  finally
+    FSyncingScroll := False;
+  end;
+end;
+
+procedure TLcaTerminalPanel.ScrollHostPositionChanged(Sender: TObject);
+var
+  Ch, Row: Integer;
+begin
+  if FSyncingScroll or not Assigned(FView) or not Assigned(FScrollHost) then Exit;
+  Ch := FView.CellHeight;
+  Row := FScrollHost.ScrollPosition.Y div Ch;
+  FSyncingScroll := True;
+  try
+    FView.SetScrollPositionRows(Row);
+  finally
+    FSyncingScroll := False;
+  end;
+end;
+
+procedure TLcaTerminalPanel.TerminalScrollRangeChanged(Sender: TObject);
+begin
+  SyncScrollHostFromView;
+end;
+
 procedure TLcaTerminalPanel.EnsureTerminalView;
 begin
   if csDesigning in ComponentState then Exit;
   if Assigned(FView) then Exit;
   if not ParentFormHandlesReady(Self) then Exit;
+  if not Assigned(FScrollHost) then begin
+    FScrollHost := TLcaScrollHost.Create(Self);
+    FScrollHost.Parent := Self;
+    FScrollHost.Align := alClient;
+    FScrollHost.ViewportOnlyContent := True;
+    FScrollHost.ThemeKind := FThemeKind;
+    FScrollHost.OnScrollPositionChange := @ScrollHostPositionChanged;
+  end;
   FView := TTerminalLCLView.Create(Self);
-  FView.Parent := Self;
-  FView.Align := alClient;
+  FView.OnScrollRangeChanged := @TerminalScrollRangeChanged;
+  FView.OnShellExit := @ShellExited;
   FView.FontName := ThemedMonospaceFontName;
   FView.FontSize := ScaledEditorFontSize(Self);
-  FView.OnShellExit := @ShellExited;
+  FScrollHost.Content := FView;
+  { UseInternalScrollbar calls UpdateMetrics (needs Parent) — set after Content parents the view. }
+  FView.UseInternalScrollbar := False;
+  SyncScrollHostFromView;
 end;
 
 function TLcaTerminalPanel.TryStartShell: Boolean;
@@ -186,6 +242,8 @@ begin
   Stop;
   if Assigned(FView) then
     FView.DetachController;
+  FView := nil;
+  FScrollHost := nil;
   FreeAndNil(FController);
   inherited Destroy;
 end;
@@ -206,6 +264,7 @@ begin
   inherited Resize;
   if Assigned(FView) then
     FView.Invalidate;
+  SyncScrollHostFromView;
 end;
 
 procedure TLcaTerminalPanel.CMShowingChanged(var Message: TLMessage);
@@ -229,6 +288,10 @@ begin
     FStatusLabel.Color := P.Background;
     FStatusLabel.Font.Color := P.TextMuted;
   end;
+  if Assigned(FScrollHost) then begin
+    FScrollHost.ThemeKind := ATheme;
+    FScrollHost.ApplyTheme(ATheme);
+  end;
   if not Assigned(FView) then Exit;
   FView.BackgroundColor := P.Background;
   FView.DefaultFGColor := P.Text;
@@ -236,8 +299,8 @@ begin
   FView.SelectionBGColor := P.Accent;
   FView.FontName := ThemedMonospaceFontName;
   FView.FontSize := ScaledEditorFontSize(Self);
-  ApplyPlatformScrollableTheme(FView, ATheme);
   FView.Invalidate;
+  SyncScrollHostFromView;
 end;
 
 procedure TLcaTerminalPanel.SetWorkingDirectory(const ADir: string);

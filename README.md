@@ -6,6 +6,13 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 
 > **Status:** Multi-window workspace layout implemented. AI/model execution is in active integration.
 
+## Community
+
+- [Contributing](CONTRIBUTING.md) — workflow, CI, Lazarus UI conventions, and tests
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md) — report vulnerabilities via GitHub private advisories
+- [License](LICENSE.md) — MIT
+
 ## Key Features & Workspace Layout
 
 ### 1. Lazarus Visual Form Designer Architecture

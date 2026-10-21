@@ -72,6 +72,10 @@ type
     FWheelAccumX: Integer;
     FWheelAccumY: Integer;
     FWheelFlushQueued: Boolean;
+    FViewportOnlyContent: Boolean;
+    FOnScrollPositionChange: TNotifyEvent;
+    procedure SetViewportOnlyContent(AValue: Boolean);
+    procedure NotifyScrollPositionChange;
     procedure ScheduleWheelFlush;
     procedure WheelFlush(Data: PtrInt);
     procedure InvalidateScrollGutters;
@@ -141,6 +145,10 @@ type
     procedure SetViewportFillColor(AColor: TColor);
     function ViewportFillColor: TColor;
   published
+    property ViewportOnlyContent: Boolean read FViewportOnlyContent
+      write SetViewportOnlyContent default False;
+    property OnScrollPositionChange: TNotifyEvent read FOnScrollPositionChange
+      write FOnScrollPositionChange;
     property Content: TControl read FContent write SetContent;
     property ContentWidth: Integer read FContentWidth write SetContentWidth default 0;
     property ContentHeight: Integer read FContentHeight write SetContentHeight default 0;
@@ -586,10 +594,16 @@ begin
     CW := EffectiveContentWidth;
     CH := EffectiveContentHeight;
     PriorContentBounds := FLastContentLayoutBounds;
-    ContentBounds := Rect(-FScrollX, -FScrollY, -FScrollX + CW, -FScrollY + CH);
+    if FViewportOnlyContent then
+      ContentBounds := Rect(0, 0, FViewportW, FViewportH)
+    else
+      ContentBounds := Rect(-FScrollX, -FScrollY, -FScrollX + CW, -FScrollY + CH);
     if Assigned(FContent) then begin
       if not EqualRect(ContentBounds, PriorContentBounds) then begin
-        FContent.SetBounds(-FScrollX, -FScrollY, CW, CH);
+        if FViewportOnlyContent then
+          FContent.SetBounds(0, 0, FViewportW, FViewportH)
+        else
+          FContent.SetBounds(-FScrollX, -FScrollY, CW, CH);
         ContentSetBounds := True;
       end;
     end;
@@ -645,6 +659,8 @@ begin
       InvalidateScrollGutters
     else if ScrollChanged and (ShowV or ShowH) then
       InvalidateScrollGutters;
+    if ScrollChanged then
+      NotifyScrollPositionChange;
   finally
     FLayoutGuard := False;
     Elapsed := GetTickCount64 - T0;
@@ -798,10 +814,25 @@ begin
     ScrollByDelta(-Step, 0);
 end;
 
+procedure TLcaScrollHost.SetViewportOnlyContent(AValue: Boolean);
+begin
+  if FViewportOnlyContent = AValue then Exit;
+  FViewportOnlyContent := AValue;
+  if InDesignMode then Exit;
+  LayoutFromScroll;
+end;
+
+procedure TLcaScrollHost.NotifyScrollPositionChange;
+begin
+  if Assigned(FOnScrollPositionChange) then
+    FOnScrollPositionChange(Self);
+end;
+
 constructor TLcaScrollHost.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   AutoSize := False;
+  FViewportOnlyContent := False;
   ControlStyle := ControlStyle + [csAcceptsControls, csCaptureMouse, csClickEvents,
     csDoubleClicks];
   FContentWidth := 0;

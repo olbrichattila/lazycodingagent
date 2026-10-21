@@ -86,6 +86,8 @@ type
     FLastMouseReportCol: Integer;
     FLastMouseReportRow: Integer;
     FShellExited: Boolean;
+    FUseInternalScrollbar: Boolean;
+    FOnScrollRangeChanged: TNotifyEvent;
     FMouseDownPending: Boolean;
     FMouseDownX: Integer;
     FMouseDownY: Integer;
@@ -135,6 +137,7 @@ type
     function EdgeAt(X, Y: Integer): TTermViewEdge;
     function RectInReserved(const R: TRect): Boolean;
     procedure UpdateScrollBar;
+    procedure SetUseInternalScrollbar(AValue: Boolean);
     procedure CreatePopupMenu;
     procedure DoCopy;
     procedure DoPaste;
@@ -162,6 +165,10 @@ type
       back to a login shell. }
     procedure StartProgram(const ACmdLine: string);
     procedure ScrollBy(ADeltaRows: Integer); reintroduce;
+    function ScrollPositionRows: Integer;
+    procedure SetScrollPositionRows(ARow: Integer);
+    function VirtualContentHeightPixels: Integer;
+    function CellHeight: Integer;
     procedure WriteExitBanner;
     { Leave a rectangle (control coords) unpainted so a docked overlay drawn on
       top isn't clobbered.  Pass a degenerate rect / ClearReservedRect to release. }
@@ -202,6 +209,10 @@ type
     property OnEdgeHover: TTermEdgeEvent read FOnEdgeHover write FOnEdgeHover;
     { Fired on a left-click on the body; consume to eat it. }
     property OnViewClick: TTermViewClickEvent read FOnViewClick write FOnViewClick;
+    property UseInternalScrollbar: Boolean read FUseInternalScrollbar
+      write SetUseInternalScrollbar default True;
+    property OnScrollRangeChanged: TNotifyEvent read FOnScrollRangeChanged
+      write FOnScrollRangeChanged;
   published
     property Align;
     property Anchors;
@@ -264,6 +275,7 @@ begin
   FSelectionFGColor := clBlack;
   FSelectionBGColor := TColor($00FFD700); { gold-ish — note BGR layout }
   FCursorBlinkVisible := True;
+  FUseInternalScrollbar := True;
 
   Width := 800;
   Height := 500;
@@ -566,6 +578,8 @@ begin
   if FScrollbar.Position > FScrollbar.Max - VisibleCount + 1 then
     FScrollbar.Position := Max(0, FScrollbar.Max - VisibleCount + 1);
   FTopRow := FScrollbar.Position;
+  if Assigned(FOnScrollRangeChanged) then
+    FOnScrollRangeChanged(Self);
 end;
 
 procedure TTerminalLCLView.CreatePopupMenu;
@@ -718,8 +732,67 @@ end;
 
 function TTerminalLCLView.GridWidth: Integer;
 begin
-  Result := ClientWidth - FScrollbar.Width;
+  if FUseInternalScrollbar then
+    Result := ClientWidth - FScrollbar.Width
+  else
+    Result := ClientWidth;
   if Result < 0 then Result := 0;
+end;
+
+procedure TTerminalLCLView.SetUseInternalScrollbar(AValue: Boolean);
+begin
+  if FUseInternalScrollbar = AValue then Exit;
+  FUseInternalScrollbar := AValue;
+  if Assigned(FScrollbar) then begin
+    FScrollbar.Visible := AValue;
+    if AValue then
+      FScrollbar.Align := alRight
+    else begin
+      FScrollbar.Align := alNone;
+      FScrollbar.Width := 0;
+    end;
+  end;
+  if Parent <> nil then
+    UpdateMetrics
+  else
+    Invalidate;
+end;
+
+function TTerminalLCLView.ScrollPositionRows: Integer;
+begin
+  Result := FScrollbar.Position;
+end;
+
+procedure TTerminalLCLView.SetScrollPositionRows(ARow: Integer);
+var
+  VisibleCount, MaxTop: Integer;
+  V: Integer;
+begin
+  if FController = nil then Exit;
+  VisibleCount := Max(1, RowsVisible);
+  MaxTop := Max(0, FScrollbar.Max - VisibleCount + 1);
+  V := EnsureRange(ARow, FScrollbar.Min, MaxTop);
+  if FScrollbar.Position <> V then
+    FScrollbar.Position := V;
+  if FTopRow <> V then begin
+    FTopRow := V;
+    Invalidate;
+  end;
+end;
+
+function TTerminalLCLView.VirtualContentHeightPixels: Integer;
+var
+  TotalRows: Integer;
+begin
+  if FController = nil then
+    Exit(Max(1, FCharHeight));
+  TotalRows := FController.Core.HistoryCount + FController.Core.Rows;
+  Result := Max(FCharHeight, TotalRows * Max(1, FCharHeight));
+end;
+
+function TTerminalLCLView.CellHeight: Integer;
+begin
+  Result := Max(1, FCharHeight);
 end;
 
 function TTerminalLCLView.GridHeight: Integer;
@@ -1068,6 +1141,8 @@ procedure TTerminalLCLView.HandleScrollBarChange(Sender: TObject);
 begin
   FTopRow := FScrollbar.Position;
   Invalidate;
+  if (not FUseInternalScrollbar) and Assigned(FOnScrollRangeChanged) then
+    FOnScrollRangeChanged(Self);
 end;
 
 function TTerminalLCLView.GetSelectedTextUTF8: RawByteString;
