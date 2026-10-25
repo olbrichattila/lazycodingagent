@@ -1593,6 +1593,12 @@ begin
         FormatAgentStateLabel(ANewState, AStep, AMaxSteps)]);
     if (ANewState = asFinished) and (FCurrentRunMode = wmPlan) and not FPlanSavedThisRun then
       TrySaveProposedPlanFromChat;
+    if Assigned(FChatPanel) then begin
+      if ANewState = asThinking then
+        FChatPanel.SetAgentThinkingInChat(True)
+      else if AOldState = asThinking then
+        FChatPanel.SetAgentThinkingInChat(False);
+    end;
     if (ANewState in [asIdle, asFinished, asError]) and Assigned(FChatPanel) then
       FChatPanel.SetRunning(False);
   end;
@@ -1612,11 +1618,11 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.HubToolCall(Sender: TObject; const ASessionId: string;
-  const AToolName, {%H-}AArgs: string);
+  const AToolName, AArgs: string);
 begin
   if not SameText(ASessionId, FCurrentSessionId) then Exit;
   if Assigned(FChatPanel) and (Trim(AToolName) <> '') then
-    FChatPanel.AppendTraceLine('Calling ' + AToolName);
+    FChatPanel.AppendToolActivityLine(AToolName, AArgs);
 end;
 
 procedure TLazyCodingAgentForm.HubToolResult(Sender: TObject; const ASessionId: string;

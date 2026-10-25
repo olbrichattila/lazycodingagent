@@ -46,6 +46,8 @@ type
 
 function PrettyJsonString(const S: string): string;
 function TruncateLogCaption(const S: string; AMaxLen: Integer = 72): string;
+function FormatToolCallActivityDetail(const AToolName, AArgsJson: string): string;
+function FormatToolCallActivityLine(const AToolName, AArgsJson: string): string;
 function FormatMessagesForDisplay(const AMessages: array of TChatMessage;
   const ATools: array of TToolDef): string;
 function FormatMessageBodyForLog(const AMsg: TChatMessage): string;
@@ -66,7 +68,7 @@ begin
   begin
     Result := string(SafeToolText(T, 200));
     if Length(T) > Length(Result) then
-      Result := Result + '…';
+      Result := Result + '...';
     Exit;
   end;
   if TryGetJSONObject(T, Data) then
@@ -89,7 +91,187 @@ begin
   if Length(T) <= AMaxLen then
     Result := T
   else
-    Result := Copy(T, 1, AMaxLen - 1) + '…';
+    Result := Copy(T, 1, AMaxLen - 3) + '...';
+end;
+
+function ShortDisplayPath(const APath: string): string;
+var
+  T: string;
+begin
+  T := Trim(APath);
+  if T = '' then Exit('');
+  if Length(T) > 56 then
+    Result := ExtractFileName(T)
+  else
+    Result := T;
+end;
+
+function FirstLineOf(const S: string): string;
+var
+  P: Integer;
+begin
+  P := Pos(LineEnding, S);
+  if P > 0 then
+    Result := Trim(Copy(S, 1, P - 1))
+  else
+    Result := Trim(S);
+end;
+
+function JsonObjField(const Obj: TJSONObject; const ANames: array of string): string;
+var
+  I: Integer;
+  D: TJSONData;
+begin
+  Result := '';
+  if Obj = nil then Exit;
+  for I := Low(ANames) to High(ANames) do begin
+    D := Obj.Find(ANames[I]);
+    if D = nil then Continue;
+    if D is TJSONString then
+      Exit(TJSONString(D).AsString)
+    else
+      Exit(D.AsJSON);
+  end;
+end;
+
+function FirstPatchPathFromPatch(const APatch: string): string;
+var
+  Lines, I: Integer;
+  Line: string;
+begin
+  Result := '';
+  I := 1;
+  while I <= Length(APatch) do begin
+    Lines := I;
+    while (I <= Length(APatch)) and (APatch[I] <> #10) and (APatch[I] <> #13) do
+      Inc(I);
+    Line := Trim(Copy(APatch, Lines, I - Lines));
+    if (I <= Length(APatch)) and (APatch[I] = #13) then Inc(I);
+    if (I <= Length(APatch)) and (APatch[I] = #10) then Inc(I);
+    if (Length(Line) > 4) and ((Copy(Line, 1, 4) = '+++ ') or (Copy(Line, 1, 4) = '--- ')) then begin
+      Line := Trim(Copy(Line, 5, MaxInt));
+      if (Length(Line) > 2) and ((Line[1] = 'b') or (Line[1] = 'a')) and (Line[2] = '/') then
+        Line := Copy(Line, 3, MaxInt);
+      if Line <> '' then
+        Exit(ShortDisplayPath(Line));
+    end;
+  end;
+end;
+
+function TodoActivityDetail(Obj: TJSONObject): string;
+var
+  Act, ItemText: string;
+  Items: TJSONArray;
+  First: TJSONObject;
+begin
+  Act := Obj.Get('action', '');
+  Result := Act;
+  if not SameText(Act, 'replace') then Exit;
+  Items := Obj.Find('items') as TJSONArray;
+  if (Items = nil) or (Items.Count = 0) then Exit;
+  if Items.Items[0] is TJSONObject then begin
+    First := TJSONObject(Items.Items[0]);
+    ItemText := JsonObjField(First, ['text', 'id']);
+    if ItemText <> '' then begin
+      if Result <> '' then
+        Result := Result + ' - ' + TruncateLogCaption(ItemText, 48)
+      else
+        Result := TruncateLogCaption(ItemText, 48);
+    end;
+  end;
+end;
+
+function ToolNameMatches(const AToolName, ACanonical: string): Boolean;
+begin
+  Result := SameText(AToolName, ACanonical);
+end;
+
+function FormatToolCallActivityDetail(const AToolName, AArgsJson: string): string;
+var
+  Obj: TJSONObject;
+  Name, Detail, Cmd, Op, Rev: string;
+begin
+  Result := '';
+  if not JsonToolArgumentsWellFormed(AArgsJson) then begin
+    Result := TruncateLogCaption(string(SafeToolText(AArgsJson, 120)), 48);
+    Exit;
+  end;
+  if not TryGetJSONObject(AArgsJson, Obj) then begin
+    Result := TruncateLogCaption(AArgsJson, 48);
+    Exit;
+  end;
+  try
+    Name := LowerCase(Trim(AToolName));
+    if ToolNameMatches(Name, 'shell') or ToolNameMatches(Name, 'run_process') or
+       ToolNameMatches(Name, 'terminal') then begin
+      Cmd := Obj.Get('command', '');
+      Result := TruncateLogCaption(FirstLineOf(Cmd), 72);
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'git') then begin
+      Op := Obj.Get('operation', '');
+      Rev := Obj.Get('revision', '');
+      Detail := Op;
+      if Rev <> '' then
+        Detail := Detail + ' ' + Rev;
+      if Obj.Get('staged', False) then
+        Detail := Detail + ' staged';
+      Result := Trim(Detail);
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'read_file') or ToolNameMatches(Name, 'write_file') or
+       ToolNameMatches(Name, 'edit_file') or ToolNameMatches(Name, 'list_directory') then begin
+      Result := ShortDisplayPath(Obj.Get('path', ''));
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'glob') then begin
+      Result := TruncateLogCaption(Obj.Get('pattern', ''), 72);
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'search_code') then begin
+      Detail := Obj.Get('query', '');
+      if Detail = '' then
+        Detail := Obj.Get('pattern', '');
+      Result := TruncateLogCaption(Detail, 72);
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'todo') or ToolNameMatches(Name, 'plan') then begin
+      Result := TodoActivityDetail(Obj);
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'apply_patch') then begin
+      Result := FirstPatchPathFromPatch(Obj.Get('patch', ''));
+      if Result = '' then
+        Result := 'patch';
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'create_plan_file') then begin
+      Detail := FirstLineOf(Obj.Get('content', ''));
+      if Detail = '' then
+        Result := 'plan'
+      else
+        Result := TruncateLogCaption(Detail, 72);
+      Exit;
+    end;
+    if ToolNameMatches(Name, 'diagnostics') then begin
+      Result := Obj.Get('action', '');
+      Exit;
+    end;
+    Result := TruncateLogCaption(AArgsJson, 48);
+  finally
+    Obj.Free;
+  end;
+end;
+
+function FormatToolCallActivityLine(const AToolName, AArgsJson: string): string;
+var
+  Detail: string;
+begin
+  Detail := FormatToolCallActivityDetail(AToolName, AArgsJson);
+  if Detail <> '' then
+    Result := AToolName + ' - ' + Detail
+  else
+    Result := AToolName;
 end;
 
 procedure CopyToolCalls(const ASrc: TToolCallArray; var ADst: TToolCallArray);

@@ -47,7 +47,8 @@ In **Settings → Agent Behavior**, enable **Debugging mode** to show **full too
 
 With debugging off, you still get a readable run in chat:
 
-- Muted **— Calling …** lines when each tool starts (not part of saved conversation history).
+- Muted tool-activity lines when each tool starts (leading **-**, tool name, and a short summary of its inputs — for example **read_file · mainunit.pas** or **shell · git status**). Not part of saved conversation history.
+- A small italic **Thinking…** line while the model is working (also ephemeral; cleared when the next message or tool line appears).
 - **Tools & Logs** in the nav rail plus **Execution Detail** in the utility panel for full prompts, tool arguments, and outputs.
 
 Open **Tools & Logs** and **Execution Detail** yourself anytime to inspect a run. Click an older log row to **pin** the inspector on that step; click the **latest** row to follow the live trace again.

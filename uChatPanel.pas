@@ -36,6 +36,7 @@ type
     FHistoryRefreshDueTick: QWord;
     FHistoryRefreshThrottleQueued: Boolean;
     FLastAppendWasTrace: Boolean;
+    FEphemeralThinkingActive: Boolean;
 
     FOnPrompt: TPromptEvent;
     FOnModeChange: TModeChangeEvent;
@@ -90,6 +91,8 @@ type
     procedure FlushHistoryView;
     procedure RefreshHistoryView;
     function ToolMessageBody(const AMsg: TChatMessage): string;
+    procedure RemoveEphemeralThinkingLine;
+    procedure AppendTraceLineWithPrefix(const APrefix, AText: string);
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -113,6 +116,8 @@ type
     procedure AppendToolMessage(const AMsg: TChatMessage; ADebuggingMode: Boolean);
     procedure AppendText(const AText: string);
     procedure AppendTraceLine(const AText: string);
+    procedure AppendToolActivityLine(const AToolName, AArgsJson: string);
+    procedure SetAgentThinkingInChat(AVisible: Boolean);
     procedure ClearHistory;
     procedure ReloadFromMessages(const AMessages: TChatMessageArray; ADebuggingMode: Boolean);
     procedure SetComposerEnabled(AEnabled: Boolean);
@@ -130,10 +135,13 @@ type
 implementation
 
 uses
-  uChatImageStore;
+  uChatImageStore, uAgentExecutionLog;
 
 const
   MaxToolBodyInChat = 1200;
+  ChatTracePrefixTool = '@tool ';
+  ChatTracePrefixThinking = '@think ';
+  ChatThinkingTraceText = 'Thinking...';
 
 function ExtractToolErrorLine(const AJson: string): string;
 var
@@ -544,9 +552,43 @@ begin
   ScheduleHistoryRefresh;
 end;
 
+procedure TChatPanel.RemoveEphemeralThinkingLine;
+var
+  Marker: string;
+begin
+  if not FEphemeralThinkingActive then Exit;
+  Marker := ChatTracePrefixThinking + ChatThinkingTraceText;
+  if (Length(FHistoryText) >= Length(Marker)) and
+     (Copy(FHistoryText, Length(FHistoryText) - Length(Marker) + 1, Length(Marker)) = Marker) then begin
+    SetLength(FHistoryText, Length(FHistoryText) - Length(Marker));
+    if (Length(FHistoryText) >= Length(LineEnding)) and
+       (Copy(FHistoryText, Length(FHistoryText) - Length(LineEnding) + 1, Length(LineEnding)) = LineEnding) then
+      SetLength(FHistoryText, Length(FHistoryText) - Length(LineEnding));
+  end;
+  FEphemeralThinkingActive := False;
+end;
+
+procedure TChatPanel.AppendTraceLineWithPrefix(const APrefix, AText: string);
+var
+  Line: string;
+begin
+  Line := Trim(AText);
+  if Line = '' then Exit;
+  if FHistoryText <> '' then begin
+    if FLastAppendWasTrace then
+      FHistoryText := FHistoryText + LineEnding
+    else
+      FHistoryText := FHistoryText + LineEnding + LineEnding;
+  end;
+  FHistoryText := FHistoryText + APrefix + Line;
+  FLastAppendWasTrace := True;
+  RefreshHistoryView;
+end;
+
 procedure TChatPanel.AppendToHistory(const ARoleLabel, ABody: string);
 begin
   if Trim(ABody) = '' then Exit;
+  RemoveEphemeralThinkingLine;
   if FHistoryText <> '' then
     FHistoryText := FHistoryText + LineEnding + LineEnding;
   FHistoryText := FHistoryText + '### ' + ARoleLabel + LineEnding + LineEnding + ABody;
@@ -692,6 +734,7 @@ procedure TChatPanel.ClearHistory;
 begin
   FHistoryText := '';
   FLastAppendWasTrace := False;
+  FEphemeralThinkingActive := False;
   InitWelcomeText;
   RefreshHistoryView;
 end;
@@ -757,27 +800,34 @@ begin
 end;
 
 procedure TChatPanel.AppendTraceLine(const AText: string);
-const
-  TracePrefix = #$2014' '; // em dash + space
-var
-  Line: string;
 begin
-  Line := Trim(AText);
-  if Line = '' then Exit;
-  if FHistoryText <> '' then begin
-    if FLastAppendWasTrace then
-      FHistoryText := FHistoryText + LineEnding
-    else
-      FHistoryText := FHistoryText + LineEnding + LineEnding;
-  end;
-  FHistoryText := FHistoryText + TracePrefix + Line;
-  FLastAppendWasTrace := True;
+  RemoveEphemeralThinkingLine;
+  AppendTraceLineWithPrefix(ChatTracePrefixTool, AText);
+end;
+
+procedure TChatPanel.AppendToolActivityLine(const AToolName, AArgsJson: string);
+begin
+  if Trim(AToolName) = '' then Exit;
+  RemoveEphemeralThinkingLine;
+  AppendTraceLineWithPrefix(ChatTracePrefixTool,
+    FormatToolCallActivityLine(AToolName, AArgsJson));
+end;
+
+procedure TChatPanel.SetAgentThinkingInChat(AVisible: Boolean);
+begin
+  if AVisible then begin
+    RemoveEphemeralThinkingLine;
+    AppendTraceLineWithPrefix(ChatTracePrefixThinking, ChatThinkingTraceText);
+    FEphemeralThinkingActive := True;
+  end else
+    RemoveEphemeralThinkingLine;
   RefreshHistoryView;
 end;
 
 procedure TChatPanel.AppendText(const AText: string);
 begin
   if Trim(AText) = '' then Exit;
+  RemoveEphemeralThinkingLine;
   if FHistoryText <> '' then
     FHistoryText := FHistoryText + LineEnding + LineEnding;
   FHistoryText := FHistoryText + AText;
@@ -852,6 +902,7 @@ var
 begin
   FHistoryText := '';
   FLastAppendWasTrace := False;
+  FEphemeralThinkingActive := False;
   for I := 0 to High(AMessages) do begin
     if AMessages[I].Role = crTool then
       AppendToolMessage(AMessages[I], ADebuggingMode)

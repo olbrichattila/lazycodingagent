@@ -282,9 +282,16 @@ begin
         Result := Result + '</ul>';
         InList := False;
       end;
-      if (Length(Trimmed) >= 2) and (Trimmed[1] = #$2014) and (Trimmed[2] = ' ') then begin
-        Line := Trim(Copy(Trimmed, 3, MaxInt));
-        Result := Result + '<p class="msg-tool">' + InlineMarkdownToHtml(Line) + '</p>';
+      if (Length(Trimmed) > Length('@think ')) and
+         (Copy(Trimmed, 1, Length('@think ')) = '@think ') then begin
+        Line := Trim(Copy(Trimmed, Length('@think ') + 1, MaxInt));
+        Result := Result + '<p class="msg-thinking">' + InlineMarkdownToHtml(Line) + '</p>';
+        Continue;
+      end;
+      if (Length(Trimmed) > Length('@tool ')) and
+         (Copy(Trimmed, 1, Length('@tool ')) = '@tool ') then begin
+        Line := Trim(Copy(Trimmed, Length('@tool ') + 1, MaxInt));
+        Result := Result + '<p class="msg-tool">- ' + InlineMarkdownToHtml(Line) + '</p>';
         Continue;
       end;
       if MarkdownImageLineToHtml(Trimmed) <> '' then begin
@@ -328,6 +335,8 @@ begin
     'margin: 10px 0; } ' +
     '.msg-assistant { padding-left: 8px; margin: 10px 0; } ' +
     '.msg-tool { color: ' + ColorToHex(P.TextMuted) + '; font-size: 9pt; margin: 6px 0; } ' +
+    '.msg-thinking { color: ' + ColorToHex(P.TextMuted) + '; font-size: 8pt; font-style: italic; ' +
+    'margin: 4px 0; } ' +
     '.msg-label { font-weight: bold; color: ' + ColorToHex(P.TextMuted) + '; } ' +
     'img.lca-md-img { max-width: 100%; height: auto; border-radius: 4px; ' +
     'border: 1px solid ' + ColorToHex(P.Border) + '; margin: 4px 0; } ' +
