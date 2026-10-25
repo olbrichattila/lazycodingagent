@@ -6,7 +6,7 @@ The agent sees a single tool, **web_search**. You choose which search backends r
 
 ## Enable Web Search
 
-1. Open **Settings** → **Tools** → **Web Search**.
+1. Open **Settings** → **Tools**.
 2. Turn on **Enable Web Search**.
 3. **Add** at least one provider connection, enter credentials or a SearXNG URL, and use **Test**.
 4. Click **OK** to save.
@@ -36,7 +36,7 @@ The agent should use **web_fetch** or **browser_read** to read pages found by we
 ## Limitations
 
 - **Brave:** Recency maps to Brave `freshness` (`day`/`week`/`month`/`year`); `any` sends no freshness filter.
-- **SearXNG:** Many public instances disable JSON; use your own instance with `format=json`.
+- **SearXNG:** Many public instances disable JSON; use your own instance with `format=json`. This repository includes a local Docker Compose stack under `docker/searxng/` (see `docker/searxng/README.md`). For `http://127.0.0.1:8080` or other local URLs, turn on **Allow local/private SearXNG** in Web Search settings (or set `AllowPrivateInstances=true` in config, or launch with `LCA_WEB_SEARCH_TRUSTED_LOCAL=1`).
 - **Tavily:** Optional **advanced** search depth may cost more; default is **basic**.
 - **Connection tests** may consume API quota.
 

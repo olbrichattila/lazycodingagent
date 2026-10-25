@@ -1,210 +1,244 @@
 object WebSearchSettingsFrame: TWebSearchSettingsFrame
   Left = 0
-  Height = 800
+  Height = 480
   Top = 0
-  Width = 1068
-  ClientHeight = 800
-  ClientWidth = 1068
+  Width = 720
+  ClientHeight = 480
+  ClientWidth = 720
   TabOrder = 0
-  object pnlToolsSubStripHost: TPanel
+  object scrWebSearch: TScrollBox
     Left = 0
-    Height = 48
+    Height = 480
     Top = 0
-    Width = 1068
-    Align = alTop
-    BevelOuter = bvNone
-    ClientHeight = 48
-    ClientWidth = 1068
-    TabOrder = 0
-    object lcaToolsSubTabBar: TLcaThemedPageTabBar
-      Left = 0
-      Height = 48
-      Top = 0
-      Width = 1068
-      Align = alClient
-      TabOrder = 0
-      PageControl = pgcToolsSub
-      ShowAddTab = False
-    end
-  end
-  object pgcToolsSub: TPageControl
-    Left = 0
-    Height = 752
-    Top = 48
-    Width = 1068
-    ActivePage = tsWebSearch
+    Width = 720
+    HorzScrollBar.Page = 1
+    HorzScrollBar.Visible = False
+    VertScrollBar.Tracking = True
     Align = alClient
-    ShowTabs = False
-    TabIndex = 0
-    TabOrder = 1
-    object tsWebSearch: TTabSheet
-      Caption = 'Web Search'
-      ClientHeight = 748
-      ClientWidth = 1064
-      object pnlWebSearch: TPanel
+    BorderStyle = bsNone
+    ClientHeight = 480
+    ClientWidth = 720
+    TabOrder = 0
+    object pnlWebSearchContent: TPanel
+      Left = 0
+      Height = 592
+      Top = 0
+      Width = 720
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 564
+      ClientWidth = 720
+      TabOrder = 0
+      object pnlWebSearchHeader: TPanel
         Left = 0
-        Height = 748
+        Height = 184
         Top = 0
-        Width = 1064
-        Align = alClient
+        Width = 720
+        Align = alTop
         BevelOuter = bvNone
-        ClientHeight = 748
-        ClientWidth = 1064
+        ClientHeight = 184
+        ClientWidth = 720
         TabOrder = 0
         object lblWebSearchTitle: TLabel
-          Left = 24
-          Height = 28
-          Top = 16
+          Left = 8
+          Height = 24
+          Top = 4
           Width = 100
           Caption = 'Web Search'
-          Font.Height = -20
+          Font.Height = -16
           Font.Style = [fsBold]
           ParentFont = False
         end
         object chkWebSearchEnabled: TCheckBox
-          Left = 24
+          Left = 8
           Height = 24
-          Top = 56
+          Top = 32
           Width = 160
           Caption = 'Enable Web Search'
           TabOrder = 0
         end
         object lblMaxResults: TLabel
-          Left = 24
+          Left = 8
           Height = 20
-          Top = 96
+          Top = 64
           Width = 92
           Caption = 'Maximum results'
         end
         object edtMaxResults: TEdit
-          Left = 24
+          Left = 8
           Height = 28
-          Top = 120
-          Width = 80
+          Top = 84
+          Width = 72
           TabOrder = 1
           Text = '10'
         end
         object lblTotalTimeout: TLabel
-          Left = 160
+          Left = 96
           Height = 20
-          Top = 96
+          Top = 64
           Width = 88
           Caption = 'Total timeout (s)'
         end
         object edtTotalTimeoutSec: TEdit
-          Left = 160
+          Left = 96
           Height = 28
-          Top = 120
-          Width = 80
+          Top = 84
+          Width = 72
           TabOrder = 2
           Text = '30'
         end
         object chkAutoFallback: TCheckBox
-          Left = 280
+          Left = 8
           Height = 24
-          Top = 124
-          Width = 160
+          Top = 120
+          Width = 280
           Caption = 'Automatic fallback'
           Checked = True
           State = cbChecked
           TabOrder = 3
         end
         object chkFallbackEmpty: TCheckBox
-          Left = 480
+          Left = 280
           Height = 24
-          Top = 124
-          Width = 200
+          Top = 120
+          Width = 280
           Caption = 'Fallback on empty results'
           TabOrder = 4
         end
+        object chkAllowPrivateInstances: TCheckBox
+          Left = 8
+          Height = 24
+          Top = 148
+          Width = 680
+          Caption = 'Allow local/private SearXNG (localhost, 127.0.0.1, LAN)'
+          TabOrder = 5
+        end
+      end
+      object pnlConnections: TPanel
+        Left = 0
+        Height = 220
+        Top = 184
+        Width = 720
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 220
+        ClientWidth = 720
+        TabOrder = 1
         object lblConnections: TLabel
-          Left = 24
+          Left = 8
           Height = 20
-          Top = 168
+          Top = 4
           Width = 140
           Caption = 'Provider connections'
         end
         object lvConnections: TListView
-          Left = 24
-          Height = 280
-          Top = 192
-          Width = 1016
+          Left = 8
+          Height = 188
+          Top = 28
+          Width = 704
+          Anchors = [akTop, akLeft, akRight, akBottom]
+          BorderSpacing.Bottom = 4
           Columns = <>
           ReadOnly = True
           RowSelect = True
-          TabOrder = 5
+          TabOrder = 0
+          OnResize = lvConnectionsResize
           ViewStyle = vsReport
         end
-        object btnAddConn: TLcaPaintButton
-          Left = 24
-          Height = 36
-          Top = 488
-          Width = 88
-          Caption = 'Add'
-          TabOrder = 6
-          OnClick = btnAddConnClick
-        end
-        object btnEditConn: TLcaPaintButton
-          Left = 120
-          Height = 36
-          Top = 488
-          Width = 88
-          Caption = 'Edit'
-          TabOrder = 7
-          OnClick = btnEditConnClick
-        end
-        object btnRemoveConn: TLcaPaintButton
-          Left = 216
-          Height = 36
-          Top = 488
-          Width = 88
-          Caption = 'Remove'
-          TabOrder = 8
-          OnClick = btnRemoveConnClick
-        end
-        object btnTestConn: TLcaPaintButton
-          Left = 312
-          Height = 36
-          Top = 488
-          Width = 88
-          Caption = 'Test'
-          TabOrder = 9
-          OnClick = btnTestConnClick
-        end
-        object btnMoveUp: TLcaPaintButton
-          Left = 408
-          Height = 36
-          Top = 488
-          Width = 100
-          Caption = 'Move Up'
-          TabOrder = 10
-          OnClick = btnMoveUpClick
-        end
-        object btnMoveDown: TLcaPaintButton
-          Left = 516
-          Height = 36
-          Top = 488
-          Width = 110
-          Caption = 'Move Down'
-          TabOrder = 11
-          OnClick = btnMoveDownClick
+      end
+      object pnlWebSearchFooter: TPanel
+        Left = 0
+        Height = 188
+        Top = 404
+        Width = 720
+        Align = alTop
+        BevelOuter = bvNone
+        ClientHeight = 188
+        ClientWidth = 720
+        TabOrder = 2
+        object pnlConnButtons: TPanel
+          Left = 0
+          Height = 80
+          Top = 0
+          Width = 720
+          Align = alTop
+          BevelOuter = bvNone
+          ClientHeight = 80
+          ClientWidth = 720
+          TabOrder = 0
+          object btnAddConn: TLcaPaintButton
+            Left = 8
+            Height = 32
+            Top = 8
+            Width = 72
+            Caption = 'Add'
+            TabOrder = 0
+            OnClick = btnAddConnClick
+          end
+          object btnEditConn: TLcaPaintButton
+            Left = 88
+            Height = 32
+            Top = 8
+            Width = 72
+            Caption = 'Edit'
+            TabOrder = 1
+            OnClick = btnEditConnClick
+          end
+          object btnRemoveConn: TLcaPaintButton
+            Left = 168
+            Height = 32
+            Top = 8
+            Width = 72
+            Caption = 'Remove'
+            TabOrder = 2
+            OnClick = btnRemoveConnClick
+          end
+          object btnTestConn: TLcaPaintButton
+            Left = 248
+            Height = 32
+            Top = 8
+            Width = 64
+            Caption = 'Test'
+            TabOrder = 3
+            OnClick = btnTestConnClick
+          end
+          object btnMoveUp: TLcaPaintButton
+            Left = 8
+            Height = 32
+            Top = 44
+            Width = 88
+            Caption = 'Move Up'
+            TabOrder = 4
+            OnClick = btnMoveUpClick
+          end
+          object btnMoveDown: TLcaPaintButton
+            Left = 104
+            Height = 32
+            Top = 44
+            Width = 96
+            Caption = 'Move Down'
+            TabOrder = 5
+            OnClick = btnMoveDownClick
+          end
         end
         object lblTestNote: TLabel
-          Left = 24
+          Left = 8
           Height = 32
-          Top = 536
-          Width = 600
+          Top = 84
+          Width = 704
+          Anchors = [akTop, akLeft, akRight]
           Caption = 'Connection tests may use paid API quota. Credentials are stored in your local config file.'
           WordWrap = True
         end
         object memoConnStatus: TMemo
-          Left = 24
-          Height = 120
-          Top = 576
-          Width = 1016
+          Left = 8
+          Height = 48
+          Top = 120
+          Width = 704
+          Anchors = [akTop, akLeft, akRight, akBottom]
           ReadOnly = True
           ScrollBars = ssAutoVertical
-          TabOrder = 12
+          TabOrder = 1
         end
       end
     end

@@ -245,9 +245,11 @@ begin
   end;
   FVisibleRowCount := Min(Count, cComboDropDownMaxVisibleRows);
   if FItemHeight < 8 then
-    FItemHeight := ThemedComboBoxItemHeight;
+    FItemHeight := ScaledLayoutMetric(FCombo, ThemedComboBoxItemHeight);
   Width := Max(80, FCombo.Width);
   Height := FVisibleRowCount * FItemHeight + cComboDropDownBorder * 2;
+  if Height < 32 then
+    Height := 32;
   if FHighlightIndex >= Count then
     FHighlightIndex := Count - 1;
   if FHighlightIndex < 0 then
@@ -303,8 +305,8 @@ begin
   FHostForm := F;
   FTheme := ACombo.ThemeKind;
   FItemHeight := ACombo.ItemHeight;
-  if FItemHeight <= 0 then
-    FItemHeight := ThemedComboItemHeightForControl(ACombo.Height, 0);
+  if FItemHeight < 8 then
+    FItemHeight := ScaledLayoutMetric(ACombo, ThemedComboBoxItemHeight);
   FHighlightIndex := ACombo.ItemIndex;
   if (FHighlightIndex < 0) and (ACombo.Items.Count > 0) then
     FHighlightIndex := 0;

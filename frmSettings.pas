@@ -28,7 +28,6 @@ type
     scrAgentTab: TScrollBox;
     pnlTabAgent: TPanel;
     tsTools: TTabSheet;
-    WebSearchSettingsFrame: TWebSearchSettingsFrame;
     tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
 
@@ -84,6 +83,8 @@ type
     procedure btnBrowseWorkspaceClick(Sender: TObject);
     procedure btnOKClick(Sender: TObject);
     procedure btnCancelClick(Sender: TObject);
+    procedure pgcSettingsChange(Sender: TObject);
+    procedure tsToolsShow(Sender: TObject);
   private
     FState: TWorkspaceState;
     FRegistry: TWorkspaceRegistry;
@@ -91,6 +92,9 @@ type
     FDialogProvider: TLlmProvider;
     FDefaultModelId: string;
     FSwitchingProvider: Boolean;
+    FWebSearchUiReady: Boolean;
+    FWebSearchSettingsFrame: TWebSearchSettingsFrame;
+    procedure EnsureWebSearchUiReady;
     function CurrentDialogProvider: TLlmProvider;
     function SavedModelLine(const M: TSavedModel): string;
     procedure LoadFromState;
@@ -130,8 +134,8 @@ begin
   try
     Dlg.FState := AState;
     Dlg.FRegistry := ARegistry;
+    Dlg.FCurrentTheme := AState.Theme;
     Dlg.LoadFromState;
-    Dlg.ApplyTheme(AState.Theme);
     Result := (Dlg.ShowModal = mrOk);
     if Result then begin
       Dlg.SaveToState;
@@ -152,8 +156,34 @@ procedure TSettingsForm.FormCreate(Sender: TObject);
 begin
   Caption := 'LazyCodingAgent Settings';
   FCurrentTheme := tkDark;
+  FWebSearchUiReady := False;
   KeyPreview := True;
   OnKeyDown := @FormKeyDown;
+end;
+
+procedure TSettingsForm.EnsureWebSearchUiReady;
+begin
+  if FWebSearchUiReady then Exit;
+  if not Assigned(pgcSettings) or not Assigned(tsTools) then Exit;
+  if pgcSettings.ActivePageIndex <> tsTools.PageIndex then Exit;
+  if not Assigned(FWebSearchSettingsFrame) then begin
+    FWebSearchSettingsFrame := TWebSearchSettingsFrame.Create(tsTools);
+    FWebSearchSettingsFrame.Parent := tsTools;
+    FWebSearchSettingsFrame.Align := alClient;
+  end;
+  FWebSearchSettingsFrame.LoadSettings;
+  FWebSearchSettingsFrame.InitTheme(FCurrentTheme);
+  FWebSearchUiReady := True;
+end;
+
+procedure TSettingsForm.pgcSettingsChange(Sender: TObject);
+begin
+  EnsureWebSearchUiReady;
+end;
+
+procedure TSettingsForm.tsToolsShow(Sender: TObject);
+begin
+  EnsureWebSearchUiReady;
 end;
 
 procedure TSettingsForm.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -224,8 +254,8 @@ begin
   if Assigned(lblMaxTokensHint) then
     lblMaxTokensHint.Font.Color := P.TextMuted;
 
-  if Assigned(WebSearchSettingsFrame) then
-    WebSearchSettingsFrame.InitTheme(ATheme);
+  if FWebSearchUiReady and Assigned(FWebSearchSettingsFrame) then
+    FWebSearchSettingsFrame.InitTheme(ATheme);
 
   Invalidate;
 end;
@@ -318,9 +348,6 @@ begin
   edtWorkspaceName.Text := FState.WorkspaceName;
   edtBrowserExecutable.Text := LoadBrowserReadConfig.ExecutablePath;
 
-  if Assigned(WebSearchSettingsFrame) then
-    WebSearchSettingsFrame.LoadSettings;
-
   if Assigned(pgcSettings) then
     pgcSettings.ActivePageIndex := 0;
 end;
@@ -360,8 +387,8 @@ begin
   FState.WorkspaceName := Trim(edtWorkspaceName.Text);
   SaveBrowserReadExecutablePath(Trim(edtBrowserExecutable.Text));
 
-  if Assigned(WebSearchSettingsFrame) then
-    WebSearchSettingsFrame.SaveSettings;
+  if FWebSearchUiReady and Assigned(FWebSearchSettingsFrame) then
+    FWebSearchSettingsFrame.SaveSettings;
 
   if Assigned(FRegistry) and FState.HasActiveWorkspace then
     FRegistry.UpdateWorkspace(FState.ActiveWorkspaceId, FState.WorkspaceName, FState.WorkspaceRoot);

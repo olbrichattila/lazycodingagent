@@ -181,6 +181,27 @@ On **Linux**, prefer the **Qt5** LCL widgetset (`lazbuild --widgetset=qt5 lazyco
 
 **Running on Linux:** `make` runs `post-build.sh` automatically. Start the app with `./scripts/run-linux.sh` (on Wayland: sets `QT_QPA_PLATFORM=xcb` for Qt5 builds or `GDK_BACKEND=x11` for GTK2). You can also run `./lazycodingagent` directly; Qt5 builds set `QT_QPA_PLATFORM=xcb` in [`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas) **before** the LCL loads Qt (same effect as IDE **Run** env). GTK2 builds set `GDK_BACKEND=x11` the same way when `WAYLAND_DISPLAY` is set.
 
+### Local web search (SearXNG)
+
+The agent **web_search** tool can use a **local SearXNG** instance (no Brave/Tavily API key). This repo ships a dev-only Compose stack under [`docker/searxng/`](docker/searxng/) with JSON search enabled for LazyCodingAgent. Full notes: [`docker/searxng/README.md`](docker/searxng/README.md).
+
+**Requirements:** [Docker](https://docs.docker.com/get-docker/) with Compose.
+
+```bash
+cd docker/searxng
+cp .env.example .env
+docker compose up -d
+```
+
+Check JSON search: `curl -s 'http://127.0.0.1:8080/search?q=test&format=json' | head -c 200` (should print JSON, not HTML). Stop with `docker compose down` from that directory.
+
+**In LazyCodingAgent:**
+
+1. **Settings → Tools → Web Search** — enable Web Search, **Add** provider **SearXNG**, instance URL `http://127.0.0.1:8080`, then **Test** and **OK**.
+2. Allow local hosts (blocked by default): set `AllowPrivateInstances=true` under `[WebSearch]` in your user `config.ini`, or launch with `LCA_WEB_SEARCH_TRUSTED_LOCAL=1` (for example `LCA_WEB_SEARCH_TRUSTED_LOCAL=1 ./scripts/run-linux.sh`).
+
+Brave and Tavily are configured in the same settings screen with API keys. See **Help → Web Search** in the app for provider behavior and limits.
+
 ### Raspberry Pi 4/5 (64-bit Linux / aarch64)
 
 LazyCodingAgent is not tuned for low-RAM boards, but the same **Linux aarch64** build applies on **Raspberry Pi OS (64-bit)** and similar distros. You need **Lazarus 3.0+** (TurboPower IPro in the Lazarus tree); if apt’s Lazarus is too old, use [fpcupdeluxe](https://github.com/LongDirtyAnimAlf/fpcupdeluxe) for a current FPC/Lazarus install.

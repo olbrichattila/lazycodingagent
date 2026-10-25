@@ -6,18 +6,18 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, Forms, Controls, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LcaPaintButton,
-  LcaThemedPageTabBar,
   uAppTypes, LcaTheme, LcaThemedMessageBox, uWebSearchTypes, uWebSearchConfig, uWebSearchSecrets,
   uWebSearchManager, uWebSearchHttp;
 
 type
   { TWebSearchSettingsFrame }
   TWebSearchSettingsFrame = class(TFrame)
-    pnlToolsSubStripHost: TPanel;
-    lcaToolsSubTabBar: TLcaThemedPageTabBar;
-    pgcToolsSub: TPageControl;
-    tsWebSearch: TTabSheet;
-    pnlWebSearch: TPanel;
+    scrWebSearch: TScrollBox;
+    pnlWebSearchContent: TPanel;
+    pnlWebSearchHeader: TPanel;
+    pnlConnections: TPanel;
+    pnlWebSearchFooter: TPanel;
+    pnlConnButtons: TPanel;
     lblWebSearchTitle: TLabel;
     chkWebSearchEnabled: TCheckBox;
     lblMaxResults: TLabel;
@@ -26,6 +26,7 @@ type
     edtTotalTimeoutSec: TEdit;
     chkAutoFallback: TCheckBox;
     chkFallbackEmpty: TCheckBox;
+    chkAllowPrivateInstances: TCheckBox;
     lblConnections: TLabel;
     lvConnections: TListView;
     btnAddConn: TLcaPaintButton;
@@ -42,13 +43,16 @@ type
     procedure btnTestConnClick(Sender: TObject);
     procedure btnMoveUpClick(Sender: TObject);
     procedure btnMoveDownClick(Sender: TObject);
+    procedure lvConnectionsResize(Sender: TObject);
   private
     FTheme: TThemeKind;
     FConfig: TWebSearchGlobalConfig;
     procedure ApplyTheme(ATheme: TThemeKind);
+    procedure AdjustConnectionListColumns;
     procedure RefreshConnectionList;
     function SelectedConnectionIndex: Integer;
     procedure RenumberPriorities;
+    procedure ApplyUiToConfig;
   public
     procedure LoadSettings;
     procedure SaveSettings;
@@ -76,8 +80,14 @@ begin
   P := ThemePalette(ATheme);
   Color := P.Background;
   Font.Color := P.Text;
-  pnlWebSearch.Color := P.Background;
-  pnlToolsSubStripHost.Color := P.Background;
+  if not ParentFormHandlesReady(Self) then
+    Exit;
+  scrWebSearch.Color := P.Background;
+  pnlWebSearchContent.Color := P.Background;
+  pnlWebSearchHeader.Color := P.Background;
+  pnlConnections.Color := P.Background;
+  pnlWebSearchFooter.Color := P.Background;
+  pnlConnButtons.Color := P.Background;
   memoConnStatus.Color := P.SurfaceAlt;
   memoConnStatus.Font.Color := P.Text;
   edtMaxResults.Color := P.SurfaceAlt;
@@ -95,11 +105,12 @@ begin
   edtTotalTimeoutSec.Text := IntToStr(FConfig.TotalTimeoutMs div 1000);
   chkAutoFallback.Checked := FConfig.AutomaticFallback;
   chkFallbackEmpty.Checked := FConfig.FallbackOnEmptyResults;
+  chkAllowPrivateInstances.Checked := FConfig.AllowPrivateInstances;
   RefreshConnectionList;
   memoConnStatus.Clear;
 end;
 
-procedure TWebSearchSettingsFrame.SaveSettings;
+procedure TWebSearchSettingsFrame.ApplyUiToConfig;
 begin
   FConfig.Enabled := chkWebSearchEnabled.Checked;
   FConfig.MaxResults := StrToIntDef(Trim(edtMaxResults.Text), WEB_SEARCH_DEFAULT_MAX_RESULTS);
@@ -109,7 +120,31 @@ begin
   if FConfig.TotalTimeoutMs < 1000 then FConfig.TotalTimeoutMs := 1000;
   FConfig.AutomaticFallback := chkAutoFallback.Checked;
   FConfig.FallbackOnEmptyResults := chkFallbackEmpty.Checked;
+  FConfig.AllowPrivateInstances := chkAllowPrivateInstances.Checked;
+end;
+
+procedure TWebSearchSettingsFrame.SaveSettings;
+begin
+  ApplyUiToConfig;
   SaveWebSearchConfig(FConfig);
+end;
+
+procedure TWebSearchSettingsFrame.AdjustConnectionListColumns;
+var
+  I, Fixed, LastW: Integer;
+begin
+  if lvConnections.Columns.Count < 2 then Exit;
+  Fixed := 0;
+  for I := 0 to lvConnections.Columns.Count - 2 do
+    Fixed := Fixed + lvConnections.Columns[I].Width;
+  LastW := lvConnections.ClientWidth - Fixed - 6;
+  if LastW < 64 then LastW := 64;
+  lvConnections.Columns[lvConnections.Columns.Count - 1].Width := LastW;
+end;
+
+procedure TWebSearchSettingsFrame.lvConnectionsResize(Sender: TObject);
+begin
+  AdjustConnectionListColumns;
 end;
 
 procedure TWebSearchSettingsFrame.RefreshConnectionList;
@@ -145,6 +180,7 @@ begin
     Item.SubItems.Add(WebSearchProviderDisplayName(Conn.Kind));
     Item.Data := Pointer(I);
   end;
+  AdjustConnectionListColumns;
 end;
 
 function TWebSearchSettingsFrame.SelectedConnectionIndex: Integer;
@@ -227,19 +263,38 @@ var
   Idx: Integer;
   TestRes: TConnectionTestResult;
   Transport: IWebSearchTransport;
-  Line: string;
+  Line, PopupText, ConnName: string;
 begin
   Idx := SelectedConnectionIndex;
-  if Idx < 0 then Exit;
-  memoConnStatus.Lines.Add('Testing "' + FConfig.Connections[Idx].Name + '"...');
+  if Idx < 0 then begin
+    LcaMessageDlg('Web Search', 'Select a connection to test.', mtWarning, [mbOK], FTheme);
+    Exit;
+  end;
+  ConnName := FConfig.Connections[Idx].Name;
+  ApplyUiToConfig;
+  memoConnStatus.Lines.Add('Testing "' + ConnName + '"...');
   Transport := TWebSearchProductionTransport.Create;
   TestRes := TestWebSearchConnection(FConfig, FConfig.Connections[Idx].Id, Transport, nil);
-  if TestRes.Success then
+  if TestRes.Success then begin
     Line := Format('%s: OK (%d ms, %d results)',
-      [FConfig.Connections[Idx].Name, TestRes.ResponseTimeMs, TestRes.ResultCount])
-  else
+      [ConnName, TestRes.ResponseTimeMs, TestRes.ResultCount]);
+    PopupText := Format('Connection "%s" passed.' + LineEnding + LineEnding +
+      'Response time: %d ms' + LineEnding + 'Results: %d',
+      [ConnName, TestRes.ResponseTimeMs, TestRes.ResultCount]);
+    LcaMessageDlg('Web Search', PopupText, mtInformation, [mbOK], FTheme);
+  end   else begin
     Line := Format('%s: Failed (%s) %s',
-      [FConfig.Connections[Idx].Name, TestRes.ErrorCode, TestRes.ErrorMessage]);
+      [ConnName, TestRes.ErrorCode, TestRes.ErrorMessage]);
+    PopupText := 'Connection "' + ConnName + '" failed.' + LineEnding + LineEnding;
+    if Trim(TestRes.ErrorCode) <> '' then
+      PopupText := PopupText + TestRes.ErrorCode;
+    if Trim(TestRes.ErrorMessage) <> '' then begin
+      if Trim(TestRes.ErrorCode) <> '' then
+        PopupText := PopupText + LineEnding;
+      PopupText := PopupText + TestRes.ErrorMessage;
+    end;
+    LcaMessageDlg('Web Search', PopupText, mtError, [mbOK], FTheme);
+  end;
   memoConnStatus.Lines.Add(Line);
 end;
 

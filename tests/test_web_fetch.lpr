@@ -152,6 +152,13 @@ begin
   if not ExtractWebContent(RawByteString(FixtureHtml), 'text/html', 'markdown', 20000,
     Title, Content, Truncated, K, Msg) then
     Fail('extract html: ' + Msg);
+
+  if not ExtractWebContent(
+    RawByteString('<html><head><title>Bad Tags</title></head><body><p>Hello</p><123>x</123></body></html>'),
+    'text/html', 'markdown', 20000, Title, Content, Truncated, K, Msg) then
+    Fail('extract malformed html should fallback: ' + Msg);
+  if Pos('Hello', Content) = 0 then
+    Fail('malformed html fallback missing body text');
   if Title <> 'Sample Docs' then
     Fail('title mismatch: ' + Title);
   if Pos('Authentication', Content) = 0 then

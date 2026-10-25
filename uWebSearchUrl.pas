@@ -141,7 +141,7 @@ begin
   end;
   if not AAllowPrivate and not WebSearchTrustedLocalAllowed then begin
     if HostIsBlockedName(Host) then begin
-      ErrMsg := 'Private or local network instances are not allowed';
+      ErrMsg := 'Local/private SearXNG URLs are blocked. Enable "Allow local/private SearXNG" in Web Search settings.';
       Exit(False);
     end;
     Parsed.Scheme := Scheme;
@@ -150,8 +150,11 @@ begin
     Parsed.Path := Path;
     Parsed.Secure := SameText(Scheme, 'https');
     Parsed.OriginalUrl := AUrl;
-    if not ValidateWebFetchTarget(Parsed, Kind, ErrMsg) then
+    if not ValidateWebFetchTarget(Parsed, Kind, ErrMsg) then begin
+      if (ErrMsg = 'Destination is not allowed') or (Kind = wfekBlockedDestination) then
+        ErrMsg := 'Local/private SearXNG URLs are blocked. Enable "Allow local/private SearXNG" in Web Search settings.';
       Exit(False);
+    end;
   end;
   ANormalizedBase := Scheme + '://' + Host;
   if (Port <> 80) and (Port <> 443) then

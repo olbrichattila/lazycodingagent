@@ -80,34 +80,44 @@ begin
   btnFirst.Visible := False;
   btnSecond.Visible := False;
   btnThird.Visible := False;
+  btnFirst.ModalResult := mrNone;
+  btnSecond.ModalResult := mrNone;
+  btnThird.ModalResult := mrNone;
 
   if Buttons = [mbOK] then begin
     btnFirst.Caption := 'OK';
     btnFirst.ButtonRole := tbrPrimary;
+    btnFirst.ModalResult := mrOK;
     btnFirst.Visible := True;
     FModalResultCode := mrOK;
   end else if Buttons = [mbYes, mbNo] then begin
     btnFirst.Caption := 'Yes';
     btnFirst.ButtonRole := tbrPrimary;
+    btnFirst.ModalResult := mrYes;
     btnFirst.Visible := True;
     btnSecond.Caption := 'No';
     btnSecond.ButtonRole := tbrCancel;
+    btnSecond.ModalResult := mrNo;
     btnSecond.Visible := True;
     FModalResultCode := mrYes;
   end else if Buttons = [mbYes, mbNo, mbCancel] then begin
     btnFirst.Caption := 'Yes';
     btnFirst.ButtonRole := tbrPrimary;
+    btnFirst.ModalResult := mrYes;
     btnFirst.Visible := True;
     btnSecond.Caption := 'No';
     btnSecond.ButtonRole := tbrCancel;
+    btnSecond.ModalResult := mrNo;
     btnSecond.Visible := True;
     btnThird.Caption := 'Cancel';
     btnThird.ButtonRole := tbrCancel;
+    btnThird.ModalResult := mrCancel;
     btnThird.Visible := True;
     FModalResultCode := mrYes;
   end else begin
     btnFirst.Caption := 'OK';
     btnFirst.ButtonRole := tbrPrimary;
+    btnFirst.ModalResult := mrOK;
     btnFirst.Visible := True;
     FModalResultCode := mrOK;
   end;

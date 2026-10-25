@@ -117,7 +117,7 @@ Prefer `web_fetch` over `shell`/`curl` for reading websites.
 
 ### web_search
 
-Search the internet for **current** public information (documentation, libraries, articles). Returns JSON with `results[]` (`title`, `url`, `snippet`, `published_at`). Configure providers under **Settings → Tools → Web Search**.
+Search the internet for **current** public information (documentation, libraries, articles). Returns JSON with `results[]` (`title`, `url`, `snippet`, `published_at`). Configure providers under **Settings → Tools**.
 
 **Parameters:** `query` (required); `max_results` (default from settings, typically 10); `recency` — `any` (default), `day`, `week`, `month`, or `year`.
 

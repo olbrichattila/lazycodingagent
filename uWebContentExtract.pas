@@ -15,7 +15,7 @@ function ExtractWebContent(const Body: RawByteString; const ContentType: string;
 implementation
 
 uses
-  Classes, DOM, DOM_HTML, SAX_HTML, htmldefs;
+  Classes, StrUtils, DOM, DOM_HTML, SAX_HTML, htmldefs;
 
 function MimeTypeOnly(const ContentType: string): string;
 var
@@ -64,6 +64,59 @@ begin
     { Non-UTF-8 charsets are rare for modern web; best-effort UTF-8 decode. }
   end;
   Result := UTF8ToString(Body);
+end;
+
+function TryReadHtmlIntoDocument(Doc: THTMLDocument; Stream: TStream): Boolean;
+begin
+  Result := False;
+  try
+    ReadHTMLFile(Doc, Stream);
+    Result := True;
+  except
+    on E: EDOMError do ;
+    on E: Exception do ;
+  end;
+end;
+
+function StripHtmlTagsRough(const HtmlUtf8: string): string;
+var
+  I: Integer;
+  InTag: Boolean;
+  C: Char;
+  SB: TStringBuilder;
+begin
+  SB := TStringBuilder.Create;
+  try
+    InTag := False;
+    for I := 1 to Length(HtmlUtf8) do begin
+      C := HtmlUtf8[I];
+      if C = '<' then
+        InTag := True
+      else if C = '>' then
+        InTag := False
+      else if not InTag then
+        SB.Append(C);
+    end;
+    Result := Trim(SB.ToString);
+  finally
+    SB.Free;
+  end;
+end;
+
+function ExtractTitleFromHtmlRough(const HtmlUtf8: string): string;
+var
+  L, R, P: SizeInt;
+  Tag: string;
+begin
+  Result := '';
+  L := Pos('<title', LowerCase(HtmlUtf8));
+  if L = 0 then Exit;
+  P := PosEx('>', HtmlUtf8, L);
+  if P = 0 then Exit;
+  R := PosEx('</title>', LowerCase(HtmlUtf8), P + 1);
+  if R = 0 then Exit;
+  Tag := Copy(HtmlUtf8, P + 1, R - P - 1);
+  Result := Trim(StripHtmlTagsRough(Tag));
 end;
 
 function NodeNameLower(N: TDOMNode): string;
@@ -232,11 +285,11 @@ begin
   Doc := THTMLDocument.Create;
   Stream := TStringStream.Create(HtmlUtf8, TEncoding.UTF8);
   try
-    ReadHTMLFile(Doc, Stream);
-    Root := FindContentRoot(Doc);
-    RenderNode(Root, Result, False, 0);
-    TitleNode := Doc.GetElementsByTagName('title');
-    if (TitleNode <> nil) and (TitleNode.Length > 0) then ;
+    if TryReadHtmlIntoDocument(Doc, Stream) then begin
+      Root := FindContentRoot(Doc);
+      RenderNode(Root, Result, False, 0);
+    end else
+      Result := StripHtmlTagsRough(HtmlUtf8);
   finally
     Stream.Free;
     Doc.Free;
@@ -254,16 +307,17 @@ begin
   Doc := THTMLDocument.Create;
   Stream := TStringStream.Create(HtmlUtf8, TEncoding.UTF8);
   try
-    ReadHTMLFile(Doc, Stream);
-    TitleNode := Doc.GetElementsByTagName('title');
-    if (TitleNode <> nil) and (TitleNode.Length > 0) then
-      Result := Trim(TitleNode.Item[0].TextContent);
-    if Result = '' then
-    begin
-      TitleNode := Doc.GetElementsByTagName('h1');
+    if TryReadHtmlIntoDocument(Doc, Stream) then begin
+      TitleNode := Doc.GetElementsByTagName('title');
       if (TitleNode <> nil) and (TitleNode.Length > 0) then
         Result := Trim(TitleNode.Item[0].TextContent);
-    end;
+      if Result = '' then begin
+        TitleNode := Doc.GetElementsByTagName('h1');
+        if (TitleNode <> nil) and (TitleNode.Length > 0) then
+          Result := Trim(TitleNode.Item[0].TextContent);
+      end;
+    end else
+      Result := ExtractTitleFromHtmlRough(HtmlUtf8);
   finally
     Stream.Free;
     Doc.Free;

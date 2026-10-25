@@ -36,6 +36,7 @@ object WebSearchConnectionForm: TWebSearchConnectionForm
     Height = 32
     Top = 112
     Width = 280
+    ItemHeight = 22
     TabOrder = 1
     OnChange = cboProviderChange
   end
@@ -80,6 +81,7 @@ object WebSearchConnectionForm: TWebSearchConnectionForm
     Height = 32
     Top = 312
     Width = 200
+    ItemHeight = 22
     TabOrder = 4
   end
   object lblTimeout: TLabel

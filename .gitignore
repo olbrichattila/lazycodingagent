@@ -51,3 +51,6 @@ tmp*/
 # Operating system files
 .DS_Store
 Thumbs.db
+
+# Local Docker env (docker/searxng)
+docker/searxng/.env

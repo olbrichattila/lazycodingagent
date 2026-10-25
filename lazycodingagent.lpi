@@ -248,10 +248,12 @@
       <Unit>
         <Filename Value="fraWebSearchSettings.pas"/>
         <IsPartOfProject Value="True"/>
+        <HasResources Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="frmWebSearchConnection.pas"/>
         <IsPartOfProject Value="True"/>
+        <HasResources Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="uWebFetch.pas"/>
