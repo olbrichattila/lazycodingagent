@@ -258,7 +258,7 @@ begin
     FOnClick(Self);
 end;
 
-procedure TLcaPaintNavList.ItemsChanged(Sender: TObject);
+procedure TLcaPaintNavList.ItemsChanged({%H-}Sender: TObject);
 begin
   if FUpdateLock > 0 then Exit;
   if FItemIndex >= FItems.Count then
@@ -439,8 +439,8 @@ begin
     Result := -1;
 end;
 
-procedure TLcaPaintNavList.ContentMouseDown(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+procedure TLcaPaintNavList.ContentMouseDown(Button: TMouseButton; {%H-}Shift: TShiftState;
+  {%H-}X, Y: Integer);
 var
   Idx: Integer;
 begin

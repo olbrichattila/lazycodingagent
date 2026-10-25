@@ -24,9 +24,8 @@ type
   private
     FScrollHost: TLcaScrollHost;
     FOwnerView: TLcaMarkdownView;
-  protected
-    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
   public
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
     procedure BindScrollHost(AHost: TLcaScrollHost);
     procedure BindOwnerView(AView: TLcaMarkdownView);
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
@@ -750,7 +749,7 @@ begin
   if Assigned(FScrollHost) then
     Result := FScrollHost.LayoutViewportSize
   else
-    Result := Size(Max(1, ClientWidth), Max(1, ClientHeight));
+    Result := Types.Size(Max(1, ClientWidth), Max(1, ClientHeight));
 end;
 
 function TLcaMarkdownView.MarkdownMeasurePanelHeight(AViewH: Integer): Integer;
