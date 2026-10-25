@@ -37,6 +37,7 @@ type
     FHistoryRefreshThrottleQueued: Boolean;
     FLastAppendWasTrace: Boolean;
     FEphemeralThinkingActive: Boolean;
+    FBatchHistoryReload: Boolean;
 
     FOnPrompt: TPromptEvent;
     FOnModeChange: TModeChangeEvent;
@@ -548,6 +549,7 @@ end;
 
 procedure TChatPanel.RefreshHistoryView;
 begin
+  if FBatchHistoryReload then Exit;
   FHistoryScrollToEndPending := True;
   ScheduleHistoryRefresh;
 end;
@@ -903,11 +905,16 @@ begin
   FHistoryText := '';
   FLastAppendWasTrace := False;
   FEphemeralThinkingActive := False;
-  for I := 0 to High(AMessages) do begin
-    if AMessages[I].Role = crTool then
-      AppendToolMessage(AMessages[I], ADebuggingMode)
-    else
-      AppendMessage(AMessages[I]);
+  FBatchHistoryReload := True;
+  try
+    for I := 0 to High(AMessages) do begin
+      if AMessages[I].Role = crTool then
+        AppendToolMessage(AMessages[I], ADebuggingMode)
+      else
+        AppendMessage(AMessages[I]);
+    end;
+  finally
+    FBatchHistoryReload := False;
   end;
   if FHistoryText = '' then
     InitWelcomeText;
