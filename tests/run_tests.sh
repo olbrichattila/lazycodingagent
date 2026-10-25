@@ -9,9 +9,27 @@ LAZARUS_DIR="${LAZARUS_DIR:-}"
 if [[ -z "$LAZARUS_DIR" && -d /usr/lib/lazarus ]]; then LAZARUS_DIR=/usr/lib/lazarus; fi
 if [[ -z "$LAZARUS_DIR" ]]; then echo "Set LAZARUS_DIR"; exit 1; fi
 ARCH="$(uname -m)"
-fpc -Mobjfpc -Scghi -Fu"$ROOT" -Fu"$LAZARUS_DIR/components/lazutils/lib/$ARCH-linux" \
+FPC_LIB=""
+for d in "/usr/lib/${ARCH}-linux-gnu/fpc"/*/units/"${ARCH}-linux" \
+         "/usr/lib/fpc"/*/units/"${ARCH}-linux"; do
+  if [[ -d "$d/fcl-xml" ]]; then FPC_LIB="$d"; break; fi
+done
+FPC_EXTRA=()
+if [[ -n "$FPC_LIB" ]]; then
+  FPC_EXTRA+=(-Fu"$FPC_LIB/fcl-xml" -Fu"$FPC_LIB/fcl-net" -Fu"$FPC_LIB/fcl-web" -Fu"$FPC_LIB/fcl-base" -Fu"$FPC_LIB/fcl-hash")
+fi
+FPC_EXTRA+=(-Fu"$ROOT/third_party/fpc-openssl3/src")
+fpc -Mobjfpc -Scghi -Fu"$ROOT" -Fu"$ROOT/packages/LcaDesignSystem/src" \
+  -Fu"$LAZARUS_DIR/components/lazutils/lib/$ARCH-linux" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/tool_driver.lpr
-fpc -Mobjfpc -Scghi -Fu"$ROOT" -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_agent_rules.pas
+fpc -Mobjfpc -Scghi -Fu"$ROOT" -Fu"$ROOT/packages/LcaDesignSystem/src" \
+  "${FPC_EXTRA[@]}" -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_agent_rules.pas
+fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
+  -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_web_fetch.lpr
+fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
+  -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_browser_read.lpr
 "$TEST_OUTPUT/test_agent_rules" "$TEST_OUTPUT/rules-fixture"
+"$TEST_OUTPUT/test_web_fetch" "$ROOT/tests/fixtures/web_fetch/sample.html"
+"$TEST_OUTPUT/test_browser_read"
 python3 tests/test_local_tools.py "$TEST_OUTPUT/tool_driver"
 echo "All LazyCodingAgent tool tests passed."

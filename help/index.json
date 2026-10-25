@@ -33,6 +33,6 @@
     "id": "tools-reference",
     "title": "Agent tools reference",
     "file": "tools-reference.md",
-    "keywords": ["read_file", "write_file", "edit_file", "apply_patch", "shell", "patch", "hunk", "grep", "git", "todo", "plan"]
+    "keywords": ["read_file", "write_file", "edit_file", "apply_patch", "shell", "patch", "hunk", "grep", "git", "todo", "plan", "web_fetch", "browser_read", "chromium", "javascript", "url", "fetch", "website", "documentation"]
   }
 ]

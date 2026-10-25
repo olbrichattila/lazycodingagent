@@ -14,7 +14,9 @@ if not exist "%LAZARUS_DIR%\components\lazutils" (
 set "FLAGS=-Mobjfpc -Scghi -Fu. -Fu"%LAZARUS_DIR%\components\lazutils\lib\x86_64-win64" -FU"%TEST_OUTPUT%" -FE"%TEST_OUTPUT%""
 fpc %FLAGS% tests\tool_driver.lpr >"%TEST_OUTPUT%\tool-build.log" 2>&1 || goto :show_tool
 fpc %FLAGS% tests\test_agent_rules.pas >"%TEST_OUTPUT%\rules-build.log" 2>&1 || goto :show_rules
+fpc %FLAGS% tests\test_web_fetch.lpr >"%TEST_OUTPUT%\web-fetch-build.log" 2>&1 || goto :show_web_fetch
 "%TEST_OUTPUT%\test_agent_rules.exe" "%TEST_OUTPUT%\rules-fixture" || goto :fail
+"%TEST_OUTPUT%\test_web_fetch.exe" "tests\fixtures\web_fetch\sample.html" || goto :fail
 where python >nul 2>&1 && set "PY=python"
 if not defined PY where py >nul 2>&1 && set "PY=py -3"
 if not defined PY (
@@ -31,6 +33,10 @@ goto :fail
 
 :show_rules
 type "%TEST_OUTPUT%\rules-build.log"
+goto :fail
+
+:show_web_fetch
+type "%TEST_OUTPUT%\web-fetch-build.log"
 goto :fail
 
 :fail

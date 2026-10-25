@@ -18,7 +18,9 @@ uses
   uToolApplyPatch,
   uToolEditFile,
   uToolGit,
-  uToolCreatePlanFile;
+  uToolCreatePlanFile,
+  uToolWebFetch,
+  uToolBrowserRead;
 
 type
   TToolExecutionResult = uAgentToolBase.TToolExecutionResult;
@@ -98,6 +100,8 @@ begin
   RegisterTool(TToolGit.Create(FContext));
   RegisterTool(TToolTodo.Create(FContext));
   RegisterTool(TToolCreatePlanFile.Create(FContext));
+  RegisterTool(TToolWebFetch.Create(FContext));
+  RegisterTool(TToolBrowserRead.Create(FContext));
 end;
 
 destructor TAgentToolRegistry.Destroy;

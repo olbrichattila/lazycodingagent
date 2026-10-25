@@ -458,11 +458,15 @@ begin
   if AJson[1] <> '{' then Exit;
   if not TryGetJSONObject(AJson, O) then Exit;
   try
+    if O.Find('success') <> nil then
+      Result.Success := O.Get('success', True);
     if O.Find('error') <> nil then
     begin
       Result.Success := False;
       Result.Summary := O.Get('error', 'Error');
-      if O.Find('error_kind') <> nil then
+      if O.Find('error_code') <> nil then
+        Result.Summary := O.Get('error_code', '') + ': ' + Result.Summary
+      else if O.Find('error_kind') <> nil then
         Result.Summary := O.Get('error_kind', '') + ': ' + Result.Summary;
     end
     else if O.Find('status') <> nil then

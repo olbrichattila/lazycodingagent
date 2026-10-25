@@ -1,0 +1,168 @@
+unit uBrowserReadTypes;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  SysUtils;
+
+const
+  BROWSER_READ_DEFAULT_FORMAT = 'markdown';
+  BROWSER_READ_DEFAULT_WAIT_STRATEGY = 'load';
+  BROWSER_READ_DEFAULT_TIMEOUT_MS = 30000;
+  BROWSER_READ_MAX_TIMEOUT_MS = 120000;
+  BROWSER_READ_DEFAULT_MAX_LENGTH = 20000;
+  BROWSER_READ_MAX_MAX_LENGTH = 100000;
+  BROWSER_READ_DEFAULT_MAX_CONCURRENT = 1;
+
+type
+  TBrowserReadWaitStrategy = (
+    brwsDomContentLoaded,
+    brwsLoad,
+    brwsSelector
+  );
+
+  TBrowserReadErrorKind = (
+    brekNone,
+    brekBrowserNotFound,
+    brekBrowserStartFailed,
+    brekCdpConnectionFailed,
+    brekNavigationFailed,
+    brekNavigationTimeout,
+    brekSelectorTimeout,
+    brekAccessDenied,
+    brekContentExtractionFailed,
+    brekBrowserCrashed,
+    brekCancelled,
+    brekInvalidUrl,
+    brekInvalidArgument,
+    brekInternal
+  );
+
+  TBrowserReadConfig = record
+    ExecutablePath: string;
+    MaxConcurrent: Integer;
+    MaxTimeoutMs: Integer;
+    MaxMaxLength: Integer;
+    AllowLocalhost: Boolean;
+  end;
+
+  TBrowserReadCancelCheck = function: Boolean of object;
+
+  TBrowserReadResult = record
+    Success: Boolean;
+    Url: string;
+    FinalUrl: string;
+    Title: string;
+    Format: string;
+    Content: string;
+    Truncated: Boolean;
+    Rendered: Boolean;
+    ElapsedMs: Int64;
+    ErrorKind: TBrowserReadErrorKind;
+    ErrorMessage: string;
+  end;
+
+function DefaultBrowserReadConfig: TBrowserReadConfig;
+function BrowserReadErrorKindToCode(AKind: TBrowserReadErrorKind): string;
+procedure InitBrowserReadResult(out R: TBrowserReadResult);
+function ParseBrowserReadWaitStrategy(const S: string;
+  out Strategy: TBrowserReadWaitStrategy): Boolean;
+function ParseBrowserReadFormat(const S: string; out Fmt: string): Boolean;
+
+implementation
+
+function DefaultBrowserReadConfig: TBrowserReadConfig;
+begin
+  Result.ExecutablePath := '';
+  Result.MaxConcurrent := BROWSER_READ_DEFAULT_MAX_CONCURRENT;
+  Result.MaxTimeoutMs := BROWSER_READ_MAX_TIMEOUT_MS;
+  Result.MaxMaxLength := BROWSER_READ_MAX_MAX_LENGTH;
+  Result.AllowLocalhost := False;
+end;
+
+function BrowserReadErrorKindToCode(AKind: TBrowserReadErrorKind): string;
+begin
+  case AKind of
+    brekBrowserNotFound: Result := 'BROWSER_NOT_FOUND';
+    brekBrowserStartFailed: Result := 'BROWSER_START_FAILED';
+    brekCdpConnectionFailed: Result := 'CDP_CONNECTION_FAILED';
+    brekNavigationFailed: Result := 'NAVIGATION_FAILED';
+    brekNavigationTimeout: Result := 'NAVIGATION_TIMEOUT';
+    brekSelectorTimeout: Result := 'SELECTOR_TIMEOUT';
+    brekAccessDenied: Result := 'ACCESS_DENIED';
+    brekContentExtractionFailed: Result := 'CONTENT_EXTRACTION_FAILED';
+    brekBrowserCrashed: Result := 'BROWSER_CRASHED';
+    brekCancelled: Result := 'CANCELLED';
+    brekInvalidUrl: Result := 'INVALID_URL';
+    brekInvalidArgument: Result := 'INVALID_ARGUMENT';
+    brekInternal: Result := 'INTERNAL';
+  else
+    Result := '';
+  end;
+end;
+
+procedure InitBrowserReadResult(out R: TBrowserReadResult);
+begin
+  R.Success := False;
+  R.Url := '';
+  R.FinalUrl := '';
+  R.Title := '';
+  R.Format := '';
+  R.Content := '';
+  R.Truncated := False;
+  R.Rendered := False;
+  R.ElapsedMs := 0;
+  R.ErrorKind := brekNone;
+  R.ErrorMessage := '';
+end;
+
+function ParseBrowserReadWaitStrategy(const S: string;
+  out Strategy: TBrowserReadWaitStrategy): Boolean;
+var
+  L: string;
+begin
+  L := LowerCase(Trim(S));
+  if L = '' then
+  begin
+    Strategy := brwsLoad;
+    Exit(True);
+  end;
+  if L = 'domcontentloaded' then
+  begin
+    Strategy := brwsDomContentLoaded;
+    Exit(True);
+  end;
+  if L = 'load' then
+  begin
+    Strategy := brwsLoad;
+    Exit(True);
+  end;
+  if L = 'selector' then
+  begin
+    Strategy := brwsSelector;
+    Exit(True);
+  end;
+  Result := False;
+end;
+
+function ParseBrowserReadFormat(const S: string; out Fmt: string): Boolean;
+var
+  L: string;
+begin
+  L := LowerCase(Trim(S));
+  if L = '' then
+  begin
+    Fmt := BROWSER_READ_DEFAULT_FORMAT;
+    Exit(True);
+  end;
+  if (L = 'markdown') or (L = 'text') or (L = 'html') then
+  begin
+    Fmt := L;
+    Exit(True);
+  end;
+  Result := False;
+end;
+
+end.

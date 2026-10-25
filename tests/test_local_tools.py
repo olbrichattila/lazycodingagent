@@ -36,16 +36,23 @@ def run(driver):
         def patch(text):
             return ok('apply_patch', {'patch':text})
         try:
-            canonical = {'read_file','write_file','list_directory','glob','search_code','apply_patch','edit_file','shell','diagnostics','git','todo','create_plan_file'}
+            canonical = {'read_file','write_file','list_directory','glob','search_code','apply_patch','edit_file','shell','diagnostics','git','todo','create_plan_file','web_fetch','browser_read'}
             declarations = call('_declarations')
             assert {d['function']['name'] for d in declarations} == canonical
-            readonly = {'read_file','list_directory','glob','search_code','diagnostics','git','todo'}
+            readonly = {'read_file','list_directory','glob','search_code','diagnostics','git','todo','web_fetch','browser_read'}
             assert {d['function']['name'] for d in call('_declarations', mode='Ask')} == readonly
             assert {d['function']['name'] for d in call('_declarations', mode='Plan')} == readonly | {'create_plan_file'}
             for mode in ('Ask','Plan'):
                 for tool,args in [('write_file',{'path':'denied','content':'bad'}), ('terminal',{'command':'touch denied'}), ('edit_file',{'path':'denied','old_text':'a','new_text':'b'}), ('apply_patch',{'patch':'bad'}), ('diagnostics',{'action':'build','target':'bad.pas'})]:
                     error(tool, args, mode=mode)
             assert not (root/'denied').exists()
+            blocked = error('web_fetch', {'url': 'http://127.0.0.1/'})
+            assert blocked.get('error_kind') == 'blocked_destination', blocked
+            error('web_fetch', {})
+            error('web_fetch', {'url': 'ftp://example.com/'})
+            blocked_br = error('browser_read', {'url': 'http://127.0.0.1/'})
+            assert blocked_br.get('error_code') == 'ACCESS_DENIED', blocked_br
+            error('browser_read', {})
             error('read_file', '{bad')
             error('read_file', '[]')
             error('read_file', {'path':42})

@@ -65,6 +65,9 @@ With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & 
 ## Safety and sandboxing
 
 - **Reads:** inspection tools (`read_file`, `list_directory`, `glob`, `search_code`, and similar) may use paths **outside** the workspace when you pass an absolute path or a relative path that leaves the project folder.
+- **web_fetch:** retrieves public web pages only (SSRF-safe). Prefer it over shell/curl for static pages.
+- **browser_read:** headless Chromium for JavaScript-rendered pages when `web_fetch` is insufficient. Requires a local Chrome/Chromium/Edge install.
+- Web tool content is shown to the model as tool JSON — it is **not** trusted like the system prompt or project rules; the model is instructed to ignore instructions embedded in pages.
 - **Writes:** by default, write tools (`write_file`, `edit_file`, `apply_patch`), plan saves under `.plan/`, chat image attachments, and shell **cwd** values must stay inside the **workspace root**. Enable **Allow modify outside the working directory** on the chat composer (per session) to permit writes and shell cwd outside the project for that chat only.
 - The **git** tool is **read-only** (status, diff, log, show).
 - **Shell** runs with a timeout cap; use Agent mode only when you trust the workspace and model.

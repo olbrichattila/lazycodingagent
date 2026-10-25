@@ -14,7 +14,7 @@ Create sessions from **Sessions** (**+ New Chat Session**) or click **+** on the
 
 | Mode | Purpose |
 |------|---------|
-| **Ask** | Q&A and exploration. Read-only tools (files, search, git inspect). No writes or shell. |
+| **Ask** | Q&A and exploration. Read-only tools (files, search, git inspect, `web_fetch`, `browser_read`). No writes or shell. |
 | **Plan** | Design and specs. Can save plan markdown under `.plan/`. No arbitrary file writes or shell. |
 | **Agent** | Full coding autopilot: patches, writes, shell, builds. Default for implementation work. |
 

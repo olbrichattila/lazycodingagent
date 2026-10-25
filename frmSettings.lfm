@@ -209,12 +209,12 @@ object SettingsForm: TSettingsForm
           TabOrder = 0
           object pnlTabAgent: TPanel
             Left = 0
-            Height = 944
+            Height = 1040
             Top = 0
             Width = 0
             Align = alTop
             BevelOuter = bvNone
-            ClientHeight = 944
+            ClientHeight = 1040
             ClientWidth = 0
             TabOrder = 0
             object lblTemp: TLabel
@@ -354,6 +354,21 @@ object SettingsForm: TSettingsForm
               Font.Color = clGray
               ParentFont = False
               WordWrap = True
+            end
+            object lblBrowserExecutable: TLabel
+              Left = 32
+              Height = 36
+              Top = 960
+              Width = 520
+              Caption = 'Chromium executable (browser_read, optional)'
+            end
+            object edtBrowserExecutable: TEdit
+              Left = 32
+              Height = 44
+              Top = 1000
+              Width = 688
+              TabOrder = 8
+              Text = ''
             end
           end
         end

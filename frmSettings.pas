@@ -9,7 +9,7 @@ uses
   LcaThemedPageTabBar,
   uAppTypes, uAgentTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceState, uWorkspaceRegistry,
   
-  uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager;
+  uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager, uBrowserReadConfig;
 
 type
   { TSettingsForm }
@@ -59,6 +59,8 @@ type
     lblSummarizeThreshold: TLabel;
     edtSummarizeThreshold: TEdit;
     lblMaxTokensHint: TLabel;
+    lblBrowserExecutable: TLabel;
+    edtBrowserExecutable: TEdit;
 
     lblWorkspaceRoot: TLabel;
     edtWorkspaceRoot: TEdit;
@@ -308,6 +310,7 @@ begin
 
   edtWorkspaceRoot.Text := FState.WorkspaceRoot;
   edtWorkspaceName.Text := FState.WorkspaceName;
+  edtBrowserExecutable.Text := LoadBrowserReadConfig.ExecutablePath;
 
   if Assigned(pgcSettings) then
     pgcSettings.ActivePageIndex := 0;
@@ -346,6 +349,7 @@ begin
 
   FState.WorkspaceRoot := Trim(edtWorkspaceRoot.Text);
   FState.WorkspaceName := Trim(edtWorkspaceName.Text);
+  SaveBrowserReadExecutablePath(Trim(edtBrowserExecutable.Text));
 
   if Assigned(FRegistry) and FState.HasActiveWorkspace then
     FRegistry.UpdateWorkspace(FState.ActiveWorkspaceId, FState.WorkspaceName, FState.WorkspaceRoot);

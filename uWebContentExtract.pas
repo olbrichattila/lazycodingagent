@@ -1,0 +1,354 @@
+unit uWebContentExtract;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  SysUtils, uWebFetchTypes;
+
+function ExtractWebContent(const Body: RawByteString; const ContentType: string;
+  const OutputFormat: string; MaxLength: Integer; out Title: string;
+  out Content: string; out Truncated: Boolean;
+  out ErrKind: TWebFetchErrorKind; out ErrMsg: string): Boolean;
+
+implementation
+
+uses
+  Classes, DOM, DOM_HTML, SAX_HTML, htmldefs;
+
+function MimeTypeOnly(const ContentType: string): string;
+var
+  P: SizeInt;
+  S: string;
+begin
+  S := LowerCase(Trim(ContentType));
+  P := Pos(';', S);
+  if P > 0 then
+    S := Trim(Copy(S, 1, P - 1));
+  Result := S;
+end;
+
+function CharsetFromContentType(const ContentType: string): string;
+var
+  L, Key, Val: string;
+  Parts: TStringArray;
+  I, Eq: SizeInt;
+begin
+  Result := '';
+  Parts := ContentType.Split([';']);
+  for I := 0 to High(Parts) do
+  begin
+    L := Trim(Parts[I]);
+    Eq := Pos('=', L);
+    if Eq > 0 then
+    begin
+      Key := LowerCase(Trim(Copy(L, 1, Eq - 1)));
+      Val := Trim(Copy(L, Eq + 1, MaxInt));
+      if (Length(Val) >= 2) and ((Val[1] = '"') and (Val[Length(Val)] = '"')) then
+        Val := Copy(Val, 2, Length(Val) - 2);
+      if Key = 'charset' then
+        Exit(Val);
+    end;
+  end;
+end;
+
+function DecodeBodyToUtf8(const Body: RawByteString; const Charset: string): string;
+var
+  Enc: string;
+begin
+  if Length(Body) = 0 then Exit('');
+  Enc := LowerCase(Trim(Charset));
+  if (Enc <> '') and (Enc <> 'utf-8') and (Enc <> 'utf8') then
+  begin
+    { Non-UTF-8 charsets are rare for modern web; best-effort UTF-8 decode. }
+  end;
+  Result := UTF8ToString(Body);
+end;
+
+function NodeNameLower(N: TDOMNode): string;
+begin
+  if N is TDOMElement then
+    Result := LowerCase(TDOMElement(N).TagName)
+  else
+    Result := '';
+end;
+
+function ShouldSkipTag(const Tag: string): Boolean;
+begin
+  Result := (Tag = 'script') or (Tag = 'style') or (Tag = 'nav') or (Tag = 'footer') or
+    (Tag = 'aside') or (Tag = 'noscript') or (Tag = 'iframe') or (Tag = 'svg') or
+    (Tag = 'form') or (Tag = 'header');
+end;
+
+function FindContentRoot(Doc: THTMLDocument): TDOMNode;
+var
+  List: TDOMNodeList;
+  I: Integer;
+  N: TDOMElement;
+  Role: string;
+begin
+  Result := Doc;
+  List := Doc.GetElementsByTagName('main');
+  if (List <> nil) and (List.Length > 0) then
+    Exit(List.Item[0]);
+  List := Doc.GetElementsByTagName('article');
+  if (List <> nil) and (List.Length > 0) then
+    Exit(List.Item[0]);
+  List := Doc.GetElementsByTagName('*');
+  if List <> nil then
+    for I := 0 to List.Length - 1 do
+      if List.Item[I] is TDOMElement then
+      begin
+        N := TDOMElement(List.Item[I]);
+        Role := LowerCase(N.GetAttribute('role'));
+        if Role = 'main' then
+          Exit(N);
+      end;
+  Result := Doc;
+end;
+
+procedure AppendText(var OutText: string; const S: string);
+begin
+  if S = '' then Exit;
+  if (OutText <> '') and (not (OutText[Length(OutText)] in [#10, #13, ' '])) and
+     (not (S[1] in [#10, #13, ' '])) then
+    OutText := OutText + ' ';
+  OutText := OutText + S;
+end;
+
+procedure RenderNode(N: TDOMNode; var OutMd: string; InPre: Boolean; Depth: Integer);
+var
+  I: Integer;
+  Child: TDOMNode;
+  Tag, Href, Text: string;
+  Level: Integer;
+begin
+  if N = nil then Exit;
+  if N.NodeType = TEXT_NODE then
+  begin
+    Text := Trim(N.TextContent);
+    if Text <> '' then
+    begin
+      if InPre then
+        OutMd := OutMd + Text
+      else
+        AppendText(OutMd, Text);
+    end;
+    Exit;
+  end;
+  if not (N is TDOMElement) then
+  begin
+    for I := 0 to N.ChildNodes.Length - 1 do
+      RenderNode(N.ChildNodes.Item[I], OutMd, InPre, Depth);
+    Exit;
+  end;
+
+  Tag := NodeNameLower(N);
+  if ShouldSkipTag(Tag) then
+    Exit;
+
+  if Tag = 'title' then
+    Exit;
+
+  if Tag = 'br' then
+  begin
+    OutMd := OutMd + LineEnding;
+    Exit;
+  end;
+
+  if Tag = 'pre' then
+  begin
+    OutMd := OutMd + LineEnding + '```' + LineEnding + Trim(N.TextContent) +
+      LineEnding + '```' + LineEnding;
+    Exit;
+  end;
+
+  if Tag = 'code' then
+  begin
+    Text := Trim(N.TextContent);
+    if Text <> '' then
+      OutMd := OutMd + '`' + Text + '`';
+    Exit;
+  end;
+
+  if (Tag = 'h1') or (Tag = 'h2') or (Tag = 'h3') or (Tag = 'h4') or
+     (Tag = 'h5') or (Tag = 'h6') then
+  begin
+    Level := StrToIntDef(Copy(Tag, 2, 1), 1);
+    OutMd := OutMd + LineEnding + StringOfChar('#', Level) + ' ' +
+      Trim(N.TextContent) + LineEnding + LineEnding;
+    Exit;
+  end;
+
+  if Tag = 'p' then
+  begin
+    OutMd := OutMd + LineEnding;
+    for I := 0 to N.ChildNodes.Length - 1 do
+      RenderNode(N.ChildNodes.Item[I], OutMd, False, Depth);
+    OutMd := OutMd + LineEnding;
+    Exit;
+  end;
+
+  if (Tag = 'ul') or (Tag = 'ol') then
+  begin
+    for I := 0 to N.ChildNodes.Length - 1 do
+    begin
+      Child := N.ChildNodes.Item[I];
+      if NodeNameLower(Child) = 'li' then
+      begin
+        OutMd := OutMd + LineEnding + '- ' + Trim(Child.TextContent);
+        RenderNode(Child, OutMd, False, Depth + 1);
+      end;
+    end;
+    OutMd := OutMd + LineEnding;
+    Exit;
+  end;
+
+  if Tag = 'a' then
+  begin
+    Href := TDOMElement(N).GetAttribute('href');
+    Text := Trim(N.TextContent);
+    if Text = '' then Text := Href;
+    if Href <> '' then
+      OutMd := OutMd + '[' + Text + '](' + Href + ')'
+    else
+      AppendText(OutMd, Text);
+    Exit;
+  end;
+
+  for I := 0 to N.ChildNodes.Length - 1 do
+    RenderNode(N.ChildNodes.Item[I], OutMd, InPre, Depth);
+end;
+
+function HtmlToMarkdown(const HtmlUtf8: string): string;
+var
+  Doc: THTMLDocument;
+  Stream: TStringStream;
+  Root: TDOMNode;
+  TitleNode: TDOMNodeList;
+begin
+  Result := '';
+  Doc := THTMLDocument.Create;
+  Stream := TStringStream.Create(HtmlUtf8, TEncoding.UTF8);
+  try
+    ReadHTMLFile(Doc, Stream);
+    Root := FindContentRoot(Doc);
+    RenderNode(Root, Result, False, 0);
+    TitleNode := Doc.GetElementsByTagName('title');
+    if (TitleNode <> nil) and (TitleNode.Length > 0) then ;
+  finally
+    Stream.Free;
+    Doc.Free;
+  end;
+  Result := Trim(Result);
+end;
+
+function ExtractTitleFromHtml(const HtmlUtf8: string): string;
+var
+  Doc: THTMLDocument;
+  Stream: TStringStream;
+  TitleNode: TDOMNodeList;
+begin
+  Result := '';
+  Doc := THTMLDocument.Create;
+  Stream := TStringStream.Create(HtmlUtf8, TEncoding.UTF8);
+  try
+    ReadHTMLFile(Doc, Stream);
+    TitleNode := Doc.GetElementsByTagName('title');
+    if (TitleNode <> nil) and (TitleNode.Length > 0) then
+      Result := Trim(TitleNode.Item[0].TextContent);
+    if Result = '' then
+    begin
+      TitleNode := Doc.GetElementsByTagName('h1');
+      if (TitleNode <> nil) and (TitleNode.Length > 0) then
+        Result := Trim(TitleNode.Item[0].TextContent);
+    end;
+  finally
+    Stream.Free;
+    Doc.Free;
+  end;
+end;
+
+function ApplyMaxLength(const S: string; MaxLength: Integer; out Truncated: Boolean): string;
+begin
+  Truncated := False;
+  if MaxLength <= 0 then
+    Exit(S);
+  if Length(S) <= MaxLength then
+    Exit(S);
+  Truncated := True;
+  Result := Copy(S, 1, MaxLength);
+end;
+
+function ExtractWebContent(const Body: RawByteString; const ContentType: string;
+  const OutputFormat: string; MaxLength: Integer; out Title: string;
+  out Content: string; out Truncated: Boolean;
+  out ErrKind: TWebFetchErrorKind; out ErrMsg: string): Boolean;
+var
+  Mime, Fmt, Utf8Text, Charset: string;
+begin
+  Result := False;
+  Title := '';
+  Content := '';
+  Truncated := False;
+  ErrKind := wfekNone;
+  ErrMsg := '';
+  Mime := MimeTypeOnly(ContentType);
+  Fmt := LowerCase(Trim(OutputFormat));
+  if Fmt = '' then Fmt := WEB_FETCH_DEFAULT_FORMAT;
+  Charset := CharsetFromContentType(ContentType);
+  Utf8Text := DecodeBodyToUtf8(Body, Charset);
+
+  if (Mime = 'application/pdf') or (Mime = 'application/octet-stream') then
+  begin
+    ErrKind := wfekUnsupportedContentType;
+    ErrMsg := 'Unsupported content type: ' + Mime;
+    Exit;
+  end;
+
+  if Fmt = 'html' then
+  begin
+    if Pos('html', Mime) > 0 then
+      Content := Utf8Text
+    else
+      Content := Utf8Text;
+    Content := ApplyMaxLength(Content, MaxLength, Truncated);
+    if Pos('html', Mime) > 0 then
+      Title := ExtractTitleFromHtml(Utf8Text);
+    Result := True;
+    Exit;
+  end;
+
+  if (Mime = 'text/plain') or (Mime = 'text/markdown') or (Mime = 'application/json') then
+  begin
+    if Fmt = 'markdown' then
+    begin
+      if Mime = 'application/json' then
+        Content := '```json' + LineEnding + Utf8Text + LineEnding + '```'
+      else
+        Content := Utf8Text;
+    end
+    else
+      Content := Utf8Text;
+    Content := ApplyMaxLength(Content, MaxLength, Truncated);
+    Result := True;
+    Exit;
+  end;
+
+  if (Mime = '') or (Pos('html', Mime) > 0) or (Mime = 'application/xhtml+xml') then
+  begin
+    Title := ExtractTitleFromHtml(Utf8Text);
+    Content := HtmlToMarkdown(Utf8Text);
+    if Fmt = 'text' then
+      Content := StringReplace(Content, '#', '', [rfReplaceAll]);
+    Content := ApplyMaxLength(Content, MaxLength, Truncated);
+    Result := True;
+    Exit;
+  end;
+
+  ErrKind := wfekUnsupportedContentType;
+  ErrMsg := 'Unsupported content type: ' + Mime;
+end;
+
+end.

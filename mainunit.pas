@@ -384,7 +384,7 @@ implementation
 
 uses
   uExecutionDetailHtml, frmSplash, uAppIcon, LCLIntf,
-  frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes,
+  frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes, uBrowserManager,
   frmOpenMarkdown, frmHelp, frmPlanBuildConfirm
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
@@ -836,6 +836,7 @@ begin
     FActiveHub := nil;
     DetachNavSessionLogs;
   end;
+  BrowserManagerShutdownAll;
   if not Assigned(FState) then Exit;
   if Assigned(FSessionHubs) then
     for I := 0 to FSessionHubs.Count - 1 do
