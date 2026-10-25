@@ -373,6 +373,18 @@ object SettingsForm: TSettingsForm
           end
         end
       end
+      object tsTools: TTabSheet
+        Caption = 'Tools'
+        ClientHeight = 832
+        ClientWidth = 1068
+        object WebSearchSettingsFrame: TWebSearchSettingsFrame
+          Left = 0
+          Height = 832
+          Top = 0
+          Width = 1068
+          Align = alClient
+        end
+      end
       object tsWorkspace: TTabSheet
         Caption = 'Workspace'
         ClientHeight = 0

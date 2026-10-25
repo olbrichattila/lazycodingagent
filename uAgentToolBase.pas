@@ -77,6 +77,7 @@ type
     function GetDefinition: TToolDef; virtual; abstract;
     function Execute(const Args: TJSONObject): TToolExecutionResult; virtual; abstract;
     function ToolAllowedInMode(AMode: TWorkspaceMode): Boolean; virtual;
+    function IsAdvertised(AMode: TWorkspaceMode): Boolean; virtual;
 
     property Context: TAgentToolContext read FContext;
     property Aliases: string read FAliases write FAliases;
@@ -458,6 +459,15 @@ begin
   Result := True;
 end;
 
+function StringArrayToJsonEnum(const AValues: array of string): TJSONArray;
+var
+  I: Integer;
+begin
+  Result := TJSONArray.Create;
+  for I := Low(AValues) to High(AValues) do
+    Result.Add(AValues[I]);
+end;
+
 function ToolDefToParametersJson(const Def: TToolDef): string;
 var
   ParamObj, PropsObj: TJSONObject;
@@ -465,6 +475,7 @@ var
   I: Integer;
   PropDetail: TJSONObject;
   ParamType: string;
+  EnumArr: TJSONArray;
 begin
   ParamObj := TJSONObject.Create;
   try
@@ -473,11 +484,17 @@ begin
     ReqArray := TJSONArray.Create;
     for I := Low(Def.Params) to High(Def.Params) do begin
       PropDetail := TJSONObject.Create;
-      ParamType := Trim(Def.Params[I].ParamType);
-      if ParamType = '' then
-        PropDetail.Add('type', 'string')
-      else
-        PropDetail.Add('type', ParamType);
+      if Length(Def.Params[I].EnumValues) > 0 then begin
+        PropDetail.Add('type', 'string');
+        EnumArr := StringArrayToJsonEnum(Def.Params[I].EnumValues);
+        PropDetail.Add('enum', EnumArr);
+      end else begin
+        ParamType := Trim(Def.Params[I].ParamType);
+        if ParamType = '' then
+          PropDetail.Add('type', 'string')
+        else
+          PropDetail.Add('type', ParamType);
+      end;
       PropDetail.Add('description', Def.Params[I].Description);
       PropsObj.Add(Def.Params[I].Name, PropDetail);
       if Def.Params[I].Required then
@@ -634,6 +651,11 @@ end;
 function TAgentTool.ToolAllowedInMode(AMode: TWorkspaceMode): Boolean;
 begin
   Result := AMode in FAllowedModes;
+end;
+
+function TAgentTool.IsAdvertised(AMode: TWorkspaceMode): Boolean;
+begin
+  Result := FAdvertised;
 end;
 
 end.

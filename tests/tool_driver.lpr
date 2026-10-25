@@ -6,7 +6,7 @@ uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Classes, SysUtils, fpjson, jsonparser,
   uAppTypes, uAgentTypes, uAgentToolBase, uAgentTools, uBuildTargetResolver, uDiagnosticParse,
-  uChatContextManager;
+  uChatContextManager, uWebSearchConfig, uWebSearchTypes, uWebSearchSecrets;
 
 function ParseMode(const S: string): TWorkspaceMode;
 begin
@@ -72,6 +72,7 @@ var
   Res: TToolExecutionResult;
   Inv: TBuildInvocation;
   Messages: TJSONArray;
+  Cfg: TWebSearchGlobalConfig;
 begin
   if ParamCount < 1 then
   begin
@@ -195,13 +196,38 @@ begin
               OutObj.Free;
             end;
           end
+          else if Name = '_web_search_test_setup' then
+          begin
+            Cfg := DefaultWebSearchGlobalConfig;
+            Cfg.Enabled := A.Get('enabled', False);
+            if A.Find('connections') <> nil then
+            begin
+              { minimal: single brave connection with fake id if enabled flag set }
+              SetLength(Cfg.Connections, 1);
+              Cfg.Connections[0].Id := 'test-brave-conn';
+              Cfg.Connections[0].Name := 'Test Brave';
+              Cfg.Connections[0].Kind := wspkBrave;
+              Cfg.Connections[0].Enabled := True;
+              Cfg.Connections[0].Priority := 1;
+              Cfg.Connections[0].TimeoutMs := 5000;
+              SetWebSearchApiKey('test-brave-conn', 'test-key');
+            end;
+            SetWebSearchConfigOverrideForTests(Cfg);
+            WriteLn('{}');
+          end
+          else if Name = '_web_search_test_teardown' then
+          begin
+            ClearWebSearchConfigOverrideForTests;
+            ClearWebSearchApiKey('test-brave-conn');
+            WriteLn('{}');
+          end
           else if Name = '_declarations' then
           begin
             D := TJSONArray.Create;
             try
               for I := 0 to Registry.ToolCount - 1 do
               begin
-                if not Registry.GetTool(I).Advertised then Continue;
+                if not Registry.GetTool(I).IsAdvertised(Mode) then Continue;
                 if not Registry.GetTool(I).ToolAllowedInMode(Mode) then Continue;
                 D.Add(ToolDefToDeclaration(Registry.GetTool(I).GetDefinition));
               end;

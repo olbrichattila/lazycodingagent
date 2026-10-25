@@ -51,6 +51,7 @@ type
     ParamType: string; // 'string', 'integer', 'boolean', 'array', 'object'
     Description: string;
     Required: Boolean;
+    EnumValues: array of string;
   end;
 
   { Tool Schema Definition }

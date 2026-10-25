@@ -9,7 +9,8 @@ uses
   LcaThemedPageTabBar,
   uAppTypes, uAgentTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceState, uWorkspaceRegistry,
   
-  uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager, uBrowserReadConfig;
+  uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager, uBrowserReadConfig,
+  fraWebSearchSettings;
 
 type
   { TSettingsForm }
@@ -26,6 +27,8 @@ type
     tsAgent: TTabSheet;
     scrAgentTab: TScrollBox;
     pnlTabAgent: TPanel;
+    tsTools: TTabSheet;
+    WebSearchSettingsFrame: TWebSearchSettingsFrame;
     tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
 
@@ -221,6 +224,9 @@ begin
   if Assigned(lblMaxTokensHint) then
     lblMaxTokensHint.Font.Color := P.TextMuted;
 
+  if Assigned(WebSearchSettingsFrame) then
+    WebSearchSettingsFrame.InitTheme(ATheme);
+
   Invalidate;
 end;
 
@@ -312,6 +318,9 @@ begin
   edtWorkspaceName.Text := FState.WorkspaceName;
   edtBrowserExecutable.Text := LoadBrowserReadConfig.ExecutablePath;
 
+  if Assigned(WebSearchSettingsFrame) then
+    WebSearchSettingsFrame.LoadSettings;
+
   if Assigned(pgcSettings) then
     pgcSettings.ActivePageIndex := 0;
 end;
@@ -350,6 +359,9 @@ begin
   FState.WorkspaceRoot := Trim(edtWorkspaceRoot.Text);
   FState.WorkspaceName := Trim(edtWorkspaceName.Text);
   SaveBrowserReadExecutablePath(Trim(edtBrowserExecutable.Text));
+
+  if Assigned(WebSearchSettingsFrame) then
+    WebSearchSettingsFrame.SaveSettings;
 
   if Assigned(FRegistry) and FState.HasActiveWorkspace then
     FRegistry.UpdateWorkspace(FState.ActiveWorkspaceId, FState.WorkspaceName, FState.WorkspaceRoot);

@@ -20,6 +20,7 @@ uses
   uToolGit,
   uToolCreatePlanFile,
   uToolWebFetch,
+  uToolWebSearch,
   uToolBrowserRead,
   uToolBrowserAutomation;
 
@@ -52,6 +53,9 @@ type
 
 implementation
 
+uses
+  uWebSearchConfig, uWebSearchJson, uWebSearchTypes;
+
 constructor TAgentToolRegistry.Create(AContext: TAgentToolContext);
 begin
   inherited Create;
@@ -72,6 +76,7 @@ begin
   RegisterTool(TToolTodo.Create(FContext));
   RegisterTool(TToolCreatePlanFile.Create(FContext));
   RegisterTool(TToolWebFetch.Create(FContext));
+  RegisterTool(TToolWebSearch.Create(FContext));
   RegisterTool(TToolBrowserRead.Create(FContext));
   RegisterTool(TToolBrowserNavigate.Create(FContext));
   RegisterTool(TToolBrowserInspect.Create(FContext));
@@ -142,7 +147,7 @@ var
 begin
   Result := 'Available tools (JSON arguments):' + LineEnding;
   for I := Low(FTools) to High(FTools) do
-    if FTools[I].Advertised and FTools[I].ToolAllowedInMode(AMode) then begin
+    if FTools[I].IsAdvertised(AMode) and FTools[I].ToolAllowedInMode(AMode) then begin
       Def := FTools[I].GetDefinition;
       Schema := ToolDefToParametersJson(Def);
       Result := Result + '- ' + Def.Name + ': ' + Def.Description +
@@ -158,12 +163,12 @@ begin
   FActiveMode := AMode;
   N := 0;
   for I := Low(FTools) to High(FTools) do
-    if FTools[I].Advertised and FTools[I].ToolAllowedInMode(AMode) then
+    if FTools[I].IsAdvertised(AMode) and FTools[I].ToolAllowedInMode(AMode) then
       Inc(N);
   SetLength(Result, N);
   N := 0;
   for I := Low(FTools) to High(FTools) do
-    if FTools[I].Advertised and FTools[I].ToolAllowedInMode(AMode) then
+    if FTools[I].IsAdvertised(AMode) and FTools[I].ToolAllowedInMode(AMode) then
     begin
       Result[N] := FTools[I].GetDefinition;
       Inc(N);
@@ -211,6 +216,20 @@ begin
       begin
         Result := ToolResultFromJson(ToolError('Tool unavailable in ' +
           WorkspaceModeToCaption(AMode) + ' mode: ' + Tool.GetDefinition.Name));
+        Exit;
+      end;
+      if not Tool.IsAdvertised(AMode) then
+      begin
+        if SameText(Tool.GetDefinition.Name, 'web_search') then begin
+          if not LoadWebSearchConfig.Enabled then
+            Result := ToolResultFromJson(WebSearchErrorJson('', WEB_SEARCH_ERR_DISABLED,
+              'Web Search is disabled'))
+          else
+            Result := ToolResultFromJson(WebSearchErrorJson('', WEB_SEARCH_ERR_NO_PROVIDER,
+              'Web Search is not configured'));
+        end else
+          Result := ToolResultFromJson(ToolError('Tool is not available: ' +
+            Tool.GetDefinition.Name));
         Exit;
       end;
       if ToolCancelled then

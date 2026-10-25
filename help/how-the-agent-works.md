@@ -65,6 +65,7 @@ With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & 
 ## Safety and sandboxing
 
 - **Reads:** inspection tools (`read_file`, `list_directory`, `glob`, `search_code`, and similar) may use paths **outside** the workspace when you pass an absolute path or a relative path that leaves the project folder.
+- **web_search:** finds current public information when enabled in Settings → Tools → Web Search (provider choice is internal; the model only passes a query).
 - **web_fetch:** retrieves public web pages only (SSRF-safe). Prefer it over shell/curl for static pages.
 - **browser_read:** headless Chromium for JavaScript-rendered pages when `web_fetch` is insufficient. Requires a local Chrome/Chromium/Edge install.
 - Web tool content is shown to the model as tool JSON — it is **not** trusted like the system prompt or project rules; the model is instructed to ignore instructions embedded in pages.

@@ -115,6 +115,20 @@ Fetch and extract readable content from a **public** `http` or `https` URL (docu
 
 Prefer `web_fetch` over `shell`/`curl` for reading websites.
 
+### web_search
+
+Search the internet for **current** public information (documentation, libraries, articles). Returns JSON with `results[]` (`title`, `url`, `snippet`, `published_at`). Configure providers under **Settings → Tools → Web Search**.
+
+**Parameters:** `query` (required); `max_results` (default from settings, typically 10); `recency` — `any` (default), `day`, `week`, `month`, or `year`.
+
+**Modes:** Ask, Plan, Agent.
+
+**Availability:** Omitted from the model tool list when Web Search is disabled or no valid provider connection exists. The agent does not choose a provider.
+
+**Security:** Snippets and URLs are **untrusted**. Follow links with `web_fetch` / `browser_read` when full page text is needed.
+
+See **Help → Web Search** for Brave, SearXNG, and Tavily setup.
+
 ### browser_read
 
 Open a **public** `http` or `https` URL in a headless Chromium-compatible browser (Chrome, Chromium, or Edge), wait for rendering, and extract readable content. Use when `web_fetch` returns an empty or incomplete JavaScript application shell.
