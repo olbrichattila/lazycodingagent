@@ -522,25 +522,11 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Height = 692
           Top = 0
           Width = 420
-          ActivePage = tsUtilityScratch
+          ActivePage = tsUtilityExecDetail
           Align = alClient
           ShowTabs = False
           TabIndex = 0
           TabOrder = 0
-          object tsUtilityScratch: TTabSheet
-            Caption = 'Scratchpad'
-            ClientHeight = 684
-            ClientWidth = 412
-            object memUtilityScratch: TMemo
-              Left = 0
-              Height = 684
-              Top = 0
-              Width = 412
-              Align = alClient
-              ScrollBars = ssVertical
-              TabOrder = 0
-            end
-          end
           object tsUtilityExecDetail: TTabSheet
             Caption = 'Execution Detail'
             ClientHeight = 684
@@ -560,10 +546,33 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
             Caption = 'Plan'
             ClientHeight = 684
             ClientWidth = 412
+            object pnlPlanDocTabStripHost: TPanel
+              Left = 0
+              Height = 52
+              Top = 0
+              Width = 412
+              Align = alTop
+              BevelOuter = bvNone
+              ClientHeight = 52
+              ClientWidth = 412
+              ParentBackground = False
+              TabOrder = 0
+              object lcaPlanDocTabBar: TLcaThemedPageTabBar
+                Left = 0
+                Height = 52
+                Top = 0
+                Width = 412
+                ShowAddTab = False
+                AddTabCaption = '+'
+                Align = alClient
+                TabOrder = 0
+                Font.Color = 2366488
+              end
+            end
             object pnlPlanHeader: TPanel
               Left = 0
               Height = 83
-              Top = 0
+              Top = 52
               Width = 412
               Align = alTop
               AutoSize = True
@@ -571,7 +580,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               ClientHeight = 83
               ClientWidth = 412
               ParentBackground = False
-              TabOrder = 0
+              TabOrder = 1
               object lblPlanPath: TLabel
                 Left = 7
                 Height = 25
@@ -584,56 +593,41 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Caption = 'Plan file:'
                 WordWrap = True
               end
-              object pnlPlanToolbar: TPanel
+              object cboPlanModel: TLcaPaintComboBox
+                Cursor = crHandPoint
                 Left = 7
                 Height = 44
                 Top = 32
                 Width = 398
+                ItemIndex = 0
+                ItemHeight = 35
+                Text = 'Item 1'
                 Align = alTop
-                BorderSpacing.Left = 7
-                BorderSpacing.Right = 7
-                BorderSpacing.Bottom = 7
-                BevelOuter = bvNone
-                ClientHeight = 44
-                ClientWidth = 398
-                ParentBackground = False
                 TabOrder = 0
-                object btnPlanBuild: TLcaPaintButton
-                  Cursor = crHandPoint
-                  Left = 344
-                  Height = 44
-                  Top = 0
-                  Width = 54
-                  Caption = 'Build'
-                  ButtonRole = tbrPrimary
-                  Align = alRight
-                  TabOrder = 1
-                end
-                object cboPlanModel: TLcaPaintComboBox
-                  Cursor = crHandPoint
-                  Left = 0
-                  Height = 44
-                  Top = 0
-                  Width = 344
-                  ItemIndex = 0
-                  ItemHeight = 35
-                  Text = 'Item 1'
-                  Align = alClient
-                  TabOrder = 0
-                end
+              end
+              object btnPlanBuild: TLcaPaintButton
+                Cursor = crHandPoint
+                Left = 7
+                Height = 44
+                Top = 80
+                Width = 398
+                Caption = 'Build'
+                ButtonRole = tbrPrimary
+                Align = alTop
+                TabOrder = 1
               end
             end
             object lcaPlanBody: TLcaMarkdownView
               Left = 0
-              Height = 601
-              Top = 83
+              Height = 549
+              Top = 135
               Width = 412
               Align = alClient
               BevelOuter = bvNone
               Color = 16184563
               ParentBackground = False
               ParentColor = False
-              TabOrder = 1
+              TabOrder = 2
             end
           end
         end
@@ -1234,8 +1228,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               MouseLinkColor.Foreground = clBlue
               LineHighlightColor.Background = clNone
               LineHighlightColor.Foreground = clNone
-              inline SynLeftGutterPartList1: TSynGutterPartList
-              end
             end
           end
           object tsMarkdown: TTabSheet

@@ -13,7 +13,7 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
   LCLVersion = '4.8.0.0'
   object lblRules: TLabel
     Left = 16
-    Height = 30
+    Height = 45
     Top = 12
     Width = 512
     Anchors = [akTop, akLeft, akRight]
@@ -24,7 +24,7 @@ object WorkspaceRulesForm: TWorkspaceRulesForm
   object lstRules: TListBox
     Left = 16
     Height = 296
-    Top = 48
+    Top = 64
     Width = 512
     Anchors = [akTop, akLeft, akRight, akBottom]
     ItemHeight = 0

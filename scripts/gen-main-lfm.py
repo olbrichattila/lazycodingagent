@@ -313,18 +313,6 @@ body = f"""object LazyCodingAgentForm: TLazyCodingAgentForm
           Align = alClient
           ShowTabs = False
           TabOrder = 0
-          object tsUtilityScratch: TTabSheet
-            Caption = 'Scratchpad'
-            object memUtilityScratch: TMemo
-              Left = 0
-              Height = 1216
-              Top = 0
-              Width = 552
-              Align = alClient
-              ScrollBars = ssVertical
-              TabOrder = 0
-            end
-          end
           object tsUtilityExecDetail: TTabSheet
             Caption = 'Execution Detail'
             object memUtilityExecDetail: TMemo

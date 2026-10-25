@@ -333,13 +333,16 @@ end;
 
 procedure TLcaThemedPageTabBar.LayoutAddTabRect(const AMeasureCanvas: TControlCanvas; var AX: Integer);
 var
-  TabW, VertInset: Integer;
+  TabW, VertInset, HorizPad, MinW: Integer;
 begin
   FAddTabRect := Rect(0, 0, 0, 0);
   if not FShowAddTab then Exit;
   VertInset := ThemedTabVertInset(Self);
-  TabW := AMeasureCanvas.TextWidth(FAddTabCaption) + 16;
-  if TabW < 32 then TabW := 32;
+  HorizPad := ThemedTabHorizPad(Self);
+  MinW := ThemedTabAddMinWidth(Self);
+  TabW := AMeasureCanvas.TextWidth(FAddTabCaption) + HorizPad * 2;
+  if TabW < MinW then
+    TabW := MinW;
   FAddTabRect.Left := AX;
   FAddTabRect.Top := VertInset;
   FAddTabRect.Right := AX + TabW;
@@ -413,7 +416,7 @@ begin
       FHoverTabIndex = I, TabAllowCloseAt(I), FHoverCloseIndex = I, EffTheme, Self);
   if FShowAddTab and (FAddTabRect.Right > FAddTabRect.Left) then
     PaintThemedTab(Canvas, FAddTabRect, FAddTabCaption, False, FHoverTabIndex = VisibleTabCount,
-      False, False, EffTheme, Self);
+      False, False, EffTheme, Self, True);
 end;
 
 procedure TLcaThemedPageTabBar.Paint;

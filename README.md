@@ -86,7 +86,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Dedicated right-side panel for workspace guidelines, coding rules, and instructions context.
 
 ### 9. Utility panel (right)
-- **Utility panel** with a `TPageControl`: Scratchpad, Execution Detail, and Plan.
+- **Utility panel** with a `TPageControl`: Execution Detail and Plan.
 - **Hidden by default**; toggle via **Window → Panels → Utility Panel**.
 
 ### 10. Integrated terminal (bottom panel)

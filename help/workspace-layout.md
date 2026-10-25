@@ -57,7 +57,7 @@ There are **no** per-file editor tabs. Switch sessions from the Chat session tab
 ## Right and utility panels
 
 - **Guidelines / instructions** — workspace context on the right when enabled.
-- **Utility panel** — `PageControl` with **Scratchpad**, **Execution Detail**, and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** renders formatted HTML: accent section headers, highlighted tool names, shaded JSON blocks (pretty-printed), and prose blocks for long prompt text. **Plan** shows the saved plan path, a model picker and **Build** in the header, and rendered plan markdown in the body.
+- **Utility panel** — `PageControl` with **Execution Detail** and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** renders formatted HTML: accent section headers, highlighted tool names, shaded JSON blocks (pretty-printed), and prose blocks for long prompt text. **Plan** lists each open plan file as a **closable tab** (filename); switch tabs to change which plan is shown. The header shows the active plan path, a model picker, and **Build** (implements that plan in a new Agent session); the body renders the active plan as markdown.
 
 ## Panel visibility and detach
 

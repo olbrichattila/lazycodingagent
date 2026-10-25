@@ -72,8 +72,6 @@ pub_new = """    StatusBar1: TStatusBar;
     btnUtilityHide: TButton;
     pnlUtilityContent: TPanel;
     pgcUtility: TPageControl;
-    tsUtilityScratch: TTabSheet;
-    memUtilityScratch: TMemo;
     tsUtilityExecDetail: TTabSheet;
     memUtilityExecDetail: TMemo;
     tsUtilityPlan: TTabSheet;

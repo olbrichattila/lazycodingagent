@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, Buttons,
-  ComCtrls, Menus, FileUtil, SynEdit,
+  ComCtrls, Menus, FileUtil, SynEdit, SynGutterBase,
   uAppTypes, uAgentTypes, uAgentTools, LcaTheme, LcaThemedPageTabBar, LcaPaintButton,
   LcaPaintComboBox, LcaPaintNavRailButton, LcaTerminalPanel, LcaThemedMainMenu, LcaThemedTitleBar, LcaFormChrome,
   uWorkspaceState, uWorkspaceRegistry, uChatSessionStore, uChatSessionHub, uNavigationPanel,
@@ -65,14 +65,13 @@ type
     btnUtilityHide: TLcaPaintButton;
     pnlUtilityContent: TPanel;
     pgcUtility: TPageControl;
-    tsUtilityScratch: TTabSheet;
-    memUtilityScratch: TMemo;
     tsUtilityExecDetail: TTabSheet;
     pnlUtilityExecDetailHost: TPanel;
     tsUtilityPlan: TTabSheet;
+    pnlPlanDocTabStripHost: TPanel;
+    lcaPlanDocTabBar: TLcaThemedPageTabBar;
     pnlPlanHeader: TPanel;
     lblPlanPath: TLabel;
-    pnlPlanToolbar: TPanel;
     btnPlanBuild: TLcaPaintButton;
     cboPlanModel: TLcaPaintComboBox;
     lcaPlanBody: TLcaMarkdownView;
@@ -197,6 +196,9 @@ type
     procedure LblChatAllowModifyOutsideClick(Sender: TObject);
   private
     FChatSessionTabIds: TStringList;
+    FPlanDocPaths: TStringList;
+    FPlanDocContents: TStringList;
+    FActivePlanDocIndex: Integer;
     FState: TWorkspaceState;
     FSessionHubs: TChatSessionHubManager;
     FActiveHub: TChatSessionHub;
@@ -275,6 +277,15 @@ type
     procedure PlanBuildRequested(Sender: TObject; const APlanPath, APlanContent,
       AModelId: string);
     procedure RefreshPlanViewModels(const AModels: array of TSavedModel);
+    function PlanDocCaption(const APath: string): string;
+    function FindPlanDocIndex(const APath: string): Integer;
+    function EnsurePlanDocOpen(const APath, AContent: string): Integer;
+    procedure ApplyPlanViewModelsAndTheme;
+    procedure ClearActivePlanDocument;
+    procedure SelectPlanDocIndex(AIndex: Integer);
+    procedure RefreshPlanDocTabs;
+    procedure TabBarPlanDocSelect(Sender: TObject; ATabIndex: Integer);
+    procedure TabBarPlanDocClose(Sender: TObject; ATabIndex: Integer; var AllowClose: Boolean);
 
     function IsMarkdownFile(const APath: string): Boolean;
     procedure OpenFileInCenterTab(const APath: string);
@@ -620,6 +631,9 @@ begin
   FNavWorkIds := TStringList.Create;
   FNavSessionCaptions := TStringList.Create;
   FChatSessionTabIds := TStringList.Create;
+  FPlanDocPaths := TStringList.Create;
+  FPlanDocContents := TStringList.Create;
+  FActivePlanDocIndex := -1;
   FNavSessionIds := TStringList.Create;
   FNavSessionArchived := TStringList.Create;
   FCurrentSessionId := '';
@@ -862,6 +876,8 @@ begin
   FreeAndNil(FNavSessionIds);
   FreeAndNil(FNavSessionArchived);
   FreeAndNil(FChatSessionTabIds);
+  FreeAndNil(FPlanDocPaths);
+  FreeAndNil(FPlanDocContents);
   FreeAndNil(FSyntaxSchemes);
 
   if Assigned(FState) then begin
@@ -979,6 +995,11 @@ begin
     lcaChatSessionTabBar.OnAddTab := @TabBarCenterAddTab;
     lcaChatSessionTabBar.OnManualTabSelect := @TabBarChatSessionSelect;
     lcaChatSessionTabBar.OnManualTabClose := @TabBarChatSessionClose;
+  end;
+  if Assigned(lcaPlanDocTabBar) then begin
+    lcaPlanDocTabBar.ShowAddTab := False;
+    lcaPlanDocTabBar.OnManualTabSelect := @TabBarPlanDocSelect;
+    lcaPlanDocTabBar.OnManualTabClose := @TabBarPlanDocClose;
   end;
 end;
 
@@ -1113,7 +1134,6 @@ begin
   lcaTerminalPanel.OnTerminalStatus := @TerminalStatus;
   lcaTerminalPanel.ApplyTheme(FState.Theme);
 
-  ConfigureThemedMemo(memUtilityScratch, FState.Theme);
   if not Assigned(FExecDetailView) then begin
     FExecDetailView := TLcaMarkdownView.Create(Self);
     FExecDetailView.Parent := pnlUtilityExecDetailHost;
@@ -1462,6 +1482,7 @@ begin
   if Assigned(FPlanView) then FPlanView.ApplyTheme(FState.Theme);
   if Assigned(lcaCenterTabBar) then lcaCenterTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaChatSessionTabBar) then lcaChatSessionTabBar.ApplyTheme(FState.Theme);
+  if Assigned(lcaPlanDocTabBar) then lcaPlanDocTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaUtilityTabBar) then lcaUtilityTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaTitleBar) then lcaTitleBar.ApplyTheme(FState.Theme);
   if not Assigned(FMarkdownPreview) then begin
@@ -1837,18 +1858,50 @@ begin
   end;
 end;
 
-procedure TLazyCodingAgentForm.OpenPlanInUtilityTab(const APath, AContent: string);
+function TLazyCodingAgentForm.PlanDocCaption(const APath: string): string;
+begin
+  Result := ExtractFileName(APath);
+  if Result = '' then
+    Result := 'Plan';
+end;
+
+function TLazyCodingAgentForm.FindPlanDocIndex(const APath: string): Integer;
+var
+  I: Integer;
+  Norm: string;
+begin
+  Norm := ExpandFileName(Trim(APath));
+  if Norm = '' then Exit(-1);
+  for I := 0 to FPlanDocPaths.Count - 1 do
+    if SameText(ExpandFileName(FPlanDocPaths[I]), Norm) then
+      Exit(I);
+  Result := -1;
+end;
+
+function TLazyCodingAgentForm.EnsurePlanDocOpen(const APath, AContent: string): Integer;
+var
+  Path: string;
+  Idx: Integer;
+begin
+  Path := ExpandFileName(Trim(APath));
+  if Path = '' then Exit(-1);
+  Idx := FindPlanDocIndex(Path);
+  if Idx >= 0 then
+    FPlanDocContents[Idx] := AContent
+  else begin
+    FPlanDocPaths.Add(Path);
+    FPlanDocContents.Add(AContent);
+    Idx := FPlanDocPaths.Count - 1;
+  end;
+  Result := Idx;
+end;
+
+procedure TLazyCodingAgentForm.ApplyPlanViewModelsAndTheme;
 var
   I: Integer;
   Models: array of TSavedModel;
 begin
   if not Assigned(FPlanView) then Exit;
-  Models := nil;
-  FState.SetPanelVisible(piUtility, True);
-  ApplyDockPanelsLayout;
-  if Assigned(pgcUtility) then
-    pgcUtility.ActivePage := tsUtilityPlan;
-  FPlanView.LoadPlan(APath, AContent);
   SetLength(Models, FState.SavedModelCount(FState.Provider));
   for I := 0 to High(Models) do
     Models[I] := FState.GetSavedModel(FState.Provider, I);
@@ -1858,6 +1911,92 @@ begin
   else
     FPlanView.SetModel(FState.Model);
   FPlanView.ApplyTheme(FState.Theme);
+end;
+
+procedure TLazyCodingAgentForm.ClearActivePlanDocument;
+begin
+  FActivePlanDocIndex := -1;
+  if Assigned(FPlanView) then
+    FPlanView.ClearPlan;
+end;
+
+procedure TLazyCodingAgentForm.SelectPlanDocIndex(AIndex: Integer);
+begin
+  if not Assigned(FPlanView) then Exit;
+  if (AIndex < 0) or (AIndex >= FPlanDocPaths.Count) then begin
+    ClearActivePlanDocument;
+    Exit;
+  end;
+  FActivePlanDocIndex := AIndex;
+  FPlanView.LoadPlan(FPlanDocPaths[AIndex], FPlanDocContents[AIndex]);
+  ApplyPlanViewModelsAndTheme;
+end;
+
+procedure TLazyCodingAgentForm.RefreshPlanDocTabs;
+var
+  I, SelIdx: Integer;
+  Cap: string;
+  Caps: array of string;
+  Closable: array of Boolean;
+begin
+  if not Assigned(lcaPlanDocTabBar) then Exit;
+  Caps := nil;
+  Closable := nil;
+  SetLength(Caps, 0);
+  SetLength(Closable, 0);
+  SelIdx := -1;
+  for I := 0 to FPlanDocPaths.Count - 1 do begin
+    Cap := PlanDocCaption(FPlanDocPaths[I]);
+    SetLength(Caps, Length(Caps) + 1);
+    SetLength(Closable, Length(Closable) + 1);
+    Caps[High(Caps)] := Cap;
+    Closable[High(Closable)] := True;
+    if I = FActivePlanDocIndex then
+      SelIdx := I;
+  end;
+  lcaPlanDocTabBar.SetManualTabs(Caps, Closable, SelIdx);
+end;
+
+procedure TLazyCodingAgentForm.TabBarPlanDocSelect(Sender: TObject; ATabIndex: Integer);
+begin
+  if (ATabIndex < 0) or (ATabIndex >= FPlanDocPaths.Count) then Exit;
+  if ATabIndex = FActivePlanDocIndex then Exit;
+  SelectPlanDocIndex(ATabIndex);
+  RefreshPlanDocTabs;
+end;
+
+procedure TLazyCodingAgentForm.TabBarPlanDocClose(Sender: TObject; ATabIndex: Integer;
+  var AllowClose: Boolean);
+begin
+  AllowClose := False;
+  if (ATabIndex < 0) or (ATabIndex >= FPlanDocPaths.Count) then Exit;
+  AllowClose := True;
+  FPlanDocPaths.Delete(ATabIndex);
+  FPlanDocContents.Delete(ATabIndex);
+  if FPlanDocPaths.Count = 0 then
+    ClearActivePlanDocument
+  else if ATabIndex = FActivePlanDocIndex then begin
+    if FActivePlanDocIndex >= FPlanDocPaths.Count then
+      FActivePlanDocIndex := FPlanDocPaths.Count - 1;
+    SelectPlanDocIndex(FActivePlanDocIndex);
+  end else if ATabIndex < FActivePlanDocIndex then
+    Dec(FActivePlanDocIndex);
+  RefreshPlanDocTabs;
+end;
+
+procedure TLazyCodingAgentForm.OpenPlanInUtilityTab(const APath, AContent: string);
+var
+  Idx: Integer;
+begin
+  if not Assigned(FPlanView) then Exit;
+  Idx := EnsurePlanDocOpen(APath, AContent);
+  if Idx < 0 then Exit;
+  FState.SetPanelVisible(piUtility, True);
+  ApplyDockPanelsLayout;
+  if Assigned(pgcUtility) then
+    pgcUtility.ActivePage := tsUtilityPlan;
+  SelectPlanDocIndex(Idx);
+  RefreshPlanDocTabs;
 end;
 
 procedure TLazyCodingAgentForm.TrySaveProposedPlanFromChat;
@@ -1902,6 +2041,7 @@ var
 begin
   if not FState.HasActiveWorkspace then Exit;
   if not Assigned(FChatPanel) then Exit;
+  if Trim(APlanPath) = '' then Exit;
   if Trim(AModelId) = '' then Exit;
   if not TPlanBuildConfirmForm.Execute(Self, FState.Theme, AllowOutside) then
     Exit;

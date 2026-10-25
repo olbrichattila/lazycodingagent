@@ -64,6 +64,7 @@ const
   ThemedTabHorizPadBase = 8;
   ThemedTabMinWidthBase = 72;
   ThemedTabMinWidthClosableBase = 96;
+  ThemedTabAddMinWidthBase = 48;
   ThemedTabVertInsetBase = 2;
   ThemedTabBetweenGapBase = 4;
   ThemedButtonCornerBase = 8;
@@ -106,6 +107,7 @@ function MeasureThemedButtonWidth(AControl: TControl; const ACaption: string;
   ARole: TThemedButtonRole; AMinWidth: Integer = 0): Integer;
 function ScaledThemedTabBarHeight(AControl: TControl): Integer;
 function ThemedTabCloseColumn(AControl: TControl): Integer;
+function ThemedTabAddMinWidth(AControl: TControl): Integer;
 function ThemedTabHorizPad(AControl: TControl): Integer;
 function ThemedTabVertInset(AControl: TControl): Integer;
 function ThemedTabBetweenGap(AControl: TControl): Integer;
@@ -143,7 +145,7 @@ procedure ApplyControlTheme(AControl: TControl; ATheme: TThemeKind);
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
   AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind;
-  AMetricsControl: TControl = nil);
+  AMetricsControl: TControl = nil; ACenterCaption: Boolean = False);
 
 procedure PaintThemedButton(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
   ARole: TThemedButtonRole; const ACaption: string; AEnabled, AHover, APressed, AFocused: Boolean;
@@ -278,6 +280,11 @@ end;
 function ThemedTabCloseColumn(AControl: TControl): Integer;
 begin
   Result := ScaledThemedTabMetric(AControl, ThemedTabCloseColumnBase);
+end;
+
+function ThemedTabAddMinWidth(AControl: TControl): Integer;
+begin
+  Result := ScaledThemedTabMetric(AControl, ThemedTabAddMinWidthBase);
 end;
 
 function ThemedTabHorizPad(AControl: TControl): Integer;
@@ -897,12 +904,12 @@ end;
 
 procedure PaintThemedTab(Canvas: TCanvas; const ARect: TRect; const ACaption: string;
   AActive, AHover: Boolean; AShowClose, ACloseHover: Boolean; ATheme: TThemeKind;
-  AMetricsControl: TControl);
+  AMetricsControl: TControl; ACenterCaption: Boolean);
 var
   P: TThemePalette;
   R, TextR, CloseR: TRect;
   FillColor, TextColor: TColor;
-  TextTop, Rad, CloseCol, HorizPad, CloseW, CloseH, CloseX: Integer;
+  TextTop, TextLeft, Rad, CloseCol, HorizPad, CloseW, CloseH, CloseX, CapW, CapH: Integer;
   CloseCaption: string;
 begin
   P := ThemePalette(ATheme);
@@ -944,9 +951,17 @@ begin
   TextR := R;
   if AShowClose then
     Dec(TextR.Right, CloseCol);
-  Inc(TextR.Left, HorizPad);
-  TextTop := TextR.Top + ((TextR.Bottom - TextR.Top - Canvas.TextHeight(ACaption)) div 2);
-  Canvas.TextRect(TextR, TextR.Left, TextTop, ACaption);
+  if ACenterCaption then begin
+    CapW := Canvas.TextWidth(ACaption);
+    CapH := Canvas.TextHeight(ACaption);
+    TextLeft := R.Left + ((R.Right - R.Left - CapW) div 2);
+    TextTop := R.Top + ((R.Bottom - R.Top - CapH) div 2);
+    Canvas.TextOut(TextLeft, TextTop, ACaption);
+  end else begin
+    Inc(TextR.Left, HorizPad);
+    TextTop := TextR.Top + ((TextR.Bottom - TextR.Top - Canvas.TextHeight(ACaption)) div 2);
+    Canvas.TextRect(TextR, TextR.Left, TextTop, ACaption);
+  end;
 
   if AShowClose then begin
     CloseR := ThemedTabCloseHitRect(ARect, AMetricsControl);

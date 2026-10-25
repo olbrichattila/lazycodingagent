@@ -34,6 +34,7 @@ type
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetAvailableModels(const AModels: array of TSavedModel);
     procedure SetModel(const AModel: string);
+    procedure ClearPlan;
     function SelectedModelId: string;
     property PlanPath: string read FPlanPath;
     property PlanContent: string read FPlanContent;
@@ -74,6 +75,19 @@ begin
     FModelCombo.OnChange := @ModelComboChange;
   if Assigned(FBuildBtn) then
     FBuildBtn.OnClick := @BuildClick;
+end;
+
+procedure TPlanView.ClearPlan;
+begin
+  FPlanPath := '';
+  FPlanContent := '';
+  if Assigned(FLblPath) then begin
+    FLblPath.Caption := 'Plan file: (none)';
+    FLblPath.Hint := '';
+    FLblPath.ShowHint := False;
+  end;
+  if Assigned(FBodyMarkdown) then
+    FBodyMarkdown.SetMarkdown('');
 end;
 
 procedure TPlanView.LoadPlan(const APath, AContent: string);
@@ -174,6 +188,7 @@ var
   ModelId: string;
 begin
   if not Assigned(FOnBuild) then Exit;
+  if Trim(FPlanPath) = '' then Exit;
   ModelId := SelectedModelId;
   if ModelId = '' then Exit;
   FOnBuild(Self, FPlanPath, FPlanContent, ModelId);
