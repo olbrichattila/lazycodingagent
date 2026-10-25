@@ -1,5 +1,7 @@
 # SearXNG (local dev)
 
+End users: the same setup steps are in the in-app guide **Help → Web Search** (topic **Local SearXNG with Docker**).
+
 Docker Compose stack for a **local** SearXNG instance used with LazyCodingAgent **Web Search** (SearXNG provider). JSON search is enabled in `core-config/settings.yml` (required for the app).
 
 ## Quick start

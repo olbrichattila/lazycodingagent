@@ -375,6 +375,12 @@ object SettingsForm: TSettingsForm
         ClientWidth = 1068
         OnShow = tsToolsShow
       end
+      object tsPerformance: TTabSheet
+        Caption = 'Performance'
+        ClientHeight = 832
+        ClientWidth = 1068
+        OnShow = tsPerformanceShow
+      end
       object tsWorkspace: TTabSheet
         Caption = 'Workspace'
         ClientHeight = 832

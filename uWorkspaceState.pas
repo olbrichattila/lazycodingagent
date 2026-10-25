@@ -5,7 +5,7 @@ unit uWorkspaceState;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, Forms, uAppTypes, uAgentTypes;
+  Classes, SysUtils, IniFiles, Forms, uAppTypes, uAgentTypes, uLlmPromptCacheTypes;
 
 type
   TPanelState = record
@@ -50,6 +50,7 @@ type
     FAutoSummarizeContext: Boolean;
     FContextWindowTokens: Integer;
     FSummarizeThreshold: Double;
+    FPromptCacheSettings: TPromptCacheSettings;
 
     FProviderCreds: array[TLlmProvider] of TProviderCredentials;
     FProviderModels: array[TLlmProvider] of array of TSavedModel;
@@ -112,6 +113,8 @@ type
     property AutoSummarizeContext: Boolean read FAutoSummarizeContext write FAutoSummarizeContext;
     property ContextWindowTokens: Integer read FContextWindowTokens write FContextWindowTokens;
     property SummarizeThreshold: Double read FSummarizeThreshold write FSummarizeThreshold;
+    property PromptCacheSettings: TPromptCacheSettings read FPromptCacheSettings
+      write FPromptCacheSettings;
 
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
@@ -188,6 +191,7 @@ begin
   FAutoSummarizeContext := True;
   FContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
   FSummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;
+  FPromptCacheSettings := DefaultPromptCacheSettings;
 
   InitProviderDefaults;
   ResetLayout;
@@ -525,6 +529,20 @@ begin
     FContextWindowTokens := I.ReadInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
     FSummarizeThreshold := I.ReadFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
 
+    FPromptCacheSettings := DefaultPromptCacheSettings;
+    FPromptCacheSettings.Mode := TPromptCacheMode(I.ReadInteger('PromptCache', 'Mode',
+      Ord(FPromptCacheSettings.Mode)));
+    FPromptCacheSettings.Retention := TPromptCacheRetention(I.ReadInteger('PromptCache', 'Retention',
+      Ord(FPromptCacheSettings.Retention)));
+    FPromptCacheSettings.CacheSystemInstructions := I.ReadBool('PromptCache', 'CacheSystem',
+      FPromptCacheSettings.CacheSystemInstructions);
+    FPromptCacheSettings.CacheToolDefinitions := I.ReadBool('PromptCache', 'CacheTools',
+      FPromptCacheSettings.CacheToolDefinitions);
+    FPromptCacheSettings.CacheProjectContext := I.ReadBool('PromptCache', 'CacheProject',
+      FPromptCacheSettings.CacheProjectContext);
+    FPromptCacheSettings.CacheConversationHistory := I.ReadBool('PromptCache', 'CacheHistory',
+      FPromptCacheSettings.CacheConversationHistory);
+
     ResetProviderStorage;
 
     for Prov := Low(TLlmProvider) to High(TLlmProvider) do begin
@@ -614,6 +632,13 @@ begin
     I.WriteBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
     I.WriteInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
     I.WriteFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
+
+    I.WriteInteger('PromptCache', 'Mode', Ord(FPromptCacheSettings.Mode));
+    I.WriteInteger('PromptCache', 'Retention', Ord(FPromptCacheSettings.Retention));
+    I.WriteBool('PromptCache', 'CacheSystem', FPromptCacheSettings.CacheSystemInstructions);
+    I.WriteBool('PromptCache', 'CacheTools', FPromptCacheSettings.CacheToolDefinitions);
+    I.WriteBool('PromptCache', 'CacheProject', FPromptCacheSettings.CacheProjectContext);
+    I.WriteBool('PromptCache', 'CacheHistory', FPromptCacheSettings.CacheConversationHistory);
 
     for Prov := Low(TLlmProvider) to High(TLlmProvider) do begin
       Sec := 'Provider_' + IntToStr(Ord(Prov));

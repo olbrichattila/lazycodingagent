@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, uAppTypes, uAgentTypes, uAgentTools, uAgentEngine, uChatSessionStore,
-  uAgentExecutionLog, uAgentToolErrorLog;
+  uAgentExecutionLog, uAgentToolErrorLog, uLlmPromptCacheTypes;
 
 type
   THubStateChangeEvent = procedure(Sender: TObject; const ASessionId: string;
@@ -63,7 +63,8 @@ type
     procedure SetWorkspaceRoot(const ARoot: string);
     procedure ApplyClientSettings(AProvider: TLlmProvider; const AApiKey, ABaseUrl, AModel: string;
       ATemperature: Double; AMaxTokens, AMaxSteps: Integer; AAutoSummarizeContext: Boolean;
-      AContextWindowTokens: Integer; ASummarizeThreshold: Double);
+      AContextWindowTokens: Integer; ASummarizeThreshold: Double;
+      const APromptCacheSettings: TPromptCacheSettings);
 
     function EngineFor(const ASessionId: string): TAgentEngine;
     function ExecutionLogFor(const ASessionId: string): TAgentExecutionLog;
@@ -304,7 +305,8 @@ end;
 
 procedure TChatSessionHub.ApplyClientSettings(AProvider: TLlmProvider; const AApiKey, ABaseUrl, AModel: string;
   ATemperature: Double; AMaxTokens, AMaxSteps: Integer; AAutoSummarizeContext: Boolean;
-  AContextWindowTokens: Integer; ASummarizeThreshold: Double);
+  AContextWindowTokens: Integer; ASummarizeThreshold: Double;
+  const APromptCacheSettings: TPromptCacheSettings);
 var
   I: Integer;
   E: TAgentEngine;
@@ -321,6 +323,8 @@ begin
     E.AutoSummarizeContext := AAutoSummarizeContext;
     E.ContextWindowTokens := AContextWindowTokens;
     E.SummarizeThreshold := ASummarizeThreshold;
+    E.PromptCacheSettings := APromptCacheSettings;
+    E.Client.PromptCacheSettings := APromptCacheSettings;
     E.Context.WorkspaceRoot := FWorkspaceRoot;
   end;
 end;

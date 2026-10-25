@@ -12,12 +12,17 @@ type
     class function DirectoryForProject(const AProjectRoot: string): string;
     class procedure ListFiles(const AProjectRoot: string; AFiles: TStrings);
     class function ReadAll(const AProjectRoot: string): string;
+    { Fingerprint of .rules/*.md (paths + size + mtime). Empty when no rule files. }
+    class function RulesContentFingerprint(const AProjectRoot: string): string;
     class function ReadFile(const AFileName: string): string;
     class procedure WriteFile(const AFileName, AContent: string);
     class function CreateRule(const AProjectRoot, AContent: string): string;
   end;
 
 implementation
+
+uses
+  DateUtils;
 
 class function TAgentRules.DirectoryForProject(const AProjectRoot: string): string;
 begin
@@ -72,6 +77,35 @@ begin
     if Length(Bytes) > 0 then Stream.WriteBuffer(Bytes[1], Length(Bytes));
   finally
     Stream.Free;
+  end;
+end;
+
+class function TAgentRules.RulesContentFingerprint(const AProjectRoot: string): string;
+var
+  Files: TStringList;
+  I: Integer;
+  Info: TSearchRec;
+  Parts: TStringList;
+begin
+  Result := '';
+  Files := TStringList.Create;
+  Parts := TStringList.Create;
+  try
+    ListFiles(AProjectRoot, Files);
+    if Files.Count = 0 then Exit;
+    for I := 0 to Files.Count - 1 do begin
+      if FindFirst(Files[I], faAnyFile, Info) = 0 then
+      try
+        Parts.Add(Format('%s:%d:%d', [Files[I], Info.Size, FileDateToDateTime(Info.Time)]));
+      finally
+        FindClose(Info);
+      end;
+    end;
+    Parts.Sort;
+    Result := Parts.Text;
+  finally
+    Parts.Free;
+    Files.Free;
   end;
 end;
 

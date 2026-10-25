@@ -20,6 +20,8 @@ Open **Settings** from the menu (or when prompted):
 
 Save settings before starting a long agent run.
 
+**Optional: web search** — No search API key? See **Help → Web Search** → **Local SearXNG with Docker**.
+
 ## Building from source (developers)
 
 From the repository root, install Lazarus packages once per machine (`scripts/install-lca-lazarus` on your OS), then:

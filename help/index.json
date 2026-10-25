@@ -39,12 +39,18 @@
     "id": "web-search",
     "title": "Web Search",
     "file": "web-search.md",
-    "keywords": ["web_search", "brave", "searxng", "tavily", "search", "internet", "api key", "fallback", "provider"]
+    "keywords": ["web_search", "brave", "searxng", "tavily", "search", "internet", "api key", "fallback", "provider", "docker", "compose", "localhost", "127.0.0.1", "local", "private", "searxng docker", "no api key"]
   },
   {
     "id": "browser-automation",
     "title": "Browser automation",
     "file": "browser-automation.md",
     "keywords": ["browser", "chromium", "cdp", "localhost", "testing", "screenshot", "session", "playwright", "selenium"]
+  },
+  {
+    "id": "performance-prompt-caching",
+    "title": "Prompt caching",
+    "file": "performance-prompt-caching.md",
+    "keywords": ["prompt caching", "cache", "tokens", "performance", "anthropic", "openai", "gemini", "ollama", "cost", "latency"]
   }
 ]

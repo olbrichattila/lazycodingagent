@@ -10,7 +10,7 @@ uses
   uAppTypes, uAgentTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceState, uWorkspaceRegistry,
   
   uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager, uBrowserReadConfig,
-  fraWebSearchSettings;
+  fraWebSearchSettings, fraPromptCacheSettings;
 
 type
   { TSettingsForm }
@@ -28,6 +28,7 @@ type
     scrAgentTab: TScrollBox;
     pnlTabAgent: TPanel;
     tsTools: TTabSheet;
+    tsPerformance: TTabSheet;
     tsWorkspace: TTabSheet;
     pnlTabWorkspace: TPanel;
 
@@ -85,6 +86,7 @@ type
     procedure btnCancelClick(Sender: TObject);
     procedure pgcSettingsChange(Sender: TObject);
     procedure tsToolsShow(Sender: TObject);
+    procedure tsPerformanceShow(Sender: TObject);
   private
     FState: TWorkspaceState;
     FRegistry: TWorkspaceRegistry;
@@ -94,7 +96,10 @@ type
     FSwitchingProvider: Boolean;
     FWebSearchUiReady: Boolean;
     FWebSearchSettingsFrame: TWebSearchSettingsFrame;
+    FPromptCacheUiReady: Boolean;
+    FPromptCacheSettingsFrame: TPromptCacheSettingsFrame;
     procedure EnsureWebSearchUiReady;
+    procedure EnsurePromptCacheUiReady;
     function CurrentDialogProvider: TLlmProvider;
     function SavedModelLine(const M: TSavedModel): string;
     procedure LoadFromState;
@@ -157,6 +162,7 @@ begin
   Caption := 'LazyCodingAgent Settings';
   FCurrentTheme := tkDark;
   FWebSearchUiReady := False;
+  FPromptCacheUiReady := False;
   KeyPreview := True;
   OnKeyDown := @FormKeyDown;
 end;
@@ -176,14 +182,38 @@ begin
   FWebSearchUiReady := True;
 end;
 
+procedure TSettingsForm.EnsurePromptCacheUiReady;
+begin
+  if FPromptCacheUiReady then Exit;
+  if not Assigned(pgcSettings) or not Assigned(tsPerformance) then Exit;
+  if pgcSettings.ActivePageIndex <> tsPerformance.PageIndex then Exit;
+  if not Assigned(FPromptCacheSettingsFrame) then begin
+    FPromptCacheSettingsFrame := TPromptCacheSettingsFrame.Create(tsPerformance);
+    FPromptCacheSettingsFrame.Parent := tsPerformance;
+    FPromptCacheSettingsFrame.Align := alClient;
+  end;
+  if Assigned(FState) then begin
+    FPromptCacheSettingsFrame.SetProviderContext(FState.Provider, FState.BaseUrl, FState.Model);
+    FPromptCacheSettingsFrame.LoadSettings(FState.PromptCacheSettings);
+  end;
+  FPromptCacheSettingsFrame.InitTheme(FCurrentTheme);
+  FPromptCacheUiReady := True;
+end;
+
 procedure TSettingsForm.pgcSettingsChange(Sender: TObject);
 begin
   EnsureWebSearchUiReady;
+  EnsurePromptCacheUiReady;
 end;
 
 procedure TSettingsForm.tsToolsShow(Sender: TObject);
 begin
   EnsureWebSearchUiReady;
+end;
+
+procedure TSettingsForm.tsPerformanceShow(Sender: TObject);
+begin
+  EnsurePromptCacheUiReady;
 end;
 
 procedure TSettingsForm.FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -256,6 +286,8 @@ begin
 
   if FWebSearchUiReady and Assigned(FWebSearchSettingsFrame) then
     FWebSearchSettingsFrame.InitTheme(ATheme);
+  if FPromptCacheUiReady and Assigned(FPromptCacheSettingsFrame) then
+    FPromptCacheSettingsFrame.InitTheme(ATheme);
 
   Invalidate;
 end;
@@ -389,6 +421,8 @@ begin
 
   if FWebSearchUiReady and Assigned(FWebSearchSettingsFrame) then
     FWebSearchSettingsFrame.SaveSettings;
+  if FPromptCacheUiReady and Assigned(FPromptCacheSettingsFrame) then
+    FState.PromptCacheSettings := FPromptCacheSettingsFrame.SaveSettings;
 
   if Assigned(FRegistry) and FState.HasActiveWorkspace then
     FRegistry.UpdateWorkspace(FState.ActiveWorkspaceId, FState.WorkspaceName, FState.WorkspaceRoot);

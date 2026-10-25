@@ -127,7 +127,7 @@ Search the internet for **current** public information (documentation, libraries
 
 **Security:** Snippets and URLs are **untrusted**. Follow links with `web_fetch` / `browser_read` when full page text is needed.
 
-See **Help → Web Search** for Brave, SearXNG, and Tavily setup.
+See **Help → Web Search** for Brave, SearXNG, Tavily setup, and local Docker SearXNG (no API key).
 
 ### browser_read
 

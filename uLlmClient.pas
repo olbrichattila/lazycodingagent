@@ -5,7 +5,7 @@ unit uLlmClient;
 interface
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, uAgentTypes;
+  Classes, SysUtils, fpjson, jsonparser, uAgentTypes, uLlmPromptCacheTypes;
 
 type
   { Completion Response struct }
@@ -18,6 +18,7 @@ type
     PromptTokens: Integer;
     CompletionTokens: Integer;
     TotalTokens: Integer;
+    CacheUsage: TPromptCacheUsage;
   end;
 
   { Callback types for async LLM interactions }
@@ -44,7 +45,10 @@ type
     FTemperature: Double;
     FMaxTokens: Integer;
     FTimeoutMs: Integer;
+    FPromptCacheSettings: TPromptCacheSettings;
+    FPromptSegments: TPromptSegmentArray;
     function BuildOpenAiPayload(const AMessages: array of TChatMessage; const ATools: array of TToolDef): string;
+    function ChatCompletionsUrl: string;
     function ParseOpenAiResponse(const AJsonStr: string): TLlmResponse;
     function ParseModelsResponse(const AJsonStr: string): TLlmModelListResult;
     function BuildRequestHeaders(AIncludeJsonContentType: Boolean): TStringList;
@@ -69,12 +73,16 @@ type
     property Temperature: Double read FTemperature write FTemperature;
     property MaxTokens: Integer read FMaxTokens write FMaxTokens;
     property TimeoutMs: Integer read FTimeoutMs write FTimeoutMs;
+    property PromptCacheSettings: TPromptCacheSettings read FPromptCacheSettings
+      write FPromptCacheSettings;
+    property PromptSegments: TPromptSegmentArray read FPromptSegments write FPromptSegments;
   end;
 
 implementation
 
 uses
-  uAgentToolBase, uChatImageStore, uSslRuntime
+  uAgentToolBase, uChatImageStore, uSslRuntime, uLlmCacheCapabilities, uLlmCacheUsage,
+  uLlmRequestAnthropic, uLlmRequestGemini
   {$IFNDEF MSWINDOWS}
   , fphttpclient, opensslsockets
   {$ENDIF}
@@ -203,6 +211,22 @@ begin
   FTemperature := 0.2;
   FMaxTokens := DEFAULT_MAX_OUTPUT_TOKENS;
   FTimeoutMs := 60000;
+  FPromptCacheSettings := DefaultPromptCacheSettings;
+  SetLength(FPromptSegments, 0);
+end;
+
+procedure SortToolDefsForPayload(var ATools: array of TToolDef);
+var
+  I, J: Integer;
+  Tmp: TToolDef;
+begin
+  for I := Low(ATools) to High(ATools) - 1 do
+    for J := I + 1 to High(ATools) do
+      if CompareText(ATools[J].Name, ATools[I].Name) < 0 then begin
+        Tmp := ATools[I];
+        ATools[I] := ATools[J];
+        ATools[J] := Tmp;
+      end;
 end;
 
 destructor TLlmClient.Destroy;
@@ -220,7 +244,12 @@ var
   ParamData: TJSONData;
   I, J: Integer;
   Msg: TChatMessage;
+  SortedTools: array of TToolDef;
 begin
+  SetLength(SortedTools, Length(ATools));
+  for I := Low(ATools) to High(ATools) do
+    SortedTools[I] := ATools[I];
+  SortToolDefsForPayload(SortedTools);
   RootObj := TJSONObject.Create;
   try
     RootObj.Add('model', FModel);
@@ -264,17 +293,17 @@ begin
     RootObj.Add('messages', MsgArray);
 
     // Tools definition
-    if Length(ATools) > 0 then begin
+    if Length(SortedTools) > 0 then begin
       ToolsArray := TJSONArray.Create;
-      for I := Low(ATools) to High(ATools) do begin
+      for I := Low(SortedTools) to High(SortedTools) do begin
         ToolObj := TJSONObject.Create;
         ToolObj.Add('type', 'function');
 
         FuncObj := TJSONObject.Create;
-        FuncObj.Add('name', ATools[I].Name);
-        FuncObj.Add('description', ATools[I].Description);
+        FuncObj.Add('name', SortedTools[I].Name);
+        FuncObj.Add('description', SortedTools[I].Description);
 
-        ParamData := GetJSON(ToolDefToParametersJson(ATools[I]));
+        ParamData := GetJSON(ToolDefToParametersJson(SortedTools[I]));
         if ParamData is TJSONObject then
           FuncObj.Add('parameters', TJSONObject(ParamData))
         else begin
@@ -313,6 +342,7 @@ begin
   Result.PromptTokens := 0;
   Result.CompletionTokens := 0;
   Result.TotalTokens := 0;
+  ClearPromptCacheUsage(Result.CacheUsage);
 
   try
     Data := GetJSON(AJsonStr);
@@ -365,6 +395,16 @@ begin
         Result.PromptTokens := UsageObj.Get('prompt_tokens', 0);
         Result.CompletionTokens := UsageObj.Get('completion_tokens', 0);
         Result.TotalTokens := UsageObj.Get('total_tokens', 0);
+        if UsageObj.IndexOfName('prompt_tokens_details') >= 0 then begin
+          if UsageObj.Objects['prompt_tokens_details'].IndexOfName('cached_tokens') >= 0 then
+            Result.CacheUsage := NormalizeOpenAiCacheUsage(Result.PromptTokens,
+              Result.CompletionTokens, Result.TotalTokens,
+              UsageObj.Objects['prompt_tokens_details'].Get('cached_tokens', 0), True);
+        end else if UsageObj.IndexOfName('cache_read_input_tokens') >= 0 then begin
+          Result.CacheUsage := NormalizeAnthropicCacheUsage(Result.PromptTokens,
+            Result.CompletionTokens, UsageObj.Get('cache_creation_input_tokens', 0),
+            UsageObj.Get('cache_read_input_tokens', 0), True);
+        end;
       end;
 
       Result.Success := True;
@@ -612,6 +652,138 @@ begin
   end;
 end;
 
+function TLlmClient.ChatCompletionsUrl: string;
+var
+  Url: string;
+begin
+  Url := Trim(FBaseUrl);
+  if Url = '' then begin
+    case FProvider of
+      lpOpenRouter: Url := 'https://openrouter.ai/api/v1';
+      lpOpenAI: Url := 'https://api.openai.com/v1';
+      lpAnthropic: Url := 'https://api.anthropic.com/v1';
+      lpOllama: Url := 'http://localhost:11434/v1';
+      lpNousResearch: Url := 'https://inference-api.nousresearch.com/v1';
+      else Url := 'https://openrouter.ai/api/v1';
+    end;
+  end;
+  if not (Copy(Url, Length(Url) - 15, 16) = '/chat/completions') then begin
+    if Url[Length(Url)] = '/' then
+      Url := Url + 'chat/completions'
+    else
+      Url := Url + '/chat/completions';
+  end;
+  Result := Url;
+end;
+
+function ParseGeminiGenerateResponse(const AJsonStr: string): TLlmResponse;
+var
+  Data: TJSONData;
+  Root, Cand, Content, Part, Usage: TJSONObject;
+  Parts: TJSONArray;
+  Cached: Integer;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  Result.Success := False;
+  ClearPromptCacheUsage(Result.CacheUsage);
+  try
+    Data := GetJSON(AJsonStr);
+    try
+      if not (Data is TJSONObject) then begin
+        Result.ErrorMessage := 'Invalid JSON response from Gemini.';
+        Exit;
+      end;
+      Root := TJSONObject(Data);
+      if Root.IndexOfName('error') >= 0 then begin
+        Result.ErrorMessage := Root.Objects['error'].Get('message', 'Unknown API Error');
+        Exit;
+      end;
+      if Root.IndexOfName('candidates') >= 0 then begin
+        Cand := Root.Arrays['candidates'].Objects[0];
+        if Cand.IndexOfName('content') >= 0 then begin
+          Content := Cand.Objects['content'];
+          if Content.IndexOfName('parts') >= 0 then begin
+            Parts := Content.Arrays['parts'];
+            if Parts.Count > 0 then
+              Result.Content := Parts.Objects[0].Get('text', '');
+          end;
+        end;
+        Result.FinishReason := Cand.Get('finishReason', '');
+      end;
+      if Root.IndexOfName('usageMetadata') >= 0 then begin
+        Usage := Root.Objects['usageMetadata'];
+        Result.PromptTokens := Usage.Get('promptTokenCount', 0);
+        Result.CompletionTokens := Usage.Get('candidatesTokenCount', 0);
+        Result.TotalTokens := Usage.Get('totalTokenCount', 0);
+        Cached := Usage.Get('cachedContentTokenCount', -1);
+        Result.CacheUsage := NormalizeGeminiCacheUsage(Result.PromptTokens,
+          Result.CompletionTokens, Cached, Cached >= 0);
+      end;
+      Result.Success := True;
+    finally
+      Data.Free;
+    end;
+  except
+    on E: Exception do
+      Result.ErrorMessage := 'JSON Parse Error: ' + E.Message;
+  end;
+end;
+
+function ParseAnthropicMessagesResponse(const AJsonStr: string): TLlmResponse;
+var
+  Data: TJSONData;
+  Root, Usage: TJSONObject;
+  ContentArr: TJSONArray;
+  I: Integer;
+  CacheCreate, CacheRead: Integer;
+  HasCache: Boolean;
+begin
+  FillChar(Result, SizeOf(Result), 0);
+  Result.Success := False;
+  ClearPromptCacheUsage(Result.CacheUsage);
+  try
+    Data := GetJSON(AJsonStr);
+    try
+      if not (Data is TJSONObject) then begin
+        Result.ErrorMessage := 'Invalid JSON response from Anthropic.';
+        Exit;
+      end;
+      Root := TJSONObject(Data);
+      if Root.IndexOfName('error') >= 0 then begin
+        if Root.Types['error'] = jtObject then
+          Result.ErrorMessage := Root.Objects['error'].Get('message', 'Unknown API Error')
+        else
+          Result.ErrorMessage := Root.Get('error', 'Unknown API Error');
+        Exit;
+      end;
+      if Root.IndexOfName('content') >= 0 then begin
+        ContentArr := Root.Arrays['content'];
+        for I := 0 to ContentArr.Count - 1 do
+          if ContentArr.Objects[I].Get('type', '') = 'text' then
+            Result.Content := Result.Content + ContentArr.Objects[I].Get('text', '');
+      end;
+      Result.FinishReason := Root.Get('stop_reason', '');
+      if Root.IndexOfName('usage') >= 0 then begin
+        Usage := Root.Objects['usage'];
+        Result.PromptTokens := Usage.Get('input_tokens', 0);
+        Result.CompletionTokens := Usage.Get('output_tokens', 0);
+        Result.TotalTokens := Result.PromptTokens + Result.CompletionTokens;
+        CacheCreate := Usage.Get('cache_creation_input_tokens', -1);
+        CacheRead := Usage.Get('cache_read_input_tokens', -1);
+        HasCache := (CacheCreate >= 0) or (CacheRead >= 0);
+        Result.CacheUsage := NormalizeAnthropicCacheUsage(Result.PromptTokens,
+          Result.CompletionTokens, CacheCreate, CacheRead, HasCache);
+      end;
+      Result.Success := True;
+    finally
+      Data.Free;
+    end;
+  except
+    on E: Exception do
+      Result.ErrorMessage := 'JSON Parse Error: ' + E.Message;
+  end;
+end;
+
 function TLlmClient.ListModels: TLlmModelListResult;
 var
   Url, RespStr: string;
@@ -640,33 +812,47 @@ function TLlmClient.SendChatCompletion(
 ): TLlmResponse;
 var
   Url, Payload, RespStr: string;
+  Wire: TLlmWireFormat;
+  CacheSettings: TPromptCacheSettings;
+  CacheCapabilities: TPromptCacheCapabilities;
 begin
-  Url := Trim(FBaseUrl);
-  if Url = '' then begin
-    case FProvider of
-      lpOpenRouter: Url := 'https://openrouter.ai/api/v1/chat/completions';
-      lpOpenAI: Url := 'https://api.openai.com/v1/chat/completions';
-      lpOllama: Url := 'http://localhost:11434/v1/chat/completions';
-      lpNousResearch: Url := 'https://inference-api.nousresearch.com/v1/chat/completions';
-      else Url := 'https://openrouter.ai/api/v1/chat/completions';
-    end;
+  Wire := ResolveLlmWireFormat(FProvider, FBaseUrl, FModel);
+  CacheCapabilities := ResolveCacheCapabilities(FProvider, FBaseUrl, FModel, Wire);
+  CacheSettings := FPromptCacheSettings;
+  if CacheSettings.Mode = pcmDisabled then
+    CacheCapabilities.SupportsExplicitCaching := False;
+
+  if Wire = lwfAnthropicMessages then begin
+    Url := AnthropicMessagesUrl(FBaseUrl);
+    Payload := BuildAnthropicMessagesPayload(FModel, FTemperature, FMaxTokens,
+      AMessages, ATools, FPromptSegments, CacheSettings, CacheCapabilities);
+  end else if Wire = lwfGemini then begin
+    Url := GeminiGenerateUrl(FBaseUrl, FModel);
+    Payload := BuildGeminiGeneratePayload(FModel, FTemperature, FMaxTokens, AMessages, ATools);
   end else begin
-    if not (Copy(Url, Length(Url) - 15, 16) = '/chat/completions') then begin
-      if Url[Length(Url)] = '/' then
-        Url := Url + 'chat/completions'
-      else
-        Url := Url + '/chat/completions';
-    end;
+    Url := ChatCompletionsUrl;
+    Payload := BuildOpenAiPayload(AMessages, ATools);
   end;
 
-  Payload := BuildOpenAiPayload(AMessages, ATools);
   if SendHttpPost(Url, Payload, RespStr) then begin
-    Result := ParseOpenAiResponse(RespStr);
+    if Wire = lwfAnthropicMessages then
+      Result := ParseAnthropicMessagesResponse(RespStr)
+    else if Wire = lwfGemini then
+      Result := ParseGeminiGenerateResponse(RespStr)
+    else
+      Result := ParseOpenAiResponse(RespStr);
+    if Result.Success and Result.CacheUsage.CacheMetricsAvailable then
+      GlobalPromptCacheStats.RecordUsage(Result.CacheUsage);
   end else begin
     // Try to parse error JSON if available
     RespStr := Trim(RespStr);
     if (RespStr <> '') and ((RespStr[1] = '{') or (RespStr[1] = '[')) then begin
-      Result := ParseOpenAiResponse(RespStr);
+      if Wire = lwfAnthropicMessages then
+        Result := ParseAnthropicMessagesResponse(RespStr)
+      else if Wire = lwfGemini then
+        Result := ParseGeminiGenerateResponse(RespStr)
+      else
+        Result := ParseOpenAiResponse(RespStr);
       if Result.ErrorMessage = '' then
         Result.ErrorMessage := RespStr;
     end else begin

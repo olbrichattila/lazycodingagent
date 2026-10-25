@@ -436,7 +436,7 @@ begin
   if not Assigned(AHub) then Exit;
   AHub.ApplyClientSettings(FState.Provider, FState.ApiKey, FState.BaseUrl, FState.Model,
     FState.Temperature, FState.MaxTokens, FState.MaxSteps, FState.AutoSummarizeContext,
-    FState.ContextWindowTokens, FState.SummarizeThreshold);
+    FState.ContextWindowTokens, FState.SummarizeThreshold, FState.PromptCacheSettings);
 end;
 
 procedure TLazyCodingAgentForm.ApplyAllowModifyOutsideToSession(const ASessionId: string;

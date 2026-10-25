@@ -139,20 +139,35 @@ begin
   Result := GetToolDefinitions(FActiveMode);
 end;
 
+procedure SortToolDefsByName(var ADefs: TToolDefArray);
+var
+  I, J: Integer;
+  Tmp: TToolDef;
+begin
+  for I := Low(ADefs) to High(ADefs) - 1 do
+    for J := I + 1 to High(ADefs) do
+      if CompareText(ADefs[J].Name, ADefs[I].Name) < 0 then begin
+        Tmp := ADefs[I];
+        ADefs[I] := ADefs[J];
+        ADefs[J] := Tmp;
+      end;
+end;
+
 function TAgentToolRegistry.ToolGuidance(AMode: TWorkspaceMode): string;
 var
   I: Integer;
   Def: TToolDef;
   Schema: string;
+  Defs: TToolDefArray;
 begin
+  Defs := GetToolDefinitions(AMode);
   Result := 'Available tools (JSON arguments):' + LineEnding;
-  for I := Low(FTools) to High(FTools) do
-    if FTools[I].IsAdvertised(AMode) and FTools[I].ToolAllowedInMode(AMode) then begin
-      Def := FTools[I].GetDefinition;
-      Schema := ToolDefToParametersJson(Def);
-      Result := Result + '- ' + Def.Name + ': ' + Def.Description +
-        ' Parameters: ' + Schema + LineEnding;
-    end;
+  for I := Low(Defs) to High(Defs) do begin
+    Def := Defs[I];
+    Schema := ToolDefToParametersJson(Def);
+    Result := Result + '- ' + Def.Name + ': ' + Def.Description +
+      ' Parameters: ' + Schema + LineEnding;
+  end;
 end;
 
 function TAgentToolRegistry.GetToolDefinitions(AMode: TWorkspaceMode): TToolDefArray;
@@ -173,6 +188,7 @@ begin
       Result[N] := FTools[I].GetDefinition;
       Inc(N);
     end;
+  SortToolDefsByName(Result);
 end;
 
 function TAgentToolRegistry.ExecuteTool(const AName, AArgumentsJson: string): TToolExecutionResult;
