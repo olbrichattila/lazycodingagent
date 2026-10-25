@@ -35,6 +35,7 @@ type
     FHistoryScrollToEndPending: Boolean;
     FHistoryRefreshDueTick: QWord;
     FHistoryRefreshThrottleQueued: Boolean;
+    FLastAppendWasTrace: Boolean;
 
     FOnPrompt: TPromptEvent;
     FOnModeChange: TModeChangeEvent;
@@ -442,6 +443,7 @@ begin
   FHistoryText :=
     '# Welcome to LazyCodingAgent!' + LineEnding + LineEnding +
     'Type a prompt below or pick a mode (Ask, Plan, Agent) to start building.';
+  FLastAppendWasTrace := False;
 end;
 
 procedure TChatPanel.UpdateHeading;
@@ -548,6 +550,7 @@ begin
   if FHistoryText <> '' then
     FHistoryText := FHistoryText + LineEnding + LineEnding;
   FHistoryText := FHistoryText + '### ' + ARoleLabel + LineEnding + LineEnding + ABody;
+  FLastAppendWasTrace := False;
   RefreshHistoryView;
 end;
 
@@ -688,6 +691,7 @@ end;
 procedure TChatPanel.ClearHistory;
 begin
   FHistoryText := '';
+  FLastAppendWasTrace := False;
   InitWelcomeText;
   RefreshHistoryView;
 end;
@@ -753,9 +757,22 @@ begin
 end;
 
 procedure TChatPanel.AppendTraceLine(const AText: string);
+const
+  TracePrefix = #$2014' '; // em dash + space
+var
+  Line: string;
 begin
-  if Trim(AText) = '' then Exit;
-  AppendToHistory('Activity', AText);
+  Line := Trim(AText);
+  if Line = '' then Exit;
+  if FHistoryText <> '' then begin
+    if FLastAppendWasTrace then
+      FHistoryText := FHistoryText + LineEnding
+    else
+      FHistoryText := FHistoryText + LineEnding + LineEnding;
+  end;
+  FHistoryText := FHistoryText + TracePrefix + Line;
+  FLastAppendWasTrace := True;
+  RefreshHistoryView;
 end;
 
 procedure TChatPanel.AppendText(const AText: string);
@@ -764,6 +781,7 @@ begin
   if FHistoryText <> '' then
     FHistoryText := FHistoryText + LineEnding + LineEnding;
   FHistoryText := FHistoryText + AText;
+  FLastAppendWasTrace := False;
   RefreshHistoryView;
 end;
 
@@ -833,6 +851,7 @@ var
   I: Integer;
 begin
   FHistoryText := '';
+  FLastAppendWasTrace := False;
   for I := 0 to High(AMessages) do begin
     if AMessages[I].Role = crTool then
       AppendToolMessage(AMessages[I], ADebuggingMode)

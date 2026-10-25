@@ -27,7 +27,7 @@
     "id": "how-the-agent-works",
     "title": "How the agent works",
     "file": "how-the-agent-works.md",
-    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger", "execution log", "step limit", "max steps", "calling", "follow", "summarize", "context", "truncation", "max tokens", "sandbox", "outside workspace", "path"]
+    "keywords": ["react", "llm", "loop", "system prompt", "tools", "educational", "tool error", "debugger", "execution log", "step limit", "max steps", "calling", "follow", "summarize", "context", "truncation", "max tokens", "sandbox", "outside workspace", "path", "project rules", "language", "workspace stack"]
   },
   {
     "id": "tools-reference",

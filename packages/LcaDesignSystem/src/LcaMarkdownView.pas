@@ -282,6 +282,11 @@ begin
         Result := Result + '</ul>';
         InList := False;
       end;
+      if (Length(Trimmed) >= 2) and (Trimmed[1] = #$2014) and (Trimmed[2] = ' ') then begin
+        Line := Trim(Copy(Trimmed, 3, MaxInt));
+        Result := Result + '<p class="msg-tool">' + InlineMarkdownToHtml(Line) + '</p>';
+        Continue;
+      end;
       if MarkdownImageLineToHtml(Trimmed) <> '' then begin
         Result := Result + MarkdownImageLineToHtml(Trimmed);
         Continue;

@@ -39,6 +39,8 @@ You → system + history → (optional summarize) → LLM → (optional tools) �
 
 The model only sees tools that are **allowed in the current mode**.
 
+**Host vs opened project:** LazyCodingAgent is a Lazarus desktop app, but the folder you open may be any stack (HTML, Python, Go, Pascal, and so on). In **Agent** mode, the system prompt tells the model to match the languages and formats already in that workspace—not to default to Free Pascal. Use **Project Rules** (`.rules/*.md`) to state primary languages, test commands, and style (for example static site HTML/CSS/JS and how to run site checks).
+
 ## Modes vs file changes
 
 | Mode | Typical use | Mutations |
@@ -52,7 +54,7 @@ Plan and Ask still use read/search/git tools to understand the tree.
 ## What you see in the UI
 
 - **Assistant messages** — model text and (in debugging mode) full tool JSON in chat.
-- **Activity lines** — while a run is in progress, chat shows short **Calling …** lines when the model invokes a tool (display only; not sent back to the model). These lines are not kept when the transcript is reloaded from saved messages.
+- **Live tool trace** — while a run is in progress, chat shows muted lines such as **— Calling read_file** when the model invokes a tool (display only; not sent back to the model). These lines are not kept when the transcript is reloaded from saved messages.
 - **State** — idle, thinking, executing tool, finished, or error. During a run the status bar includes **step N/M** (for example `Thinking... (step 2/20)`), where **M** is **Max steps** from Settings.
 - **Execution log** (navigation **Tools & Logs**) — per-step trace with plain captions (`User:`, `Step N/M · Model:`, `Step N/M · tool_name(...)`). Click a row to inspect it in the utility **Execution Detail** panel. With **Learn mode** enabled in Settings, new log rows **follow** into Execution Detail during a run unless you click an older row (click the latest row again to resume follow).
 - **Step limit** — if the loop uses all allowed steps and the model still wanted tools, the assistant posts a short note that the step limit was reached (configure **Max steps** in Settings).
