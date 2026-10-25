@@ -70,6 +70,8 @@ begin
     Host := S;
     Port := 80;
   end;
+  if SameText(Host, 'localhost') then
+    Host := '127.0.0.1';
   Result := (Host <> '') and (Port > 0) and (Host = '127.0.0.1');
 end;
 
@@ -153,10 +155,13 @@ begin
       Exit;
     end;
 
-    if not Socket.Connect(Host, Port, Path, Min(TimeoutMs, 15000)) then
+    if not Socket.Connect(Host, Port, Path, Min(TimeoutMs, 15000), ErrMsg) then
     begin
       Result.ErrorKind := brekCdpConnectionFailed;
-      Result.ErrorMessage := 'WebSocket connection to browser failed';
+      if Trim(ErrMsg) <> '' then
+        Result.ErrorMessage := 'WebSocket connection to browser failed: ' + ErrMsg
+      else
+        Result.ErrorMessage := 'WebSocket connection to browser failed';
       Exit;
     end;
 

@@ -8,7 +8,8 @@ uses
   SysUtils;
 
 const
-  WEB_FETCH_USER_AGENT = 'LazyCodingAgent/1.0';
+  WEB_FETCH_USER_AGENT =
+    'Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0';
   WEB_FETCH_DEFAULT_FORMAT = 'markdown';
   WEB_FETCH_DEFAULT_MAX_LENGTH = 20000;
   WEB_FETCH_CONNECT_TIMEOUT_MS = 10000;

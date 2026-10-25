@@ -17,27 +17,25 @@ end;
 
 function ToolDefToDeclaration(const Def: TToolDef): TJSONObject;
 var
-  FnObj, Params, Props: TJSONObject;
-  I: Integer;
-  P: TJSONObject;
+  FnObj, Params: TJSONObject;
+  ParamData: TJSONData;
 begin
   Result := TJSONObject.Create;
   Result.Add('type', 'function');
   FnObj := TJSONObject.Create;
   FnObj.Add('name', Def.Name);
   FnObj.Add('description', Def.Description);
-  Params := TJSONObject.Create;
-  Params.Add('type', 'object');
-  Props := TJSONObject.Create;
-  for I := Low(Def.Params) to High(Def.Params) do
-  begin
-    P := TJSONObject.Create;
-    P.Add('type', Def.Params[I].ParamType);
-    P.Add('description', Def.Params[I].Description);
-    Props.Add(Def.Params[I].Name, P);
+  ParamData := GetJSON(ToolDefToParametersJson(Def));
+  if ParamData is TJSONObject then
+    FnObj.Add('parameters', TJSONObject(ParamData))
+  else begin
+    ParamData.Free;
+    Params := TJSONObject.Create;
+    Params.Add('type', 'object');
+    Params.Add('properties', TJSONObject.Create);
+    Params.Add('required', TJSONArray.Create);
+    FnObj.Add('parameters', Params);
   end;
-  Params.Add('properties', Props);
-  FnObj.Add('parameters', Params);
   Result.Add('function', FnObj);
 end;
 

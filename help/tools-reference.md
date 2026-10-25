@@ -107,7 +107,7 @@ Fetch and extract readable content from a **public** `http` or `https` URL (docu
 
 **Modes:** Ask, Plan, Agent.
 
-**Security:** Only public destinations; loopback, private networks, link-local addresses, and URLs with embedded credentials are blocked. Redirects are followed manually (up to 5) with re-validation. Response bodies are capped at 5 MiB; connect timeout 10s, overall 30s. No cookies or auth headers are sent.
+**Security:** Only public destinations; loopback, private networks, link-local addresses, and URLs with embedded credentials are blocked. Redirects are followed manually (up to 5) with re-validation. Response bodies are capped at 5 MiB; connect timeout 10s, overall 30s. No cookies or auth headers are sent. Requests use a generic Mozilla/Firefox-style `User-Agent` (not an app-specific bot string).
 
 **Platforms:** Windows uses system TLS (Schannel). Linux, macOS, and Raspberry Pi use OpenSSL (same requirement as HTTPS in Settings).
 

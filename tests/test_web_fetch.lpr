@@ -199,5 +199,15 @@ begin
   if R.ErrorKind <> wfekCancelled then
     Fail('expected cancel');
 
+  if SameText(GetEnvironmentVariable('LCA_LIVE_WEB_FETCH'), '1') then
+  begin
+    R := FetchWebContent('https://commspliant.com/', 'markdown', 20000, Config, nil, nil);
+    if not R.Success then
+      Fail('live commspliant fetch: ' + R.ErrorMessage + ' (kind=' +
+        WebFetchErrorKindToCode(R.ErrorKind) + ')');
+    if Pos('CommsPliant', R.Content) = 0 then
+      Fail('live commspliant fetch: expected site content in body');
+  end;
+
   WriteLn('Web fetch tests passed.');
 end.

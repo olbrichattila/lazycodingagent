@@ -93,7 +93,7 @@ begin
     TSSLSocketHandler(AHandler).CertificateData.HostName := SniHost;
 end;
 
-function HttpFetchUrlUnix(const RequestUrl, VHost: string;
+function HttpFetchUrlUnix(const RequestUrl, VHost: string; AAddHostHeader: Boolean;
   const Config: TWebFetchConfig; CancelCheck: TWebFetchCancelCheck;
   out Resp: THttpFetchResponse; out ErrKind: TWebFetchErrorKind;
   out ErrMsg: string): Boolean;
@@ -126,9 +126,10 @@ begin
     Client.AddHeader('User-Agent', WEB_FETCH_USER_AGENT);
     Client.AddHeader('Accept-Encoding', 'gzip, deflate');
     Client.AddHeader('Accept', 'text/html,application/xhtml+xml,text/plain,text/markdown,application/json;q=0.9,*/*;q=0.8');
-    if VHost <> '' then
+    if AAddHostHeader and (VHost <> '') then
       Client.AddHeader('Host', VHost);
-    GWebFetchSslBridge.SniHost := VHost;
+    if VHost <> '' then
+      GWebFetchSslBridge.SniHost := VHost;
     Client.OnGetSocketHandler := @GWebFetchSslBridge.OnGetSocket;
     StartMs := GetTickCount64;
     try
@@ -144,7 +145,27 @@ begin
         else
         begin
           ErrKind := wfekTlsFailure;
-          ErrMsg := 'Secure connection failed';
+          if Trim(E.Message) <> '' then
+            ErrMsg := 'Secure connection failed: ' + E.Message
+          else
+            ErrMsg := 'Secure connection failed';
+        end;
+        Exit;
+      end;
+      on E: EHTTPClient do
+      begin
+        if GetTickCount64 - StartMs >= QWord(Config.RequestTimeoutMs) then
+        begin
+          ErrKind := wfekTimeout;
+          ErrMsg := 'Request timed out';
+        end
+        else
+        begin
+          ErrKind := wfekInternal;
+          if Trim(E.Message) <> '' then
+            ErrMsg := 'HTTP request failed: ' + E.Message
+          else
+            ErrMsg := 'HTTP request failed';
         end;
         Exit;
       end;
@@ -158,7 +179,10 @@ begin
         else
         begin
           ErrKind := wfekInternal;
-          ErrMsg := 'HTTP request failed';
+          if Trim(E.Message) <> '' then
+            ErrMsg := 'HTTP request failed: ' + E.Message
+          else
+            ErrMsg := 'HTTP request failed';
         end;
         Exit;
       end;
@@ -199,13 +223,21 @@ function HttpFetchUrl(const RequestUrl: string; const Parsed: TWebFetchUrl;
   CancelCheck: TWebFetchCancelCheck; out Resp: THttpFetchResponse;
   out ErrKind: TWebFetchErrorKind; out ErrMsg: string): Boolean;
 var
-  Pinned: string;
+  Pinned, FetchUrl: string;
+  UseHostnameUrl: Boolean;
 begin
   Pinned := BuildPinnedRequestUrl(Parsed, ConnectIP);
+  UseHostnameUrl := (VHost <> '') and SameText(VHost, Parsed.Host) and (ConnectIP <> '') and
+    not SameText(ConnectIP, Parsed.Host);
+  if UseHostnameUrl then
+    FetchUrl := RequestUrl
+  else
+    FetchUrl := Pinned;
   {$IFDEF MSWINDOWS}
-  Result := WebFetchHttpWinGet(Pinned, VHost, Config, CancelCheck, Resp, ErrKind, ErrMsg);
+  Result := WebFetchHttpWinGet(FetchUrl, VHost, Config, CancelCheck, Resp, ErrKind, ErrMsg);
   {$ELSE}
-  Result := HttpFetchUrlUnix(Pinned, VHost, Config, CancelCheck, Resp, ErrKind, ErrMsg);
+  Result := HttpFetchUrlUnix(FetchUrl, VHost, not UseHostnameUrl, Config, CancelCheck, Resp,
+    ErrKind, ErrMsg);
   {$ENDIF}
 end;
 

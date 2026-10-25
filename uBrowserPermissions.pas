@@ -20,8 +20,9 @@ implementation
 
 uses
   {$IFDEF LCL}
-  Forms, Classes;
+  Forms,
   {$ENDIF}
+  SyncObjs;
 
 var
   GHandler: TBrowserSensitiveConfirmEvent;
@@ -31,21 +32,23 @@ type
     Message: string;
     Approved: Boolean;
     AllowForSession: Boolean;
-    Done: Boolean;
   end;
 
   TConfirmThreadBridge = class
   public
-    class var Data: TConfirmSyncData;
-    class procedure SyncConfirm;
+    Data: TConfirmSyncData;
+    procedure SyncConfirm;
   end;
+
+var
+  GConfirmBridge: TConfirmThreadBridge;
 
 procedure SetBrowserSensitiveConfirmHandler(AHandler: TBrowserSensitiveConfirmEvent);
 begin
   GHandler := AHandler;
 end;
 
-class procedure TConfirmThreadBridge.SyncConfirm;
+procedure TConfirmThreadBridge.SyncConfirm;
 var
   Allow: Boolean;
 begin
@@ -55,28 +58,30 @@ begin
     GHandler(Data.Message, Data.Approved, Allow);
   if Allow then
     Data.AllowForSession := True;
-  Data.Done := True;
 end;
 
 function RequestBrowserSensitiveConfirm(const AMessage: string;
   var AAllowForSession: Boolean): Boolean;
-var
-  Data: TConfirmSyncData;
 begin
   if not Assigned(GHandler) then
     Exit(False);
-  TConfirmThreadBridge.Data.Message := AMessage;
-  TConfirmThreadBridge.Data.Done := False;
-  TConfirmThreadBridge.Data.Approved := False;
-  TConfirmThreadBridge.Data.AllowForSession := False;
+  GConfirmBridge.Data.Message := AMessage;
+  GConfirmBridge.Data.Approved := False;
+  GConfirmBridge.Data.AllowForSession := False;
   {$IFDEF LCL}
   if Assigned(Application) and (GetCurrentThreadId <> MainThreadID) then
-    TThread.Synchronize(nil, @TConfirmThreadBridge.SyncConfirm)
+    TThread.Synchronize(nil, @GConfirmBridge.SyncConfirm)
   else
   {$ENDIF}
-    TConfirmThreadBridge.SyncConfirm;
-  AAllowForSession := TConfirmThreadBridge.Data.AllowForSession;
-  Result := TConfirmThreadBridge.Data.Approved;
+    GConfirmBridge.SyncConfirm;
+  AAllowForSession := GConfirmBridge.Data.AllowForSession;
+  Result := GConfirmBridge.Data.Approved;
 end;
+
+initialization
+  GConfirmBridge := TConfirmThreadBridge.Create;
+
+finalization
+  GConfirmBridge.Free;
 
 end.

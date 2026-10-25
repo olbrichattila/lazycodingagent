@@ -50,37 +50,7 @@ type
     property Context: TAgentToolContext read FContext;
   end;
 
-function ToolDefToParametersJson(const Def: TToolDef): string;
-
 implementation
-
-function ToolDefToParametersJson(const Def: TToolDef): string;
-var
-  ParamObj, PropsObj: TJSONObject;
-  ReqArray: TJSONArray;
-  I: Integer;
-  PropDetail: TJSONObject;
-begin
-  ParamObj := TJSONObject.Create;
-  try
-    ParamObj.Add('type', 'object');
-    PropsObj := TJSONObject.Create;
-    ReqArray := TJSONArray.Create;
-    for I := Low(Def.Params) to High(Def.Params) do begin
-      PropDetail := TJSONObject.Create;
-      PropDetail.Add('type', Def.Params[I].ParamType);
-      PropDetail.Add('description', Def.Params[I].Description);
-      PropsObj.Add(Def.Params[I].Name, PropDetail);
-      if Def.Params[I].Required then
-        ReqArray.Add(Def.Params[I].Name);
-    end;
-    ParamObj.Add('properties', PropsObj);
-    ParamObj.Add('required', ReqArray);
-    Result := ParamObj.AsJSON;
-  finally
-    ParamObj.Free;
-  end;
-end;
 
 constructor TAgentToolRegistry.Create(AContext: TAgentToolContext);
 begin

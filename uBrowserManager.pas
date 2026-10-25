@@ -267,10 +267,11 @@ begin
       Exit(False);
     end;
 
-    if not Session.Socket.Connect(Host, Port, Path, Min(Config.MaxTimeoutMs, 15000)) then
+    if not Session.Socket.Connect(Host, Port, Path, Min(Config.MaxTimeoutMs, 15000), ErrMsg) then
     begin
       ErrKind := brekCdpConnectionFailed;
-      ErrMsg := 'WebSocket connection failed';
+      if Trim(ErrMsg) = '' then
+        ErrMsg := 'WebSocket connection failed';
       Exit(False);
     end;
 

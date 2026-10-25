@@ -10,6 +10,8 @@ uses
 
 type
   TBrowserToolBase = class(TAgentTool)
+  public
+    constructor Create(AContext: TAgentToolContext); reintroduce;
   protected
     function Config: TBrowserReadConfig;
     function GetSession(const SessionId: string; out S: TBrowserManagedSession;
@@ -199,15 +201,20 @@ begin
   SetLength(Result.Params, 5);
   Result.Params[0].Name := 'url';
   Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'HTTP or HTTPS URL to open.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'session_id';
   Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description := 'Existing browser session id; omit to create a new session.';
   Result.Params[2].Name := 'wait_strategy';
   Result.Params[2].ParamType := 'string';
+  Result.Params[2].Description := 'domcontentloaded, load (default), or selector.';
   Result.Params[3].Name := 'wait_selector';
   Result.Params[3].ParamType := 'string';
+  Result.Params[3].Description := 'CSS selector when wait_strategy is selector.';
   Result.Params[4].Name := 'timeout_ms';
   Result.Params[4].ParamType := 'integer';
+  Result.Params[4].Description := 'Navigation timeout in milliseconds (default 30000).';
 end;
 
 function TToolBrowserNavigate.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -279,20 +286,29 @@ function TToolBrowserInspect.GetDefinition: TToolDef;
 begin
   Result.Name := 'browser_inspect';
   Result.Description := 'Inspect the current browser page (title, URL, elements, links, forms).';
-  SetLength(Result.Params, 6);
+  SetLength(Result.Params, 7);
   Result.Params[0].Name := 'session_id';
   Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'selector';
   Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description := 'Optional CSS selector to inspect one element.';
   Result.Params[2].Name := 'include_links';
   Result.Params[2].ParamType := 'boolean';
+  Result.Params[2].Description := 'Include link list (default true).';
   Result.Params[3].Name := 'include_forms';
   Result.Params[3].ParamType := 'boolean';
+  Result.Params[3].Description := 'Include forms and fields (default true).';
   Result.Params[4].Name := 'include_accessibility';
   Result.Params[4].ParamType := 'boolean';
+  Result.Params[4].Description := 'Include accessibility notes when supported.';
   Result.Params[5].Name := 'max_length';
   Result.Params[5].ParamType := 'integer';
+  Result.Params[5].Description := 'Max visible text characters (default 20000).';
+  Result.Params[6].Name := 'timeout_ms';
+  Result.Params[6].ParamType := 'integer';
+  Result.Params[6].Description := 'Operation timeout in milliseconds (default 30000).';
 end;
 
 function TToolBrowserInspect.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -333,15 +349,22 @@ begin
   Result.Description := 'Click an element via CDP pointer events.';
   SetLength(Result.Params, 5);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'selector';
+  Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description := 'CSS selector for the element to click.';
   Result.Params[1].Required := True;
   Result.Params[2].Name := 'timeout_ms';
   Result.Params[2].ParamType := 'integer';
+  Result.Params[2].Description := 'Wait timeout in milliseconds (default 30000).';
   Result.Params[3].Name := 'click_count';
   Result.Params[3].ParamType := 'integer';
+  Result.Params[3].Description := 'Number of clicks (default 1).';
   Result.Params[4].Name := 'ref';
   Result.Params[4].ParamType := 'string';
+  Result.Params[4].Description := 'Element ref from browser_inspect instead of selector.';
 end;
 
 function TToolBrowserClick.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -400,17 +423,26 @@ begin
   Result.Description := 'Fill an input or textarea (password values are not logged).';
   SetLength(Result.Params, 6);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'selector';
+  Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description := 'CSS selector for the input or textarea.';
   Result.Params[1].Required := True;
   Result.Params[2].Name := 'value';
+  Result.Params[2].ParamType := 'string';
+  Result.Params[2].Description := 'Text to enter.';
   Result.Params[2].Required := True;
   Result.Params[3].Name := 'clear_first';
   Result.Params[3].ParamType := 'boolean';
+  Result.Params[3].Description := 'Clear existing field content first (default true).';
   Result.Params[4].Name := 'ref';
   Result.Params[4].ParamType := 'string';
+  Result.Params[4].Description := 'Element ref from browser_inspect instead of selector.';
   Result.Params[5].Name := 'timeout_ms';
   Result.Params[5].ParamType := 'integer';
+  Result.Params[5].Description := 'Wait timeout in milliseconds (default 30000).';
 end;
 
 function TToolBrowserFill.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -461,13 +493,26 @@ begin
   Result.Description := 'Wait for selector, text, URL, or document ready.';
   SetLength(Result.Params, 6);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'condition';
+  Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description :=
+    'selector_visible, selector_hidden, text_present, url_matches, or document_ready.';
   Result.Params[1].Required := True;
   Result.Params[2].Name := 'selector';
+  Result.Params[2].ParamType := 'string';
+  Result.Params[2].Description := 'CSS selector when condition uses a selector.';
   Result.Params[3].Name := 'text';
+  Result.Params[3].ParamType := 'string';
+  Result.Params[3].Description := 'Substring for text_present condition.';
   Result.Params[4].Name := 'url_pattern';
+  Result.Params[4].ParamType := 'string';
+  Result.Params[4].Description := 'URL substring or wildcard for url_matches.';
   Result.Params[5].Name := 'timeout_ms';
+  Result.Params[5].ParamType := 'integer';
+  Result.Params[5].Description := 'Max wait in milliseconds (default 30000).';
 end;
 
 function TToolBrowserWait.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -512,6 +557,8 @@ begin
   Result.Description := 'Close a browser session and release resources.';
   SetLength(Result.Params, 1);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id to close.';
   Result.Params[0].Required := True;
 end;
 
@@ -547,12 +594,24 @@ begin
   Result.Description := 'Capture a PNG/JPEG screenshot; returns artifact_path for text providers.';
   SetLength(Result.Params, 6);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'full_page';
+  Result.Params[1].ParamType := 'boolean';
+  Result.Params[1].Description := 'Capture full scrollable page (default false).';
   Result.Params[2].Name := 'selector';
+  Result.Params[2].ParamType := 'string';
+  Result.Params[2].Description := 'Optional CSS selector to clip the screenshot.';
   Result.Params[3].Name := 'format';
+  Result.Params[3].ParamType := 'string';
+  Result.Params[3].Description := 'png (default) or jpeg.';
   Result.Params[4].Name := 'quality';
+  Result.Params[4].ParamType := 'integer';
+  Result.Params[4].Description := 'JPEG quality 0-100 (default 85).';
   Result.Params[5].Name := 'timeout_ms';
+  Result.Params[5].ParamType := 'integer';
+  Result.Params[5].Description := 'Capture timeout in milliseconds (default 30000).';
 end;
 
 function TToolBrowserScreenshot.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -608,10 +667,18 @@ begin
   Result.Description := 'Read browser console messages and JS errors.';
   SetLength(Result.Params, 4);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'level';
+  Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description := 'Optional filter: log, warning, error, etc.';
   Result.Params[2].Name := 'since_last_read';
+  Result.Params[2].ParamType := 'boolean';
+  Result.Params[2].Description := 'Only entries since last read (default true).';
   Result.Params[3].Name := 'max_entries';
+  Result.Params[3].ParamType := 'integer';
+  Result.Params[3].Description := 'Maximum entries returned (default 100).';
 end;
 
 function TToolBrowserConsole.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -641,10 +708,18 @@ begin
   Result.Description := 'Inspect network request metadata (no bodies).';
   SetLength(Result.Params, 4);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'failed_only';
+  Result.Params[1].ParamType := 'boolean';
+  Result.Params[1].Description := 'Return only failed requests (default false).';
   Result.Params[2].Name := 'status_min';
+  Result.Params[2].ParamType := 'integer';
+  Result.Params[2].Description := 'Minimum HTTP status code to include (0 = no filter).';
   Result.Params[3].Name := 'max_entries';
+  Result.Params[3].ParamType := 'integer';
+  Result.Params[3].Description := 'Maximum entries returned (default 100).';
 end;
 
 function TToolBrowserNetwork.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -674,12 +749,20 @@ begin
   Result.Description := 'Select an option on a native HTML select element.';
   SetLength(Result.Params, 4);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'selector';
+  Result.Params[1].ParamType := 'string';
+  Result.Params[1].Description := 'CSS selector for the select element.';
   Result.Params[1].Required := True;
   Result.Params[2].Name := 'value';
+  Result.Params[2].ParamType := 'string';
+  Result.Params[2].Description := 'Option value to select.';
   Result.Params[2].Required := True;
   Result.Params[3].Name := 'timeout_ms';
+  Result.Params[3].ParamType := 'integer';
+  Result.Params[3].Description := 'Wait timeout in milliseconds (default 30000).';
 end;
 
 function TToolBrowserSelect.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -725,12 +808,20 @@ begin
   Result.Description := 'Set viewport size for responsive testing (not full device emulation).';
   SetLength(Result.Params, 4);
   Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'width';
+  Result.Params[1].ParamType := 'integer';
+  Result.Params[1].Description := 'Viewport width in CSS pixels.';
   Result.Params[1].Required := True;
   Result.Params[2].Name := 'height';
+  Result.Params[2].ParamType := 'integer';
+  Result.Params[2].Description := 'Viewport height in CSS pixels.';
   Result.Params[2].Required := True;
   Result.Params[3].Name := 'device_scale_factor';
+  Result.Params[3].ParamType := 'number';
+  Result.Params[3].Description := 'Device scale factor (default 1.0).';
 end;
 
 function TToolBrowserSetViewport.Execute(const Args: TJSONObject): TToolExecutionResult;

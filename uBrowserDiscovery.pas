@@ -26,11 +26,63 @@ begin
   {$ENDIF}
 end;
 
-function TryCandidate(const Path: string; out Executable: string): Boolean;
+function CanonicalExecutablePath(const Path: string): string;
+var
+  Buf: array[0..4095] of AnsiChar;
+  N: cint;
+  LinkTarget, BaseDir: string;
 begin
-  if PathIsRunnable(Path) then
+  Result := ExpandFileName(Path);
+  {$IFDEF UNIX}
+  repeat
+    N := fpReadLink(PChar(Result), Buf, SizeOf(Buf) - 1);
+    if N < 0 then
+      Break;
+    Buf[N] := #0;
+    LinkTarget := string(Buf);
+    if (LinkTarget <> '') and (LinkTarget[1] <> '/') then
+    begin
+      BaseDir := ExtractFilePath(Result);
+      LinkTarget := ExpandFileName(IncludeTrailingPathDelimiter(BaseDir) + LinkTarget);
+    end;
+    Result := LinkTarget;
+  until False;
+  {$ENDIF}
+end;
+
+function ResolveToRunnableBinary(const Path: string): string;
+const
+  OPT_GOOGLE_CHROME = '/opt/google/chrome/google-chrome';
+var
+  Canonical: string;
+  F: TFileStream;
+  B: array[0..1] of Byte;
+begin
+  Canonical := CanonicalExecutablePath(Path);
+  if not PathIsRunnable(Canonical) then
+    Exit('');
+  Result := Canonical;
+  if not FileExists(Canonical) then
+    Exit;
+  F := TFileStream.Create(Canonical, fmOpenRead or fmShareDenyWrite);
+  try
+    if F.Read(B, 2) = 2 then
+      if (B[0] = Ord('#')) and (B[1] = Ord('!')) then
+        if PathIsRunnable(OPT_GOOGLE_CHROME) then
+          Result := OPT_GOOGLE_CHROME;
+  finally
+    F.Free;
+  end;
+end;
+
+function TryCandidate(const Path: string; out Executable: string): Boolean;
+var
+  Resolved: string;
+begin
+  Resolved := ResolveToRunnableBinary(Path);
+  if Resolved <> '' then
   begin
-    Executable := Path;
+    Executable := Resolved;
     Exit(True);
   end;
   Result := False;
@@ -116,7 +168,8 @@ end;
 
 function DiscoverUnix(out Executable: string): Boolean;
 const
-  Candidates: array[0..8] of string = (
+  Candidates: array[0..9] of string = (
+    '/opt/google/chrome/google-chrome',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
     '/usr/bin/google-chrome',
@@ -152,7 +205,7 @@ begin
   ErrMsg := '';
   if Trim(Config.ExecutablePath) <> '' then
   begin
-    if TryCandidate(ExpandFileName(Config.ExecutablePath), Executable) then
+    if TryCandidate(Config.ExecutablePath, Executable) then
       Exit(True);
     ErrMsg := 'Configured browser executable was not found: ' + Config.ExecutablePath;
     Exit(False);

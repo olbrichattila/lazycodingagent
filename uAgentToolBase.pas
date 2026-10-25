@@ -98,6 +98,7 @@ function ToolArgumentsJsonIsValid(const AArgumentsJson: string): Boolean;
 function TryParseToolArguments(const AName, AArgumentsJson: string;
   out Args: TJSONObject; out ErrMsg: string): Boolean;
 function ToolResultFromJson(const AJson: string): TToolExecutionResult;
+function ToolDefToParametersJson(const Def: TToolDef): string;
 function WorkspaceModeToCaption(AMode: TWorkspaceMode): string;
 function ToolCancelled: Boolean;
 function NotifyToolFileChanged(const APath: string): string;
@@ -455,6 +456,39 @@ begin
     Exit(False);
   end;
   Result := True;
+end;
+
+function ToolDefToParametersJson(const Def: TToolDef): string;
+var
+  ParamObj, PropsObj: TJSONObject;
+  ReqArray: TJSONArray;
+  I: Integer;
+  PropDetail: TJSONObject;
+  ParamType: string;
+begin
+  ParamObj := TJSONObject.Create;
+  try
+    ParamObj.Add('type', 'object');
+    PropsObj := TJSONObject.Create;
+    ReqArray := TJSONArray.Create;
+    for I := Low(Def.Params) to High(Def.Params) do begin
+      PropDetail := TJSONObject.Create;
+      ParamType := Trim(Def.Params[I].ParamType);
+      if ParamType = '' then
+        PropDetail.Add('type', 'string')
+      else
+        PropDetail.Add('type', ParamType);
+      PropDetail.Add('description', Def.Params[I].Description);
+      PropsObj.Add(Def.Params[I].Name, PropDetail);
+      if Def.Params[I].Required then
+        ReqArray.Add(Def.Params[I].Name);
+    end;
+    ParamObj.Add('properties', PropsObj);
+    ParamObj.Add('required', ReqArray);
+    Result := ParamObj.AsJSON;
+  finally
+    ParamObj.Free;
+  end;
 end;
 
 function ToolResultFromJson(const AJson: string): TToolExecutionResult;

@@ -12,7 +12,7 @@ const
   TOOL_ARTIFACT_MAX_BYTES = 8 * 1024 * 1024;
 
 function ToolArtifactsRelativeDir: string;
-function CreateToolArtifactPath(const WorkspaceRoot, SessionId, const Ext: string): string;
+function CreateToolArtifactPath(const WorkspaceRoot, SessionId, Ext: string): string;
 function SaveToolArtifactBytes(const AbsPath: string; const Data: TBytes): Boolean;
 procedure CleanupOldArtifacts(const WorkspaceRoot: string; MaxAgeHours: Integer = 24);
 
@@ -26,7 +26,7 @@ begin
   Result := TOOL_ARTIFACTS_REL_DIR;
 end;
 
-function CreateToolArtifactPath(const WorkspaceRoot, SessionId, const Ext: string): string;
+function CreateToolArtifactPath(const WorkspaceRoot, SessionId, Ext: string): string;
 var
   Dir, Name: string;
 begin

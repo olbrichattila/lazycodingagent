@@ -28,8 +28,11 @@ fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_web_fetch.lpr
 fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_browser_read.lpr
+fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
+  -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_cdp_websocket.lpr
 "$TEST_OUTPUT/test_agent_rules" "$TEST_OUTPUT/rules-fixture"
 "$TEST_OUTPUT/test_web_fetch" "$ROOT/tests/fixtures/web_fetch/sample.html"
 "$TEST_OUTPUT/test_browser_read"
+"$TEST_OUTPUT/test_cdp_websocket"
 python3 tests/test_local_tools.py "$TEST_OUTPUT/tool_driver"
 echo "All LazyCodingAgent tool tests passed."

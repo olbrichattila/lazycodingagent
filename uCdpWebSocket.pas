@@ -7,6 +7,8 @@ interface
 uses
   Classes, SysUtils;
 
+function CdpWebSocketAcceptKey(const ClientKey: AnsiString): AnsiString;
+
 type
   TCdpWebSocket = class
   private
@@ -14,14 +16,13 @@ type
     FConnected: Boolean;
     FReadBuf: RawByteString;
     function ReadMore(TimeoutMs: Integer): Boolean;
-    function Sha1WebSocketAccept(const Key: AnsiString): AnsiString;
     function BuildClientKey: AnsiString;
     function ParseOneFrame(out Opcode: Byte; out Payload: RawByteString): Boolean;
     procedure SetSocketTimeout(Ms: Integer);
   public
     destructor Destroy; override;
     function Connect(const Host: string; Port: Word; const Path: string;
-      TimeoutMs: Integer): Boolean;
+      TimeoutMs: Integer; out ErrMsg: string): Boolean;
     procedure Disconnect;
     function Connected: Boolean;
     function SendText(const Text: UTF8String): Boolean;
@@ -36,18 +37,61 @@ uses
 
 const
   LCA_INVALID_SOCKET = TSocket(-1);
+  WS_MAGIC: AnsiString = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
 
-function TCdpWebSocket.Sha1WebSocketAccept(const Key: AnsiString): AnsiString;
+function CdpWebSocketAcceptKey(const ClientKey: AnsiString): AnsiString;
 var
   D: TSHA1Digest;
   Combined: AnsiString;
   Bin: AnsiString;
 begin
-  Combined := Key + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+  Combined := ClientKey + WS_MAGIC;
   D := SHA1Buffer(Combined[1], Length(Combined));
   SetLength(Bin, SizeOf(D));
   Move(D[0], Bin[1], SizeOf(D));
   Result := EncodeStringBase64(Bin);
+end;
+
+function SameBase64(const A, B: AnsiString): Boolean;
+begin
+  Result := SameText(Trim(A), Trim(B));
+end;
+
+function ParseIPv4Literal(const Host: string; out NetAddr: Cardinal): Boolean;
+var
+  Parts: TStringArray;
+  I, V: Integer;
+  B: Cardinal;
+begin
+  NetAddr := 0;
+  Parts := Host.Split(['.']);
+  if Length(Parts) <> 4 then
+    Exit(False);
+  for I := 0 to 3 do
+  begin
+    if Parts[I] = '' then
+      Exit(False);
+    V := StrToIntDef(Parts[I], -1);
+    if (V < 0) or (V > 255) then
+      Exit(False);
+    B := Cardinal(V);
+    NetAddr := NetAddr or (B shl ((3 - I) * 8));
+  end;
+  Result := True;
+end;
+
+function HttpStatusIs101(const StatusLine: AnsiString): Boolean;
+var
+  Parts: TStringArray;
+  Code: Integer;
+begin
+  Parts := string(StatusLine).Split([' '], 3);
+  if Length(Parts) < 2 then
+    Exit(False);
+  if not SameText(Parts[0], 'HTTP/1.1') and not SameText(Parts[0], 'HTTP/1.0') then
+    Exit(False);
+  Code := StrToIntDef(Trim(Parts[1]), 0);
+  Result := Code = 101;
 end;
 
 function TCdpWebSocket.BuildClientKey: AnsiString;
@@ -122,31 +166,43 @@ begin
 end;
 
 function TCdpWebSocket.Connect(const Host: string; Port: Word; const Path: string;
-  TimeoutMs: Integer): Boolean;
+  TimeoutMs: Integer; out ErrMsg: string): Boolean;
 var
-  Req, Resp, Line, Key, AcceptExpected, P: AnsiString;
-  I, PPos, N: Integer;
+  Req, Resp, Line, Key, AcceptExpected, AcceptGot, P, StatusLine: AnsiString;
+  I, PPos, N, HeaderEnd: Integer;
   H: THostEntry;
   Addr: sockaddr_in;
+  AcceptFound: Boolean;
+  V4: Cardinal;
 begin
+  Result := False;
+  ErrMsg := '';
   Disconnect;
   {$IFDEF UNIX}
   FSocket := fpsocket(AF_INET, SOCK_STREAM, 0);
   {$ELSE}
   FSocket := socket(AF_INET, SOCK_STREAM, 0);
   {$ENDIF}
-  if FSocket = LCA_INVALID_SOCKET then Exit(False);
+  if FSocket = LCA_INVALID_SOCKET then
+  begin
+    ErrMsg := 'Could not create TCP socket';
+    Exit;
+  end;
   SetSocketTimeout(TimeoutMs);
 
   FillChar(Addr, SizeOf(Addr), 0);
   Addr.sin_family := AF_INET;
   Addr.sin_port := htons(Port);
-  if not ResolveHostByName(Host, H) then
+  if ParseIPv4Literal(Host, V4) then
+    Addr.sin_addr.s_addr := htonl(V4)
+  else if ResolveHostByName(Host, H) then
+    Addr.sin_addr.s_addr := LongWord(H.Addr)
+  else
   begin
+    ErrMsg := 'Could not resolve host: ' + Host;
     Disconnect;
-    Exit(False);
+    Exit;
   end;
-  Addr.sin_addr.s_addr := LongWord(H.Addr);
 
   {$IFDEF UNIX}
   if fpConnect(FSocket, @Addr, SizeOf(Addr)) <> 0 then
@@ -154,12 +210,13 @@ begin
   if connect(FSocket, @Addr, SizeOf(Addr)) <> 0 then
   {$ENDIF}
   begin
+    ErrMsg := 'TCP connect failed to ' + Host + ':' + IntToStr(Port);
     Disconnect;
-    Exit(False);
+    Exit;
   end;
 
   Key := BuildClientKey;
-  AcceptExpected := Sha1WebSocketAccept(Key);
+  AcceptExpected := CdpWebSocketAcceptKey(Key);
   P := AnsiString(Path);
   if (P = '') or (P[1] <> '/') then
     P := '/' + P;
@@ -177,8 +234,9 @@ begin
   {$ENDIF}
   if N <> Length(Req) then
   begin
+    ErrMsg := 'Failed to send WebSocket upgrade request';
     Disconnect;
-    Exit(False);
+    Exit;
   end;
 
   Resp := '';
@@ -186,23 +244,36 @@ begin
   begin
     if not ReadMore(TimeoutMs) then
     begin
+      ErrMsg := 'Timed out waiting for WebSocket handshake response';
       Disconnect;
-      Exit(False);
+      Exit;
     end;
     Resp := Resp + FReadBuf;
     FReadBuf := '';
     if Length(Resp) > 16384 then
     begin
+      ErrMsg := 'WebSocket handshake response too large';
       Disconnect;
-      Exit(False);
+      Exit;
     end;
   end;
 
-  if Pos('101', Resp) = 0 then
+  HeaderEnd := Pos(#13#10#13#10, Resp);
+  StatusLine := Copy(Resp, 1, HeaderEnd - 1);
+  if Pos(#13#10, StatusLine) > 0 then
+    StatusLine := Copy(StatusLine, 1, Pos(#13#10, StatusLine) - 1);
+  if (Length(StatusLine) > 0) and (StatusLine[Length(StatusLine)] = #13) then
+    SetLength(StatusLine, Length(StatusLine) - 1);
+
+  if not HttpStatusIs101(StatusLine) then
   begin
+    ErrMsg := 'Expected HTTP 101 Switching Protocols, got: ' + string(StatusLine);
     Disconnect;
-    Exit(False);
+    Exit;
   end;
+
+  AcceptFound := False;
+  AcceptGot := '';
   I := 1;
   while I <= Length(Resp) do
   begin
@@ -213,17 +284,28 @@ begin
       Line := Copy(Resp, I, PPos - 1);
     if (Length(Line) > 0) and (Line[Length(Line)] = #13) then
       SetLength(Line, Length(Line) - 1);
-    if Pos('Sec-WebSocket-Accept:', Line) > 0 then
+    if Pos('Sec-WebSocket-Accept:', string(Line)) > 0 then
     begin
-      if Trim(Copy(Line, Pos(':', Line) + 1, MaxInt)) <> Trim(AcceptExpected) then
+      AcceptGot := Trim(Copy(Line, Pos(':', Line) + 1, MaxInt));
+      AcceptFound := True;
+      if not SameBase64(AcceptGot, AcceptExpected) then
       begin
+        ErrMsg := 'Sec-WebSocket-Accept mismatch';
         Disconnect;
-        Exit(False);
+        Exit;
       end;
     end;
     if PPos = 0 then Break;
     I := I + PPos;
   end;
+
+  if not AcceptFound then
+  begin
+    ErrMsg := 'WebSocket handshake missing Sec-WebSocket-Accept header';
+    Disconnect;
+    Exit;
+  end;
+
   FConnected := True;
   Result := True;
 end;

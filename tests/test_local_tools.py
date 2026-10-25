@@ -9,6 +9,25 @@ import time
 
 IS_WINDOWS = os.name == 'nt'
 
+ALLOWED_TOOL_PARAM_TYPES = frozenset(
+    {'string', 'integer', 'boolean', 'array', 'object', 'number'}
+)
+
+BROWSER_AUTOMATION_TOOLS = frozenset({
+    'browser_navigate', 'browser_inspect', 'browser_click', 'browser_fill',
+    'browser_wait', 'browser_close', 'browser_screenshot', 'browser_console',
+    'browser_network', 'browser_select', 'browser_set_viewport',
+})
+
+
+def assert_tool_parameter_schemas(declarations):
+    for decl in declarations:
+        name = decl['function']['name']
+        props = decl['function']['parameters'].get('properties') or {}
+        for param_name, param_def in props.items():
+            param_type = param_def.get('type')
+            assert param_type in ALLOWED_TOOL_PARAM_TYPES, (name, param_name, param_def)
+
 
 def run(driver):
     count = 0
@@ -36,12 +55,24 @@ def run(driver):
         def patch(text):
             return ok('apply_patch', {'patch':text})
         try:
-            canonical = {'read_file','write_file','list_directory','glob','search_code','apply_patch','edit_file','shell','diagnostics','git','todo','create_plan_file','web_fetch','browser_read'}
+            canonical = {
+                'read_file', 'write_file', 'list_directory', 'glob', 'search_code',
+                'apply_patch', 'edit_file', 'shell', 'diagnostics', 'git', 'todo',
+                'create_plan_file', 'web_fetch', 'browser_read',
+            } | BROWSER_AUTOMATION_TOOLS
             declarations = call('_declarations')
             assert {d['function']['name'] for d in declarations} == canonical
-            readonly = {'read_file','list_directory','glob','search_code','diagnostics','git','todo','web_fetch','browser_read'}
-            assert {d['function']['name'] for d in call('_declarations', mode='Ask')} == readonly
-            assert {d['function']['name'] for d in call('_declarations', mode='Plan')} == readonly | {'create_plan_file'}
+            assert_tool_parameter_schemas(declarations)
+            readonly = {
+                'read_file', 'list_directory', 'glob', 'search_code', 'diagnostics',
+                'git', 'todo', 'web_fetch', 'browser_read',
+            } | BROWSER_AUTOMATION_TOOLS
+            ask_declarations = call('_declarations', mode='Ask')
+            assert {d['function']['name'] for d in ask_declarations} == readonly
+            assert_tool_parameter_schemas(ask_declarations)
+            plan_declarations = call('_declarations', mode='Plan')
+            assert {d['function']['name'] for d in plan_declarations} == readonly | {'create_plan_file'}
+            assert_tool_parameter_schemas(plan_declarations)
             for mode in ('Ask','Plan'):
                 for tool,args in [('write_file',{'path':'denied','content':'bad'}), ('terminal',{'command':'touch denied'}), ('edit_file',{'path':'denied','old_text':'a','new_text':'b'}), ('apply_patch',{'patch':'bad'}), ('diagnostics',{'action':'build','target':'bad.pas'})]:
                     error(tool, args, mode=mode)

@@ -215,8 +215,9 @@ function TLlmClient.BuildOpenAiPayload(
   const ATools: array of TToolDef
 ): string;
 var
-  RootObj, MsgObj, ToolCallObj, FuncObj, ToolObj, PropsObj, PropDetail, ParamObj: TJSONObject;
-  MsgArray, ToolCallsArray, ToolsArray, ReqArray: TJSONArray;
+  RootObj, MsgObj, ToolCallObj, FuncObj, ToolObj, ParamObj: TJSONObject;
+  MsgArray, ToolCallsArray, ToolsArray: TJSONArray;
+  ParamData: TJSONData;
   I, J: Integer;
   Msg: TChatMessage;
 begin
@@ -273,25 +274,17 @@ begin
         FuncObj.Add('name', ATools[I].Name);
         FuncObj.Add('description', ATools[I].Description);
 
-        ParamObj := TJSONObject.Create;
-        ParamObj.Add('type', 'object');
-
-        PropsObj := TJSONObject.Create;
-        ReqArray := TJSONArray.Create;
-
-        for J := Low(ATools[I].Params) to High(ATools[I].Params) do begin
-          PropDetail := TJSONObject.Create;
-          PropDetail.Add('type', ATools[I].Params[J].ParamType);
-          PropDetail.Add('description', ATools[I].Params[J].Description);
-          PropsObj.Add(ATools[I].Params[J].Name, PropDetail);
-
-          if ATools[I].Params[J].Required then
-            ReqArray.Add(ATools[I].Params[J].Name);
+        ParamData := GetJSON(ToolDefToParametersJson(ATools[I]));
+        if ParamData is TJSONObject then
+          FuncObj.Add('parameters', TJSONObject(ParamData))
+        else begin
+          ParamData.Free;
+          ParamObj := TJSONObject.Create;
+          ParamObj.Add('type', 'object');
+          ParamObj.Add('properties', TJSONObject.Create);
+          ParamObj.Add('required', TJSONArray.Create);
+          FuncObj.Add('parameters', ParamObj);
         end;
-
-        ParamObj.Add('properties', PropsObj);
-        ParamObj.Add('required', ReqArray);
-        FuncObj.Add('parameters', ParamObj);
         ToolObj.Add('function', FuncObj);
 
         ToolsArray.Add(ToolObj);

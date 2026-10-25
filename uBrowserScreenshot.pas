@@ -22,7 +22,7 @@ var
   Raw: RawByteString;
   I: Integer;
 begin
-  Raw := DecodeBase64(AnsiString(B64));
+  Raw := DecodeStringBase64(AnsiString(B64));
   SetLength(Result, Length(Raw));
   for I := 1 to Length(Raw) do
     Result[I - 1] := Ord(Raw[I]);
