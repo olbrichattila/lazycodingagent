@@ -305,6 +305,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uHostDnsResolve.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uWebFetchUrl.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

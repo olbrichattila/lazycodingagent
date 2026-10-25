@@ -32,7 +32,7 @@ type
 implementation
 
 uses
-  sha1, base64, Math, Sockets, NetDB, ctypes
+  sha1, base64, Math, Sockets, uHostDnsResolve, ctypes
   {$IFDEF UNIX}, BaseUnix, Unix{$ENDIF};
 
 const
@@ -170,7 +170,6 @@ function TCdpWebSocket.Connect(const Host: string; Port: Word; const Path: strin
 var
   Req, Resp, Line, Key, AcceptExpected, AcceptGot, P, StatusLine: AnsiString;
   I, PPos, N, HeaderEnd: Integer;
-  H: THostEntry;
   Addr: sockaddr_in;
   AcceptFound: Boolean;
   V4: Cardinal;
@@ -195,9 +194,7 @@ begin
   Addr.sin_port := htons(Port);
   if ParseIPv4Literal(Host, V4) then
     Addr.sin_addr.s_addr := htonl(V4)
-  else if ResolveHostByName(Host, H) then
-    Addr.sin_addr.s_addr := LongWord(H.Addr)
-  else
+  else if not ResolveFirstHost4NetOrder(Host, Addr.sin_addr.s_addr) then
   begin
     ErrMsg := 'Could not resolve host: ' + Host;
     Disconnect;

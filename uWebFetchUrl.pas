@@ -38,7 +38,7 @@ function SelectConnectAddress(const Parsed: TWebFetchUrl; out ConnectIP: string;
 implementation
 
 uses
-  Sockets, netdb;
+  Sockets, uHostDnsResolve;
 
 function StripFragment(const S: string): string;
 var
@@ -181,13 +181,11 @@ end;
 function ValidateResolvedAddresses(const Host: string;
   out ErrKind: TWebFetchErrorKind; out ErrMsg: string): Boolean;
 var
-  Addrs4: array[0..MaxResolveAddr - 1] of THostAddr;
-  Addrs6: array[0..MaxResolveAddr - 1] of THostAddr6;
+  Addrs4: array[0..MaxHostResolveAddr - 1] of THostAddr;
+  Addrs6: array[0..MaxHostResolveAddr - 1] of THostAddr6;
   N4, N6, I: Integer;
   V4: Cardinal;
   B6: array[0..15] of Byte;
-  H: THostEntry;
-  H6: THostEntry6;
 begin
   Result := False;
   ErrKind := wfekDnsFailure;
@@ -234,15 +232,8 @@ begin
     Exit;
   end;
 
-  N4 := ResolveName(Host, Addrs4);
-  N6 := ResolveName6(Host, Addrs6);
-  if (N4 <= 0) and (N6 <= 0) then
-  begin
-    if ResolveHostByName(Host, H) then
-      N4 := 1
-    else if ResolveHostByName6(Host, H6) then
-      N6 := 1;
-  end;
+  N4 := ResolveHostAddresses4(Host, Addrs4);
+  N6 := ResolveHostAddresses6(Host, Addrs6);
 
   if (N4 <= 0) and (N6 <= 0) then
     Exit;
@@ -405,8 +396,8 @@ end;
 function SelectConnectAddress(const Parsed: TWebFetchUrl; out ConnectIP: string;
   out ErrKind: TWebFetchErrorKind; out ErrMsg: string): Boolean;
 var
-  Addrs4: array[0..MaxResolveAddr - 1] of THostAddr;
-  Addrs6: array[0..MaxResolveAddr - 1] of THostAddr6;
+  Addrs4: array[0..MaxHostResolveAddr - 1] of THostAddr;
+  Addrs6: array[0..MaxHostResolveAddr - 1] of THostAddr6;
   N4, N6, I: Integer;
   V4: Cardinal;
   B6: array[0..15] of Byte;
@@ -427,7 +418,7 @@ begin
     Exit(True);
   end;
 
-  N4 := ResolveName(Parsed.Host, Addrs4);
+  N4 := ResolveHostAddresses4(Parsed.Host, Addrs4);
   if N4 > 0 then
   begin
     for I := 0 to N4 - 1 do
@@ -444,7 +435,7 @@ begin
     end;
   end;
 
-  N6 := ResolveName6(Parsed.Host, Addrs6);
+  N6 := ResolveHostAddresses6(Parsed.Host, Addrs6);
   if N6 > 0 then
   begin
     for I := 0 to N6 - 1 do
