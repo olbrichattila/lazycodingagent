@@ -70,6 +70,7 @@ type
     procedure ErrorLogListClick(Sender: TObject);
     procedure SecondaryActionBtnClick(Sender: TObject);
     procedure UpdateSessionSecondaryAction;
+    procedure UpdateWorkspaceSecondaryAction;
     procedure FileListClick(Sender: TObject);
     procedure FileListKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FileListDrawItem(Control: TWinControl; Index: Integer;
@@ -297,6 +298,7 @@ begin
   finally
     NavListItemsEndUpdate(FFileList);
   end;
+  UpdateWorkspaceSecondaryAction;
 end;
 
 procedure TNavContentControl.SetSessionList(const ACaptions, AIds, AArchived: TStrings;
@@ -331,6 +333,17 @@ begin
   UpdateSessionSecondaryAction;
 end;
 
+procedure TNavContentControl.UpdateWorkspaceSecondaryAction;
+var
+  Idx: Integer;
+begin
+  if not Assigned(FSecondaryActionBtn) then Exit;
+  if FSelected <> niHome then Exit;
+  FSecondaryActionBtn.Caption := 'Remove from List';
+  Idx := NavListItemIndex(FFileList);
+  FSecondaryActionBtn.Enabled := (Idx >= 0) and (Idx < FWorkspaceIds.Count);
+end;
+
 procedure TNavContentControl.UpdateSessionSecondaryAction;
 var
   Idx: Integer;
@@ -352,6 +365,13 @@ var
   Idx: Integer;
   Archived: Boolean;
 begin
+  if FSelected = niHome then begin
+    Idx := NavListItemIndex(FFileList);
+    if (Idx < 0) or (Idx >= FWorkspaceIds.Count) then Exit;
+    if Assigned(FOnWorkspaceDelete) then
+      FOnWorkspaceDelete(Self, FWorkspaceIds[Idx]);
+    Exit;
+  end;
   if FSelected <> niSessions then Exit;
   Idx := NavListItemIndex(FFileList);
   if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
@@ -372,6 +392,7 @@ begin
     if (Idx < 0) or (Idx >= FWorkspaceIds.Count) then Exit;
     if Assigned(FOnWorkspaceSelect) then
       FOnWorkspaceSelect(Self, FWorkspaceIds[Idx]);
+    UpdateWorkspaceSecondaryAction;
   end else if FSelected = niSessions then begin
     Idx := NavListItemIndex(FFileList);
     if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
@@ -685,7 +706,7 @@ begin
   if Assigned(FTreeView) then FTreeView.Visible := False;
   if Assigned(FLogList) then FLogList.Visible := False;
   if Assigned(FErrorLogList) then FErrorLogList.Visible := False;
-  if (FSelected <> niSessions) and Assigned(FSecondaryActionBtn) then
+  if (FSelected <> niSessions) and (FSelected <> niHome) and Assigned(FSecondaryActionBtn) then
     FSecondaryActionBtn.Visible := False;
   if Assigned(FActionBtn) then
     FActionBtn.Visible := True;
@@ -700,8 +721,12 @@ begin
         if FWorkspaceIds.Count = 0 then
           FSubLabel.Caption := 'No workspace yet — create or open a project folder.'
         else
-          FSubLabel.Caption := 'Select a workspace to switch. Active: ' + FWorkspaceName;
+          FSubLabel.Caption := 'Select a workspace to switch. Active: ' + FWorkspaceName +
+            '. Remove with the button below or Delete.';
         FActionBtn.Caption := '+ New Workspace';
+        if Assigned(FSecondaryActionBtn) then
+          FSecondaryActionBtn.Visible := FWorkspaceIds.Count > 0;
+        UpdateWorkspaceSecondaryAction;
       end;
     niProjects:
       begin

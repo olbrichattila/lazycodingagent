@@ -28,23 +28,17 @@ end;
 
 function CanonicalExecutablePath(const Path: string): string;
 var
-  Buf: array[0..4095] of AnsiChar;
-  N: cint;
-  LinkTarget, BaseDir: string;
+  LinkTarget: string;
 begin
   Result := ExpandFileName(Path);
   {$IFDEF UNIX}
   repeat
-    N := fpReadLink(PChar(Result), Buf, SizeOf(Buf) - 1);
-    if N < 0 then
+    LinkTarget := fpReadLink(Result);
+    if LinkTarget = '' then
       Break;
-    Buf[N] := #0;
-    LinkTarget := string(Buf);
-    if (LinkTarget <> '') and (LinkTarget[1] <> '/') then
-    begin
-      BaseDir := ExtractFilePath(Result);
-      LinkTarget := ExpandFileName(IncludeTrailingPathDelimiter(BaseDir) + LinkTarget);
-    end;
+    if LinkTarget[1] <> '/' then
+      LinkTarget := ExpandFileName(
+        IncludeTrailingPathDelimiter(ExtractFilePath(Result)) + LinkTarget);
     Result := LinkTarget;
   until False;
   {$ENDIF}

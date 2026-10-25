@@ -3,13 +3,13 @@
     "id": "getting-started",
     "title": "Getting started",
     "file": "getting-started.md",
-    "keywords": ["workspace", "project", "open", "settings", "api key", "model", "openssl", "libssl3", "https", "raspberry pi", "fetch models"]
+    "keywords": ["workspace", "project", "open", "remove workspace", "delete workspace", "workspaces list", "settings", "api key", "model", "openssl", "libssl3", "https", "raspberry pi", "fetch models"]
   },
   {
     "id": "workspace-layout",
     "title": "Workspace layout and panels",
     "file": "workspace-layout.md",
-    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "painted", "scrollbar", "native", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "editor", "markdown", "html preview", "detach", "floating panel", "execution detail", "json"]
+    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "painted", "scrollbar", "native", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "editor", "markdown", "html preview", "detach", "floating panel", "execution detail", "json", "remove workspace", "workspaces list"]
   },
   {
     "id": "chat-and-modes",

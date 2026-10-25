@@ -1423,6 +1423,10 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
         Caption = '&Open Project Folder...'
         OnClick = MnuFileOpenClick
       end
+      object mnuFileRemoveWorkspace: TMenuItem
+        Caption = 'Remove Workspace from &List...'
+        OnClick = MnuFileRemoveWorkspaceClick
+      end
       object mnuFileSave: TMenuItem
         Caption = '&Save Workspace'
         OnClick = MnuFileSaveClick

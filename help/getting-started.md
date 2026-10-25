@@ -10,6 +10,17 @@ On launch, a **branded splash image** appears while the workspace starts (about 
 2. The status bar and chat hero show the active workspace name.
 3. Panel layout, theme, and dock state are saved per workspace in application settings.
 
+## Remove a workspace from the list
+
+To stop showing a project in LazyCodingAgent without deleting anything on disk:
+
+- **Home** (Workspaces panel): select a workspace, then **Remove from List** or press **Delete**.
+- **File → Remove Workspace from List…** removes the **currently active** workspace.
+
+The app only updates its workspace list and related settings. Your **project folder is not modified or deleted**. **Chat session history** stays in application config; if you open the same folder again later, sessions can reappear.
+
+If a listed folder was moved or deleted on disk, selecting it (or opening it on startup) prompts you to **remove it from the list** so you are not stuck on a broken entry.
+
 ## Settings you need first
 
 Open **Settings** from the menu (or when prompted):

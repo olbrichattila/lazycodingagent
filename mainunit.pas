@@ -142,6 +142,7 @@ type
     mnuFile: TMenuItem;
     mnuFileNew: TMenuItem;
     mnuFileOpen: TMenuItem;
+    mnuFileRemoveWorkspace: TMenuItem;
     mnuFileSave: TMenuItem;
     mnuFileSaveFile: TMenuItem;
     mnuFileSep1: TMenuItem;
@@ -181,6 +182,7 @@ type
     procedure SplTerminalMoved(Sender: TObject);
     procedure MnuFileNewClick(Sender: TObject);
     procedure MnuFileOpenClick(Sender: TObject);
+    procedure MnuFileRemoveWorkspaceClick(Sender: TObject);
     procedure MnuFileSaveClick(Sender: TObject);
     procedure MnuFileSaveFileClick(Sender: TObject);
     procedure MnuFileExitClick(Sender: TObject);
@@ -255,6 +257,7 @@ type
       AAllowForSession: Boolean);
     procedure ActivateWorkspace(const AWorkspaceId: string);
     procedure DeactivateWorkspace;
+    procedure RemoveWorkspaceFromList(const AWorkspaceId: string);
     function AddOrActivateFolder(const ADisplayName, AFolderPath: string): Boolean;
     procedure RefreshWorkspaceNav;
     procedure RefreshSessionNav;
@@ -1441,6 +1444,8 @@ begin
     RebuildWindowMenu;
     if Assigned(mnuViewTerminal) then
       mnuViewTerminal.Checked := FState.IsPanelVisible(piTerminal);
+    if Assigned(mnuFileRemoveWorkspace) then
+      mnuFileRemoveWorkspace.Enabled := FState.HasActiveWorkspace;
 
     if FState.HasActiveWorkspace then
       WsLabel := FState.WorkspaceName
@@ -2194,6 +2199,16 @@ begin
     AddOrActivateFolder(ExtractFileName(Dir), Dir);
 end;
 
+procedure TLazyCodingAgentForm.MnuFileRemoveWorkspaceClick(Sender: TObject);
+begin
+  if not FState.HasActiveWorkspace then begin
+    LcaShowMessage('No workspace is active. Select one on the Home panel or open a project folder.',
+      FState.Theme);
+    Exit;
+  end;
+  NavWorkspaceDelete(Self, FState.ActiveWorkspaceId);
+end;
+
 procedure TLazyCodingAgentForm.MnuFileSaveClick(Sender: TObject);
 begin
   SaveCurrentSession;
@@ -2408,9 +2423,13 @@ begin
     Exit;
   end;
   if not DirectoryExists(Entry.FolderPath) then begin
-    LcaMessageDlg('LazyCodingAgent', 'Workspace folder is missing: ' + Entry.FolderPath,
-      mtWarning, [mbOK], FState.Theme);
-    DeactivateWorkspace;
+    if LcaMessageDlg('LazyCodingAgent',
+      'The workspace folder no longer exists:'#13#10 + Entry.FolderPath + #13#10#13#10 +
+      'Remove "' + Entry.DisplayName + '" from the workspace list?',
+      mtConfirmation, [mbYes, mbNo], FState.Theme) = mrYes then
+      RemoveWorkspaceFromList(AWorkspaceId)
+    else if SameText(FState.ActiveWorkspaceId, AWorkspaceId) or not FState.HasActiveWorkspace then
+      DeactivateWorkspace;
     Exit;
   end;
 
@@ -2460,6 +2479,7 @@ begin
   FCurrentSessionId := '';
   FRegistry.ActiveWorkspaceId := '';
   FRegistry.Save;
+  FState.Save;
   if Assigned(FChatPanel) then
     FChatPanel.ClearHistory;
   FState.SetPanelVisible(piChat, False);
@@ -2477,31 +2497,49 @@ begin
   MnuFileNewClick(Self);
 end;
 
-procedure TLazyCodingAgentForm.NavWorkspaceDelete(Sender: TObject; const AWorkspaceId: string);
+procedure TLazyCodingAgentForm.RemoveWorkspaceFromList(const AWorkspaceId: string);
 var
   Entry: TWorkspaceEntry;
   WasActive: Boolean;
+  Hub: TChatSessionHub;
+  NextId: string;
 begin
   if not FRegistry.FindById(AWorkspaceId, Entry) then Exit;
-  if LcaMessageDlg('LazyCodingAgent',
-    'Remove workspace "' + Entry.DisplayName + '" from the list?'#13#10 +
-    'The project folder on disk will not be deleted.',
-    mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then
-    Exit;
-
   WasActive := SameText(FState.ActiveWorkspaceId, AWorkspaceId);
   if WasActive then begin
     if Assigned(FActiveHub) then
       FActiveHub.SaveAll;
     FActiveHub := nil;
+  end else begin
+    Hub := FSessionHubs.FindHub(AWorkspaceId);
+    if Assigned(Hub) then
+      Hub.SaveAll;
   end;
-  FSessionHubs.RemoveHub(AWorkspaceId, True);
+  FSessionHubs.RemoveHub(AWorkspaceId, True, False);
   FRegistry.RemoveWorkspace(AWorkspaceId);
   FRegistry.Save;
-  if WasActive then
-    DeactivateWorkspace
-  else
+  if WasActive then begin
+    if FRegistry.Count > 0 then begin
+      NextId := FRegistry.GetEntry(0).Id;
+      ActivateWorkspace(NextId);
+    end else
+      DeactivateWorkspace;
+  end else
     StateChanged(Self);
+end;
+
+procedure TLazyCodingAgentForm.NavWorkspaceDelete(Sender: TObject; const AWorkspaceId: string);
+var
+  Entry: TWorkspaceEntry;
+begin
+  if not FRegistry.FindById(AWorkspaceId, Entry) then Exit;
+  if LcaMessageDlg('LazyCodingAgent',
+    'Remove workspace "' + Entry.DisplayName + '" from the list?'#13#10#13#10 +
+    'Your project folder will not be changed or deleted.'#13#10 +
+    'Chat history stays in LazyCodingAgent settings and returns if you open the same folder again.',
+    mtConfirmation, [mbYes, mbNo], FState.Theme) <> mrYes then
+    Exit;
+  RemoveWorkspaceFromList(AWorkspaceId);
 end;
 
 procedure TLazyCodingAgentForm.NavSessionSelect(Sender: TObject; const ASessionId: string);

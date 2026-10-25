@@ -102,7 +102,8 @@ type
     destructor Destroy; override;
     function GetOrCreate(const AWorkspaceId, AWorkspaceRoot: string): TChatSessionHub;
     function FindHub(const AWorkspaceId: string): TChatSessionHub;
-    procedure RemoveHub(const AWorkspaceId: string; ACancelRuns: Boolean);
+    procedure RemoveHub(const AWorkspaceId: string; ACancelRuns: Boolean;
+      ADeleteSessionStore: Boolean = True);
     procedure ShutdownAll(ACancelRuns: Boolean);
     function AnyRunActive: Boolean;
     function Count: Integer;
@@ -480,7 +481,8 @@ begin
     Result := TChatSessionHub(FHubs.Objects[Idx]);
 end;
 
-procedure TChatSessionHubManager.RemoveHub(const AWorkspaceId: string; ACancelRuns: Boolean);
+procedure TChatSessionHubManager.RemoveHub(const AWorkspaceId: string; ACancelRuns: Boolean;
+  ADeleteSessionStore: Boolean);
 var
   Idx: Integer;
   Hub: TChatSessionHub;
@@ -489,7 +491,8 @@ begin
   if Idx < 0 then Exit;
   Hub := TChatSessionHub(FHubs.Objects[Idx]);
   Hub.Shutdown(ACancelRuns);
-  Hub.Store.DeleteAllForWorkspace(AWorkspaceId);
+  if ADeleteSessionStore then
+    Hub.Store.DeleteAllForWorkspace(AWorkspaceId);
   FHubs.Delete(Idx);
 end;
 

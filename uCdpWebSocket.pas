@@ -153,11 +153,7 @@ var
 begin
   if FSocket = LCA_INVALID_SOCKET then Exit(False);
   SetSocketTimeout(TimeoutMs);
-  {$IFDEF UNIX}
   N := fpRecv(FSocket, @Chunk[0], SizeOf(Chunk), 0);
-  {$ELSE}
-  N := recv(FSocket, @Chunk[0], SizeOf(Chunk), 0);
-  {$ENDIF}
   if N <= 0 then Exit(False);
   SetLength(Tmp, N);
   Move(Chunk[0], Tmp[1], N);
@@ -177,11 +173,7 @@ begin
   Result := False;
   ErrMsg := '';
   Disconnect;
-  {$IFDEF UNIX}
   FSocket := fpsocket(AF_INET, SOCK_STREAM, 0);
-  {$ELSE}
-  FSocket := socket(AF_INET, SOCK_STREAM, 0);
-  {$ENDIF}
   if FSocket = LCA_INVALID_SOCKET then
   begin
     ErrMsg := 'Could not create TCP socket';
@@ -201,11 +193,7 @@ begin
     Exit;
   end;
 
-  {$IFDEF UNIX}
   if fpConnect(FSocket, @Addr, SizeOf(Addr)) <> 0 then
-  {$ELSE}
-  if connect(FSocket, @Addr, SizeOf(Addr)) <> 0 then
-  {$ENDIF}
   begin
     ErrMsg := 'TCP connect failed to ' + Host + ':' + IntToStr(Port);
     Disconnect;
@@ -224,11 +212,7 @@ begin
     'Connection: Upgrade' + #13#10 +
     'Sec-WebSocket-Key: ' + Key + #13#10 +
     'Sec-WebSocket-Version: 13' + #13#10#13#10;
-  {$IFDEF UNIX}
   N := fpSend(FSocket, Pointer(Req), Length(Req), 0);
-  {$ELSE}
-  N := send(FSocket, Pointer(Req), Length(Req), 0);
-  {$ENDIF}
   if N <> Length(Req) then
   begin
     ErrMsg := 'Failed to send WebSocket upgrade request';
@@ -349,11 +333,7 @@ begin
   for I := 1 to Length(Payload) do
     Frame[Length(Frame) - Length(Payload) + I] :=
       AnsiChar(Ord(Frame[Length(Frame) - Length(Payload) + I]) xor Mask[(I - 1) mod 4]);
-  {$IFDEF UNIX}
   N := fpSend(FSocket, Pointer(Frame), Length(Frame), 0);
-  {$ELSE}
-  N := send(FSocket, Pointer(Frame), Length(Frame), 0);
-  {$ENDIF}
   Result := N = Length(Frame);
 end;
 
