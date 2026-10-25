@@ -14,6 +14,9 @@ function BrowserReadContent(const Url: string; const Format: string;
 
 function BrowserReadResultToJson(const R: TBrowserReadResult): string;
 
+function ParseBrowserWebSocketEndpoint(const Url: string; out Host: string;
+  out Port: Word; out Path: string): Boolean;
+
 implementation
 
 uses
@@ -38,8 +41,8 @@ begin
     PageNav.HandleEvent(Method, ParamsJson);
 end;
 
-function ParseWebSocketEndpoint(const Url: string; out Host: string; out Port: Word;
-  out Path: string): Boolean;
+function ParseBrowserWebSocketEndpoint(const Url: string; out Host: string;
+  out Port: Word; out Path: string): Boolean;
 var
   S: string;
   P: SizeInt;
@@ -143,7 +146,7 @@ begin
       Exit;
     end;
 
-    if not ParseWebSocketEndpoint(WsUrl, Host, Port, Path) then
+    if not ParseBrowserWebSocketEndpoint(WsUrl, Host, Port, Path) then
     begin
       Result.ErrorKind := brekCdpConnectionFailed;
       Result.ErrorMessage := 'Invalid debugger WebSocket URL';

@@ -16,6 +16,9 @@ type
     Archived: Boolean;
     ArchivedAt: TDateTime;
     AllowModifyOutside: Boolean;
+    AllowBrowserLocalhost: Boolean;
+    AllowBrowserInteractive: Boolean;
+    AllowBrowserSensitive: Boolean;
   end;
 
   TChatSessionStore = class
@@ -44,6 +47,9 @@ type
     function FindSessionInfo(const ASessionId: string; out AInfo: TChatSessionInfo): Boolean;
     procedure SetSessionArchived(const ASessionId: string; AArchived: Boolean);
     procedure SetAllowModifyOutside(const ASessionId: string; AValue: Boolean);
+    procedure SetAllowBrowserLocalhost(const ASessionId: string; AValue: Boolean);
+    procedure SetAllowBrowserInteractive(const ASessionId: string; AValue: Boolean);
+    procedure SetAllowBrowserSensitive(const ASessionId: string; AValue: Boolean);
     procedure UpdateSessionTitle(const ASessionId, ATitle: string);
   end;
 
@@ -211,6 +217,9 @@ begin
   else
     AInfo.ArchivedAt := 0;
   AInfo.AllowModifyOutside := AObj.Get('allowModifyOutside', False);
+  AInfo.AllowBrowserLocalhost := AObj.Get('allowBrowserLocalhost', False);
+  AInfo.AllowBrowserInteractive := AObj.Get('allowBrowserInteractive', False);
+  AInfo.AllowBrowserSensitive := AObj.Get('allowBrowserSensitive', False);
 end;
 
 { TChatSessionStore }
@@ -358,6 +367,9 @@ begin
   Info.Created := Now;
   Info.Modified := Info.Created;
   Info.AllowModifyOutside := False;
+  Info.AllowBrowserLocalhost := False;
+  Info.AllowBrowserInteractive := False;
+  Info.AllowBrowserSensitive := False;
 
   if ReadRootFromFile(Root) then begin
     if Root.Find('sessions') is TJSONArray then
@@ -620,6 +632,93 @@ begin
       if Sess.Find('allowModifyOutside') <> nil then
         Sess.Delete('allowModifyOutside');
       Sess.Add('allowModifyOutside', AValue);
+      Break;
+    end;
+    WriteRootToFile(Root);
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TChatSessionStore.SetAllowBrowserLocalhost(const ASessionId: string; AValue: Boolean);
+var
+  Root, Sess: TJSONObject;
+  Arr: TJSONArray;
+  I, Idx: Integer;
+begin
+  EnsureLoaded;
+  Idx := IndexOfSession(ASessionId);
+  if Idx < 0 then Exit;
+  FSessions[Idx].AllowBrowserLocalhost := AValue;
+  if not ReadRootFromFile(Root) then Exit;
+  try
+    if not (Root.Find('sessions') is TJSONArray) then Exit;
+    Arr := TJSONArray(Root.Find('sessions'));
+    for I := 0 to Arr.Count - 1 do begin
+      if not (Arr.Items[I] is TJSONObject) then Continue;
+      Sess := TJSONObject(Arr.Items[I]);
+      if not SameText(Sess.Get('id', ''), ASessionId) then Continue;
+      if Sess.Find('allowBrowserLocalhost') <> nil then
+        Sess.Delete('allowBrowserLocalhost');
+      Sess.Add('allowBrowserLocalhost', AValue);
+      Break;
+    end;
+    WriteRootToFile(Root);
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TChatSessionStore.SetAllowBrowserInteractive(const ASessionId: string; AValue: Boolean);
+var
+  Root, Sess: TJSONObject;
+  Arr: TJSONArray;
+  I, Idx: Integer;
+begin
+  EnsureLoaded;
+  Idx := IndexOfSession(ASessionId);
+  if Idx < 0 then Exit;
+  FSessions[Idx].AllowBrowserInteractive := AValue;
+  if not ReadRootFromFile(Root) then Exit;
+  try
+    if not (Root.Find('sessions') is TJSONArray) then Exit;
+    Arr := TJSONArray(Root.Find('sessions'));
+    for I := 0 to Arr.Count - 1 do begin
+      if not (Arr.Items[I] is TJSONObject) then Continue;
+      Sess := TJSONObject(Arr.Items[I]);
+      if not SameText(Sess.Get('id', ''), ASessionId) then Continue;
+      if Sess.Find('allowBrowserInteractive') <> nil then
+        Sess.Delete('allowBrowserInteractive');
+      Sess.Add('allowBrowserInteractive', AValue);
+      Break;
+    end;
+    WriteRootToFile(Root);
+  finally
+    Root.Free;
+  end;
+end;
+
+procedure TChatSessionStore.SetAllowBrowserSensitive(const ASessionId: string; AValue: Boolean);
+var
+  Root, Sess: TJSONObject;
+  Arr: TJSONArray;
+  I, Idx: Integer;
+begin
+  EnsureLoaded;
+  Idx := IndexOfSession(ASessionId);
+  if Idx < 0 then Exit;
+  FSessions[Idx].AllowBrowserSensitive := AValue;
+  if not ReadRootFromFile(Root) then Exit;
+  try
+    if not (Root.Find('sessions') is TJSONArray) then Exit;
+    Arr := TJSONArray(Root.Find('sessions'));
+    for I := 0 to Arr.Count - 1 do begin
+      if not (Arr.Items[I] is TJSONObject) then Continue;
+      Sess := TJSONObject(Arr.Items[I]);
+      if not SameText(Sess.Get('id', ''), ASessionId) then Continue;
+      if Sess.Find('allowBrowserSensitive') <> nil then
+        Sess.Delete('allowBrowserSensitive');
+      Sess.Add('allowBrowserSensitive', AValue);
       Break;
     end;
     WriteRootToFile(Root);

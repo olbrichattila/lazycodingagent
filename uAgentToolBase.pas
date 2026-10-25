@@ -25,6 +25,7 @@ type
     Summary: string;
     WasException: Boolean;
     ExceptionClass: string;
+    Attachments: TChatAttachmentArray;
   end;
 
   TAgentToolContext = class
@@ -35,6 +36,10 @@ type
     FCancelFlag: PBoolean;
     FCancelDeadline: QWord;
     FAllowModifyOutsideWorkspace: Boolean;
+    FChatSessionId: string;
+    FAllowBrowserLocalhost: Boolean;
+    FAllowBrowserInteractive: Boolean;
+    FAllowBrowserSensitive: Boolean;
   public
     constructor Create(const AWorkspaceRoot: string);
     destructor Destroy; override;
@@ -50,6 +55,13 @@ type
     property Session: TAgentToolSession read FSession;
     property AllowModifyOutsideWorkspace: Boolean read FAllowModifyOutsideWorkspace
       write FAllowModifyOutsideWorkspace;
+    property ChatSessionId: string read FChatSessionId write FChatSessionId;
+    property AllowBrowserLocalhost: Boolean read FAllowBrowserLocalhost
+      write FAllowBrowserLocalhost;
+    property AllowBrowserInteractive: Boolean read FAllowBrowserInteractive
+      write FAllowBrowserInteractive;
+    property AllowBrowserSensitive: Boolean read FAllowBrowserSensitive
+      write FAllowBrowserSensitive;
   end;
 
   TAgentTool = class

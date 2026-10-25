@@ -20,7 +20,8 @@ uses
   uToolGit,
   uToolCreatePlanFile,
   uToolWebFetch,
-  uToolBrowserRead;
+  uToolBrowserRead,
+  uToolBrowserAutomation;
 
 type
   TToolExecutionResult = uAgentToolBase.TToolExecutionResult;
@@ -102,6 +103,17 @@ begin
   RegisterTool(TToolCreatePlanFile.Create(FContext));
   RegisterTool(TToolWebFetch.Create(FContext));
   RegisterTool(TToolBrowserRead.Create(FContext));
+  RegisterTool(TToolBrowserNavigate.Create(FContext));
+  RegisterTool(TToolBrowserInspect.Create(FContext));
+  RegisterTool(TToolBrowserClick.Create(FContext));
+  RegisterTool(TToolBrowserFill.Create(FContext));
+  RegisterTool(TToolBrowserWait.Create(FContext));
+  RegisterTool(TToolBrowserClose.Create(FContext));
+  RegisterTool(TToolBrowserScreenshot.Create(FContext));
+  RegisterTool(TToolBrowserConsole.Create(FContext));
+  RegisterTool(TToolBrowserNetwork.Create(FContext));
+  RegisterTool(TToolBrowserSelect.Create(FContext));
+  RegisterTool(TToolBrowserSetViewport.Create(FContext));
 end;
 
 destructor TAgentToolRegistry.Destroy;
@@ -206,6 +218,7 @@ begin
   Result.Summary := '';
   Result.WasException := False;
   Result.ExceptionClass := '';
+  SetLength(Result.Attachments, 0);
 
   FContext.Mode := AMode;
   PrevContext := CurrentToolContext;

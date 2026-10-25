@@ -100,6 +100,13 @@ begin
       Exit(False);
     end;
     ResultObj.Free;
+    if not FConnection.SendCommand('DOM.enable', EnableParams, 10000, CancelCheck, ResultObj) then
+    begin
+      ErrKind := brekCdpConnectionFailed;
+      ErrMsg := 'DOM.enable failed';
+      Exit(False);
+    end;
+    ResultObj.Free;
     DownloadParams := TJSONObject.Create;
     try
       DownloadParams.Add('behavior', 'deny');

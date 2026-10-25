@@ -49,6 +49,16 @@ begin
       Result.MaxConcurrent := 1;
     if Result.MaxConcurrent > 4 then
       Result.MaxConcurrent := 4;
+    Result.MaxSessions := I.ReadInteger('BrowserRead', 'MaxSessions',
+      BROWSER_DEFAULT_MAX_SESSIONS);
+    if Result.MaxSessions < 1 then
+      Result.MaxSessions := 1;
+    if Result.MaxSessions > 8 then
+      Result.MaxSessions := 8;
+    Result.IdleTimeoutMs := I.ReadInteger('BrowserRead', 'IdleTimeoutMs',
+      BROWSER_DEFAULT_IDLE_TIMEOUT_MS);
+    if Result.IdleTimeoutMs < 60000 then
+      Result.IdleTimeoutMs := 60000;
   finally
     I.Free;
   end;

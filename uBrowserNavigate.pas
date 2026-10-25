@@ -17,8 +17,6 @@ type
     FNavErrorText: string;
     function EvaluateBoolExpression(const Expr: string; TimeoutMs: Integer;
       CancelCheck: TBrowserReadCancelCheck): Boolean;
-    function EvaluateString(const Expr: string; TimeoutMs: Integer;
-      CancelCheck: TBrowserReadCancelCheck): string;
   public
     constructor Create(AConnection: TCdpConnection);
     procedure HandleEvent(const Method, ParamsJson: AnsiString);
@@ -26,6 +24,8 @@ type
       const WaitSelector: string; TimeoutMs: Integer;
       CancelCheck: TBrowserReadCancelCheck; out FinalUrl: string;
       out ErrKind: TBrowserReadErrorKind; out ErrMsg: string): Boolean;
+    function EvaluateString(const Expr: string; TimeoutMs: Integer;
+      CancelCheck: TBrowserReadCancelCheck): string;
   end;
 
 implementation

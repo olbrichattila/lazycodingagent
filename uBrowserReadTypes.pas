@@ -15,6 +15,9 @@ const
   BROWSER_READ_DEFAULT_MAX_LENGTH = 20000;
   BROWSER_READ_MAX_MAX_LENGTH = 100000;
   BROWSER_READ_DEFAULT_MAX_CONCURRENT = 1;
+  BROWSER_DEFAULT_MAX_SESSIONS = 4;
+  BROWSER_DEFAULT_IDLE_TIMEOUT_MS = 300000;
+  BROWSER_AUTOMATION_DEFAULT_TIMEOUT_MS = 30000;
 
 type
   TBrowserReadWaitStrategy = (
@@ -37,12 +40,19 @@ type
     brekCancelled,
     brekInvalidUrl,
     brekInvalidArgument,
-    brekInternal
+    brekInternal,
+    brekSessionNotFound,
+    brekAmbiguousSelector,
+    brekElementNotFound,
+    brekElementNotInteractable,
+    brekUserDenied
   );
 
   TBrowserReadConfig = record
     ExecutablePath: string;
     MaxConcurrent: Integer;
+    MaxSessions: Integer;
+    IdleTimeoutMs: Integer;
     MaxTimeoutMs: Integer;
     MaxMaxLength: Integer;
     AllowLocalhost: Boolean;
@@ -77,6 +87,8 @@ function DefaultBrowserReadConfig: TBrowserReadConfig;
 begin
   Result.ExecutablePath := '';
   Result.MaxConcurrent := BROWSER_READ_DEFAULT_MAX_CONCURRENT;
+  Result.MaxSessions := BROWSER_DEFAULT_MAX_SESSIONS;
+  Result.IdleTimeoutMs := BROWSER_DEFAULT_IDLE_TIMEOUT_MS;
   Result.MaxTimeoutMs := BROWSER_READ_MAX_TIMEOUT_MS;
   Result.MaxMaxLength := BROWSER_READ_MAX_MAX_LENGTH;
   Result.AllowLocalhost := False;
@@ -98,6 +110,11 @@ begin
     brekInvalidUrl: Result := 'INVALID_URL';
     brekInvalidArgument: Result := 'INVALID_ARGUMENT';
     brekInternal: Result := 'INTERNAL';
+    brekSessionNotFound: Result := 'SESSION_NOT_FOUND';
+    brekAmbiguousSelector: Result := 'AMBIGUOUS_SELECTOR';
+    brekElementNotFound: Result := 'ELEMENT_NOT_FOUND';
+    brekElementNotInteractable: Result := 'ELEMENT_NOT_INTERACTABLE';
+    brekUserDenied: Result := 'USER_DENIED';
   else
     Result := '';
   end;

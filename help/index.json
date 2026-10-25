@@ -33,6 +33,12 @@
     "id": "tools-reference",
     "title": "Agent tools reference",
     "file": "tools-reference.md",
-    "keywords": ["read_file", "write_file", "edit_file", "apply_patch", "shell", "patch", "hunk", "grep", "git", "todo", "plan", "web_fetch", "browser_read", "chromium", "javascript", "url", "fetch", "website", "documentation"]
+    "keywords": ["read_file", "write_file", "edit_file", "apply_patch", "shell", "patch", "hunk", "grep", "git", "todo", "plan", "web_fetch", "browser_read", "browser_navigate", "browser_click", "chromium", "javascript", "url", "fetch", "website", "documentation", "automation", "screenshot", "cdp"]
+  },
+  {
+    "id": "browser-automation",
+    "title": "Browser automation",
+    "file": "browser-automation.md",
+    "keywords": ["browser", "chromium", "cdp", "localhost", "testing", "screenshot", "session", "playwright", "selenium"]
   }
 ]

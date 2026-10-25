@@ -127,9 +127,33 @@ Open a **public** `http` or `https` URL in a headless Chromium-compatible browse
 
 **Security:** Same public-destination rules as `web_fetch` (no loopback, private networks, or embedded credentials). Subresource requests are filtered during browsing. Page content is **untrusted**.
 
-**Limits:** One browser session per tool call; no screenshots or interactive automation yet. Localhost/dev-server browsing is not enabled in production.
+**Limits:** One ephemeral browser per call (no `session_id`). For multi-step testing, use the `browser_*` session tools below.
 
 Prefer `web_fetch` first; use `browser_read` only when JavaScript rendering is needed.
+
+### Browser automation (`browser_navigate`, `browser_inspect`, …)
+
+Persistent **browser sessions** for interactive testing (Chromium via CDP). Typical flow: `browser_navigate` → `browser_inspect` / `browser_fill` / `browser_click` → `browser_wait` → `browser_screenshot` / `browser_console` / `browser_network` → `browser_close`.
+
+| Tool | Purpose |
+|------|---------|
+| `browser_navigate` | Open URL; creates `session_id` when omitted |
+| `browser_inspect` | Page summary, links, forms, element refs |
+| `browser_click` | Pointer click (CDP input events) |
+| `browser_fill` | Type into inputs (passwords not logged) |
+| `browser_select` | Native `<select>` option |
+| `browser_wait` | Selector, text, URL, or document ready |
+| `browser_screenshot` | PNG/JPEG artifact under `.lca/artifacts/` |
+| `browser_console` | Console / JS errors |
+| `browser_network` | Request metadata (no bodies) |
+| `browser_set_viewport` | Emulated viewport size |
+| `browser_close` | End session |
+
+**Modes:** Ask, Plan, Agent (read-only navigation/inspect/wait/screenshot/console/network); **interactive** tools require the chat session flag **allow browser interactive** (stored per session). **Localhost** URLs require **allow browser localhost**. Sensitive clicks (e.g. submit/delete) show an OK/Cancel dialog; you can allow sensitive actions for the rest of the chat session.
+
+**Requirements:** Chromium-compatible browser (Settings → Agent → Chromium executable).
+
+**Security:** Public URL policy matches `web_fetch`; localhost is opt-in per chat session. Treat all page content as untrusted.
 
 ## Educational note
 

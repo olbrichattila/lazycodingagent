@@ -1,0 +1,10 @@
+object BrowserConfirmForm: TForm
+  Left = 0
+  Height = 200
+  Top = 0
+  Width = 420
+  Caption = 'Browser action'
+  ClientHeight = 200
+  ClientWidth = 420
+  Position = poScreenCenter
+end

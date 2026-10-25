@@ -251,6 +251,8 @@ type
     procedure ApplySessionComposerState;
     procedure ApplyAllowModifyOutsideToSession(const ASessionId: string; AValue: Boolean);
     procedure LoadAllowModifyOutsideForSession(const ASessionId: string);
+    procedure HandleBrowserSensitiveConfirm(const AMessage: string; var AApproved,
+      AAllowForSession: Boolean);
     procedure ActivateWorkspace(const AWorkspaceId: string);
     procedure DeactivateWorkspace;
     function AddOrActivateFolder(const ADisplayName, AFolderPath: string): Boolean;
@@ -385,6 +387,7 @@ implementation
 uses
   uExecutionDetailHtml, frmSplash, uAppIcon, LCLIntf,
   frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes, uBrowserManager,
+  uBrowserPermissions, frmBrowserConfirm,
   frmOpenMarkdown, frmHelp, frmPlanBuildConfirm
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
@@ -450,20 +453,45 @@ begin
   end;
 end;
 
+procedure TLazyCodingAgentForm.HandleBrowserSensitiveConfirm(const AMessage: string;
+  var AApproved, AAllowForSession: Boolean);
+begin
+  AApproved := ConfirmSensitiveBrowserAction(AMessage, FState.Theme, AAllowForSession);
+  if AApproved and AAllowForSession and (FCurrentSessionId <> '') and Assigned(ActiveStore) then
+  begin
+    ActiveStore.SetAllowBrowserSensitive(FCurrentSessionId, True);
+    if Assigned(FActiveHub) then
+      FActiveHub.GetOrCreateEngine(FCurrentSessionId).Context.AllowBrowserSensitive := True;
+  end;
+end;
+
 procedure TLazyCodingAgentForm.LoadAllowModifyOutsideForSession(const ASessionId: string);
 var
   Info: TChatSessionInfo;
   Value: Boolean;
   Eng: TAgentEngine;
+  HasInfo: Boolean;
 begin
   Value := False;
-  if Assigned(ActiveStore) and ActiveStore.FindSessionInfo(ASessionId, Info) then
+  HasInfo := Assigned(ActiveStore) and ActiveStore.FindSessionInfo(ASessionId, Info);
+  if HasInfo then
     Value := Info.AllowModifyOutside;
   if Assigned(FChatPanel) then
     FChatPanel.SetAllowModifyOutsideChecked(Value);
   if Assigned(FActiveHub) then begin
     Eng := FActiveHub.GetOrCreateEngine(ASessionId);
     Eng.Context.AllowModifyOutsideWorkspace := Value;
+    Eng.Context.ChatSessionId := ASessionId;
+    if HasInfo then begin
+      Eng.Context.AllowBrowserLocalhost := Info.AllowBrowserLocalhost;
+      Eng.Context.AllowBrowserInteractive := Info.AllowBrowserInteractive;
+      Eng.Context.AllowBrowserSensitive := Info.AllowBrowserSensitive;
+    end
+    else begin
+      Eng.Context.AllowBrowserLocalhost := False;
+      Eng.Context.AllowBrowserInteractive := False;
+      Eng.Context.AllowBrowserSensitive := False;
+    end;
   end;
 end;
 
@@ -627,6 +655,7 @@ begin
 
   FSessionHubs := TChatSessionHubManager.Create;
   FActiveHub := nil;
+  SetBrowserSensitiveConfirmHandler(@HandleBrowserSensitiveConfirm);
   FNavWorkCaptions := TStringList.Create;
   FNavWorkIds := TStringList.Create;
   FNavSessionCaptions := TStringList.Create;
