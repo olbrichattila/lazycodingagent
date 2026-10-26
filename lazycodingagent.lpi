@@ -297,6 +297,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uWebFetchHttpBody.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uWebFetchHttp.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

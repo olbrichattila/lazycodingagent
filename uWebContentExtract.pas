@@ -134,6 +134,11 @@ begin
     (Tag = 'form') or (Tag = 'header');
 end;
 
+function NodeHasVisibleText(N: TDOMNode): Boolean;
+begin
+  Result := (N <> nil) and (Trim(N.TextContent) <> '');
+end;
+
 function FindContentRoot(Doc: THTMLDocument): TDOMNode;
 var
   List: TDOMNodeList;
@@ -143,10 +148,10 @@ var
 begin
   Result := Doc;
   List := Doc.GetElementsByTagName('main');
-  if (List <> nil) and (List.Length > 0) then
+  if (List <> nil) and (List.Length > 0) and NodeHasVisibleText(List.Item[0]) then
     Exit(List.Item[0]);
   List := Doc.GetElementsByTagName('article');
-  if (List <> nil) and (List.Length > 0) then
+  if (List <> nil) and (List.Length > 0) and NodeHasVisibleText(List.Item[0]) then
     Exit(List.Item[0]);
   List := Doc.GetElementsByTagName('*');
   if List <> nil then
@@ -155,9 +160,14 @@ begin
       begin
         N := TDOMElement(List.Item[I]);
         Role := LowerCase(N.GetAttribute('role'));
-        if Role = 'main' then
+        if (Role = 'main') and NodeHasVisibleText(N) then
           Exit(N);
       end;
+  List := Doc.GetElementsByTagName('body');
+  if (List <> nil) and (List.Length > 0) and NodeHasVisibleText(List.Item[0]) then
+    Exit(List.Item[0]);
+  if Doc.DocumentElement <> nil then
+    Exit(Doc.DocumentElement);
   Result := Doc;
 end;
 
@@ -274,12 +284,30 @@ begin
     RenderNode(N.ChildNodes.Item[I], OutMd, InPre, Depth);
 end;
 
+function RoughExtractFromBody(const HtmlUtf8: string): string;
+var
+  L, R, OpenEnd: SizeInt;
+  LowerHtml: string;
+begin
+  Result := '';
+  LowerHtml := LowerCase(HtmlUtf8);
+  L := Pos('<body', LowerHtml);
+  if L = 0 then
+    Exit;
+  OpenEnd := PosEx('>', HtmlUtf8, L);
+  if OpenEnd = 0 then
+    Exit;
+  R := PosEx('</body>', LowerHtml, OpenEnd + 1);
+  if R = 0 then
+    Exit;
+  Result := StripHtmlTagsRough(Copy(HtmlUtf8, OpenEnd + 1, R - OpenEnd - 1));
+end;
+
 function HtmlToMarkdown(const HtmlUtf8: string): string;
 var
   Doc: THTMLDocument;
   Stream: TStringStream;
   Root: TDOMNode;
-  TitleNode: TDOMNodeList;
 begin
   Result := '';
   Doc := THTMLDocument.Create;
@@ -288,6 +316,8 @@ begin
     if TryReadHtmlIntoDocument(Doc, Stream) then begin
       Root := FindContentRoot(Doc);
       RenderNode(Root, Result, False, 0);
+      if Trim(Result) = '' then
+        Result := StripHtmlTagsRough(HtmlUtf8);
     end else
       Result := StripHtmlTagsRough(HtmlUtf8);
   finally
@@ -295,6 +325,12 @@ begin
     Doc.Free;
   end;
   Result := Trim(Result);
+  if (Result = '') and (Trim(HtmlUtf8) <> '') then
+  begin
+    Result := Trim(RoughExtractFromBody(HtmlUtf8));
+    if Result = '' then
+      Result := Trim(StripHtmlTagsRough(HtmlUtf8));
+  end;
 end;
 
 function ExtractTitleFromHtml(const HtmlUtf8: string): string;
@@ -322,6 +358,8 @@ begin
     Stream.Free;
     Doc.Free;
   end;
+  if Result = '' then
+    Result := ExtractTitleFromHtmlRough(HtmlUtf8);
 end;
 
 function ApplyMaxLength(const S: string; MaxLength: Integer; out Truncated: Boolean): string;

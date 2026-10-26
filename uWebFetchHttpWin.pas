@@ -5,7 +5,7 @@ unit uWebFetchHttpWin;
 interface
 
 uses
-  SysUtils, Classes, uWebFetchTypes;
+  SysUtils, Classes, uWebFetchTypes, uWebFetchHttpBody;
 
 function WebFetchHttpWinGet(const RequestUrl, VHost: string;
   const Config: TWebFetchConfig; CancelCheck: TWebFetchCancelCheck;
@@ -23,6 +23,7 @@ const
   WINHTTP_OPTION_REDIRECT_POLICY_NEVER = 0;
   WINHTTP_QUERY_LOCATION = 35;
   WINHTTP_QUERY_CONTENT_TYPE = 1;
+  WINHTTP_QUERY_CONTENT_ENCODING = 29;
   WINHTTP_QUERY_RAW_HEADERS_CRLF = 22;
   WINHTTP_QUERY_FLAG_NUMBER = $20000000;
   WINHTTP_QUERY_STATUS_CODE = 19;
@@ -141,6 +142,8 @@ var
   Total: Int64;
   Body: TMemoryStream;
   StartTick: QWord;
+  RawBody: RawByteString;
+  ContentEncoding: string;
 begin
   Result := False;
   FillChar(Resp, SizeOf(Resp), 0);
@@ -194,6 +197,7 @@ begin
       WINHTTP_QUERY_STATUS_CODE or WINHTTP_QUERY_FLAG_NUMBER), 0);
     Resp.ContentType := QueryHeaderString(Request, WINHTTP_QUERY_CONTENT_TYPE);
     Resp.Location := QueryHeaderString(Request, WINHTTP_QUERY_LOCATION);
+    ContentEncoding := QueryHeaderString(Request, WINHTTP_QUERY_CONTENT_ENCODING);
 
     Total := 0;
     repeat
@@ -225,11 +229,18 @@ begin
       end;
     until BytesRead = 0;
 
-    SetLength(Resp.Body, Body.Size);
+    SetLength(RawBody, Body.Size);
     if Body.Size > 0 then
     begin
       Body.Position := 0;
-      Body.ReadBuffer(Resp.Body[1], Body.Size);
+      Body.ReadBuffer(RawBody[1], Body.Size);
+    end;
+    if not MaybeDecompressHttpBody(RawBody, ContentEncoding, Resp.Body, ErrMsg) then
+    begin
+      ErrKind := wfekInternal;
+      if Trim(ErrMsg) = '' then
+        ErrMsg := 'Failed to decode compressed response';
+      Exit;
     end;
     Result := True;
     ErrKind := wfekNone;

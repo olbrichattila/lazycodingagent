@@ -16,7 +16,7 @@ for d in "/usr/lib/${ARCH}-linux-gnu/fpc"/*/units/"${ARCH}-linux" \
 done
 FPC_EXTRA=()
 if [[ -n "$FPC_LIB" ]]; then
-  FPC_EXTRA+=(-Fu"$FPC_LIB/fcl-xml" -Fu"$FPC_LIB/fcl-net" -Fu"$FPC_LIB/fcl-web" -Fu"$FPC_LIB/fcl-base" -Fu"$FPC_LIB/fcl-hash")
+  FPC_EXTRA+=(-Fu"$FPC_LIB/fcl-xml" -Fu"$FPC_LIB/fcl-net" -Fu"$FPC_LIB/fcl-web" -Fu"$FPC_LIB/fcl-base" -Fu"$FPC_LIB/fcl-hash" -Fu"$FPC_LIB/paszlib")
 fi
 FPC_EXTRA+=(-Fu"$ROOT/third_party/fpc-openssl3/src")
 fpc -Mobjfpc -Scghi -Fu"$ROOT" -Fu"$ROOT/packages/LcaDesignSystem/src" \

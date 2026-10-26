@@ -15,7 +15,7 @@ function HttpFetchUrl(const RequestUrl: string; const Parsed: TWebFetchUrl;
 implementation
 
 uses
-  uSslRuntime
+  uSslRuntime, uWebFetchHttpBody
   {$IFDEF MSWINDOWS}
   , uWebFetchHttpWin
   {$ELSE}
@@ -101,6 +101,8 @@ var
   Client: TFPHTTPClient;
   OutStream: TCancelAwareStream;
   StartMs: QWord;
+  RawBody: RawByteString;
+  ContentEncoding: string;
 begin
   Result := False;
   FillChar(Resp, SizeOf(Resp), 0);
@@ -196,16 +198,22 @@ begin
     end;
 
     Resp.StatusCode := Client.ResponseStatusCode;
-    Resp.ContentType := Client.ResponseHeaders.Values['Content-Type'];
-    if Resp.ContentType = '' then
-      Resp.ContentType := Client.ResponseHeaders.Values['content-type'];
-    Resp.Location := Client.ResponseHeaders.Values['Location'];
-    if Resp.Location = '' then
-      Resp.Location := Client.ResponseHeaders.Values['location'];
-    SetLength(Resp.Body, OutStream.Size);
+    Resp.ContentType := HttpHeaderValue(Client.ResponseHeaders, 'Content-Type');
+    Resp.Location := HttpHeaderValue(Client.ResponseHeaders, 'Location');
+    ContentEncoding := HttpHeaderValue(Client.ResponseHeaders, 'Content-Encoding');
+    SetLength(RawBody, OutStream.Size);
     if OutStream.Size > 0 then
+    begin
       OutStream.Position := 0;
-    OutStream.ReadBuffer(Resp.Body[1], OutStream.Size);
+      OutStream.ReadBuffer(RawBody[1], OutStream.Size);
+    end;
+    if not MaybeDecompressHttpBody(RawBody, ContentEncoding, Resp.Body, ErrMsg) then
+    begin
+      ErrKind := wfekInternal;
+      if Trim(ErrMsg) = '' then
+        ErrMsg := 'Failed to decode compressed response';
+      Exit;
+    end;
     Result := True;
     ErrKind := wfekNone;
     ErrMsg := '';
