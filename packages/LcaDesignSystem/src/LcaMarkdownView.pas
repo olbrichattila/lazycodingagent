@@ -91,7 +91,6 @@ type
     procedure DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
     procedure EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
     procedure HtmlDocumentOpened(Sender: TObject);
-    procedure TryKickPendingRender;
     procedure TryHideIpHtmlScrollChrome(APanel: TIpHtmlPanel);
   protected
     procedure Loaded; override;
@@ -107,7 +106,7 @@ type
     procedure SetHtmlBody(const AFullHtml: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure NotifyContentMaybeResized;
-    procedure FlushPendingRender(AScrollToEnd: Boolean = False);
+    procedure RequestRender;
   published
     property ThemeKind: TThemeKind read FThemeKind write SetThemeKind default tkDark;
     property Align;
@@ -633,12 +632,8 @@ end;
 procedure TLcaMarkdownView.ScheduleDeferredRender;
 begin
   if FRenderDeferQueued then Exit;
-  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
-    if HostReadyForRender then
-      FRenderDeferRetries := 0
-    else
-      Exit;
-  end;
+  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then
+    Exit;
   Inc(FRenderDeferRetries);
   FRenderDeferQueued := True;
   Application.QueueAsyncCall(@DeferredRender, PtrInt(Self));
@@ -841,11 +836,11 @@ begin
   ScheduleDeferredContentSync;
 end;
 
-procedure TLcaMarkdownView.TryKickPendingRender;
+procedure TLcaMarkdownView.RequestRender;
 begin
   if csDesigning in ComponentState then Exit;
+  if csDestroying in ComponentState then Exit;
   if not HasMarkdownContent then Exit;
-  if not HostReadyForRender then Exit;
   FRenderDeferRetries := 0;
   FRenderDeferQueued := False;
   ScheduleDeferredRender;
@@ -854,39 +849,7 @@ end;
 procedure TLcaMarkdownView.CreateWnd;
 begin
   inherited CreateWnd;
-  TryKickPendingRender;
-end;
-
-procedure TLcaMarkdownView.FlushPendingRender(AScrollToEnd: Boolean);
-var
-  Panel: TIpHtmlPanel;
-begin
-  if csDesigning in ComponentState then Exit;
-  if csDestroying in ComponentState then Exit;
-  FRenderDeferRetries := 0;
-  FRenderDeferQueued := False;
-  FContentSyncDeferRetries := 0;
-  if AScrollToEnd then
-    FScrollToEndPending := True;
-  if not HasMarkdownContent then Exit;
-  if HostReadyForRender then
-    Render
-  else
-    ScheduleDeferredRender;
-  if Assigned(FScrollHost) and Assigned(FHtmlPanel) then
-    SyncContentLayout;
-  if FScrollToEndPending and Assigned(FScrollHost) then begin
-    ScrollDocumentToEnd;
-    if IsDocumentScrolledToEnd then begin
-      FScrollToEndPending := False;
-      FScrollDeferRetries := 0;
-    end;
-  end;
-  if FHtmlPanel is TIpHtmlPanel then begin
-    Panel := TIpHtmlPanel(FHtmlPanel);
-    Panel.Invalidate;
-    TryHideIpHtmlScrollChrome(Panel);
-  end;
+  RequestRender;
 end;
 
 procedure TLcaMarkdownView.NotifyContentMaybeResized;
@@ -1022,6 +985,10 @@ begin
   FScrollHost.UpdateContentExtent(CW, CH);
   TryHideIpHtmlScrollChrome(Panel);
   ApplyMarkdownScrollOffset;
+  {$IFDEF LCLcocoa}
+  EnsureScrollHostFillsClient;
+  FScrollHost.Invalidate;
+  {$ENDIF}
   FContentStabilityMeasureH := CH;
   Result := True;
 end;
@@ -1185,11 +1152,7 @@ begin
       Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
     Panel.SetHtmlFromStr(Html);
     ResetIpHtmlPanelScrollPos(Panel);
-    {$IFDEF LCLcocoa}
-    FIpHtmlScrollChromeHidden := False;
-    {$ELSE}
     TryHideIpHtmlScrollChrome(Panel);
-    {$ENDIF}
     if FUseRawHtml then
       FLastRenderedRawHtmlLen := Length(FRawHtml)
     else
@@ -1213,12 +1176,7 @@ begin
     FScrollToEndPending := False;
   if FMarkdown = AMarkdown then begin
     if AScrollToEndAfterRender then
-      ScheduleScrollToEndAfterRender
-    else
-      Exit;
-    {$IFDEF LCLcocoa}
-    FlushPendingRender(AScrollToEndAfterRender);
-    {$ENDIF}
+      ScheduleScrollToEndAfterRender;
     Exit;
   end;
   FMarkdown := AMarkdown;
@@ -1329,7 +1287,6 @@ begin
     EnsureScrollHostFillsClient;
   if WidthChanged then
     ScheduleDebouncedViewportReflow;
-  TryKickPendingRender;
 end;
 
 function TLcaMarkdownView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
@@ -1349,9 +1306,7 @@ begin
   if not Showing then Exit;
   ConfigureMarkdownScrollHost;
   if (FMarkdown = '') and not (FUseRawHtml and (FRawHtml <> '')) then Exit;
-  FRenderDeferRetries := 0;
-  FRenderDeferQueued := False;
-  ScheduleDeferredRender;
+  RequestRender;
 end;
 
 end.

@@ -489,10 +489,8 @@ end;
 procedure TChatPanel.ApplyHistoryViewNow(AScrollToEnd: Boolean);
 begin
   EnsureHistoryView;
-  if Assigned(FHistoryView) then begin
+  if Assigned(FHistoryView) then
     FHistoryView.SetMarkdown(FHistoryText, AScrollToEnd);
-    FHistoryView.FlushPendingRender(AScrollToEnd);
-  end;
   FHistoryRefreshDueTick := GetTickCount64 + CHAT_HISTORY_REFRESH_MIN_MS;
 end;
 
@@ -920,9 +918,7 @@ begin
   end;
   if FHistoryText = '' then
     InitWelcomeText;
-  FHistoryRefreshThrottleQueued := False;
-  FHistoryRefreshQueued := False;
-  ApplyHistoryViewNow(True);
+  RefreshHistoryView;
 end;
 
 procedure TChatPanel.SubmitPrompt(const APrompt: string);

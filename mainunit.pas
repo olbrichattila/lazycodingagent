@@ -550,8 +550,6 @@ begin
     FChatPanel.ReloadFromMessages(Msgs, FState.DebuggingMode);
     FChatPanel.SetRunning(E.IsRunActive);
   end;
-  if Assigned(lcaChatHistory) then
-    lcaChatHistory.FlushPendingRender(True);
   LoadAllowModifyOutsideForSession(ASessionId);
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
@@ -767,8 +765,6 @@ begin
   {$ENDIF}
   if Assigned(Application) then
     Application.BringToFront;
-  if Assigned(lcaChatHistory) then
-    lcaChatHistory.FlushPendingRender(True);
 end;
 
 procedure TLazyCodingAgentForm.PrepareVisibleStartup;
@@ -848,6 +844,8 @@ begin
   end;
   if FState.IsPanelVisible(piTerminal) then
     ScheduleDeferredTerminalStart;
+  if Assigned(lcaChatHistory) then
+    lcaChatHistory.RequestRender;
 end;
 
 
