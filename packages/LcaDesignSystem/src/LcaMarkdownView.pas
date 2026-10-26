@@ -92,6 +92,8 @@ type
     procedure EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
     procedure HtmlDocumentOpened(Sender: TObject);
     procedure TryHideIpHtmlScrollChrome(APanel: TIpHtmlPanel);
+    function ContentReadyForScrollToEnd: Boolean;
+    procedure TryScrollDocumentToEnd;
   protected
     procedure Loaded; override;
     procedure CreateWnd; override;
@@ -165,6 +167,30 @@ begin
     Result := Buf.DataString;
   finally
     Buf.Free;
+  end;
+end;
+
+function UriCharNeedsEncoding(C: Char): Boolean;
+begin
+  Result := not (C in ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.', '~', '/', ':']);
+end;
+
+function EncodeHtmlAttributeUri(const AUrl: string): string;
+var
+  I: Integer;
+  C: Char;
+  Lower: string;
+begin
+  Lower := LowerCase(AUrl);
+  if not StartsText('file://', Lower) then
+    Exit(EscapeHtml(AUrl));
+  Result := Copy(AUrl, 1, 7);
+  for I := 8 to Length(AUrl) do begin
+    C := AUrl[I];
+    if UriCharNeedsEncoding(C) then
+      Result := Result + '%' + LowerCase(IntToHex(Ord(C), 2))
+    else
+      Result := Result + C;
   end;
 end;
 
@@ -244,7 +270,7 @@ begin
   if not (StartsText('file://', Url) or StartsText('http://', Url) or
     StartsText('https://', Url)) then
     Exit;
-  Result := '<p><img src="' + EscapeHtml(Url) + '" alt="' + EscapeHtml(Alt) +
+  Result := '<p><img src="' + EncodeHtmlAttributeUri(Url) + '" alt="' + EscapeHtml(Alt) +
     '" class="lca-md-img"/></p>';
 end;
 
@@ -667,6 +693,28 @@ begin
   Result := True;
 end;
 
+function TLcaMarkdownView.ContentReadyForScrollToEnd: Boolean;
+var
+  Panel: TIpHtmlPanel;
+  Sz: TSize;
+begin
+  Result := False;
+  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
+  if FLastSyncedContentH <= 0 then Exit;
+  if not (FHtmlPanel is TIpHtmlPanel) then Exit;
+  Panel := TIpHtmlPanel(FHtmlPanel);
+  Sz := Panel.GetContentSize;
+  Result := Sz.cy > 0;
+end;
+
+procedure TLcaMarkdownView.TryScrollDocumentToEnd;
+begin
+  {$IFDEF LCLcocoa}
+  if not ContentReadyForScrollToEnd then Exit;
+  {$ENDIF}
+  ScrollDocumentToEnd;
+end;
+
 procedure TLcaMarkdownView.ScrollDocumentToEnd;
 begin
   if not Assigned(FScrollHost) then Exit;
@@ -900,7 +948,7 @@ begin
   if not Assigned(FHtmlPanel) or not Assigned(FScrollHost) then Exit;
   Settled := SyncContentLayout;
   if FScrollToEndPending and Settled then begin
-    ScrollDocumentToEnd;
+    TryScrollDocumentToEnd;
     if IsDocumentScrolledToEnd then begin
       FScrollToEndPending := False;
       FScrollDeferRetries := 0;
@@ -1020,7 +1068,13 @@ begin
     ScheduleDeferredScrollToEnd;
     Exit;
   end;
-  ScrollDocumentToEnd;
+  {$IFDEF LCLcocoa}
+  if not ContentReadyForScrollToEnd then begin
+    ScheduleDeferredScrollToEnd;
+    Exit;
+  end;
+  {$ENDIF}
+  TryScrollDocumentToEnd;
   if IsDocumentScrolledToEnd then begin
     FScrollToEndPending := False;
     FScrollDeferRetries := 0;
@@ -1140,7 +1194,9 @@ begin
   SetHtmlPanelRedrawActive(False);
   try
     if ShouldResetLayoutBeforeRender then
-      ResetContentLayoutState;
+      ResetContentLayoutState
+    else if not FScrollToEndPending and Assigned(FScrollHost) then
+      FScrollHost.SetScrollPosition(0, 0);
     EnsureScrollHostFillsClient;
     Panel.BgColor := ThemePalette(FThemeKind).Background;
     Panel.TextColor := ThemePalette(FThemeKind).Text;
@@ -1180,6 +1236,8 @@ begin
     Exit;
   end;
   FMarkdown := AMarkdown;
+  if not AScrollToEndAfterRender and Assigned(FScrollHost) then
+    FScrollHost.SetScrollPosition(0, 0);
   ScheduleDeferredRender;
 end;
 

@@ -550,7 +550,7 @@ end;
 procedure TChatPanel.RefreshHistoryView;
 begin
   if FBatchHistoryReload then Exit;
-  FHistoryScrollToEndPending := True;
+  FHistoryScrollToEndPending := FIsRunning;
   ScheduleHistoryRefresh;
 end;
 
@@ -918,7 +918,10 @@ begin
   end;
   if FHistoryText = '' then
     InitWelcomeText;
-  RefreshHistoryView;
+  ApplyHistoryViewNow(False);
+  EnsureHistoryView;
+  if Assigned(FHistoryView) then
+    FHistoryView.RequestRender;
 end;
 
 procedure TChatPanel.SubmitPrompt(const APrompt: string);

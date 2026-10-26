@@ -550,6 +550,8 @@ begin
     FChatPanel.ReloadFromMessages(Msgs, FState.DebuggingMode);
     FChatPanel.SetRunning(E.IsRunActive);
   end;
+  if Assigned(lcaChatHistory) then
+    lcaChatHistory.RequestRender;
   LoadAllowModifyOutsideForSession(ASessionId);
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
