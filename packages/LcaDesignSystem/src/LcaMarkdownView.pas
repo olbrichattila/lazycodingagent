@@ -58,6 +58,8 @@ type
     FLastRenderedMarkdownLen: Integer;
     FLastRenderedRawHtmlLen: Integer;
     FLastNotifiedContentH: Integer;
+    FIpHtmlScrollChromeHidden: Boolean;
+    function HasMarkdownContent: Boolean;
     function ShouldResetLayoutBeforeRender: Boolean;
     function MarkdownViewportSize: TSize;
     function MarkdownMeasurePanelHeight(AViewH: Integer): Integer;
@@ -89,8 +91,11 @@ type
     procedure DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
     procedure EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
     procedure HtmlDocumentOpened(Sender: TObject);
+    procedure TryKickPendingRender;
+    procedure TryHideIpHtmlScrollChrome(APanel: TIpHtmlPanel);
   protected
     procedure Loaded; override;
+    procedure CreateWnd; override;
     procedure Resize; override;
     procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
@@ -102,6 +107,7 @@ type
     procedure SetHtmlBody(const AFullHtml: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure NotifyContentMaybeResized;
+    procedure FlushPendingRender(AScrollToEnd: Boolean = False);
   published
     property ThemeKind: TThemeKind read FThemeKind write SetThemeKind default tkDark;
     property Align;
@@ -356,12 +362,14 @@ end;
 procedure EnsureThemedHtmlDocumentShell(ATheme: TThemeKind);
 var
   P: TThemePalette;
-  Css: string;
+  Css, UiFont, MonoFont: string;
 begin
   if GThemedHtmlShellReady[ATheme] then Exit;
   P := ThemePalette(ATheme);
+  UiFont := ThemedUiFontName;
+  MonoFont := ThemedMonospaceFontName;
   Css :=
-    'body { font-family: Segoe UI, sans-serif; font-size: 10pt; margin: 8px; ' +
+    'body { font-family: ' + UiFont + ', sans-serif; font-size: 10pt; margin: 8px; ' +
     'background: ' + ColorToHex(P.Background) + '; color: ' + ColorToHex(P.Text) + '; } ' +
     'h1 { color: ' + ColorToHex(P.Text) + '; font-size: 1.35em; font-weight: bold; ' +
     'margin: 0.5em 0 0.35em; } ' +
@@ -370,7 +378,7 @@ begin
     'h3 { color: ' + ColorToHex(P.Text) + '; font-size: 1.05em; font-weight: bold; ' +
     'margin: 0.45em 0 0.25em; } ' +
     'p { margin: 0.4em 0; line-height: 1.45; } ' +
-    'code { font-family: Consolas, monospace; background: ' + ColorToHex(P.SurfaceAlt) +
+    'code { font-family: ' + MonoFont + ', monospace; background: ' + ColorToHex(P.SurfaceAlt) +
     '; padding: 1px 4px; border-radius: 3px; } ' +
     'pre { background: ' + ColorToHex(P.SurfaceAlt) + '; padding: 8px; ' +
     'border: 1px solid ' + ColorToHex(P.Border) + '; border-radius: 4px; overflow-x: auto; } ' +
@@ -430,6 +438,12 @@ begin
   FLastRenderedMarkdownLen := 0;
   FLastRenderedRawHtmlLen := 0;
   FLastNotifiedContentH := -1;
+  FIpHtmlScrollChromeHidden := False;
+end;
+
+function TLcaMarkdownView.HasMarkdownContent: Boolean;
+begin
+  Result := (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> ''));
 end;
 
 procedure TLcaMarkdownHtmlPanel.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
@@ -592,16 +606,39 @@ begin
     Result := AValue;
 end;
 
+function ControlChainVisible(ACtrl: TControl): Boolean;
+var
+  C: TControl;
+begin
+  C := ACtrl;
+  while Assigned(C) do begin
+    if not C.Visible then
+      Exit(False);
+    C := C.Parent;
+  end;
+  Result := True;
+end;
+
 function TLcaMarkdownView.HostReadyForRender: Boolean;
 begin
-  Result := HandleAllocated and Showing and (ClientWidth > 0) and (ClientHeight > 0);
+  Result := HandleAllocated and (ClientWidth > 0) and (ClientHeight > 0);
+  if not Result then Exit;
+  {$IFDEF LCLcocoa}
+  Result := ControlChainVisible(Self);
+  {$ELSE}
+  Result := Result and Showing;
+  {$ENDIF}
 end;
 
 procedure TLcaMarkdownView.ScheduleDeferredRender;
 begin
   if FRenderDeferQueued then Exit;
-  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then
-    Exit;
+  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
+    if HostReadyForRender then
+      FRenderDeferRetries := 0
+    else
+      Exit;
+  end;
   Inc(FRenderDeferRetries);
   FRenderDeferQueued := True;
   Application.QueueAsyncCall(@DeferredRender, PtrInt(Self));
@@ -738,6 +775,20 @@ begin
   DisableIpHtmlPanelChromeScroll(APanel, Self);
 end;
 
+procedure TLcaMarkdownView.TryHideIpHtmlScrollChrome(APanel: TIpHtmlPanel);
+var
+  Sz: TSize;
+begin
+  if not Assigned(APanel) then Exit;
+  if FIpHtmlScrollChromeHidden then Exit;
+  {$IFDEF LCLcocoa}
+  Sz := APanel.GetContentSize;
+  if Sz.cy <= 0 then Exit;
+  {$ENDIF}
+  FIpHtmlScrollChromeHidden := True;
+  HideIpHtmlNativeScroll(APanel);
+end;
+
 procedure TLcaMarkdownView.DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
 begin
   ResetIpHtmlPanelScrollPos(APanel);
@@ -786,8 +837,56 @@ end;
 procedure TLcaMarkdownView.HtmlDocumentOpened(Sender: TObject);
 begin
   if Sender is TIpHtmlPanel then
-    DisableIpHtmlNativeScroll(TIpHtmlPanel(Sender));
+    TryHideIpHtmlScrollChrome(TIpHtmlPanel(Sender));
   ScheduleDeferredContentSync;
+end;
+
+procedure TLcaMarkdownView.TryKickPendingRender;
+begin
+  if csDesigning in ComponentState then Exit;
+  if not HasMarkdownContent then Exit;
+  if not HostReadyForRender then Exit;
+  FRenderDeferRetries := 0;
+  FRenderDeferQueued := False;
+  ScheduleDeferredRender;
+end;
+
+procedure TLcaMarkdownView.CreateWnd;
+begin
+  inherited CreateWnd;
+  TryKickPendingRender;
+end;
+
+procedure TLcaMarkdownView.FlushPendingRender(AScrollToEnd: Boolean);
+var
+  Panel: TIpHtmlPanel;
+begin
+  if csDesigning in ComponentState then Exit;
+  if csDestroying in ComponentState then Exit;
+  FRenderDeferRetries := 0;
+  FRenderDeferQueued := False;
+  FContentSyncDeferRetries := 0;
+  if AScrollToEnd then
+    FScrollToEndPending := True;
+  if not HasMarkdownContent then Exit;
+  if HostReadyForRender then
+    Render
+  else
+    ScheduleDeferredRender;
+  if Assigned(FScrollHost) and Assigned(FHtmlPanel) then
+    SyncContentLayout;
+  if FScrollToEndPending and Assigned(FScrollHost) then begin
+    ScrollDocumentToEnd;
+    if IsDocumentScrolledToEnd then begin
+      FScrollToEndPending := False;
+      FScrollDeferRetries := 0;
+    end;
+  end;
+  if FHtmlPanel is TIpHtmlPanel then begin
+    Panel := TIpHtmlPanel(FHtmlPanel);
+    Panel.Invalidate;
+    TryHideIpHtmlScrollChrome(Panel);
+  end;
 end;
 
 procedure TLcaMarkdownView.NotifyContentMaybeResized;
@@ -813,6 +912,7 @@ begin
   FLastRenderedMarkdownLen := 0;
   FLastRenderedRawHtmlLen := 0;
   FLastNotifiedContentH := -1;
+  FIpHtmlScrollChromeHidden := False;
   if Assigned(FScrollHost) then begin
     FScrollHost.UpdateContentExtent(0, 0);
     FScrollHost.SetScrollPosition(0, 0);
@@ -920,7 +1020,7 @@ begin
   FLastSyncedContentH := CH;
   FLastNotifiedContentH := CH;
   FScrollHost.UpdateContentExtent(CW, CH);
-  HideIpHtmlNativeScroll(Panel);
+  TryHideIpHtmlScrollChrome(Panel);
   ApplyMarkdownScrollOffset;
   FContentStabilityMeasureH := CH;
   Result := True;
@@ -992,8 +1092,8 @@ begin
     Html.BindOwnerView(Self);
     Html.BorderStyle := bsNone;
     Html.AllowTextSelect := True;
-    Html.DefaultTypeFace := 'Segoe UI';
-    Html.FixedTypeface := 'Consolas';
+    Html.DefaultTypeFace := ThemedUiFontName;
+    Html.FixedTypeface := ThemedMonospaceFontName;
     Html.AutoSize := False;
     Html.OnDocumentOpen := @HtmlDocumentOpened;
     FHtmlPanel := Html;
@@ -1085,7 +1185,11 @@ begin
       Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
     Panel.SetHtmlFromStr(Html);
     ResetIpHtmlPanelScrollPos(Panel);
-    HideIpHtmlNativeScroll(Panel);
+    {$IFDEF LCLcocoa}
+    FIpHtmlScrollChromeHidden := False;
+    {$ELSE}
+    TryHideIpHtmlScrollChrome(Panel);
+    {$ENDIF}
     if FUseRawHtml then
       FLastRenderedRawHtmlLen := Length(FRawHtml)
     else
@@ -1109,7 +1213,12 @@ begin
     FScrollToEndPending := False;
   if FMarkdown = AMarkdown then begin
     if AScrollToEndAfterRender then
-      ScheduleScrollToEndAfterRender;
+      ScheduleScrollToEndAfterRender
+    else
+      Exit;
+    {$IFDEF LCLcocoa}
+    FlushPendingRender(AScrollToEndAfterRender);
+    {$ENDIF}
     Exit;
   end;
   FMarkdown := AMarkdown;
@@ -1220,6 +1329,7 @@ begin
     EnsureScrollHostFillsClient;
   if WidthChanged then
     ScheduleDebouncedViewportReflow;
+  TryKickPendingRender;
 end;
 
 function TLcaMarkdownView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;

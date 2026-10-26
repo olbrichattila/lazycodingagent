@@ -21,6 +21,9 @@ begin
   {$IFDEF LCLQt5}
   UseBuffer := False;
   {$ELSE}
+  {$IFDEF LCLcocoa}
+  UseBuffer := False;
+  {$ELSE}
   {$IFDEF LCA_SCROLL_HOST_FORCE_DOUBLEBUFFER}
   UseBuffer := True;
   {$ELSE}
@@ -28,6 +31,7 @@ begin
   UseBuffer := False;
   {$ELSE}
   UseBuffer := True;
+  {$ENDIF}
   {$ENDIF}
   {$ENDIF}
   {$ENDIF}

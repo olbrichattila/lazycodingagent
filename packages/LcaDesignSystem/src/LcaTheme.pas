@@ -118,6 +118,7 @@ function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;
 function MenuItemDisplayCaption(const ACaption: string): string;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 function ThemedMonospaceFontName: string;
+function ThemedUiFontName: string;
 procedure ApplyThemedMonospaceFont(AFont: TFont; AMetricsControl: TControl);
 function ThemedComboCornerRadius(AControl: TControl): Integer;
 function ThemedComboChevronGutter(AControl: TControl): Integer;
@@ -374,6 +375,30 @@ begin
   {$ELSE}
   Result := PickFirstAvailable(['DejaVu Sans Mono', 'Liberation Mono', 'FreeMono', 'Monospace',
     'Courier New']);
+  {$ENDIF}
+  {$ENDIF}
+end;
+
+function ThemedUiFontName: string;
+
+  function PickFirstAvailable(const ANames: array of string): string;
+  var
+    I: Integer;
+  begin
+    for I := Low(ANames) to High(ANames) do
+      if Screen.Fonts.IndexOf(ANames[I]) >= 0 then
+        Exit(ANames[I]);
+    Result := 'sans-serif';
+  end;
+
+begin
+  {$IFDEF LCLcocoa}
+  Result := PickFirstAvailable(['.AppleSystemUIFont', 'SF Pro Text', 'Helvetica Neue', 'Helvetica']);
+  {$ELSE}
+  {$IFDEF WINDOWS}
+  Result := PickFirstAvailable(['Segoe UI', 'Tahoma', 'Arial']);
+  {$ELSE}
+  Result := PickFirstAvailable(['Segoe UI', 'Ubuntu', 'Cantarell', 'DejaVu Sans', 'sans-serif']);
   {$ENDIF}
   {$ENDIF}
 end;
