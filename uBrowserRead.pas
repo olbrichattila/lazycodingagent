@@ -141,7 +141,8 @@ begin
       Exit;
     end;
 
-    if not Browser.Start(Executable, TimeoutMs, CancelCheck, WsUrl, ErrKind, ErrMsg) then
+    if not Browser.Start(Executable, TimeoutMs, True, CancelCheck, WsUrl, ErrKind,
+      ErrMsg) then
     begin
       Result.ErrorKind := ErrKind;
       Result.ErrorMessage := ErrMsg;

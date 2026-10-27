@@ -17,6 +17,8 @@ type
     WorkspaceRoot: string;
     ChatSessionId: string;
     AllowLocalhost: Boolean;
+    Visible: Boolean;
+    AutomationPaused: Boolean;
     LastActivity: TDateTime;
     Browser: TBrowserProcess;
     Socket: TCdpWebSocket;
@@ -41,7 +43,7 @@ procedure BrowserManagerShutdownAll;
 
 function NewBrowserSessionId: string;
 function BrowserSessionCreate(const WorkspaceRoot, ChatSessionId: string;
-  AllowLocalhost: Boolean; const Config: TBrowserReadConfig;
+  AllowLocalhost: Boolean; AVisible: Boolean; const Config: TBrowserReadConfig;
   CancelCheck: TBrowserReadCancelCheck; out Session: TBrowserManagedSession;
   out ErrKind: TBrowserReadErrorKind; out ErrMsg: string): Boolean;
 function BrowserSessionFind(const SessionId: string): TBrowserManagedSession;
@@ -149,6 +151,8 @@ begin
     for I := GSessions.Count - 1 downto 0 do
     begin
       S := TBrowserManagedSession(GSessions[I]);
+      if S.Visible then
+        Continue;
       if S.LastActivity < Cutoff then
       begin
         GSessions.Delete(I);
@@ -197,7 +201,7 @@ begin
 end;
 
 function BrowserSessionCreate(const WorkspaceRoot, ChatSessionId: string;
-  AllowLocalhost: Boolean; const Config: TBrowserReadConfig;
+  AllowLocalhost: Boolean; AVisible: Boolean; const Config: TBrowserReadConfig;
   CancelCheck: TBrowserReadCancelCheck; out Session: TBrowserManagedSession;
   out ErrKind: TBrowserReadErrorKind; out ErrMsg: string): Boolean;
 var
@@ -241,6 +245,8 @@ begin
   Session.WorkspaceRoot := WorkspaceRoot;
   Session.ChatSessionId := ChatSessionId;
   Session.AllowLocalhost := AllowLocalhost;
+  Session.Visible := AVisible;
+  Session.AutomationPaused := AVisible;
   Session.LastActivity := Now;
   Session.Lock := TCriticalSection.Create;
   Session.RefMap := TStringList.Create;
@@ -256,8 +262,8 @@ begin
       Exit(False);
     end;
 
-    if not Session.Browser.Start(Executable, Config.MaxTimeoutMs, CancelCheck, WsUrl,
-      ErrKind, ErrMsg) then
+    if not Session.Browser.Start(Executable, Config.MaxTimeoutMs, not AVisible,
+      CancelCheck, WsUrl, ErrKind, ErrMsg) then
       Exit(False);
 
     if not ParseBrowserWebSocketEndpoint(WsUrl, Host, Port, Path) then

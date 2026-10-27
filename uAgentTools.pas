@@ -89,6 +89,8 @@ begin
   RegisterTool(TToolBrowserNetwork.Create(FContext));
   RegisterTool(TToolBrowserSelect.Create(FContext));
   RegisterTool(TToolBrowserSetViewport.Create(FContext));
+  RegisterTool(TToolBrowserResumeAutomation.Create(FContext));
+  RegisterTool(TToolBrowserPauseAutomation.Create(FContext));
 end;
 
 destructor TAgentToolRegistry.Destroy;

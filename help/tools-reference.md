@@ -151,7 +151,7 @@ Persistent **browser sessions** for interactive testing (Chromium via CDP). Typi
 
 | Tool | Purpose |
 |------|---------|
-| `browser_navigate` | Open URL; creates `session_id` when omitted |
+| `browser_navigate` | Open URL; creates `session_id` when omitted. Optional `visible: true` opens a headed window (new sessions only) |
 | `browser_inspect` | Page summary, links, forms, element refs |
 | `browser_click` | Pointer click (CDP input events) |
 | `browser_fill` | Type into inputs (passwords not logged) |
@@ -162,12 +162,18 @@ Persistent **browser sessions** for interactive testing (Chromium via CDP). Typi
 | `browser_network` | Request metadata (no bodies) |
 | `browser_set_viewport` | Emulated viewport size |
 | `browser_close` | End session |
+| `browser_resume_automation` | Allow interactive tools on a visible session after manual user steps |
+| `browser_pause_automation` | Block interactive tools on a visible session so the user can work freely |
 
 **Modes:** Ask, Plan, Agent (read-only navigation/inspect/wait/screenshot/console/network); **interactive** tools require the chat session flag **allow browser interactive** (stored per session). **Localhost** URLs require **allow browser localhost**. Sensitive clicks (e.g. submit/delete) show an OK/Cancel dialog; you can allow sensitive actions for the rest of the chat session.
 
 **Requirements:** Chromium-compatible browser (Settings → Agent → Chromium executable).
 
-**Security:** Public URL policy matches `web_fetch`; localhost is opt-in per chat session. Treat all page content as untrusted.
+**Visible browser:** On a **new** session, set `visible` to `true` on `browser_navigate` to open a normal Chromium window. Automation starts **paused** (`automation_paused: true`) so the user can log in without competing CDP clicks or fills. Call `browser_resume_automation` before `browser_click`, `browser_fill`, `browser_select`, `browser_set_viewport`, or navigating again with the same `session_id`. Use `browser_pause_automation` to hand control back. Read-only tools work while paused. You and the agent share the same tab over CDP. Visible sessions are not auto-closed by idle timeout; call `browser_close` when finished. Default headless sessions are unchanged.
+
+**AUTOMATION_PAUSED** — Interactive tool called on a visible session before `browser_resume_automation`.
+
+**Security:** Public URL policy matches `web_fetch`; localhost is opt-in per chat session. Treat all page content as untrusted. A visible window may show private data (logins, account pages).
 
 ## Educational note
 

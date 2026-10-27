@@ -45,7 +45,7 @@
     "id": "browser-automation",
     "title": "Browser automation",
     "file": "browser-automation.md",
-    "keywords": ["browser", "chromium", "cdp", "localhost", "testing", "screenshot", "session", "playwright", "selenium"]
+    "keywords": ["browser", "chromium", "cdp", "localhost", "testing", "screenshot", "session", "playwright", "selenium", "visible", "headed", "login", "window", "pause", "resume", "automation_paused"]
   },
   {
     "id": "performance-prompt-caching",

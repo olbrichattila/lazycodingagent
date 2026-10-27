@@ -54,7 +54,8 @@ begin
   Browser := TBrowserProcess.Create;
   Socket := TCdpWebSocket.Create;
   try
-    if not Browser.Start(Executable, Config.MaxTimeoutMs, nil, WsUrl, ErrKind, ErrMsg) then
+    if not Browser.Start(Executable, Config.MaxTimeoutMs, True, nil, WsUrl, ErrKind,
+      ErrMsg) then
       Fail('browser start: ' + ErrMsg);
     if not ParseBrowserWebSocketEndpoint(WsUrl, Host, Port, Path) then
       Fail('invalid ws url: ' + WsUrl);

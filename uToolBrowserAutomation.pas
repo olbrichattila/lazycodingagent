@@ -18,6 +18,7 @@ type
       out Err: string): Boolean;
     function DenyInteractive: TToolExecutionResult;
     function DenySensitive(const Action: string): TToolExecutionResult;
+    function DenyAutomationPaused(S: TBrowserManagedSession): TToolExecutionResult;
     function JsonOk(O: TJSONObject): TToolExecutionResult;
     function JsonErr(const Code, Msg: string): TToolExecutionResult;
   end;
@@ -99,6 +100,20 @@ type
     function Execute(const Args: TJSONObject): TToolExecutionResult; override;
   end;
 
+  TToolBrowserResumeAutomation = class(TBrowserToolBase)
+  public
+    constructor Create(AContext: TAgentToolContext); reintroduce;
+    function GetDefinition: TToolDef; override;
+    function Execute(const Args: TJSONObject): TToolExecutionResult; override;
+  end;
+
+  TToolBrowserPauseAutomation = class(TBrowserToolBase)
+  public
+    constructor Create(AContext: TAgentToolContext); reintroduce;
+    function GetDefinition: TToolDef; override;
+    function Execute(const Args: TJSONObject): TToolExecutionResult; override;
+  end;
+
 implementation
 
 uses
@@ -169,6 +184,12 @@ begin
   Result := JsonErr('USER_DENIED', 'User denied sensitive browser action: ' + Action);
 end;
 
+function TBrowserToolBase.DenyAutomationPaused(S: TBrowserManagedSession): TToolExecutionResult;
+begin
+  Result := JsonErr('AUTOMATION_PAUSED',
+    'Automation is paused for this visible session; call browser_resume_automation when the user is ready');
+end;
+
 function TBrowserToolBase.JsonOk(O: TJSONObject): TToolExecutionResult;
 begin
   O.Add('success', True);
@@ -197,8 +218,11 @@ function TToolBrowserNavigate.GetDefinition: TToolDef;
 begin
   Result.Name := 'browser_navigate';
   Result.Description :=
-    'Navigate a browser session to a URL. Creates a session when session_id is omitted.';
-  SetLength(Result.Params, 5);
+    'Navigate a browser session to a URL. Creates a session when session_id is omitted. ' +
+    'Set visible true on a new session to open a window the user can see and interact with ' +
+    '(manual login, paired UX review); reuse session_id for later browser_* steps. ' +
+    'Prefer default headless for routine automated checks.';
+  SetLength(Result.Params, 6);
   Result.Params[0].Name := 'url';
   Result.Params[0].ParamType := 'string';
   Result.Params[0].Description := 'HTTP or HTTPS URL to open.';
@@ -215,6 +239,11 @@ begin
   Result.Params[4].Name := 'timeout_ms';
   Result.Params[4].ParamType := 'integer';
   Result.Params[4].Description := 'Navigation timeout in milliseconds (default 30000).';
+  Result.Params[5].Name := 'visible';
+  Result.Params[5].ParamType := 'boolean';
+  Result.Params[5].Description :=
+    'When creating a new session, open a visible browser window (default false). ' +
+    'Ignored when session_id is set.';
 end;
 
 function TToolBrowserNavigate.Execute(const Args: TJSONObject): TToolExecutionResult;
@@ -222,6 +251,8 @@ var
   Url, Sid, WaitSel, FinalUrl, Title: string;
   Strategy: TBrowserReadWaitStrategy;
   TimeoutMs: Integer;
+  Visible: Boolean;
+  HadExistingSession: Boolean;
   S: TBrowserManagedSession;
   ErrKind: TBrowserReadErrorKind;
   ErrMsg, Err: string;
@@ -233,6 +264,11 @@ begin
   if Trim(Url) = '' then
     Exit(JsonErr('INVALID_ARGUMENT', 'url is required'));
   Sid := Args.Get('session_id', '');
+  HadExistingSession := Sid <> '';
+  Visible := Args.Get('visible', False);
+  if (Sid <> '') and Visible then
+    Exit(JsonErr('INVALID_ARGUMENT',
+      'visible applies only when creating a session (omit session_id)'));
   if not ParseBrowserReadWaitStrategy(Args.Get('wait_strategy', 'load'), Strategy) then
     Exit(JsonErr('INVALID_ARGUMENT', 'invalid wait_strategy'));
   WaitSel := Args.Get('wait_selector', '');
@@ -249,13 +285,16 @@ begin
         if not FContext.AllowBrowserLocalhost and not Cfg.AllowLocalhost then
           Exit(JsonErr('ACCESS_DENIED', 'Localhost browsing requires permission'));
       if not BrowserSessionCreate(FContext.WorkspaceRoot, FContext.ChatSessionId,
-        FContext.AllowBrowserLocalhost or Cfg.AllowLocalhost, Cfg,
+        FContext.AllowBrowserLocalhost or Cfg.AllowLocalhost, Visible, Cfg,
         @Adapter.Check, S, ErrKind, ErrMsg) then
         Exit(JsonErr(BrowserReadErrorKindToCode(ErrKind), ErrMsg));
       Sid := S.Id;
     end
     else if not GetSession(Sid, S, Err) then
       Exit(JsonErr('SESSION_NOT_FOUND', Err));
+
+    if HadExistingSession and S.Visible and S.AutomationPaused then
+      Exit(DenyAutomationPaused(S));
 
     S.Lock.Enter;
     try
@@ -270,6 +309,8 @@ begin
     O.Add('session_id', Sid);
     O.Add('url', FinalUrl);
     O.Add('title', Title);
+    O.Add('visible', S.Visible);
+    O.Add('automation_paused', S.AutomationPaused);
     O.Add('status', 'ok');
     Result := JsonOk(O);
   finally
@@ -382,6 +423,8 @@ begin
     Exit(DenyInteractive);
   if not GetSession(Args.Get('session_id', ''), S, Err) then
     Exit(JsonErr('SESSION_NOT_FOUND', Err));
+  if S.Visible and S.AutomationPaused then
+    Exit(DenyAutomationPaused(S));
   Sel := Args.Get('selector', '');
   Ref := Args.Get('ref', '');
   if BrowserActionLooksSensitive(Sel, Ref) and not FContext.AllowBrowserSensitive then
@@ -459,6 +502,8 @@ begin
     Exit(DenyInteractive);
   if not GetSession(Args.Get('session_id', ''), S, Err) then
     Exit(JsonErr('SESSION_NOT_FOUND', Err));
+  if S.Visible and S.AutomationPaused then
+    Exit(DenyAutomationPaused(S));
   Val := Args.Get('value', '');
   Adapter := TBrowserCancelAdapter.Create(FContext);
   try
@@ -778,6 +823,8 @@ begin
     Exit(DenyInteractive);
   if not GetSession(Args.Get('session_id', ''), S, Err) then
     Exit(JsonErr('SESSION_NOT_FOUND', Err));
+  if S.Visible and S.AutomationPaused then
+    Exit(DenyAutomationPaused(S));
   Adapter := TBrowserCancelAdapter.Create(FContext);
   try
     S.Lock.Enter;
@@ -835,6 +882,8 @@ var
 begin
   if not GetSession(Args.Get('session_id', ''), S, Err) then
     Exit(JsonErr('SESSION_NOT_FOUND', Err));
+  if S.Visible and S.AutomationPaused then
+    Exit(DenyAutomationPaused(S));
   Adapter := TBrowserCancelAdapter.Create(FContext);
   try
     S.Lock.Enter;
@@ -852,6 +901,90 @@ begin
   finally
     Adapter.Free;
   end;
+end;
+
+constructor TToolBrowserResumeAutomation.Create(AContext: TAgentToolContext);
+begin
+  inherited Create(AContext);
+end;
+
+function TToolBrowserResumeAutomation.GetDefinition: TToolDef;
+begin
+  Result.Name := 'browser_resume_automation';
+  Result.Description :=
+    'Resume agent interactive control on a visible browser session after the user finished manual steps.';
+  SetLength(Result.Params, 1);
+  Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
+  Result.Params[0].Required := True;
+end;
+
+function TToolBrowserResumeAutomation.Execute(const Args: TJSONObject): TToolExecutionResult;
+var
+  S: TBrowserManagedSession;
+  Err: string;
+  O: TJSONObject;
+begin
+  if not GetSession(Args.Get('session_id', ''), S, Err) then
+    Exit(JsonErr('SESSION_NOT_FOUND', Err));
+  if not S.Visible then
+    Exit(JsonErr('INVALID_ARGUMENT',
+      'browser_resume_automation applies only to visible browser sessions'));
+  S.Lock.Enter;
+  try
+    S.AutomationPaused := False;
+    S.Touch;
+  finally
+    S.Lock.Leave;
+  end;
+  O := TJSONObject.Create;
+  O.Add('session_id', S.Id);
+  O.Add('automation_paused', False);
+  O.Add('status', 'ok');
+  Result := JsonOk(O);
+end;
+
+constructor TToolBrowserPauseAutomation.Create(AContext: TAgentToolContext);
+begin
+  inherited Create(AContext);
+end;
+
+function TToolBrowserPauseAutomation.GetDefinition: TToolDef;
+begin
+  Result.Name := 'browser_pause_automation';
+  Result.Description :=
+    'Pause agent interactive control on a visible session so the user can use the browser without competing clicks or fills.';
+  SetLength(Result.Params, 1);
+  Result.Params[0].Name := 'session_id';
+  Result.Params[0].ParamType := 'string';
+  Result.Params[0].Description := 'Browser session id.';
+  Result.Params[0].Required := True;
+end;
+
+function TToolBrowserPauseAutomation.Execute(const Args: TJSONObject): TToolExecutionResult;
+var
+  S: TBrowserManagedSession;
+  Err: string;
+  O: TJSONObject;
+begin
+  if not GetSession(Args.Get('session_id', ''), S, Err) then
+    Exit(JsonErr('SESSION_NOT_FOUND', Err));
+  if not S.Visible then
+    Exit(JsonErr('INVALID_ARGUMENT',
+      'browser_pause_automation applies only to visible browser sessions'));
+  S.Lock.Enter;
+  try
+    S.AutomationPaused := True;
+    S.Touch;
+  finally
+    S.Lock.Leave;
+  end;
+  O := TJSONObject.Create;
+  O.Add('session_id', S.Id);
+  O.Add('automation_paused', True);
+  O.Add('status', 'ok');
+  Result := JsonOk(O);
 end;
 
 end.

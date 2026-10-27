@@ -22,8 +22,9 @@ type
   public
     destructor Destroy; override;
     function Start(const Executable: string; TimeoutMs: Integer;
-      CancelCheck: TBrowserReadCancelCheck; out WebSocketUrl: string;
-      out ErrKind: TBrowserReadErrorKind; out ErrMsg: string): Boolean;
+      AHeadless: Boolean; CancelCheck: TBrowserReadCancelCheck;
+      out WebSocketUrl: string; out ErrKind: TBrowserReadErrorKind;
+      out ErrMsg: string): Boolean;
     procedure Stop;
     function IsRunning: Boolean;
     property OwnedPid: Integer read FOwnedPid;
@@ -249,8 +250,9 @@ begin
 end;
 
 function TBrowserProcess.Start(const Executable: string; TimeoutMs: Integer;
-  CancelCheck: TBrowserReadCancelCheck; out WebSocketUrl: string;
-  out ErrKind: TBrowserReadErrorKind; out ErrMsg: string): Boolean;
+  AHeadless: Boolean; CancelCheck: TBrowserReadCancelCheck;
+  out WebSocketUrl: string; out ErrKind: TBrowserReadErrorKind;
+  out ErrMsg: string): Boolean;
 var
   Args: TStringList;
   Port: Word;
@@ -270,8 +272,11 @@ begin
   Args := TStringList.Create;
   try
     FProcess.Executable := Executable;
-    Args.Add('--headless=new');
-    Args.Add('--disable-gpu');
+    if AHeadless then
+    begin
+      Args.Add('--headless=new');
+      Args.Add('--disable-gpu');
+    end;
     Args.Add('--no-first-run');
     Args.Add('--no-default-browser-check');
     Args.Add('--disable-extensions');
@@ -279,13 +284,17 @@ begin
     Args.Add('--disable-background-networking');
     Args.Add('--disable-default-apps');
     Args.Add('--disable-translate');
-    Args.Add('--mute-audio');
+    if AHeadless then
+      Args.Add('--mute-audio');
     Args.Add('--user-data-dir=' + FUserDataDir);
     Args.Add('--remote-debugging-port=0');
     Args.Add('--remote-allow-origins=*');
     FProcess.Parameters := Args;
     FProcess.Options := [poUsePipes, poNoConsole];
-    FProcess.ShowWindow := swoHide;
+    if AHeadless then
+      FProcess.ShowWindow := swoHide
+    else
+      FProcess.ShowWindow := swoShowNormal;
     FProcess.Execute;
     FOwnedPid := FProcess.ProcessID;
     {$IFDEF MSWINDOWS}

@@ -17,6 +17,7 @@ BROWSER_AUTOMATION_TOOLS = frozenset({
     'browser_navigate', 'browser_inspect', 'browser_click', 'browser_fill',
     'browser_wait', 'browser_close', 'browser_screenshot', 'browser_console',
     'browser_network', 'browser_select', 'browser_set_viewport',
+    'browser_resume_automation', 'browser_pause_automation',
 })
 
 
@@ -63,6 +64,9 @@ def run(driver):
             declarations = call('_declarations')
             assert {d['function']['name'] for d in declarations} == canonical
             assert_tool_parameter_schemas(declarations)
+            nav_decl = next(d for d in declarations if d['function']['name'] == 'browser_navigate')
+            nav_props = nav_decl['function']['parameters'].get('properties') or {}
+            assert nav_props.get('visible', {}).get('type') == 'boolean', nav_props
             readonly = {
                 'read_file', 'list_directory', 'glob', 'search_code', 'diagnostics',
                 'git', 'todo', 'web_fetch', 'browser_read',
