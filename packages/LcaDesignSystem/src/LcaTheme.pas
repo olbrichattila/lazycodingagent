@@ -26,6 +26,11 @@ type
     BorderStrong: TColor;    // Prominent boundary / active splitters
     Text: TColor;            // Primary high-contrast text
     TextMuted: TColor;       // Secondary / hint text
+    { Chat history labels in TLcaMarkdownView (You / Agent / tool / thinking). }
+    ChatLabelUser: TColor;
+    ChatLabelAgent: TColor;
+    ChatLabelTool: TColor;
+    ChatLabelThinking: TColor;
     Accent: TColor;          // Vivid brand / active blue
     AccentHover: TColor;     // Hover state blue
     AccentActive: TColor;    // Active tab / item background
@@ -72,12 +77,14 @@ const
   ThemedComboChevronGutterBase = 22;
   { Logical pt for button captions — like ThemedTabFontSize; LCL scales on DPI-aware forms. }
   ThemedButtonFontSizeBase = 9;
+  { TLcaMarkdownView body — logical pt; do not MulDiv (LCL scales on DPI-aware forms). }
+  ThemedMarkdownBodyFontSizeBase = 11;
   ThemedButtonHorizPadBase = 14;
   ThemedButtonVertPadBase = 2;
   ThemedButtonDescentSafetyBase = 1;
   ThemedButtonHeightBase = 28;
-  { Code editor — logical pt; LCL scales Font.Size on DPI-aware forms. }
-  ThemedEditorFontSizeBase = 6;
+  { SynEdit + terminal — logical pt; LCL scales on DPI-aware forms; do not MulDiv. }
+  ThemedEditorFontSizeBase = 11;
   { Utility Execution Detail memo — logical pt; LCL scales on DPI-aware forms (no MulDiv). }
   ThemedExecDetailFontSizeBase = 10;
   { Main form left nav list boxes — owner-draw row metrics. }
@@ -100,6 +107,7 @@ function ScaledThemedNavListPadV(AControl: TControl): Integer;
 function ScaledThemedNavListRowGap(AControl: TControl): Integer;
 function ThemedButtonCornerRadius(AControl: TControl): Integer;
 function ThemedButtonFontSize(AControl: TControl): Integer;
+function ThemedMarkdownBodyFontSize(AControl: TControl): Integer;
 function ThemedButtonHorizPad(AControl: TControl): Integer;
 function ThemedButtonVertPad(AControl: TControl): Integer;
 function ScaledThemedButtonHeight(AControl: TControl): Integer;
@@ -116,6 +124,7 @@ function ScaledThemedMenuBarHeight(AControl: TControl): Integer;
 function ScaledThemedWindowChromeButtonWidth(AControl: TControl): Integer;
 function ScaledThemedMenuPopupItemHeight(AControl: TControl): Integer;
 function MenuItemDisplayCaption(const ACaption: string): string;
+function ThemedEditorFontSize(AControl: TControl): Integer;
 function ScaledEditorFontSize(AControl: TControl): Integer;
 function ThemedMonospaceFontName: string;
 function ThemedUiFontName: string;
@@ -349,9 +358,15 @@ begin
   end;
 end;
 
+function ThemedEditorFontSize({%H-}AControl: TControl): Integer;
+begin
+  Result := ThemedEditorFontSizeBase;
+end;
+
+{ Legacy name — returns logical pt only; no PPI MulDiv. }
 function ScaledEditorFontSize(AControl: TControl): Integer;
 begin
-  Result := ScaledThemedTabMetric(AControl, ThemedEditorFontSizeBase);
+  Result := ThemedEditorFontSize(AControl);
 end;
 
 function ThemedMonospaceFontName: string;
@@ -408,7 +423,7 @@ begin
   if not Assigned(AFont) then Exit;
   AFont.Name := ThemedMonospaceFontName;
   AFont.Pitch := fpFixed;
-  AFont.Size := ScaledEditorFontSize(AMetricsControl);
+  AFont.Size := ThemedEditorFontSize(AMetricsControl);
 end;
 
 function ThemedComboCornerRadius(AControl: TControl): Integer;
@@ -429,6 +444,11 @@ end;
 function ThemedButtonFontSize({%H-}AControl: TControl): Integer;
 begin
   Result := ThemedButtonFontSizeBase;
+end;
+
+function ThemedMarkdownBodyFontSize({%H-}AControl: TControl): Integer;
+begin
+  Result := ThemedMarkdownBodyFontSizeBase;
 end;
 
 function ThemedButtonHorizPad(AControl: TControl): Integer;
@@ -734,6 +754,10 @@ begin
     Result.BorderStrong   := RGBToColor(0, 200, 255);     // cyan glow edge
     Result.Text           := RGBToColor(240, 248, 255);   // #F0F8FF
     Result.TextMuted      := RGBToColor(140, 160, 195);   // #8CA0C3
+    Result.ChatLabelUser  := RGBToColor(125, 220, 175);   // #7DDCAF
+    Result.ChatLabelAgent := RGBToColor(0, 229, 255);     // match Accent
+    Result.ChatLabelTool  := RGBToColor(245, 180, 95);    // #F5B45F
+    Result.ChatLabelThinking := RGBToColor(180, 165, 235); // #B4A5EB
     Result.Accent         := RGBToColor(0, 229, 255);     // #00E5FF
     Result.AccentHover    := RGBToColor(56, 189, 248);    // #38BDF8
     Result.AccentActive   := RGBToColor(30, 45, 85);       // selected rail/tab
@@ -754,6 +778,10 @@ begin
     Result.BorderStrong   := RGBToColor(180, 186, 198);   // #B4BAC6
     Result.Text           := RGBToColor(24, 28, 36);      // #181C24
     Result.TextMuted      := RGBToColor(100, 110, 125);   // #646E7D
+    Result.ChatLabelUser  := RGBToColor(5, 150, 105);     // #059669
+    Result.ChatLabelAgent := RGBToColor(37, 99, 235);     // match Accent
+    Result.ChatLabelTool  := RGBToColor(180, 83, 9);      // #B45309
+    Result.ChatLabelThinking := RGBToColor(109, 40, 217); // #6D28D9
     Result.Accent         := RGBToColor(37, 99, 235);     // #2563EB
     Result.AccentHover    := RGBToColor(29, 78, 216);     // #1D4ED8
     Result.AccentActive   := RGBToColor(224, 236, 255);   // #E0ECFF

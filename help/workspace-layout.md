@@ -49,7 +49,7 @@ Failures are also appended to `tool-errors.log` under the same user config folde
 The center header tab strip switches three **PageControl** pages (no **+** on this strip):
 
 - **Chat** — a **session tab strip** under the page header lists every non-archived chat (**+** for new session, **✕** to archive). Below that: conversation history rendered as **Markdown** (headings, bold, code, lists — subset, not full GFM), current session label, composer, mode and model combos, Stop and Run.
-- **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing). Font size scales with display DPI.
+- **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing). Font size scales with display DPI. Use normal mouse selection and **Ctrl+C** / **Ctrl+A** (and other standard SynEdit shortcuts) to copy code.
 - **Markdown** — formatted preview when you open a `.md` file and choose **Preview** (same HTML renderer as chat). Choose **Source** to edit in the Editor tab.
 
 There are **no** per-file editor tabs. Switch sessions from the Chat session tabs or **Sessions** in the nav rail; open another file from **Projects**.

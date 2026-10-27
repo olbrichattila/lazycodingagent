@@ -60,13 +60,20 @@ begin
 end;
 
 procedure TThemedMessageForm.LayoutFooterButtons;
+var
+  RightEdge: Integer;
 begin
-  btnThird.Visible := False;
-  btnSecond.Visible := False;
-  btnFirst.Visible := True;
-  btnFirst.Left := pnlFooter.ClientWidth - btnFirst.Width - 16;
-  btnSecond.Left := btnFirst.Left - btnSecond.Width - 8;
-  btnThird.Left := 16;
+  RightEdge := pnlFooter.ClientWidth - 16;
+  if btnFirst.Visible then begin
+    btnFirst.Left := RightEdge - btnFirst.Width;
+    RightEdge := btnFirst.Left - 8;
+  end;
+  if btnSecond.Visible then begin
+    btnSecond.Left := RightEdge - btnSecond.Width;
+    RightEdge := btnSecond.Left - 8;
+  end;
+  if btnThird.Visible then
+    btnThird.Left := 16;
 end;
 
 function TThemedMessageForm.Execute(const ACaption, AText: string; DlgType: TMsgDlgType;

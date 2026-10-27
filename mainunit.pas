@@ -25,6 +25,7 @@ type
   TLazyCodingAgentForm = class(TForm)
   published
     lcaTitleBar: TLcaThemedTitleBar;
+    Panel1: TPanel;
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
     sbtnNavBrain: TLcaPaintNavRailButton;

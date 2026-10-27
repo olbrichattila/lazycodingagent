@@ -47,6 +47,9 @@ begin
 
   FHighlighter := CreateGenericClikeHighlighter(AOwner);
   if Assigned(FEditor) then begin
+    if FEditor.KeyStrokes.Count = 0 then
+      FEditor.SetDefaultKeystrokes;
+    FEditor.ResetMouseActions;
     FEditor.Highlighter := FHighlighter;
     FEditor.OnChange := @EditorChange;
     FEditor.OnKeyDown := @EditorKeyDown;

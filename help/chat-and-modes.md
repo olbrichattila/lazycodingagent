@@ -86,6 +86,10 @@ Optional fields on the same tab:
 
 When summarization runs, chat shows a brief assistant note: *Context summarized to continue the conversation.*
 
+## Copying text from chat
+
+Click and drag in the **conversation history** to select rendered text (what you see on screen, not raw Markdown markers). **Double-click** selects a word. **Ctrl+C** copies the selection; **Ctrl+A** selects the full history. Selection clears when new content is appended during a streaming reply. The same selection and shortcuts work in **plan**, **help**, and **Markdown preview** panes that use the canvas Markdown view.
+
 ## Cancel and exit
 
 Use **Stop** / cancel in the chat UI to abort an active run. Quitting the app with runs in progress should prompt to stop them cleanly.
