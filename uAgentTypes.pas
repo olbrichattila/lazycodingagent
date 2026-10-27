@@ -8,7 +8,8 @@ uses
   Classes, SysUtils, fpjson, jsonparser;
 
 const
-  DEFAULT_MAX_OUTPUT_TOKENS = 16384;
+  DEFAULT_MAX_OUTPUT_TOKENS = 8192;
+  DEFAULT_MAX_AGENT_STEPS = 200;
   MIN_MAX_OUTPUT_TOKENS = 256;
   MAX_MAX_OUTPUT_TOKENS = 200000;
   RECOMMENDED_MIN_OUTPUT_TOKENS = 2048;
@@ -35,13 +36,30 @@ type
     asError
   );
 
-  { LLM Provider Target }
+  { LLM Provider Target (order matches uLlmProviderCatalog combo) }
   TLlmProvider = (
-    lpOpenRouter,
     lpOpenAI,
-    lpAnthropic,
-    lpOllama,
     lpNousResearch,
+    lpOpenRouter,
+    lpGroq,
+    lpTogetherAI,
+    lpFireworksAI,
+    lpDeepSeek,
+    lpGoogleGemini,
+    lpXAI,
+    lpMistralAI,
+    lpCerebras,
+    lpNebiusAI,
+    lpNovitaAI,
+    lpHyperbolic,
+    lpDeepInfra,
+    lpSambaNova,
+    lpMoonshotAI,
+    lpHuggingFace,
+    lpVeniceAI,
+    lpLeptonAI,
+    lpPerplexity,
+    lpAnyscale,
     lpCustom
   );
 
@@ -114,6 +132,9 @@ type
 
 implementation
 
+uses
+  uLlmProviderCatalog;
+
 function ChatRoleToString(ARole: TChatRole): string;
 begin
   case ARole of
@@ -146,24 +167,26 @@ end;
 
 function LlmProviderToString(AProv: TLlmProvider): string;
 begin
-  case AProv of
-    lpOpenRouter: Result := 'OpenRouter';
-    lpOpenAI: Result := 'OpenAI';
-    lpAnthropic: Result := 'Anthropic';
-    lpOllama: Result := 'Ollama';
-    lpNousResearch: Result := 'Nous Research';
-    lpCustom: Result := 'Custom / OpenAI Compatible';
-  end;
+  Result := LlmProviderCatalogName(AProv);
 end;
 
 function StringToLlmProvider(const S: string): TLlmProvider;
+var
+  P: TLlmProvider;
+  T: string;
 begin
-  if SameText(S, 'OpenRouter') then Result := lpOpenRouter
-  else if SameText(S, 'OpenAI') then Result := lpOpenAI
-  else if SameText(S, 'Anthropic') then Result := lpAnthropic
-  else if SameText(S, 'Ollama') then Result := lpOllama
-  else if SameText(S, 'Nous Research') or SameText(S, 'Nous') then Result := lpNousResearch
-  else Result := lpCustom;
+  T := Trim(S);
+  if T = '' then
+    Exit(lpCustom);
+  for P := Low(TLlmProvider) to High(TLlmProvider) do
+    if SameText(T, LlmProviderCatalogName(P)) then
+      Exit(P);
+  if SameText(T, 'Nous') then
+    Exit(lpNousResearch);
+  if SameText(T, 'Anthropic') or SameText(T, 'Ollama') or
+     SameText(T, 'Custom / OpenAI Compatible') then
+    Exit(lpCustom);
+  Result := lpCustom;
 end;
 
 function AgentStateToString(AState: TAgentState): string;

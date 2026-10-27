@@ -2,7 +2,7 @@ program test_llm_provider_payload;
 {$mode objfpc}{$H+}
 uses
   SysUtils, fpjson, uAgentTypes, uLlmPromptCacheTypes, uLlmRequestAnthropic,
-  uLlmCacheCapabilities;
+  uLlmCacheCapabilities, uLlmProviderCatalog;
 
 procedure TestAnthropicUrl;
 begin
@@ -47,7 +47,7 @@ procedure TestWireFormatAnthropicDirect;
 var
   Wire: TLlmWireFormat;
 begin
-  Wire := ResolveLlmWireFormat(lpAnthropic, 'https://api.anthropic.com/v1', 'claude-3-5-sonnet');
+  Wire := ResolveLlmWireFormat(lpCustom, 'https://api.anthropic.com/v1', 'claude-3-5-sonnet');
   if Wire <> lwfAnthropicMessages then
     raise Exception.Create('Direct Anthropic must use messages wire format');
   Wire := ResolveLlmWireFormat(lpOpenRouter, 'https://openrouter.ai/api/v1', 'anthropic/claude-3.5');
@@ -55,9 +55,25 @@ begin
     raise Exception.Create('OpenRouter must stay OpenAI-compatible');
 end;
 
+procedure TestMigrateLegacyProviderOrd;
+var
+  P: TLlmProvider;
+  LabelStr: string;
+begin
+  if not MigrateLegacyProviderOrd(LEGACY_PROV_OPENROUTER, P, LabelStr) then
+    raise Exception.Create('OpenRouter legacy ord must migrate');
+  if P <> lpOpenRouter then
+    raise Exception.Create('Legacy OpenRouter must map to lpOpenRouter');
+  if not MigrateLegacyProviderOrd(LEGACY_PROV_ANTHROPIC, P, LabelStr) then
+    raise Exception.Create('Anthropic legacy ord must migrate');
+  if (P <> lpCustom) or (LabelStr <> 'Anthropic') then
+    raise Exception.Create('Legacy Anthropic must map to Custom');
+end;
+
 begin
   TestAnthropicUrl;
   TestExplicitBreakpointsOmittedWhenDisabled;
   TestWireFormatAnthropicDirect;
+  TestMigrateLegacyProviderOrd;
   WriteLn('LLM provider payload tests passed.');
 end.

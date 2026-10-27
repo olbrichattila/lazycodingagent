@@ -102,6 +102,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uLlmProviderCatalog.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uLlmClient.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

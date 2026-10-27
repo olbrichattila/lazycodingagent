@@ -60,20 +60,21 @@ begin
   Url := Lower(Trim(ABaseUrl));
   Host := Lower(BaseUrlHost(ABaseUrl));
   if (Host = 'api.anthropic.com') or
-     ((AProvider = lpAnthropic) and (Url <> '') and (Pos('chat/completions', Url) = 0)) then
+     ((Url <> '') and (Pos('anthropic', Host) > 0) and (Pos('chat/completions', Url) = 0)) then
     Exit(lwfAnthropicMessages);
   if (Pos('generativelanguage.googleapis.com', Url) > 0) or
-     ((AProvider in [lpCustom, lpOpenAI]) and ModelLooksLikeGemini(AModel) and
+     ((AProvider in [lpCustom, lpOpenAI, lpGoogleGemini]) and ModelLooksLikeGemini(AModel) and
       (Pos('google', Url) > 0)) then
     Exit(lwfGemini);
-  if (AProvider = lpAnthropic) and (Trim(ABaseUrl) = '') then
-    Exit(lwfAnthropicMessages);
   Result := lwfOpenAiChat;
 end;
 
 function ResolveCacheCapabilities(AProvider: TLlmProvider; const ABaseUrl, AModel: string;
   AWire: TLlmWireFormat): TPromptCacheCapabilities;
+var
+  Host: string;
 begin
+  Host := Lower(BaseUrlHost(ABaseUrl));
   Result := DefaultPromptCacheCapabilities;
   case AWire of
     lwfAnthropicMessages:
@@ -100,7 +101,7 @@ begin
         Result.SupportsAutomaticCaching := True;
         Result.ReportsCachedTokens := True;
       end;
-      if AProvider = lpOllama then
+      if (Host = 'localhost') or (Host = '127.0.0.1') or (Pos('ollama', Host) > 0) then
         Result.SupportsAutomaticCaching := True;
     end;
   end;

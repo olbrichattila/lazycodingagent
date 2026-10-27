@@ -8,8 +8,8 @@ uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, ComCtrls, LCLType, LcaPaintButton, LcaPaintComboBox,
   LcaThemedPageTabBar,
   uAppTypes, uAgentTypes, LcaTheme, LcaThemedMessageBox, uWorkspaceState, uWorkspaceRegistry,
-  
-  uLlmClient, frmModelSearch, frmEditSavedModel, uChatContextManager, uBrowserReadConfig,
+  LCLIntf,
+  uLlmClient, uLlmProviderCatalog, frmModelSearch, frmEditSavedModel, uChatContextManager, uBrowserReadConfig,
   fraWebSearchSettings, fraPromptCacheSettings;
 
 type
@@ -34,6 +34,9 @@ type
 
     lblProvider: TLabel;
     cboProvider: TLcaPaintComboBox;
+    lblCustomName: TLabel;
+    edtCustomName: TEdit;
+    btnOpenProviderPortal: TLcaPaintButton;
     lblApiKey: TLabel;
     edtApiKey: TEdit;
     lblBaseUrl: TLabel;
@@ -75,6 +78,7 @@ type
     procedure FormShow(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure cboProviderChange(Sender: TObject);
+    procedure btnOpenProviderPortalClick(Sender: TObject);
     procedure lstModelsClick(Sender: TObject);
     procedure lstModelsDrawItem(Control: TWinControl; Index: Integer;
       ARect: TRect; State: TOwnerDrawState);
@@ -108,6 +112,8 @@ type
     procedure UpdateMaxTokensHint;
     procedure FlushCredentialsToState(AProv: TLlmProvider);
     procedure LoadProviderTab(AProv: TLlmProvider);
+    procedure RefreshProviderComboItem;
+    procedure UpdateProviderAuxiliaryFields(AProv: TLlmProvider);
     procedure RefreshModelList;
     procedure ModelSearchAdd(Sender: TObject; const AModelId, ADisplayName: string);
   public
@@ -251,6 +257,10 @@ begin
   edtApiKey.Font.Color := P.Text;
   edtBaseUrl.Color := P.SurfaceAlt;
   edtBaseUrl.Font.Color := P.Text;
+  if Assigned(edtCustomName) then begin
+    edtCustomName.Color := P.SurfaceAlt;
+    edtCustomName.Font.Color := P.Text;
+  end;
   ApplyPlatformChrome(Self, ATheme);
   ApplyPlatformScrollableThemeRecursive(Self, ATheme);
   ConfigureThemedListBox(lstModels, ATheme);
@@ -309,6 +319,34 @@ procedure TSettingsForm.FlushCredentialsToState(AProv: TLlmProvider);
 begin
   if not Assigned(FState) then Exit;
   FState.SetProviderCredentials(AProv, Trim(edtApiKey.Text), Trim(edtBaseUrl.Text));
+  if LlmProviderIsCustom(AProv) then
+    FState.SetProviderCustomDisplayName(AProv, Trim(edtCustomName.Text));
+end;
+
+procedure TSettingsForm.RefreshProviderComboItem;
+var
+  CustomName: string;
+begin
+  if not Assigned(FState) then Exit;
+  CustomName := FState.GetProviderCustomDisplayName(lpCustom);
+  PopulateLlmProviderCombo(cboProvider.Items, CustomName);
+  if (Ord(FDialogProvider) >= 0) and (Ord(FDialogProvider) < cboProvider.Items.Count) then
+    cboProvider.ItemIndex := Ord(FDialogProvider);
+end;
+
+procedure TSettingsForm.UpdateProviderAuxiliaryFields(AProv: TLlmProvider);
+var
+  PortalUrl: string;
+  ShowCustom: Boolean;
+begin
+  ShowCustom := LlmProviderIsCustom(AProv);
+  if Assigned(lblCustomName) then
+    lblCustomName.Visible := ShowCustom;
+  if Assigned(edtCustomName) then
+    edtCustomName.Visible := ShowCustom;
+  PortalUrl := LlmProviderRegistrationUrl(AProv);
+  if Assigned(btnOpenProviderPortal) then
+    btnOpenProviderPortal.Visible := (not ShowCustom) and (Trim(PortalUrl) <> '');
 end;
 
 procedure TSettingsForm.LoadProviderTab(AProv: TLlmProvider);
@@ -319,7 +357,19 @@ begin
   FState.GetProviderCredentials(AProv, Key, Url);
   edtApiKey.Text := Key;
   edtBaseUrl.Text := Url;
+  if Assigned(edtCustomName) then
+    edtCustomName.Text := FState.GetProviderCustomDisplayName(lpCustom);
+  UpdateProviderAuxiliaryFields(AProv);
   RefreshModelList;
+end;
+
+procedure TSettingsForm.btnOpenProviderPortalClick(Sender: TObject);
+var
+  Url: string;
+begin
+  Url := LlmProviderRegistrationUrl(CurrentDialogProvider);
+  if Trim(Url) <> '' then
+    OpenURL(Url);
 end;
 
 procedure TSettingsForm.RefreshModelList;
@@ -358,9 +408,9 @@ begin
 
   FSwitchingProvider := True;
   try
-    cboProvider.ItemIndex := Ord(FState.Provider);
     FDialogProvider := FState.Provider;
     FDefaultModelId := FState.Model;
+    RefreshProviderComboItem;
     LoadProviderTab(FDialogProvider);
   finally
     FSwitchingProvider := False;
@@ -401,7 +451,7 @@ begin
   FState.Temperature := StrToFloatDef(edtTemp.Text, 0.2);
   FState.MaxTokens := ClampMaxOutputTokens(StrToIntDef(edtMaxTokens.Text, DEFAULT_MAX_OUTPUT_TOKENS));
   edtMaxTokens.Text := IntToStr(FState.MaxTokens);
-  FState.MaxSteps := StrToIntDef(edtMaxSteps.Text, 20);
+  FState.MaxSteps := StrToIntDef(edtMaxSteps.Text, DEFAULT_MAX_AGENT_STEPS);
   FState.DebuggingMode := chkDebuggingMode.Checked;
   FState.LearnMode := chkLearnMode.Checked;
   FState.AutoSummarizeContext := chkAutoSummarizeContext.Checked;
@@ -438,6 +488,7 @@ begin
 
   FlushCredentialsToState(FDialogProvider);
   FDialogProvider := NewProv;
+  RefreshProviderComboItem;
   LoadProviderTab(FDialogProvider);
 end;
 

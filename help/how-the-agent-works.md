@@ -20,7 +20,7 @@ After you send a message, the engine roughly does:
 3. Optionally **compact history** when auto-summarize is enabled and the prompt is near the configured context window (`uChatContextManager`).
 4. Call the **LLM** with the message list and tool definitions. User turns with images are sent as **multimodal** content (text plus image URLs) to OpenAI-compatible APIs; **tools remain text/JSON only**. If output is truncated by **Max Output Tokens**, the engine may retry with a higher temporary limit before continuing.
 5. If the model returns **tool calls**, run each tool locally and append **tool result** messages (including JSON with an `error` field when a tool fails).
-6. Repeat steps 3–5 until the model answers **without** tool calls, you **cancel**, or a **step limit** is reached (default 20 steps).
+6. Repeat steps 3–5 until the model answers **without** tool calls, you **cancel**, or a **step limit** is reached (default 200 steps).
 
 Unexpected tool exceptions are caught at the tool boundary, converted to the same error JSON shape, and returned to the model so the loop can continue instead of stopping under the debugger.
 
@@ -55,7 +55,7 @@ Plan and Ask still use read/search/git tools to understand the tree.
 
 - **Assistant messages** — model text and (in debugging mode) full tool JSON in chat.
 - **Live tool trace** — while a run is in progress, chat shows muted lines starting with **-**, then the tool name and a short summary of its arguments (for example **read_file · src/foo.pas** or **git · status**) when the model invokes a tool (display only; not sent back to the model). An ephemeral **Thinking…** line may appear while waiting on the model. Neither trace nor thinking lines are kept when the transcript is reloaded from saved messages.
-- **State** — idle, thinking, executing tool, finished, or error. During a run the status bar includes **step N/M** (for example `Thinking... (step 2/20)`), where **M** is **Max steps** from Settings.
+- **State** — idle, thinking, executing tool, finished, or error. During a run the status bar includes **step N/M** (for example `Thinking... (step 2/200)`), where **M** is **Max steps** from Settings.
 - **Execution log** (navigation **Tools & Logs**) — per-step trace with plain captions (`User:`, `Step N/M · Model:`, `Step N/M · tool_name(...)`). Click a row to inspect it in the utility **Execution Detail** panel. With **Learn mode** enabled in Settings, new log rows **follow** into Execution Detail during a run unless you click an older row (click the latest row again to resume follow).
 - **Step limit** — if the loop uses all allowed steps and the model still wanted tools, the assistant posts a short note that the step limit was reached (configure **Max steps** in Settings).
 - **Tool Errors** — failed tools for the session, plus a shared `tool-errors.log` file under your user config folder.

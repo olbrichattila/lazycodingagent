@@ -125,6 +125,9 @@ jobs:
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
 
+      - name: Install MinGW (compile SQLite amalgamation)
+        run: choco install mingw -y --no-progress
+
       - name: Build and link static SQLite
         shell: pwsh
         run: ./scripts/install-lazarus-sqlite.ps1

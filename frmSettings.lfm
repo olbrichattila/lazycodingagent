@@ -93,51 +93,77 @@ object SettingsForm: TSettingsForm
             OnChange = cboProviderChange
             TabOrder = 0
           end
+          object lblCustomName: TLabel
+            Left = 32
+            Height = 36
+            Top = 118
+            Width = 280
+            Caption = 'Custom provider name'
+            Visible = False
+          end
+          object edtCustomName: TEdit
+            Left = 32
+            Height = 44
+            Top = 158
+            Width = 1008
+            TabOrder = 1
+            Visible = False
+          end
           object lblApiKey: TLabel
             Left = 32
             Height = 36
-            Top = 144
+            Top = 216
             Width = 240
             Caption = 'API Key (or Secret)'
           end
           object edtApiKey: TEdit
             Left = 32
             Height = 44
-            Top = 184
+            Top = 256
             Width = 1008
             EchoMode = emPassword
             PasswordChar = '*'
-            TabOrder = 1
+            TabOrder = 2
           end
           object lblBaseUrl: TLabel
             Left = 32
             Height = 36
-            Top = 256
+            Top = 328
             Width = 238
             Caption = 'Base API Endpoint'
           end
           object edtBaseUrl: TEdit
             Left = 32
             Height = 44
-            Top = 296
+            Top = 368
             Width = 1008
-            TabOrder = 2
-            Text = 'https://openrouter.ai/api/v1'
+            TabOrder = 3
+          end
+          object btnOpenProviderPortal: TLcaPaintButton
+            Cursor = crHandPoint
+            Left = 32
+            Height = 48
+            Top = 424
+            Width = 280
+            Caption = 'Open provider portal'
+            Visible = False
+            OnClick = btnOpenProviderPortalClick
+            TabOrder = 4
           end
           object lblModels: TLabel
             Left = 32
             Height = 36
-            Top = 368
+            Top = 488
             Width = 445
             Caption = 'Saved models (default = selection)'
           end
           object lstModels: TListBox
             Left = 32
             Height = 240
-            Top = 408
+            Top = 528
             Width = 1008
             ItemHeight = 44
-            TabOrder = 3
+            TabOrder = 5
             TopIndex = -1
             OnClick = lstModelsClick
             OnDrawItem = lstModelsDrawItem
@@ -147,29 +173,29 @@ object SettingsForm: TSettingsForm
             Cursor = crHandPoint
             Left = 32
             Height = 56
-            Top = 672
+            Top = 792
             Width = 240
             Caption = 'Fetch Models...'
             ButtonRole = tbrPrimary
             OnClick = btnFetchModelsClick
-            TabOrder = 4
+            TabOrder = 6
           end
           object btnEditModel: TLcaPaintButton
             Cursor = crHandPoint
             Left = 288
             Height = 56
-            Top = 672
+            Top = 792
             Width = 176
             Caption = 'Edit...'
             OnClick = btnEditModelClick
-            TabOrder = 5
+            TabOrder = 7
           end
           object btnDeleteModel: TLcaPaintButton
             Tag = 2
             Cursor = crHandPoint
             Left = 480
             Height = 56
-            Top = 672
+            Top = 792
             Width = 176
             Caption = 'Delete'
             ButtonRole = tbrDestructive
@@ -242,7 +268,7 @@ object SettingsForm: TSettingsForm
               Top = 192
               Width = 400
               TabOrder = 1
-              Text = '16384'
+              Text = '8192'
             end
             object lblMaxSteps: TLabel
               Left = 32
@@ -257,7 +283,7 @@ object SettingsForm: TSettingsForm
               Top = 312
               Width = 400
               TabOrder = 2
-              Text = '20'
+              Text = '200'
             end
             object chkDebuggingMode: TCheckBox
               Left = 32

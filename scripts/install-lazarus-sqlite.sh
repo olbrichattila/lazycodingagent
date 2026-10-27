@@ -7,5 +7,5 @@ LAZBUILD="${LAZBUILD:-lazbuild}"
 LPK="$ROOT/packages/LazySqliteStatic/LazySqliteStatic.lpk"
 
 "$ROOT/scripts/build-sqlite-static.sh"
-"$LAZBUILD" --add-package-link "$LPK"
+"$ROOT/scripts/ci-lazbuild.sh" --add-package-link "$LPK"
 echo "LazySqliteStatic is linked for lazbuild."

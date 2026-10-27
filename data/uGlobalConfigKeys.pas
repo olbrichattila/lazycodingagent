@@ -14,6 +14,7 @@ const
 
   KEY_LLM_CONFIG_VERSION = 'llm.config_version';
   KEY_LLM_PROVIDER = 'llm.provider';
+  KEY_LLM_CUSTOM_DISPLAY_NAME = 'llm.custom_display_name';
   KEY_LLM_TEMPERATURE = 'llm.temperature';
   KEY_LLM_MAX_TOKENS = 'llm.max_tokens';
   KEY_LLM_MAX_STEPS = 'llm.max_steps';

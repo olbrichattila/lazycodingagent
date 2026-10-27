@@ -42,11 +42,15 @@ SRC_OBJ="$ROOT/packages/LazySqliteStatic/src/sqlite3_embed.o"
 
 CFLAGS=(
   -c -O2 -fPIC
-  -Wno-discarded-qualifiers
   -DSQLITE_ENABLE_FTS5
   -DSQLITE_THREADSAFE=1
   -DSQLITE_ENABLE_JSON1
 )
+if [[ "$TARGET_OS" == darwin ]]; then
+  CFLAGS+=( -Wno-ignored-qualifiers )
+else
+  CFLAGS+=( -Wno-discarded-qualifiers )
+fi
 
 if [[ "${BUILD_SQLITE_VEC:-0}" == "1" ]]; then
   echo "BUILD_SQLITE_VEC=1: sqlite-vec hook not implemented yet" >&2

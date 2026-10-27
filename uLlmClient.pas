@@ -206,7 +206,7 @@ begin
   inherited Create;
   FProvider := lpOpenRouter;
   FApiKey := '';
-  FBaseUrl := 'https://openrouter.ai/api/v1';
+  FBaseUrl := '';
   FModel := 'anthropic/claude-3.7-sonnet';
   FTemperature := 0.2;
   FMaxTokens := DEFAULT_MAX_OUTPUT_TOKENS;
@@ -427,13 +427,13 @@ begin
   Result.Add('Accept: application/json');
   Result.Add('User-Agent: LazyCodingAgent/1.0');
   if Trim(FApiKey) <> '' then begin
-    if FProvider = lpAnthropic then begin
+    if ResolveLlmWireFormat(FProvider, FBaseUrl, FModel) = lwfAnthropicMessages then begin
       Result.Add('x-api-key: ' + Trim(FApiKey));
       Result.Add('anthropic-version: 2023-06-01');
     end else
       Result.Add('Authorization: Bearer ' + Trim(FApiKey));
   end;
-  if FProvider = lpOpenRouter then begin
+  if (FProvider = lpOpenRouter) or (Pos('openrouter.ai', LowerCase(BaseUrlHost(FBaseUrl))) > 0) then begin
     Result.Add('HTTP-Referer: https://github.com/lazycodingagent');
     Result.Add('X-Title: LazyCodingAgent');
   end;
@@ -444,16 +444,6 @@ var
   Url: string;
 begin
   Url := Trim(FBaseUrl);
-  if Url = '' then begin
-    case FProvider of
-      lpOpenRouter: Url := 'https://openrouter.ai/api/v1';
-      lpOpenAI: Url := 'https://api.openai.com/v1';
-      lpAnthropic: Url := 'https://api.anthropic.com/v1';
-      lpOllama: Url := 'http://localhost:11434/v1';
-      lpNousResearch: Url := 'https://inference-api.nousresearch.com/v1';
-      else Url := 'https://openrouter.ai/api/v1';
-    end;
-  end;
   if (Length(Url) >= 7) and SameText(Copy(Url, Length(Url) - 6, 7), '/models') then
     Result := Url
   else if Url[Length(Url)] = '/' then
@@ -657,16 +647,6 @@ var
   Url: string;
 begin
   Url := Trim(FBaseUrl);
-  if Url = '' then begin
-    case FProvider of
-      lpOpenRouter: Url := 'https://openrouter.ai/api/v1';
-      lpOpenAI: Url := 'https://api.openai.com/v1';
-      lpAnthropic: Url := 'https://api.anthropic.com/v1';
-      lpOllama: Url := 'http://localhost:11434/v1';
-      lpNousResearch: Url := 'https://inference-api.nousresearch.com/v1';
-      else Url := 'https://openrouter.ai/api/v1';
-    end;
-  end;
   if not (Copy(Url, Length(Url) - 15, 16) = '/chat/completions') then begin
     if Url[Length(Url)] = '/' then
       Url := Url + 'chat/completions'
@@ -788,6 +768,12 @@ function TLlmClient.ListModels: TLlmModelListResult;
 var
   Url, RespStr: string;
 begin
+  if Trim(FBaseUrl) = '' then begin
+    Result.Success := False;
+    Result.ErrorMessage := 'Set Base API Endpoint in Settings.';
+    SetLength(Result.Models, 0);
+    Exit;
+  end;
   Url := ModelsListUrl;
   if SendHttpGet(Url, RespStr) then
     Result := ParseModelsResponse(RespStr)
@@ -816,6 +802,11 @@ var
   CacheSettings: TPromptCacheSettings;
   CacheCapabilities: TPromptCacheCapabilities;
 begin
+  if Trim(FBaseUrl) = '' then begin
+    Result.Success := False;
+    Result.ErrorMessage := 'Set Base API Endpoint in Settings.';
+    Exit;
+  end;
   Wire := ResolveLlmWireFormat(FProvider, FBaseUrl, FModel);
   CacheCapabilities := ResolveCacheCapabilities(FProvider, FBaseUrl, FModel, Wire);
   CacheSettings := FPromptCacheSettings;

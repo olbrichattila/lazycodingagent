@@ -165,7 +165,7 @@ constructor TAgentEngine.Create(const AWorkspaceRoot: string);
 begin
   inherited Create;
   FState := asIdle;
-  FMaxSteps := 20;
+  FMaxSteps := DEFAULT_MAX_AGENT_STEPS;
   FAutoSummarizeContext := True;
   FContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
   FSummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;

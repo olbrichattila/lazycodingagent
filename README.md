@@ -173,7 +173,7 @@ chmod +x scripts/install-lazarus-sqlite.sh
 ./scripts/install-lazarus-sqlite.sh
 ```
 
-**Windows:**
+**Windows:** needs a **real MinGW `gcc`** to compile the C amalgamation (not FPC’s windres `gcc` stub). Install [Chocolatey `mingw`](https://community.chocolatey.org/packages/mingw) (`choco install mingw`) or set **`SQLITE_CC`** to your `gcc.exe`. CI installs `mingw` before this step.
 
 ```bat
 scripts\install-lazarus-sqlite.ps1

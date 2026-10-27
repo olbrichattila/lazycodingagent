@@ -41,6 +41,12 @@ You can attach **screenshots and mockups** so a **vision-capable model** can see
 
 The **model** combo lists models you configured in Settings. The choice is kept with the workspace and shown on the status bar when relevant.
 
+## LLM provider and endpoint
+
+**Settings → Provider** offers a fixed catalog of hosted inference providers plus **Custom**. The app does **not** fill in a default API base URL—you enter the **Base API Endpoint** from your provider’s documentation (OpenAI-compatible `/v1` style for most entries). Use **Open provider portal** for signup links when available.
+
+**Custom** is a single profile: set a **display name**, endpoint URL, API key, and saved models like any other provider. Per-provider API keys and URLs are stored separately so you can switch providers without retyping.
+
 ## Debugging mode vs live trace
 
 In **Settings → Agent Behavior**, enable **Debugging mode** to show **full tool results** in the chat transcript. When disabled, successful tool JSON stays out of chat; **errors** still appear.
@@ -67,11 +73,11 @@ When **Learn mode** is on, sending a prompt:
 
 ## Step limit
 
-**Max steps** in Settings caps how many LLM round-trips one send can take (default 20). The status bar shows the current step during a run. If the cap is hit while the model still requested tools, the assistant adds a brief step-limit message instead of ending silently.
+**Max steps** in Settings caps how many LLM round-trips one send can take (default **200**). The status bar shows the current step during a run. If the cap is hit while the model still requested tools, the assistant adds a brief step-limit message instead of ending silently.
 
 ## Max output tokens and truncation
 
-**Max Output Tokens** in **Settings → Agent Behavior** limits how much the model can generate in one completion (default **16384** for new installs). Agent runs that emit large tool-call JSON or long replies need enough headroom; values below about **2048** often truncate tool arguments and break the loop.
+**Max Output Tokens** in **Settings → Agent Behavior** limits how much the model can generate in one completion (default **8192** for new installs). Agent runs that emit large tool-call JSON or long replies need enough headroom; values below about **2048** often truncate tool arguments and break the loop.
 
 When a completion is cut off (`finish_reason` length), the agent **retries once or twice** with a temporarily higher output budget (up to 16384) before accepting the result. Final assistant text may include a short note if output was still incomplete.
 
