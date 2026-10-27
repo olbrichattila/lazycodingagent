@@ -58,6 +58,15 @@ $LazBuild = Resolve-LazBuild
 
 function Invoke-LazBuild {
     param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Args)
+    if (-not [string]::IsNullOrWhiteSpace($env:LAZARUS_PRIMARY_CONFIG)) {
+        if ($WidgetSet) {
+            $env:LCL_WIDGETSET = $WidgetSet
+        }
+        $ciLazbuild = Join-Path $PSScriptRoot 'ci-lazbuild.ps1'
+        & $ciLazbuild -VerifyExe:$false @Args
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        return
+    }
     if ($WidgetSet) {
         & $LazBuild --widgetset=$WidgetSet @Args
     } else {

@@ -1,5 +1,6 @@
 # lazbuild wrapper for CI (Windows): enforce exit code and verify lazycodingagent.exe.
 param(
+    [bool]$VerifyExe = $true,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$LpiArgs = @('lazycodingagent.lpi')
 )
@@ -8,6 +9,12 @@ $ErrorActionPreference = 'Stop'
 
 $ScriptDir = $PSScriptRoot
 $Root = Split-Path -Parent $ScriptDir
+
+function Get-NativePathForLazbuild {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $Path }
+    return $Path.Replace('/', '\')
+}
 
 function Resolve-LazBuild {
     if ($env:LAZBUILD) {
@@ -36,8 +43,10 @@ $LazBuild = Resolve-LazBuild
 $prefixArgs = @()
 if (-not [string]::IsNullOrWhiteSpace($env:LAZARUS_DIR) -and
     -not [string]::IsNullOrWhiteSpace($env:LAZARUS_PRIMARY_CONFIG)) {
-    $prefixArgs += "--lazarusdir=$($env:LAZARUS_DIR)"
-    $prefixArgs += "--primary-config-path=$($env:LAZARUS_PRIMARY_CONFIG)"
+    $lazarusDir = Get-NativePathForLazbuild -Path $env:LAZARUS_DIR
+    $primaryConfig = Get-NativePathForLazbuild -Path $env:LAZARUS_PRIMARY_CONFIG
+    $prefixArgs += "--lazarusdir=$lazarusDir"
+    $prefixArgs += "--primary-config-path=$primaryConfig"
 }
 if (-not [string]::IsNullOrWhiteSpace($env:LCL_WIDGETSET)) {
     $prefixArgs += "--widgetset=$($env:LCL_WIDGETSET)"
@@ -49,6 +58,10 @@ Write-Host "ci-lazbuild: $LazBuild $($allArgs -join ' ')"
 & $LazBuild @allArgs
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
+}
+
+if (-not $VerifyExe) {
+    return
 }
 
 Get-ChildItem -Path $Root -Recurse -Filter lazycodingagent.exe -ErrorAction SilentlyContinue |

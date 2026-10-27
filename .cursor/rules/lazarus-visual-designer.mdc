@@ -8,6 +8,7 @@ alwaysApply: true
 ## Project stack
 
 - **LazyCodingAgent** is a **Lazarus + LCL** desktop application (Free Pascal compiler under the hood).
+- **Product model:** professional native desktop UX (forms, menus, dialogs—not a single-surface Electron-style app)—see [`desktop-application-identity.mdc`](desktop-application-identity.mdc).
 - Default workflow: open `lazycodingagent.lpi` in the **Lazarus IDE**, edit forms in the **Form Designer**, build with the IDE or `lazbuild`.
 - **LCA Design system:** themed chrome lives in [`packages/LcaDesignSystem/`](packages/LcaDesignSystem/) (`LcaDesignSystem.lpk`, `LcaDesignReg` register unit). Install with [`scripts/install-lca-lazarus.ps1`](scripts/install-lca-lazarus.ps1) / [`.sh`](scripts/install-lca-lazarus.sh) (**close Lazarus first**; installs **`LcaDesignSystemDesign`** + `lazbuild --build-ide`). IDE hang recovery: [`scripts/recover-lazarus-ide.ps1`](scripts/recover-lazarus-ide.ps1). Component palette page **LCA Design** provides controls that **stream in `.lfm`**: `TLcaThemedPageTabBar`, `TLcaThemedButton`, `TLcaThemedComboBox`, `TLcaNavRailButton`, `TLcaSurfacePanel`, `TLcaMarkdownView`, `TLcaTerminalPanel`.
 - **Stock LCL** remains for menus, status bar, `TSynEdit`, memos, splitters, and dialogs where no LCA wrapper exists yet.

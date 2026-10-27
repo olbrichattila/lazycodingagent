@@ -4,6 +4,8 @@
 
 LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built with Free Pascal and Lazarus (LCL). Inspired by tools such as Hermes, Cursor, and Codex, it provides a focused, high-productivity development workspace.
 
+The **interaction model** is a native Lazarus/LCL desktop app (menu bar, docked panels, modal **Settings** and task dialogs), while **agent capabilities** are inspired by tools such as Hermes, Cursor, and Codex.
+
 > **Status:** Multi-window workspace layout implemented. AI/model execution is in active integration.
 
 ## Community

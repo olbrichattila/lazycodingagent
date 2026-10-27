@@ -5,6 +5,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+$ScriptDir = $PSScriptRoot
+
 function Resolve-LazBuild {
     param([string]$Candidate)
     if ($Candidate) {
@@ -49,6 +51,14 @@ function Resolve-LazarusRoot {
 function Link-And-Build {
     param([string]$Lpk, [string]$Laz)
     if (-not (Test-Path -LiteralPath $Lpk)) { throw "missing $Lpk" }
+    if (-not [string]::IsNullOrWhiteSpace($env:LAZARUS_PRIMARY_CONFIG)) {
+        $ciLazbuild = Join-Path $ScriptDir 'ci-lazbuild.ps1'
+        & $ciLazbuild -VerifyExe:$false --add-package-link $Lpk
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        & $ciLazbuild -VerifyExe:$false $Lpk
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        return
+    }
     & $Laz --add-package-link $Lpk
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     & $Laz $Lpk

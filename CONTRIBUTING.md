@@ -39,6 +39,10 @@ LazyCodingAgent is a **Lazarus + LCL** application:
   from the `.pas` unit (F12), not by hand-editing layout in Pascal.
 - Prefer **LCA Design** palette components on the form for themed chrome
   ([`packages/LcaDesignSystem/`](packages/LcaDesignSystem/)).
+- **Product model:** LazyCodingAgent is a professional **native desktop** app
+  (menus, docked main window, **Settings and secondary flows in `frm*` dialogs**),
+  not a single-surface Electron-style UI. See
+  [`.cursor/rules/desktop-application-identity.mdc`](.cursor/rules/desktop-application-identity.mdc).
 - Do not commit build artifacts (`lib/`, `*.ppu`, `*.o`, `dist/`, etc.); see
   [.gitignore](.gitignore).
 - Avoid layout patterns that trigger LCL `ChangeBounds` loops (mixing `Align`
