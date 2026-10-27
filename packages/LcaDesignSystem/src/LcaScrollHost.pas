@@ -166,7 +166,7 @@ type
 implementation
 
 uses
-  SysUtils, Math, LCLType, Forms, LcaUiPaintProfile, LcaUiScrollBuffer;
+  SysUtils, Math, LCLType, Forms, LcaUiPaintProfile, LcaUiScrollBuffer, LcaPaintPrimitives;
 
 const
   LCA_SCROLL_HOST_MAX_CONTROL_SPAN = 32767;
@@ -917,16 +917,16 @@ end;
 procedure TLcaScrollHost.PaintScrollbarTrack(ACanvas: TCanvas; const ARect: TRect;
   const P: TThemePalette);
 begin
-  ACanvas.Brush.Color := P.SurfaceAlt;
-  ACanvas.FillRect(ARect);
+  PaintThemedScrollbarTrack(ACanvas, ARect, P.SurfaceAlt);
 end;
 
 procedure TLcaScrollHost.PaintScrollbarThumb(ACanvas: TCanvas; const ARect: TRect;
   const P: TThemePalette);
+var
+  ThumbColor: TColor;
 begin
-  ACanvas.Brush.Color := P.Border;
-  ACanvas.Pen.Color := P.Border;
-  ACanvas.Rectangle(ARect);
+  ThumbColor := BlendRgb(P.Border, P.TextMuted, 0.35);
+  PaintThemedScrollbarThumb(ACanvas, ARect, ThumbColor, False);
 end;
 
 procedure TLcaScrollHost.PaintGutter(AGutter: TLcaScrollGutter; ACanvas: TCanvas);

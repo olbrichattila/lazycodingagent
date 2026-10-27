@@ -106,7 +106,7 @@ type
 implementation
 
 uses
-  Math, LCLIntf, StrUtils, Forms, Clipbrd, LcaUiPaintProfile;
+  Math, LCLIntf, StrUtils, Forms, Clipbrd, LcaUiPaintProfile, LcaPaintPrimitives;
 
 type
   TSelectLayoutState = record
@@ -1391,19 +1391,16 @@ end;
 procedure TLcaMarkdownView.PaintScrollbarTrack(ACanvas: TCanvas; const ARect: TRect;
   const P: TThemePalette);
 begin
-  ACanvas.Brush.Color := P.SurfaceAlt;
-  ACanvas.FillRect(ARect);
+  PaintThemedScrollbarTrack(ACanvas, ARect, P.SurfaceAlt);
 end;
 
 procedure TLcaMarkdownView.PaintScrollbarThumb(ACanvas: TCanvas; const ARect: TRect;
   const P: TThemePalette);
+var
+  ThumbColor: TColor;
 begin
-  ACanvas.Brush.Color := P.Border;
-  ACanvas.Pen.Color := P.Border;
-  if (ARect.Right - ARect.Left > 4) and (ARect.Bottom - ARect.Top > 4) then
-    ACanvas.RoundRect(ARect, 4, 4)
-  else
-    ACanvas.FillRect(ARect);
+  ThumbColor := BlendRgb(P.Border, P.TextMuted, 0.35);
+  PaintThemedScrollbarThumb(ACanvas, ARect, ThumbColor, False);
 end;
 
 procedure TLcaMarkdownView.PaintScrollbar(const P: TThemePalette);

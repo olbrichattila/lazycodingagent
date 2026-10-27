@@ -103,7 +103,7 @@ end;
 
 procedure TLcaPaintButton.DoApplyThemeColors(const {%H-}P: TThemePalette);
 begin
-  Font.Name := 'Segoe UI';
+  Font.Name := ThemedUiFontName;
   Font.Size := ThemedButtonFontSize(Self);
   if FButtonRole in [tbrPrimary, tbrDestructive] then
     Font.Style := [fsBold]

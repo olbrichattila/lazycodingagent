@@ -8,7 +8,7 @@ unit LcaDesignSystem;
 interface
 
 uses
-  LcaUiPaintProfile, LcaUiScrollBuffer, LcaTheme, LcaThemedButtonPaint, 
+  LcaUiPaintProfile, LcaUiScrollBuffer, LcaPaintPrimitives, LcaTheme, LcaThemedButtonPaint, 
   LcaThemeWin32Buttons, frmThemedMessage, LcaThemedMessageBox, 
   LcaThemeWin32Combo, LcaThemedPageTabBar, LcaThemedButton, LcaThemedComboBox, 
   LcaThemedControl, LcaNavRailButton, LcaSurfacePanel, LcaPaintSurface, 

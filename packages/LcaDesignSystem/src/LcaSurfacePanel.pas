@@ -27,6 +27,9 @@ type
 
 implementation
 
+uses
+  LcaPaintPrimitives;
+
 procedure TLcaSurfacePanel.SetThemeKind(AValue: TThemeKind);
 begin
   if FThemeKind = AValue then Exit;
@@ -74,18 +77,14 @@ var
 begin
   inherited Paint;
   P := ThemePalette(EffectiveControlTheme(Self, FThemeKind));
-  Canvas.Pen.Color := P.Border;
-  Canvas.Brush.Style := bsClear;
   R := ClientRect;
-  Dec(R.Right);
-  Dec(R.Bottom);
-  Canvas.Rectangle(R);
+  StrokeRoundRect(Canvas, R, 4, BlendRgb(P.Border, P.CardBg, 0.45), 1);
   if FShowAccentBorder then begin
+    R := ClientStrokeRect(R);
     Canvas.Pen.Color := P.Accent;
-    Canvas.Pen.Width := 2;
+    Canvas.Pen.Width := 1;
     Canvas.MoveTo(R.Left, R.Bottom);
     Canvas.LineTo(R.Right, R.Bottom);
-    Canvas.Pen.Width := 1;
   end;
 end;
 

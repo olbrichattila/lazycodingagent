@@ -25,7 +25,7 @@ The **main window** and **app dialogs** (Settings, rules, model search, themed m
 | `TLcaThemedMenuBar` | Top menu strip inside the custom title bar |
 | `TLcaThemedTitleBar` | Frameless window chrome: logo, menu, drag region, min/max/close |
 
-Theme API lives in **`LcaTheme`** (`TThemeKind`, `ThemePalette`, `ApplyThemedForm`, etc.).
+Theme API lives in **`LcaTheme`** (`TThemeKind`, `ThemePalette`, `ApplyThemedForm`, etc.). Palette tokens target a **neutral IDE** look (muted grays/blues); shared owner-draw helpers live in **`LcaPaintPrimitives`**.
 
 ### Palette icons
 

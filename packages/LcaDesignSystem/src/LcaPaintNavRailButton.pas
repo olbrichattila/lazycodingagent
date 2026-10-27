@@ -19,6 +19,7 @@ type
     FGlyph: TBitmap;
     FSpacing: Integer;
     FPressed: Boolean;
+    FHover: Boolean;
     FInClick: Boolean;
     FOnClick: TNotifyEvent;
     procedure SetNavCaption(const AValue: string);
@@ -37,6 +38,8 @@ type
     procedure PaintThemedClient(const ARect: TRect; const P: TThemePalette); override;
     procedure Paint; override;
     procedure Loaded; override;
+    procedure MouseEnter; override;
+    procedure MouseLeave; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
     procedure Click; override;
@@ -255,29 +258,18 @@ end;
 
 procedure TLcaPaintNavRailButton.PaintRuntimeSurface(const AR: TRect; const P: TThemePalette);
 var
-  BgColor, TextColor: TColor;
+  TextColor: TColor;
 begin
-  if FActive then
-    BgColor := P.RailActiveBg
-  else
-    BgColor := P.RailBg;
-
-  Canvas.Brush.Color := BgColor;
-  Canvas.FillRect(AR);
+  PaintThemedNavRailCell(Canvas, AR, P, FActive, FHover and Enabled, FPressed and Enabled);
 
   if FActive then
     TextColor := P.Accent
+  else if FHover and Enabled then
+    TextColor := P.Text
   else
     TextColor := P.TextMuted;
 
   PaintButtonContent(AR, TextColor);
-
-  if not FActive then Exit;
-  Canvas.Pen.Color := P.Accent;
-  Canvas.Pen.Width := 3;
-  Canvas.MoveTo(0, AR.Top + 4);
-  Canvas.LineTo(0, AR.Bottom - 4);
-  Canvas.Pen.Width := 1;
 end;
 
 procedure TLcaPaintNavRailButton.PaintThemedClient(const ARect: TRect; const {%H-}P: TThemePalette);
@@ -297,6 +289,21 @@ begin
     R := ClientRect;
     PaintThemedClient(R, P);
   end;
+end;
+
+procedure TLcaPaintNavRailButton.MouseEnter;
+begin
+  inherited MouseEnter;
+  FHover := True;
+  Invalidate;
+end;
+
+procedure TLcaPaintNavRailButton.MouseLeave;
+begin
+  inherited MouseLeave;
+  FHover := False;
+  FPressed := False;
+  Invalidate;
 end;
 
 procedure TLcaPaintNavRailButton.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);

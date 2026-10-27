@@ -34,7 +34,7 @@ type
 implementation
 
 uses
-  SysUtils, Types, LcaUiPaintProfile;
+  SysUtils, Types, LcaUiPaintProfile, LcaPaintPrimitives;
 
 procedure TLcaThemedControl.SetThemeKind(AValue: TThemeKind);
 begin
@@ -65,18 +65,9 @@ begin
 end;
 
 procedure TLcaThemedControl.PaintThemedClient(const ARect: TRect; const P: TThemePalette);
-var
-  R: TRect;
 begin
-  Canvas.Brush.Color := P.CardBg;
-  Canvas.FillRect(ARect);
-
-  Canvas.Pen.Color := P.Border;
-  Canvas.Brush.Style := bsClear;
-  R := ARect;
-  Dec(R.Right);
-  Dec(R.Bottom);
-  Canvas.Rectangle(R);
+  FillRoundRect(Canvas, ARect, 4, P.CardBg);
+  StrokeRoundRect(Canvas, ARect, 4, BlendRgb(P.Border, P.CardBg, 0.45), 1);
 end;
 
 procedure TLcaThemedControl.Loaded;

@@ -207,17 +207,11 @@ procedure TLcaNavRailButton.PaintThemedSurface;
 var
   P: TThemePalette;
   R: TRect;
-  BgColor, TextColor: TColor;
+  TextColor: TColor;
 begin
   P := ThemePalette(FThemeKind);
   R := ClientRect;
-  if FActive then
-    BgColor := P.RailActiveBg
-  else
-    BgColor := P.RailBg;
-
-  Canvas.Brush.Color := BgColor;
-  Canvas.FillRect(R);
+  PaintThemedNavRailCell(Canvas, R, P, FActive, False, False);
 
   if FActive then
     TextColor := P.Accent
@@ -225,13 +219,6 @@ begin
     TextColor := P.TextMuted;
 
   PaintButtonContent(R, TextColor);
-
-  if not FActive then Exit;
-  Canvas.Pen.Color := P.Accent;
-  Canvas.Pen.Width := 3;
-  Canvas.MoveTo(0, R.Top + 4);
-  Canvas.LineTo(0, R.Bottom - 4);
-  Canvas.Pen.Width := 1;
 end;
 
 procedure TLcaNavRailButton.Paint;

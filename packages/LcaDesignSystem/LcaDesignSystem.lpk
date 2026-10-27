@@ -23,6 +23,10 @@
         <UnitName Value="LcaUiScrollBuffer"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaPaintPrimitives.pas"/>
+        <UnitName Value="LcaPaintPrimitives"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaTheme.pas"/>
         <UnitName Value="LcaTheme"/>
       </Item>

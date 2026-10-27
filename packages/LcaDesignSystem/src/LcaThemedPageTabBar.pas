@@ -364,7 +364,7 @@ begin
   MeasureCanvas := TControlCanvas.Create;
   try
     MeasureCanvas.Control := Self;
-    MeasureCanvas.Font.Name := 'Segoe UI';
+    MeasureCanvas.Font.Name := ThemedUiFontName;
     MeasureCanvas.Font.Size := ThemedTabFontSize;
     Pad := ThemedTabHorizPad(Self);
     HorizPad := Pad;

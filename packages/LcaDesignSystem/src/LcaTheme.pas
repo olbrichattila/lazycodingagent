@@ -187,6 +187,8 @@ procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;
 procedure PaintThemedNavListItem(Canvas: TCanvas; const ARect: TRect;
   const AText: string; State: TOwnerDrawState; ATheme: TThemeKind;
   AMetricsControl: TControl = nil);
+procedure PaintThemedNavRailCell(Canvas: TCanvas; const ARect: TRect; const P: TThemePalette;
+  AActive, AHover, APressed: Boolean);
 
 procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
 procedure ApplyWin32ScrollableThemeRecursive(AControl: TWinControl; ATheme: TThemeKind);
@@ -216,7 +218,8 @@ var
 implementation
 
 uses
-  Math, SysUtils, LCLIntf, LCLProc, LcaThemedButton, LcaThemedComboBox, LcaThemedButtonPaint
+  Math, SysUtils, LCLIntf, LCLProc, LcaPaintPrimitives, LcaThemedButton, LcaThemedComboBox,
+  LcaThemedButtonPaint
   {$IFDEF WINDOWS}, LcaThemeWin32Buttons{$ENDIF}
   {$IFDEF LCLQt5}, Qt5, QtWidgets{$ENDIF}
   {$IFDEF LCLGtk3}, LazGtk3, LazGdk3, LazGObject2{$ENDIF}
@@ -741,53 +744,53 @@ end;
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
 begin
   if ATheme = tkDark then begin
-    // Neon workspace — deep base with cyan / violet accents
-    Result.Background     := RGBToColor(8, 10, 18);       // #080A12
-    Result.Surface        := RGBToColor(14, 16, 28);      // #0E101C
-    Result.SurfaceAlt     := RGBToColor(22, 24, 40);      // #161828
-    Result.HeaderBg       := RGBToColor(12, 14, 24);      // #0C0E18
-    Result.TitleBarBg     := RGBToColor(0, 0, 0);         // #000000
-    Result.MenuFlyoutBg   := RGBToColor(28, 32, 50);     // #1C2032 — above Surface / Background
-    Result.RailBg         := RGBToColor(6, 8, 14);        // #06080E
-    Result.RailActiveBg   := RGBToColor(14, 16, 28);      // #0E101C (Surface)
-    Result.Border         := RGBToColor(45, 55, 90);      // #2D375A
-    Result.BorderStrong   := RGBToColor(0, 200, 255);     // cyan glow edge
-    Result.Text           := RGBToColor(240, 248, 255);   // #F0F8FF
-    Result.TextMuted      := RGBToColor(140, 160, 195);   // #8CA0C3
-    Result.ChatLabelUser  := RGBToColor(125, 220, 175);   // #7DDCAF
-    Result.ChatLabelAgent := RGBToColor(0, 229, 255);     // match Accent
-    Result.ChatLabelTool  := RGBToColor(245, 180, 95);    // #F5B45F
-    Result.ChatLabelThinking := RGBToColor(180, 165, 235); // #B4A5EB
-    Result.Accent         := RGBToColor(0, 229, 255);     // #00E5FF
-    Result.AccentHover    := RGBToColor(56, 189, 248);    // #38BDF8
-    Result.AccentActive   := RGBToColor(30, 45, 85);       // selected rail/tab
-    Result.AccentText     := RGBToColor(8, 12, 22);
-    Result.SplitterColor  := RGBToColor(35, 45, 75);
-    Result.CardBg         := RGBToColor(16, 20, 36);       // glassy card
+    // Neutral IDE dark (VS Code–like neutrals, restrained blue accent)
+    Result.Background     := RGBToColor(30, 30, 30);       // #1E1E1E
+    Result.Surface        := RGBToColor(37, 37, 38);       // #252526
+    Result.SurfaceAlt     := RGBToColor(45, 45, 48);       // #2D2D30
+    Result.HeaderBg       := RGBToColor(37, 37, 38);       // #252526
+    Result.TitleBarBg     := RGBToColor(30, 30, 30);       // #1E1E1E
+    Result.MenuFlyoutBg   := RGBToColor(45, 45, 48);       // #2D2D30
+    Result.RailBg         := RGBToColor(30, 30, 30);       // #1E1E1E
+    Result.RailActiveBg   := RGBToColor(45, 45, 48);       // #2D2D30
+    Result.Border         := RGBToColor(62, 62, 66);       // #3E3E42
+    Result.BorderStrong   := RGBToColor(86, 86, 92);       // #56565C
+    Result.Text           := RGBToColor(204, 204, 204);    // #CCCCCC
+    Result.TextMuted      := RGBToColor(133, 133, 133);    // #858585
+    Result.ChatLabelUser  := RGBToColor(78, 175, 130);     // muted green
+    Result.ChatLabelAgent := RGBToColor(55, 148, 255);     // match Accent
+    Result.ChatLabelTool  := RGBToColor(210, 153, 72);     // muted amber
+    Result.ChatLabelThinking := RGBToColor(156, 142, 200); // muted violet
+    Result.Accent         := RGBToColor(55, 148, 255);     // #3794FF
+    Result.AccentHover    := RGBToColor(74, 158, 255);     // #4A9EFF
+    Result.AccentActive   := RGBToColor(51, 62, 82);       // selection wash
+    Result.AccentText     := RGBToColor(255, 255, 255);
+    Result.SplitterColor  := RGBToColor(51, 51, 51);        // #333333
+    Result.CardBg         := RGBToColor(40, 40, 40);       // #282828
   end else begin
-    // Modern sleek light theme tokens
-    Result.Background     := RGBToColor(243, 244, 246);   // #F3F4F6
+    // Neutral IDE light
+    Result.Background     := RGBToColor(243, 243, 243);   // #F3F3F3
     Result.Surface        := RGBToColor(255, 255, 255);   // #FFFFFF
-    Result.SurfaceAlt     := RGBToColor(246, 248, 250);   // #F6F8FA
-    Result.HeaderBg       := RGBToColor(240, 242, 245);   // #F0F2F5
-    Result.TitleBarBg     := RGBToColor(240, 242, 245);   // match header (light)
-    Result.MenuFlyoutBg   := RGBToColor(240, 242, 245);   // #F0F2F5 — gray vs white Surface / page bg
-    Result.RailBg         := RGBToColor(255, 255, 255);   // idle nav cells / rail
-    Result.RailActiveBg   := RGBToColor(235, 237, 242);   // #EBEDF2 selected cell
-    Result.Border         := RGBToColor(218, 222, 230);   // #DADEEC
-    Result.BorderStrong   := RGBToColor(180, 186, 198);   // #B4BAC6
-    Result.Text           := RGBToColor(24, 28, 36);      // #181C24
-    Result.TextMuted      := RGBToColor(100, 110, 125);   // #646E7D
-    Result.ChatLabelUser  := RGBToColor(5, 150, 105);     // #059669
-    Result.ChatLabelAgent := RGBToColor(37, 99, 235);     // match Accent
-    Result.ChatLabelTool  := RGBToColor(180, 83, 9);      // #B45309
-    Result.ChatLabelThinking := RGBToColor(109, 40, 217); // #6D28D9
-    Result.Accent         := RGBToColor(37, 99, 235);     // #2563EB
-    Result.AccentHover    := RGBToColor(29, 78, 216);     // #1D4ED8
-    Result.AccentActive   := RGBToColor(224, 236, 255);   // #E0ECFF
+    Result.SurfaceAlt     := RGBToColor(247, 247, 247);   // #F7F7F7
+    Result.HeaderBg       := RGBToColor(243, 243, 243);   // #F3F3F3
+    Result.TitleBarBg     := RGBToColor(243, 243, 243);
+    Result.MenuFlyoutBg   := RGBToColor(252, 252, 252);   // #FCFCFC
+    Result.RailBg         := RGBToColor(243, 243, 243);
+    Result.RailActiveBg   := RGBToColor(232, 232, 232);   // #E8E8E8
+    Result.Border         := RGBToColor(225, 225, 225);   // #E1E1E1
+    Result.BorderStrong   := RGBToColor(200, 200, 200);   // #C8C8C8
+    Result.Text           := RGBToColor(51, 51, 51);      // #333333
+    Result.TextMuted      := RGBToColor(110, 110, 110);   // #6E6E6E
+    Result.ChatLabelUser  := RGBToColor(16, 120, 84);     // #107854
+    Result.ChatLabelAgent := RGBToColor(0, 102, 204);     // match Accent
+    Result.ChatLabelTool  := RGBToColor(161, 98, 7);      // #A16207
+    Result.ChatLabelThinking := RGBToColor(92, 45, 145);  // #5C2D91
+    Result.Accent         := RGBToColor(0, 102, 204);     // #0066CC
+    Result.AccentHover    := RGBToColor(0, 90, 181);      // #005AB5
+    Result.AccentActive   := RGBToColor(225, 236, 248);   // #E1ECF8
     Result.AccentText     := clWhite;
-    Result.SplitterColor  := RGBToColor(220, 224, 232);   // #DCE0E8
-    Result.CardBg         := RGBToColor(248, 249, 251);   // #F8F9FB
+    Result.SplitterColor  := RGBToColor(230, 230, 230);
+    Result.CardBg         := RGBToColor(250, 250, 250);   // #FAFAFA
   end;
 end;
 
@@ -873,20 +876,20 @@ procedure PaintThemedComboListItem(Canvas: TCanvas; const ARect: TRect;
 var
   P: TThemePalette;
   TextTop: Integer;
+  Selected: Boolean;
+  HorizInset: Integer;
 begin
   P := ThemePalette(ATheme);
-  if (odSelected in State) or (odFocused in State) then begin
-    Canvas.Brush.Color := P.AccentActive;
-    Canvas.Pen.Color := P.Accent;
-  end else begin
-    Canvas.Brush.Color := P.SurfaceAlt;
-    Canvas.Pen.Color := P.SurfaceAlt;
-  end;
+  Canvas.Brush.Color := P.SurfaceAlt;
   Canvas.FillRect(ARect);
+  Selected := (odSelected in State) or (odFocused in State);
+  if Selected then begin
+    HorizInset := 4;
+    PaintSelectionPill(Canvas, ARect, P.AccentActive, HorizInset, 2, 4);
+  end;
   if AText = '' then Exit;
-  Canvas.Font.Name := 'Segoe UI';
-  Canvas.Font.Size := 9;
-  if (odSelected in State) and (ATheme = tkLight) then
+  ApplyThemedUiFont(Canvas, nil, 9);
+  if Selected then
     Canvas.Font.Color := P.Accent
   else
     Canvas.Font.Color := P.Text;
@@ -966,9 +969,7 @@ var
   CloseCaption: string;
 begin
   P := ThemePalette(ATheme);
-  R := ARect;
-  Dec(R.Right);
-  Dec(R.Bottom);
+  R := ClientStrokeRect(ARect);
   Rad := 6;
 
   if AActive then begin
@@ -982,20 +983,19 @@ begin
     TextColor := P.TextMuted;
   end;
 
-  Canvas.Brush.Color := FillColor;
-  Canvas.Pen.Color := P.Border;
-  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+  FillRoundRect(Canvas, ARect, Rad, FillColor);
+  if AHover and not AActive then
+    StrokeRoundRect(Canvas, ARect, Rad, P.Border, 1);
 
   if AActive then begin
     Canvas.Pen.Color := P.Accent;
     Canvas.Pen.Width := 2;
     Canvas.MoveTo(R.Left + Rad, R.Bottom);
-    Canvas.LineTo(R.Right - Rad + 1, R.Bottom);
+    Canvas.LineTo(R.Right, R.Bottom);
     Canvas.Pen.Width := 1;
   end;
 
-  Canvas.Font.Name := 'Segoe UI';
-  Canvas.Font.Size := ThemedTabFontSize;
+  ApplyThemedUiFont(Canvas, AMetricsControl, ThemedTabFontSize);
   Canvas.Font.Color := TextColor;
 
   CloseCol := ThemedTabCloseColumn(AMetricsControl);
@@ -1018,11 +1018,8 @@ begin
 
   if AShowClose then begin
     CloseR := ThemedTabCloseHitRect(ARect, AMetricsControl);
-    if ACloseHover then begin
-      Canvas.Brush.Color := P.SurfaceAlt;
-      Canvas.Pen.Color := P.Border;
-      Canvas.RoundRect(CloseR.Left, CloseR.Top, CloseR.Right + 1, CloseR.Bottom + 1, 4, 4);
-    end;
+    if ACloseHover then
+      FillRoundRect(Canvas, CloseR, 4, BlendRgb(P.SurfaceAlt, P.Border, 0.35));
     CloseCaption := '✕';
     Canvas.Font.Size := 9;
     if ACloseHover then
@@ -1095,11 +1092,10 @@ var
   TextTop, TextH, LayoutH, VertPad, DescentSafety: Integer;
   Rad: Integer;
   Ext: TSize;
+  PrimaryHighlight: Boolean;
 begin
   P := ThemePalette(ATheme);
-  R := ARect;
-  Dec(R.Right);
-  Dec(R.Bottom);
+  R := ClientStrokeRect(ARect);
   if ACornerRadius < 2 then
     Rad := 6
   else
@@ -1107,6 +1103,7 @@ begin
 
   DrawBorder := False;
   BorderColor := P.Border;
+  PrimaryHighlight := False;
 
   case ARole of
     tbrPrimary:
@@ -1114,20 +1111,16 @@ begin
         FillColor := P.Accent;
         TextColor := P.AccentText;
         if APressed and AEnabled then
-          FillColor := P.AccentHover
+          FillColor := DarkenColor(P.Accent, 20)
         else if AHover and AEnabled then
           FillColor := P.AccentHover;
+        PrimaryHighlight := AEnabled and not APressed;
       end;
     tbrCancel:
       begin
         DrawBorder := True;
-        if ATheme = tkDark then begin
-          FillColor := P.SurfaceAlt;
-          BorderColor := P.BorderStrong;
-        end else begin
-          FillColor := P.Surface;
-          BorderColor := P.Border;
-        end;
+        FillColor := P.SurfaceAlt;
+        BorderColor := P.Border;
         TextColor := P.TextMuted;
         if APressed and AEnabled then begin
           FillColor := P.Border;
@@ -1177,33 +1170,21 @@ begin
     DrawBorder := ARole = tbrCancel;
     if ARole = tbrGhost then
       DrawBorder := False;
+    PrimaryHighlight := False;
   end;
 
-  Canvas.Brush.Color := FillColor;
-  Canvas.Pen.Color := FillColor;
-  Canvas.Pen.Width := 1;
-  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
+  FillRoundRect(Canvas, ARect, Rad, FillColor);
+  if DrawBorder then
+    StrokeRoundRect(Canvas, ARect, Rad, BorderColor, 1);
+  if PrimaryHighlight then
+    PaintSubtleTopHighlight(Canvas, ARect, Rad, LightenColor(FillColor, 24));
+  if AFocused and AEnabled then
+    PaintFocusRing(Canvas, ARect, Rad, P.Accent);
 
-  if DrawBorder then begin
-    Canvas.Brush.Style := bsClear;
-    Canvas.Pen.Color := BorderColor;
-    Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
-    Canvas.Brush.Style := bsSolid;
-  end;
-
-  if AFocused and AEnabled then begin
-    Canvas.Brush.Style := bsClear;
-    Canvas.Pen.Color := P.Accent;
-    Canvas.Pen.Width := 1;
-    Canvas.RoundRect(R.Left + 1, R.Top + 1, R.Right, R.Bottom, Rad, Rad);
-    Canvas.Brush.Style := bsSolid;
-  end;
-
-  Canvas.Font.Name := 'Segoe UI';
   if AFontSize > 0 then
-    Canvas.Font.Size := AFontSize
+    ApplyThemedUiFont(Canvas, AMetricsControl, AFontSize)
   else
-    Canvas.Font.Size := ThemedButtonFontSizeBase;
+    ApplyThemedUiFont(Canvas, AMetricsControl, ThemedButtonFontSizeBase);
   if ARole in [tbrPrimary, tbrDestructive] then
     Canvas.Font.Style := [fsBold]
   else
@@ -1239,19 +1220,17 @@ end;
 
 procedure PaintThemedComboChevron(Canvas: TCanvas; const ARect: TRect; AColor: TColor);
 var
-  CX, CY, HalfW, HalfH: Integer;
-  P1, P2, P3: TPoint;
+  CX, CY, HalfW, Drop: Integer;
 begin
   CX := (ARect.Left + ARect.Right) div 2;
   CY := (ARect.Top + ARect.Bottom) div 2;
-  HalfW := Max(3, (ARect.Right - ARect.Left) div 5);
-  HalfH := Max(2, (ARect.Bottom - ARect.Top) div 6);
-  P1 := Point(CX - HalfW, CY - HalfH div 2);
-  P2 := Point(CX + HalfW, CY - HalfH div 2);
-  P3 := Point(CX, CY + HalfH);
-  Canvas.Brush.Color := AColor;
+  HalfW := Max(3, (ARect.Right - ARect.Left) div 6);
+  Drop := Max(2, (ARect.Bottom - ARect.Top) div 8);
   Canvas.Pen.Color := AColor;
-  Canvas.Polygon([P1, P2, P3]);
+  Canvas.Pen.Width := 1;
+  Canvas.MoveTo(CX - HalfW, CY - Drop div 2);
+  Canvas.LineTo(CX, CY + Drop);
+  Canvas.LineTo(CX + HalfW, CY - Drop div 2);
 end;
 
 procedure PaintThemedComboField(Canvas: TCanvas; const ARect: TRect; ATheme: TThemeKind;
@@ -1287,28 +1266,15 @@ begin
     BorderColor := P.Border;
   end;
 
-  Canvas.Brush.Color := FillColor;
-  Canvas.Pen.Color := FillColor;
-  Canvas.Pen.Width := 1;
-  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
-
-  Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Color := BorderColor;
-  Canvas.RoundRect(R.Left, R.Top, R.Right + 1, R.Bottom + 1, Rad, Rad);
-  Canvas.Brush.Style := bsSolid;
-
-  if AFocused and AEnabled and AShowFocusRing then begin
-    Canvas.Pen.Color := P.Accent;
-    Canvas.RoundRect(R.Left + 1, R.Top + 1, R.Right, R.Bottom, Max(2, Rad - 1), Max(2, Rad - 1));
-  end;
+  FillRoundRect(Canvas, ARect, Rad, FillColor);
+  StrokeRoundRect(Canvas, ARect, Rad, BorderColor, 1);
 
   ChevR := R;
   ChevR.Left := ChevR.Right - AChevronGutter + 1;
   TextR := R;
   Dec(TextR.Right, AChevronGutter);
   PadLeft := 10;
-  Canvas.Font.Name := 'Segoe UI';
-  Canvas.Font.Size := 9;
+  ApplyThemedUiFont(Canvas, nil, 9);
   Canvas.Font.Color := TextColor;
   if AText <> '' then begin
     TextTop := TextR.Top + ((TextR.Bottom - TextR.Top - Canvas.TextHeight(AText)) div 2);
@@ -1627,20 +1593,14 @@ begin
     ChromeBg := P.HeaderBg
   else
     ChromeBg := AChromeBg;
-  Canvas.Brush.Style := bsSolid;
-  if ASelected then begin
-    Canvas.Brush.Color := P.AccentActive;
-    Canvas.Pen.Color := P.AccentActive;
-  end else begin
-    Canvas.Brush.Color := ChromeBg;
-    Canvas.Pen.Color := ChromeBg;
-  end;
+  Canvas.Brush.Color := ChromeBg;
   Canvas.FillRect(R);
+  if ASelected then
+    PaintSelectionPill(Canvas, R, P.AccentActive, 4, 3, 4);
 
   TextStr := MenuItemDisplayCaption(ACaption);
   if TextStr = '' then Exit;
-  Canvas.Font.Name := 'Segoe UI';
-  Canvas.Font.Size := AFontSize;
+  ApplyThemedUiFont(Canvas, nil, AFontSize);
   Canvas.Font.Color := P.Text;
   TextTop := R.Top + ((R.Bottom - R.Top - Canvas.TextHeight(TextStr)) div 2);
   Canvas.TextRect(R, R.Left + 10, TextTop, TextStr);
@@ -1661,15 +1621,10 @@ begin
   P := ThemePalette(ATheme);
   R := ARect;
 
-  ACanvas.Brush.Style := bsSolid;
-  if (odSelected in State) and ASource.Enabled then begin
-    ACanvas.Brush.Color := P.AccentActive;
-    ACanvas.Pen.Color := P.AccentActive;
-  end else begin
-    ACanvas.Brush.Color := P.MenuFlyoutBg;
-    ACanvas.Pen.Color := P.MenuFlyoutBg;
-  end;
+  ACanvas.Brush.Color := P.MenuFlyoutBg;
   ACanvas.FillRect(R);
+  if (odSelected in State) and ASource.Enabled then
+    PaintSelectionPill(ACanvas, R, P.AccentActive, 6, 2, 4);
 
   if ASource.Caption = '-' then begin
     SepY := R.Top + (R.Bottom - R.Top) div 2;
@@ -1679,8 +1634,7 @@ begin
     Exit;
   end;
 
-  ACanvas.Font.Name := 'Segoe UI';
-  ACanvas.Font.Size := 9;
+  ApplyThemedUiFont(ACanvas, nil, 9);
 
   if ASource.Enabled then
     TextColor := P.Text
@@ -1784,11 +1738,10 @@ begin
     ContentRect := ARect;
 
   Selected := (odSelected in State) or (odFocused in State);
-  if Selected then begin
-    Canvas.Brush.Color := P.AccentActive;
-    Canvas.Pen.Color := P.AccentActive;
-    Canvas.FillRect(ContentRect);
-  end;
+  if Selected then
+    PaintSelectionPill(Canvas, ContentRect, P.AccentActive, 6, 0, 5)
+  else if odHotLight in State then
+    PaintSelectionPill(Canvas, ContentRect, BlendRgb(BgColor, P.SurfaceAlt, 0.65), 6, 0, 5);
 
   if AText = '' then Exit;
 
@@ -1801,6 +1754,40 @@ begin
   TextTop := ContentRect.Top +
     ((ContentRect.Bottom - ContentRect.Top - Canvas.TextHeight(AText)) div 2);
   Canvas.TextRect(ContentRect, ContentRect.Left + PadLeft, TextTop, AText);
+end;
+
+procedure PaintThemedNavRailCell(Canvas: TCanvas; const ARect: TRect; const P: TThemePalette;
+  AActive, AHover, APressed: Boolean);
+var
+  R: TRect;
+  BgColor: TColor;
+  BarTop, BarBottom: Integer;
+begin
+  R := ARect;
+  if AActive then
+    BgColor := P.RailActiveBg
+  else if APressed then
+    BgColor := BlendRgb(P.RailBg, P.SurfaceAlt, 0.55)
+  else if AHover then
+    BgColor := BlendRgb(P.RailBg, P.SurfaceAlt, 0.35)
+  else
+    BgColor := P.RailBg;
+
+  Canvas.Brush.Color := BgColor;
+  Canvas.FillRect(R);
+
+  if not AActive then Exit;
+  Canvas.Pen.Color := P.Accent;
+  Canvas.Pen.Width := 2;
+  BarTop := R.Top + 6;
+  BarBottom := R.Bottom - 6;
+  if BarBottom <= BarTop then begin
+    BarTop := R.Top + 4;
+    BarBottom := R.Bottom - 4;
+  end;
+  Canvas.MoveTo(0, BarTop);
+  Canvas.LineTo(0, BarBottom);
+  Canvas.Pen.Width := 1;
 end;
 
 procedure ThemedNavListBoxDrawItem(Control: TWinControl; Index: Integer;

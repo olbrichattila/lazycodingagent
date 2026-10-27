@@ -32,7 +32,7 @@ type
 implementation
 
 uses
-  Types;
+  Types, LcaPaintPrimitives;
 
 procedure TLcaPaintSurface.SetShowAccentBorder(AValue: Boolean);
 begin
@@ -57,10 +57,9 @@ begin
   Dec(R.Right);
   Dec(R.Bottom);
   Canvas.Pen.Color := P.Accent;
-  Canvas.Pen.Width := 2;
+  Canvas.Pen.Width := 1;
   Canvas.MoveTo(R.Left, R.Bottom);
   Canvas.LineTo(R.Right, R.Bottom);
-  Canvas.Pen.Width := 1;
 end;
 
 end.
