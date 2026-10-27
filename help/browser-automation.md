@@ -29,6 +29,8 @@ When the user must **see** the page or **interact** before the agent continues (
 4. When the user is ready, the agent calls `browser_resume_automation` with the same `session_id`, then may use interactive tools. The user can still watch and use the window; call `browser_pause_automation` to yield control back to the user.
 5. `browser_close` when finished.
 
+**Network / login:** Browser sessions use a CDP network guard (same URL policy as `web_fetch`). A background CDP pump continues paused requests while you use the window, so login and API calls should not hang. If login calls a **localhost** or **private** API, enable **allow browser localhost** for the chat session so those subrequests are allowed.
+
 **Notes:** Agent tools target the tab created for the session. If the user opens another tab and switches to it, the agent does not automatically follow—stay on the original tab or start a new session. Visible sessions are not dropped by idle timeout while the window is open; headless sessions still time out after inactivity.
 
 ## Screenshots and models

@@ -50,7 +50,11 @@ type
       TimeoutMs: Integer; CancelCheck: TBrowserReadCancelCheck;
       out ResultObj: TJSONObject): Boolean;
     procedure PumpEvents(TimeoutMs: Integer; CancelCheck: TBrowserReadCancelCheck);
+    procedure DrainEvents(MaxMessages: Integer; CancelCheck: TBrowserReadCancelCheck);
     procedure Disconnect;
+  private
+    function ProcessOneEventMessage(TimeoutMs: Integer;
+      CancelCheck: TBrowserReadCancelCheck): Boolean;
   end;
 
 implementation
@@ -122,21 +126,21 @@ begin
   Result := Assigned(FTransport) and FTransport.Connected;
 end;
 
-procedure TCdpConnection.PumpEvents(TimeoutMs: Integer;
-  CancelCheck: TBrowserReadCancelCheck);
+function TCdpConnection.ProcessOneEventMessage(TimeoutMs: Integer;
+  CancelCheck: TBrowserReadCancelCheck): Boolean;
 var
   Text: UTF8String;
   Root, Params: TJSONObject;
-  IdVal: TJSONNumber;
   Method: string;
 begin
+  Result := False;
   if not ConnectLoopAlive then Exit;
   if Assigned(CancelCheck) and CancelCheck() then Exit;
   if not FTransport.TryReceiveText(Text, TimeoutMs) then Exit;
   Root := TJSONObject(GetJSON(Text));
   try
     if Root.Find('id') <> nil then
-      Exit; // response handled elsewhere
+      Exit;
     Method := Root.Get('method', '');
     if Method = '' then Exit;
     if Root.Find('params') <> nil then
@@ -149,8 +153,31 @@ begin
     finally
       Params.Free;
     end;
+    Result := True;
   finally
     Root.Free;
+  end;
+end;
+
+procedure TCdpConnection.PumpEvents(TimeoutMs: Integer;
+  CancelCheck: TBrowserReadCancelCheck);
+begin
+  ProcessOneEventMessage(TimeoutMs, CancelCheck);
+end;
+
+procedure TCdpConnection.DrainEvents(MaxMessages: Integer;
+  CancelCheck: TBrowserReadCancelCheck);
+var
+  N: Integer;
+begin
+  if MaxMessages < 1 then
+    MaxMessages := 32;
+  N := 0;
+  while N < MaxMessages do
+  begin
+    if not ProcessOneEventMessage(50, CancelCheck) then
+      Break;
+    Inc(N);
   end;
 end;
 

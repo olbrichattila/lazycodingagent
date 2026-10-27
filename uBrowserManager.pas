@@ -19,6 +19,7 @@ type
     AllowLocalhost: Boolean;
     Visible: Boolean;
     AutomationPaused: Boolean;
+    FetchGuardEnabled: Boolean;
     LastActivity: TDateTime;
     Browser: TBrowserProcess;
     Socket: TCdpWebSocket;
@@ -35,6 +36,11 @@ type
     destructor Destroy; override;
     procedure Touch;
     function WithLock: TCriticalSection;
+  end;
+
+  TBrowserCdpPumpThread = class(TThread)
+  protected
+    procedure Execute; override;
   end;
 
 procedure BrowserManagerAcquire(const Config: TBrowserReadConfig);
@@ -68,6 +74,78 @@ var
   GMaxConcurrent: Integer;
   GSessions: TList;
   GSessionLock: TCriticalSection;
+  GPumpThread: TBrowserCdpPumpThread;
+  GPumpStop: Boolean;
+
+procedure BrowserCdpPumpSessionsOnce;
+var
+  I: Integer;
+  S: TBrowserManagedSession;
+begin
+  if GSessionLock = nil then Exit;
+  GSessionLock.Enter;
+  try
+    for I := 0 to GSessions.Count - 1 do
+    begin
+      S := TBrowserManagedSession(GSessions[I]);
+      if not S.FetchGuardEnabled then Continue;
+      if not Assigned(S.Connection) then Continue;
+      S.Lock.Enter;
+      try
+        if S.Connection.ConnectLoopAlive then
+          S.Connection.DrainEvents(32, nil);
+      finally
+        S.Lock.Leave;
+      end;
+    end;
+  finally
+    GSessionLock.Leave;
+  end;
+end;
+
+procedure TBrowserCdpPumpThread.Execute;
+begin
+  while not GPumpStop do
+  begin
+    BrowserCdpPumpSessionsOnce;
+    Sleep(25);
+  end;
+end;
+
+procedure StartBrowserCdpPump;
+begin
+  if GPumpThread <> nil then Exit;
+  GPumpStop := False;
+  GPumpThread := TBrowserCdpPumpThread.Create(True);
+  GPumpThread.FreeOnTerminate := False;
+  GPumpThread.Start;
+end;
+
+procedure StopBrowserCdpPump;
+var
+  T: TBrowserCdpPumpThread;
+begin
+  GPumpStop := True;
+  T := GPumpThread;
+  GPumpThread := nil;
+  if T <> nil then
+  begin
+    T.WaitFor;
+    T.Free;
+  end;
+end;
+
+procedure MaybeStopBrowserCdpPump;
+begin
+  if GSessionLock = nil then Exit;
+  GSessionLock.Enter;
+  try
+    if (GSessions = nil) or (GSessions.Count = 0) then
+      StopBrowserCdpPump;
+  finally
+    GSessionLock.Leave;
+  end;
+end;
 
 destructor TBrowserManagedSession.Destroy;
 begin
@@ -143,8 +221,10 @@ var
   I: Integer;
   S: TBrowserManagedSession;
   Cutoff: TDateTime;
+  Purged: Boolean;
 begin
   if GSessionLock = nil then Exit;
+  Purged := False;
   Cutoff := IncMilliSecond(Now, -Config.IdleTimeoutMs);
   GSessionLock.Enter;
   try
@@ -158,17 +238,21 @@ begin
         GSessions.Delete(I);
         S.Free;
         BrowserManagerRelease;
+        Purged := True;
       end;
     end;
   finally
     GSessionLock.Leave;
   end;
+  if Purged then
+    MaybeStopBrowserCdpPump;
 end;
 
 procedure BrowserManagerShutdownAll;
 var
   I: Integer;
 begin
+  StopBrowserCdpPump;
   if GSessionLock = nil then Exit;
   GSessionLock.Enter;
   try
@@ -247,6 +331,7 @@ begin
   Session.AllowLocalhost := AllowLocalhost;
   Session.Visible := AVisible;
   Session.AutomationPaused := AVisible;
+  Session.FetchGuardEnabled := False;
   Session.LastActivity := Now;
   Session.Lock := TCriticalSection.Create;
   Session.RefMap := TStringList.Create;
@@ -305,6 +390,7 @@ begin
       ErrMsg := 'Network guard failed';
       Exit(False);
     end;
+    Session.FetchGuardEnabled := True;
 
     EnableParams := TJSONObject.Create;
     try
@@ -331,6 +417,7 @@ begin
     GSessionLock.Enter;
     try
       GSessions.Add(Session);
+      StartBrowserCdpPump;
     finally
       GSessionLock.Leave;
     end;
@@ -365,8 +452,10 @@ function BrowserSessionClose(const SessionId: string;
 var
   I: Integer;
   S: TBrowserManagedSession;
+  Closed: Boolean;
 begin
   Result := False;
+  Closed := False;
   if GSessionLock = nil then Exit;
   GSessionLock.Enter;
   try
@@ -378,12 +467,16 @@ begin
         GSessions.Delete(I);
         S.Free;
         BrowserManagerRelease;
-        Exit(True);
+        Closed := True;
+        Result := True;
+        Break;
       end;
     end;
   finally
     GSessionLock.Leave;
   end;
+  if Closed then
+    MaybeStopBrowserCdpPump;
 end;
 
 initialization
@@ -391,6 +484,7 @@ initialization
 
 finalization
   BrowserManagerShutdownAll;
+  StopBrowserCdpPump;
   GSessions.Free;
   GSessionLock.Free;
   GLock.Free;
