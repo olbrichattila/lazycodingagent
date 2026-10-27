@@ -17,6 +17,7 @@ export LCL_WIDGETSET=cocoa
 
 "$SCRIPT_DIR/ci-prepare-lazarus-deps.sh"
 "$SCRIPT_DIR/install-lca-lazarus.sh" --link-only --widgetset=cocoa
+"$SCRIPT_DIR/install-lazarus-sqlite.sh"
 
 cd "$ROOT"
 LCL_WIDGETSET=cocoa "$SCRIPT_DIR/ci-lazbuild.sh" lazycodingagent.lpi

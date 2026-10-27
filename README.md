@@ -115,6 +115,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - [Lazarus IDE](https://www.lazarus-ide.org/)
 - Lazarus Component Library (LCL)
 - Chat history, Markdown file preview, and Help topics use **`TLcaMarkdownView`** — a canvas-painted Markdown subset (no HTML engine).
+- **Embedded SQLite (M0 foundation):** vendored amalgamation in [`third_party/sqlite/`](third_party/sqlite/), static link via [`LazySqliteStatic`](packages/LazySqliteStatic/) — no system `libsqlite3` at runtime. App settings still use INI/JSON today; see [`future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md`](future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md).
 
 ---
 
@@ -161,6 +162,29 @@ If Lazarus **hangs on startup** after an install, run **`scripts\recover-lazarus
 
 Use **`--link-only`** for CI/headless builds without IDE palette install or IDE rebuild (then pass **`--widgetset=qt5`** to `lazbuild` when building the app, if desired).
 
+### Static SQLite (`LazySqliteStatic`)
+
+Before the first **`lazbuild`** (or after a clean clone), compile the embedded SQLite object and register the package:
+
+**Linux / macOS:**
+
+```bash
+chmod +x scripts/install-lazarus-sqlite.sh
+./scripts/install-lazarus-sqlite.sh
+```
+
+**Windows:**
+
+```bat
+scripts\install-lazarus-sqlite.ps1
+```
+
+This runs [`scripts/build-sqlite-static.sh`](scripts/build-sqlite-static.sh) (or [`.ps1`](scripts/build-sqlite-static.ps1)) and links [`packages/LazySqliteStatic/LazySqliteStatic.lpk`](packages/LazySqliteStatic/LazySqliteStatic.lpk) for `lazbuild`. You do **not** need to edit **Project → Options → Linker** manually: [`lazycodingagent.lpi`](lazycodingagent.lpi) already sets **Libraries** to `packages/LazySqliteStatic/src` and depends on **`LazySqliteStatic`**.
+
+**Lazarus IDE:** open `lazycodingagent.lpi` and **Build** after the install script above (same as CLI). Compile **`LazySqliteStatic.lpk`** once in the IDE if the package is not resolved. The main app links SQLite through **`uSqlite3Embed`**; it does not open databases at startup yet.
+
+**Verify:** `lazbuild tests/test_app_database.lpi` then `./tests/test_app_database` (or run [`tests/run_tests.sh`](tests/run_tests.sh), which includes this when `lazbuild` is available).
+
 Legacy scripts [`scripts/build-terminal-deps.sh`](scripts/build-terminal-deps.sh) / [`.ps1`](scripts/build-terminal-deps.ps1) only link terminal packages; prefer `install-lca-lazarus.*`.
 
 If `lazbuild` is not on `PATH`, set `$env:LAZBUILD` to your `lazbuild.exe` (for example `C:\lazarus\lazbuild.exe`).
@@ -173,6 +197,7 @@ Open `lazycodingagent.lpi` in Lazarus, or build from the command line:
 
 ```bash
 ./scripts/install-lca-lazarus.sh --link-only
+./scripts/install-lazarus-sqlite.sh
 lazbuild lazycodingagent.lpi
 ./scripts/post-build.sh
 ```
@@ -215,6 +240,7 @@ git clone <your-fork-or-upstream> lazycodingagent && cd lazycodingagent
 chmod +x scripts/*.sh
 ./scripts/ensure-lazarus-qt5-units-dir.sh   # once, if apt Lazarus needs a writable qt5 unit dir
 ./scripts/install-lca-lazarus.sh --link-only --widgetset=qt5
+./scripts/install-lazarus-sqlite.sh
 lazbuild --widgetset=qt5 lazycodingagent.lpi
 ./scripts/post-build.sh
 ./scripts/run-linux.sh
@@ -247,11 +273,12 @@ Older release `.deb` packages built before the SynEdit gutter `.lfm` trim may fa
 
 ```bat
 scripts\install-lca-lazarus.cmd --link-only
+scripts\install-lazarus-sqlite.ps1
 lazbuild lazycodingagent.lpi
 scripts\post-build.cmd
 ```
 
-**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux (**x86_64** and **aarch64** / `ubuntu-24.04-arm` with Qt5), Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux uses distro Lazarus; Windows and macOS install pinned Lazarus 4.8 from SourceForge on **`macos-14`** (Apple Silicon / `aarch64`) and **`macos-15-intel`** (Intel / `x86_64`; GitHub plans to retire Intel macOS runners around 2027). The Homebrew Lazarus cask is disabled for CI. [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit from the Lazarus tree. On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
+**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux (**x86_64** and **aarch64** / `ubuntu-24.04-arm` with Qt5), Windows, and macOS (headless `--link-only` install, no IDE palette rebuild), including **`install-lazarus-sqlite`** and the **`test_app_database`** console test on Linux jobs. Linux uses distro Lazarus; Windows and macOS install pinned Lazarus 4.8 from SourceForge on **`macos-14`** (Apple Silicon / `aarch64`) and **`macos-15-intel`** (Intel / `x86_64`; GitHub plans to retire Intel macOS runners around 2027). The Homebrew Lazarus cask is disabled for CI. [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit from the Lazarus tree. On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
 
 ### Releasing
 
@@ -268,7 +295,7 @@ Pushing a version tag builds Windows, Linux, and macOS packages and publishes a 
    - **`LazyCodingAgent-0.1.0-aarch64.dmg`** — macOS Apple Silicon (Cocoa app bundle; drag **Lazy Coding Agent** to Applications)
    - **`LazyCodingAgent-0.1.0-x86_64.dmg`** — macOS Intel (same install flow; pick the DMG that matches your Mac)
 
-The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux **amd64** uses **ubuntu-24.04** (apt Lazarus 3.0+; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). Linux **arm64** uses **`ubuntu-24.04-arm`**, the same Qt5 release build, and an **`arm64` `.deb`** only (no AppImage). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
+The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml) (including **`install-lazarus-sqlite`** via release build scripts on Linux/macOS and a dedicated step on Windows): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux **amd64** uses **ubuntu-24.04** (apt Lazarus 3.0+; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). Linux **arm64** uses **`ubuntu-24.04-arm`**, the same Qt5 release build, and an **`arm64` `.deb`** only (no AppImage). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
 
 **Linux QA (manual):** CI smoke-tests the built binary, packaged **`.deb`** ([`scripts/smoke-linux-deb.sh`](scripts/smoke-linux-deb.sh)), and **AppImage** under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
 
@@ -368,6 +395,8 @@ Tool messages returned to the LLM are **JSON strings**. Failures include an `err
 | Agent | Full mutating set | Allowed |
 
 ### Running tool integration tests
+
+[`tests/run_tests.sh`](tests/run_tests.sh) / [`.bat`](tests/run_tests.bat) compile tool-driver tests and, when `lazbuild` is on `PATH`, run **`tests/test_app_database`** (embedded SQLite M0: `global.db` / `workspace.db` round-trip via `IAppSettingsRepository`).
 
 ### Manual check: parallel chat sessions
 

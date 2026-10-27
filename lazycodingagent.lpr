@@ -14,7 +14,8 @@ uses
   {$ENDIF}
   Interfaces, // this includes the LCL widgetset (keep cthreads/uLinuxDisplayEnv before Interfaces on Unix)
   SysUtils,
-  Forms, mainunit, frmSplash, uWorkspaceState
+  Forms, mainunit, frmSplash, uWorkspaceState,
+  uSqlite3Embed
   { you can add units after this };
 
 {$IFDEF WINDOWS}

@@ -23,6 +23,7 @@ export LCL_WIDGETSET=qt5
 
 "$SCRIPT_DIR/ci-prepare-lazarus-deps.sh"
 "$SCRIPT_DIR/install-lca-lazarus.sh" --link-only --widgetset=qt5
+"$SCRIPT_DIR/install-lazarus-sqlite.sh"
 
 cd "$ROOT"
 LCL_WIDGETSET=qt5 "$SCRIPT_DIR/ci-lazbuild.sh" lazycodingagent.lpi
@@ -34,6 +35,9 @@ if [[ "$BUILD_OUT" != "$(cd "$LIB_DIR" && pwd)" ]]; then
   install -m 755 "$BUILD_OUT/lazycodingagent" "$LIB_DIR/lazycodingagent"
 fi
 "$SCRIPT_DIR/post-build.sh" "$ROOT" "$LIB_DIR"
+
+LCL_WIDGETSET=qt5 "$SCRIPT_DIR/ci-lazbuild.sh" tests/test_app_database.lpi
+./tests/test_app_database
 
 TARGET_DIR="$LIB_DIR"
 BIN="$TARGET_DIR/lazycodingagent"

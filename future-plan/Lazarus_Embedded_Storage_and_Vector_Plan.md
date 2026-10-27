@@ -1,8 +1,24 @@
 # LazyCodingAgent — Embedded Storage and Vector Search
 
 Author: Attila Olbrich  
-Date: 9 October 2026  
-Status: Architecture and migration plan for a later implementation sprint. Not implemented in the application yet.
+Date: 9 October 2026 (implementation status updated October 2026)  
+Status: Architecture and migration plan. **M0 (static engine + repository skeleton) is implemented**; INI/JSON cutover (M1–M4) and RAG are not.
+
+## Implementation status — M0 (landed)
+
+| Item | Location | Notes |
+| --- | --- | --- |
+| Vendored amalgamation (FTS5 compile flags) | `third_party/sqlite/` | Built via `scripts/build-sqlite-static.*` |
+| Static link package | `packages/LazySqliteStatic/` | `uSqlite3Embed.pas` + `{$L sqlite3_embed.o}`; **not** system `libsqlite3` |
+| Connections + migration v1 | `uAppDatabase.pas` | `global.db`, `workspaces/<wsId>/workspace.db`; pragmas WAL / foreign_keys |
+| Repository pattern (first port) | `data/uRepositoryInterfaces.pas`, `data/sqlite/uSqliteAppSettingsRepository.pas` | `IAppSettingsRepository`; SQL stays in sqlite adapters |
+| Tests | `tests/test_app_database.*` | Store/retrieve via repository; no production startup DB I/O yet |
+| Agent / IDE conventions | `.cursor/rules/persistence-and-data-access.mdc` | Repositories; future `IKnowledgeBackend` / `IBrainBackend`; optional PostgreSQL/MySQL as alternate adapters |
+| Build / IDE | `scripts/install-lazarus-sqlite.*`, `lazycodingagent.lpi` **Libraries** | No manual Linker dialog; run install script before first build |
+
+**Deferred from original M0 sketch:** `TSQLite3Connection` / SQLdb — M0 uses the minimal C API in `uSqlite3Embed` to avoid `sqlite3dyn`. SQLdb may return when store migrations need datasets.
+
+**Still production behavior:** `uWorkspaceState`, `uWorkspaceRegistry`, `uChatSessionStore`, `uSyntaxSchemeRegistry` read/write INI and JSON only.
 
 ## Relation to the main future plan
 
@@ -398,10 +414,10 @@ Today API keys live in plain INI (`Provider_*` sections). Moving to SQLite **doe
 
 ## 9. Application integration map (implementation epics)
 
-Ordered checklist for a later sprint (no code in this document task):
+Ordered checklist (M0 items done; remainder is later sprints):
 
-1. **`third_party/sqlite/`** + **`LazySqliteStatic`** package + build script(s).
-2. **`uAppDatabase.pas`** — connections, migrations, pragmas.
+1. ~~**`third_party/sqlite/`** + **`LazySqliteStatic`** package + build script(s).~~ **Done (M0).**
+2. ~~**`uAppDatabase.pas`** — connections, migrations, pragmas; **`IAppSettingsRepository`** + SQLite adapter.~~ **Done (M0).**
 3. **`uWorkspaceState`** — replace `TIniFile` Load/Save with repository.
 4. **`uWorkspaceRegistry`** — DB backend; retain legacy JSON import.
 5. **`uChatSessionStore`** — SQL for sessions/messages; remove dependency on per-workspace JSON file at cutover.
@@ -419,6 +435,8 @@ Ordered checklist for a later sprint (no code in this document task):
 | Chat | `uChatSessionStore.pas` |
 | Syntax | `uSyntaxSchemeRegistry.pas` |
 | Future RAG | new units (e.g. `uKnowledgeIndex.pas`, `uVectorMath.pas`) |
+| M0 DB / repos | `uAppDatabase.pas`, `data/uRepositoryInterfaces.pas`, `data/sqlite/*`, `packages/LazySqliteStatic/` |
+| Remote KB / Brain (future) | `data/remote/` — HTTP clients behind `IKnowledgeBackend` / `IBrainBackend` (see persistence Cursor rule) |
 
 ---
 
@@ -440,7 +458,7 @@ Resolve during implementation planning:
 2. **Syntax schemes:** DB-only JSON vs hybrid export files for user editing (v1 recommendation: DB-primary with optional export).
 3. **Chat export:** whether users need JSON/Markdown export of sessions after SQL cutover (support/debugging).
 4. **Workspace DB path:** confirm `workspaces/<wsId>/workspace.db` vs optional mirror under workspace folder for user-visible backup.
-5. **Prebuilt `.o` artifacts in git** vs compile-on-build (repo size vs contributor friction).
+5. **Prebuilt `.o` artifacts in git** vs compile-on-build — **M0 decision:** compile on build host (`build-sqlite-static.*` copies `sqlite3_embed.o` to `src/` and `lib/<cpu>-<os>/`); objects are gitignored.
 6. **Phase B trigger metrics** — capture baseline on Windows/Linux/macOS reference devices during RAG beta.
 
 ---

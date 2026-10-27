@@ -38,6 +38,11 @@ fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_llm_provider_payload.pas
 fpc -Mobjfpc -Scghi -Fu"$ROOT" -Fu"$ROOT/packages/LcaDesignSystem/src" \
   "${FPC_EXTRA[@]}" -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_llm_prompt_stability.pas
+if command -v lazbuild >/dev/null 2>&1; then
+  "$ROOT/scripts/install-lazarus-sqlite.sh"
+  lazbuild "$ROOT/tests/test_app_database.lpi"
+  "$ROOT/tests/test_app_database"
+fi
 "$TEST_OUTPUT/test_agent_rules" "$TEST_OUTPUT/rules-fixture"
 "$TEST_OUTPUT/test_web_fetch" "$ROOT/tests/fixtures/web_fetch/sample.html"
 "$TEST_OUTPUT/test_browser_read"

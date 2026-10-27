@@ -53,6 +53,9 @@
       <Item>
         <PackageName Value="LcaDesignSystem"/>
       </Item>
+      <Item>
+        <PackageName Value="LazySqliteStatic"/>
+      </Item>
     </RequiredPackages>
     <Units>
       <Unit>
@@ -612,6 +615,7 @@
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
       <OtherUnitFiles Value="third_party\fpc-openssl3\src"/>
+      <Libraries Value="packages\LazySqliteStatic\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

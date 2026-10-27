@@ -27,8 +27,9 @@ Pull requests run [.github/workflows/build.yml](.github/workflows/build.yml):
 - macOS
 
 Fix any failing job before expecting a merge. You can reproduce the headless
-link-and-build flow locally with `scripts/install-lca-lazarus.* --link-only` and
-`lazbuild lazycodingagent.lpi` (details in the README).
+link-and-build flow locally with `scripts/install-lca-lazarus.* --link-only`,
+`scripts/install-lazarus-sqlite.*`, and `lazbuild lazycodingagent.lpi` (details
+in the README).
 
 ## Lazarus and UI conventions
 
@@ -43,6 +44,10 @@ LazyCodingAgent is a **Lazarus + LCL** application:
 - Avoid layout patterns that trigger LCL `ChangeBounds` loops (mixing `Align`
   with manual `SetBounds` on the same control). See project rules under
   `.cursor/rules/` for more detail.
+- **Persistence:** new database code belongs behind `I*Repository` interfaces in
+  `data/sqlite/` (see `.cursor/rules/persistence-and-data-access.mdc` and
+  `future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md`). Do not use SQLdb
+  types from forms or store units until a deliberate migration sprint.
 
 ## User-visible behavior and help
 
