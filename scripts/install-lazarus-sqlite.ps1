@@ -6,21 +6,10 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $PSScriptRoot
-$LazBuild = if ($env:LAZBUILD) { $env:LAZBUILD } else { 'lazbuild' }
+$Lpk = Join-Path $Root 'packages\LazySqliteStatic\LazySqliteStatic.lpk'
 
 & "$Root\scripts\build-sqlite-static.ps1" -Arch $Arch
-
-$lazArgs = @(
-  '--add-package-link',
-  "$Root\packages\LazySqliteStatic\LazySqliteStatic.lpk"
-)
-if ($env:LAZARUS_DIR) {
-  $lazArgs = @('--lazarusdir', $env:LAZARUS_DIR) + $lazArgs
-  if ($env:LAZARUS_PRIMARY_CONFIG) {
-    $lazArgs = @('--primary-config-path', $env:LAZARUS_PRIMARY_CONFIG) + $lazArgs
-  }
-}
-& $LazBuild @lazArgs
+& "$Root\scripts\ci-lazbuild.ps1" --add-package-link $Lpk
 if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }

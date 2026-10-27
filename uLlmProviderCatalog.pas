@@ -10,39 +10,11 @@ uses
 const
   LLM_PROVIDER_CATALOG_VERSION = 4;
 
-  { Pre-v4 enum ordinals (6 providers). }
-  LEGACY_PROV_OPENROUTER = 0;
-  LEGACY_PROV_OPENAI = 1;
-  LEGACY_PROV_ANTHROPIC = 2;
-  LEGACY_PROV_OLLAMA = 3;
-  LEGACY_PROV_NOUS = 4;
-  LEGACY_PROV_CUSTOM = 5;
-  LEGACY_PROV_COUNT = 6;
-
-type
-  TLegacyLlmProviderOrd = 0..(LEGACY_PROV_COUNT - 1);
-
-  TLegacySlotCredentials = record
-    ApiKey: string;
-    BaseUrl: string;
-    CustomDisplayName: string;
-  end;
-  TLegacySlotCreds = array[0..LEGACY_PROV_COUNT - 1] of TLegacySlotCredentials;
-  TLegacySlotModel = record
-    ModelId: string;
-    DisplayName: string;
-  end;
-  TLegacySlotModels = array[0..LEGACY_PROV_COUNT - 1] of array of TLegacySlotModel;
-
 function LlmProviderCatalogName(AProv: TLlmProvider): string;
 function LlmProviderRegistrationUrl(AProv: TLlmProvider): string;
 function LlmProviderIsCustom(AProv: TLlmProvider): Boolean;
 function LlmProviderComboCaption(AProv: TLlmProvider; const ACustomDisplayName: string): string;
 procedure PopulateLlmProviderCombo(AItems: TStrings; const ACustomDisplayName: string);
-
-function MigrateLegacyProviderOrd(AOldOrd: Integer; out ANewProv: TLlmProvider;
-  out ACustomLabel: string): Boolean;
-function LegacyProviderOrdToNew(AOldOrd: Integer): TLlmProvider;
 
 implementation
 
@@ -109,42 +81,6 @@ begin
   AItems.Clear;
   for P := Low(TLlmProvider) to High(TLlmProvider) do
     AItems.Add(LlmProviderComboCaption(P, ACustomDisplayName));
-end;
-
-function LegacyProviderOrdToNew(AOldOrd: Integer): TLlmProvider;
-var
-  LabelStr: string;
-begin
-  MigrateLegacyProviderOrd(AOldOrd, Result, LabelStr);
-end;
-
-function MigrateLegacyProviderOrd(AOldOrd: Integer; out ANewProv: TLlmProvider;
-  out ACustomLabel: string): Boolean;
-begin
-  ACustomLabel := '';
-  case AOldOrd of
-    LEGACY_PROV_OPENAI:
-      ANewProv := lpOpenAI;
-    LEGACY_PROV_NOUS:
-      ANewProv := lpNousResearch;
-    LEGACY_PROV_OPENROUTER:
-      ANewProv := lpOpenRouter;
-    LEGACY_PROV_ANTHROPIC:
-    begin
-      ANewProv := lpCustom;
-      ACustomLabel := 'Anthropic';
-    end;
-    LEGACY_PROV_OLLAMA:
-    begin
-      ANewProv := lpCustom;
-      ACustomLabel := 'Ollama';
-    end;
-    LEGACY_PROV_CUSTOM:
-      ANewProv := lpCustom;
-  else
-    ANewProv := lpOpenRouter;
-  end;
-  Result := (AOldOrd >= 0) and (AOldOrd < LEGACY_PROV_COUNT);
 end;
 
 end.

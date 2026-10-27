@@ -8,80 +8,15 @@ uses
   SysUtils, uBrowserReadTypes;
 
 function LoadBrowserReadConfig: TBrowserReadConfig;
-function LoadBrowserReadConfigFromIni: TBrowserReadConfig;
 procedure SaveBrowserReadExecutablePath(const APath: string);
 procedure SaveBrowserReadConfigToGlobalDb(const AConfig: TBrowserReadConfig);
-procedure SetBrowserReadIniPathForTests(const APath: string);
-procedure ClearBrowserReadIniPathForTests;
 
 function BrowserReadTestLocalAllowed: Boolean;
 
 implementation
 
 uses
-  IniFiles
-  {$IFDEF LCL}
-  , Forms
-  {$ENDIF}
-  , uAppDatabase, uGlobalConfigLegacy, uRepositoryInterfaces;
-
-var
-  GTestBrowserIniPath: string = '';
-
-procedure SetBrowserReadIniPathForTests(const APath: string);
-begin
-  GTestBrowserIniPath := APath;
-end;
-
-procedure ClearBrowserReadIniPathForTests;
-begin
-  GTestBrowserIniPath := '';
-end;
-
-function BrowserReadIniPath: string;
-begin
-  if GTestBrowserIniPath <> '' then
-    Exit(GTestBrowserIniPath);
-  {$IFDEF LCL}
-  if Assigned(Application) then
-    Exit(GetAppConfigFile(False));
-  {$ENDIF}
-  Result := IncludeTrailingPathDelimiter(GetEnvironmentVariable('HOME')) +
-    '.config/lazycodingagent/config.ini';
-end;
-
-function LoadBrowserReadConfigFromIni: TBrowserReadConfig;
-var
-  I: TIniFile;
-  Path: string;
-begin
-  Result := DefaultBrowserReadConfig;
-  Result.AllowLocalhost := BrowserReadTestLocalAllowed;
-  Path := BrowserReadIniPath;
-  if Path = '' then Exit;
-  I := TIniFile.Create(Path);
-  try
-    Result.ExecutablePath := Trim(I.ReadString('BrowserRead', 'ExecutablePath', ''));
-    Result.MaxConcurrent := I.ReadInteger('BrowserRead', 'MaxConcurrent',
-      BROWSER_READ_DEFAULT_MAX_CONCURRENT);
-    if Result.MaxConcurrent < 1 then
-      Result.MaxConcurrent := 1;
-    if Result.MaxConcurrent > 4 then
-      Result.MaxConcurrent := 4;
-    Result.MaxSessions := I.ReadInteger('BrowserRead', 'MaxSessions',
-      BROWSER_DEFAULT_MAX_SESSIONS);
-    if Result.MaxSessions < 1 then
-      Result.MaxSessions := 1;
-    if Result.MaxSessions > 8 then
-      Result.MaxSessions := 8;
-    Result.IdleTimeoutMs := I.ReadInteger('BrowserRead', 'IdleTimeoutMs',
-      BROWSER_DEFAULT_IDLE_TIMEOUT_MS);
-    if Result.IdleTimeoutMs < 60000 then
-      Result.IdleTimeoutMs := 60000;
-  finally
-    I.Free;
-  end;
-end;
+  uAppDatabase, uRepositoryInterfaces;
 
 function LoadBrowserReadConfigFromDb: TBrowserReadConfig;
 var
@@ -108,8 +43,6 @@ end;
 
 function LoadBrowserReadConfig: TBrowserReadConfig;
 begin
-  if GlobalConfigUseLegacyStorage then
-    Exit(LoadBrowserReadConfigFromIni);
   if not TAppDatabase.IsGlobalOpen then
     TAppDatabase.OpenGlobal;
   Result := LoadBrowserReadConfigFromDb;
@@ -137,26 +70,8 @@ end;
 
 procedure SaveBrowserReadExecutablePath(const APath: string);
 var
-  I: TIniFile;
-  Path: string;
-  Dir: string;
   Cfg: TBrowserReadConfig;
 begin
-  if GlobalConfigUseLegacyStorage then
-  begin
-    Path := BrowserReadIniPath;
-    if Path = '' then Exit;
-    Dir := ExtractFilePath(Path);
-    if (Dir <> '') and not DirectoryExists(Dir) then
-      ForceDirectories(Dir);
-    I := TIniFile.Create(Path);
-    try
-      I.WriteString('BrowserRead', 'ExecutablePath', Trim(APath));
-    finally
-      I.Free;
-    end;
-    Exit;
-  end;
   if not TAppDatabase.IsGlobalOpen then
     TAppDatabase.OpenGlobal;
   Cfg := LoadBrowserReadConfigFromDb;

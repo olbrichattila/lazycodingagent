@@ -37,8 +37,6 @@ type
 
     procedure Load;
     procedure Save;
-    procedure LoadLegacyJson;
-    procedure SaveLegacyJson;
     procedure LoadFromGlobalDb;
     procedure SaveToGlobalDb;
     procedure MigrateFromLegacyIni(const ALegacyName, ALegacyRoot: string);
@@ -50,8 +48,7 @@ function NormalizeWorkspaceFolderPath(const APath: string): string;
 implementation
 
 uses
-  Forms, fpjson, jsonparser, uAppDatabase, uRepositoryInterfaces, uGlobalConfigLegacy,
-  uGlobalConfigKeys, uAppSettingsCodec;
+  uAppDatabase, uRepositoryInterfaces;
 
 function WorkspaceRegistryFileName: string;
 begin
@@ -208,117 +205,16 @@ end;
 
 procedure TWorkspaceRegistry.Load;
 begin
-  if GlobalConfigUseLegacyStorage then
-    LoadLegacyJson
-  else
-  begin
-    if not TAppDatabase.IsGlobalOpen then
-      TAppDatabase.OpenGlobal;
-    LoadFromGlobalDb;
-  end;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  LoadFromGlobalDb;
 end;
 
 procedure TWorkspaceRegistry.Save;
 begin
-  if GlobalConfigUseLegacyStorage then
-    SaveLegacyJson
-  else
-  begin
-    if not TAppDatabase.IsGlobalOpen then
-      TAppDatabase.OpenGlobal;
-    SaveToGlobalDb;
-  end;
-end;
-
-procedure TWorkspaceRegistry.LoadLegacyJson;
-var
-  Path: string;
-  Raw: string;
-  Data: TJSONData;
-  Root, Item: TJSONObject;
-  Arr: TJSONArray;
-  I, N: Integer;
-begin
-  SetLength(FEntries, 0);
-  FActiveWorkspaceId := '';
-  Path := WorkspaceRegistryFileName;
-  if not FileExists(Path) then
-    Exit;
-
-  with TStringList.Create do
-  try
-    LoadFromFile(Path);
-    Raw := Text;
-  finally
-    Free;
-  end;
-
-  if Trim(Raw) = '' then Exit;
-
-  try
-    Data := GetJSON(Raw);
-    try
-      if not (Data is TJSONObject) then Exit;
-      Root := TJSONObject(Data);
-      FActiveWorkspaceId := Root.Get('activeWorkspaceId', '');
-      if not (Root.Find('workspaces') is TJSONArray) then Exit;
-      Arr := TJSONArray(Root.Find('workspaces'));
-      N := Arr.Count;
-      SetLength(FEntries, N);
-      for I := 0 to N - 1 do begin
-        if not (Arr.Items[I] is TJSONObject) then Continue;
-        Item := TJSONObject(Arr.Items[I]);
-        FEntries[I].Id := Item.Get('id', '');
-        FEntries[I].DisplayName := Item.Get('displayName', '');
-        FEntries[I].FolderPath := Item.Get('folderPath', '');
-        FEntries[I].LastSessionId := Item.Get('lastSessionId', '');
-      end;
-    finally
-      Data.Free;
-    end;
-  except
-    SetLength(FEntries, 0);
-    FActiveWorkspaceId := '';
-  end;
-end;
-
-procedure TWorkspaceRegistry.SaveLegacyJson;
-var
-  Root, Item: TJSONObject;
-  Arr: TJSONArray;
-  I: Integer;
-  Path, Dir: string;
-  SL: TStringList;
-begin
-  Root := TJSONObject.Create;
-  try
-    Root.Add('activeWorkspaceId', FActiveWorkspaceId);
-    Arr := TJSONArray.Create;
-    for I := 0 to High(FEntries) do begin
-      Item := TJSONObject.Create;
-      Item.Add('id', FEntries[I].Id);
-      Item.Add('displayName', FEntries[I].DisplayName);
-      Item.Add('folderPath', FEntries[I].FolderPath);
-      Item.Add('lastSessionId', FEntries[I].LastSessionId);
-      Arr.Add(Item);
-    end;
-    Root.Add('workspaces', Arr);
-
-    Path := WorkspaceRegistryFileName;
-    Dir := ExtractFilePath(Path);
-    if not DirectoryExists(Dir) then
-      ForceDirectories(Dir);
-
-    SL := TStringList.Create;
-    try
-      SL.Text := Root.AsJSON;
-      SL.SaveToFile(Path);
-    finally
-      SL.Free;
-    end;
-  finally
-    Root.Free;
-  end;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  SaveToGlobalDb;
 end;
 
 procedure TWorkspaceRegistry.MigrateFromLegacyIni(const ALegacyName, ALegacyRoot: string);

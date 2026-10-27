@@ -47,6 +47,11 @@ implementation
 {$ifdef UNIX}
   {$linklib c}
   {$linklib m}
+  {$ifdef CPUAARCH64}
+  {$ifdef LINUX}
+  {$linklib gcc_s}
+  {$endif}
+  {$endif}
 {$endif}
 {$L sqlite3_embed.o}
 

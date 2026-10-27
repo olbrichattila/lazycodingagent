@@ -354,7 +354,7 @@ Store `lastSessionId` from JSON root into `session_prefs` or `workspaces.last_se
 ### 6.4 Rollback and recovery
 
 - After import, rename `*.ini`, `workspaces.json`, `sessions/*.json`, `syntax-schemes.json` to `*.bak` with timestamp suffix.
-- Document manual recovery: quit app, remove `.db`, restore `.bak` names, restart (or env flag **`LAZYCODINGAGENT_LEGACY_STORAGE=1`** — proposed — to force legacy readers during support).
+- Document manual recovery: quit app, restore or remove `global.db` (SQLite-only cutover; no INI/JSON readers).
 - Optional future menu: **Export settings** to JSON archive for support.
 
 ### 6.5 Syntax schemes (v1 recommendation)

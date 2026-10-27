@@ -5,7 +5,7 @@ unit uWorkspaceState;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, uAppTypes, uAgentTypes, uLlmPromptCacheTypes, uLlmProviderCatalog;
+  Classes, SysUtils, uAppTypes, uAgentTypes, uLlmPromptCacheTypes;
 
 type
   TPanelState = record
@@ -64,12 +64,6 @@ type
     procedure SyncActiveFromProviderSlot;
     procedure SyncActiveToProviderSlot;
     function ModelListHasId(AProv: TLlmProvider; const AModelId: string; ASkipIndex: Integer): Boolean;
-    procedure AppendUniqueSavedModels(AProv: TLlmProvider; const ASrc: array of TLegacySlotModel);
-    procedure MergeLegacyCustomCredentials(const ASrc: TLegacySlotCredentials;
-      const ADefaultLabel: string; APreferSrc: Boolean);
-    procedure MigrateLegacyLlmFromSlots(ALegacyActiveOrd: Integer;
-      const ALegacyCreds: TLegacySlotCreds; const ALegacyModels: TLegacySlotModels;
-      const AStoredCustomName: string);
   public
     constructor Create;
     procedure ResetLayout;
@@ -87,8 +81,6 @@ type
     function GetPanelDockedHeight(AId: TPanelId): Integer;
     procedure Load;
     procedure Save;
-    procedure LoadLegacyIni;
-    procedure SaveLegacyIni;
     procedure LoadFromGlobalDb;
     procedure SaveToGlobalDb;
 
@@ -138,38 +130,17 @@ function LoadPersistedThemeKind: TThemeKind;
 implementation
 
 uses
-  Forms, uAppDatabase, uRepositoryInterfaces, uGlobalConfigKeys, uAppSettingsCodec, uGlobalConfigLegacy;
+  Forms, uAppDatabase, uRepositoryInterfaces, uGlobalConfigKeys, uAppSettingsCodec;
 
 const
   LLM_CONFIG_VERSION = 4;
-  OLD_LLM_PROVIDER_CUSTOM_ORD = 4;
-
-function SettingsFileName: string;
-begin
-  Result := GetAppConfigFile(False);
-end;
 
 function LoadPersistedThemeKind: TThemeKind;
 var
-  I: TIniFile;
   OrdVal: Integer;
   Settings: IAppSettingsRepository;
 begin
   Result := tkDark;
-  if GlobalConfigUseLegacyStorage then
-  begin
-    I := TIniFile.Create(SettingsFileName);
-    try
-      OrdVal := I.ReadInteger('Appearance', 'Theme', Ord(tkDark));
-      if (OrdVal >= Ord(Low(TThemeKind))) and (OrdVal <= Ord(High(TThemeKind))) then
-        Result := TThemeKind(OrdVal)
-      else
-        Result := tkDark;
-    finally
-      I.Free;
-    end;
-    Exit;
-  end;
   if not TAppDatabase.IsGlobalOpen then
     TAppDatabase.OpenGlobal;
   Settings := TAppDatabase.GlobalSettings;
@@ -183,89 +154,6 @@ end;
 function DefaultBaseUrlForProvider(AProv: TLlmProvider): string;
 begin
   Result := '';
-end;
-
-procedure TWorkspaceState.AppendUniqueSavedModels(AProv: TLlmProvider;
-  const ASrc: array of TLegacySlotModel);
-var
-  I, J, N: Integer;
-  Found: Boolean;
-  M: TSavedModel;
-begin
-  for I := 0 to High(ASrc) do begin
-    Found := False;
-    for J := 0 to High(FProviderModels[AProv]) do
-      if SameText(FProviderModels[AProv][J].ModelId, ASrc[I].ModelId) then begin
-        Found := True;
-        Break;
-      end;
-    if Found then Continue;
-    M.ModelId := ASrc[I].ModelId;
-    M.DisplayName := ASrc[I].DisplayName;
-    N := Length(FProviderModels[AProv]);
-    SetLength(FProviderModels[AProv], N + 1);
-    FProviderModels[AProv][N] := M;
-  end;
-end;
-
-procedure TWorkspaceState.MergeLegacyCustomCredentials(const ASrc: TLegacySlotCredentials;
-  const ADefaultLabel: string; APreferSrc: Boolean);
-begin
-  if APreferSrc or ((Trim(FProviderCreds[lpCustom].ApiKey) = '') and
-     (Trim(FProviderCreds[lpCustom].BaseUrl) = '') and
-     ((Trim(ASrc.ApiKey) <> '') or (Trim(ASrc.BaseUrl) <> ''))) then begin
-    FProviderCreds[lpCustom].ApiKey := ASrc.ApiKey;
-    FProviderCreds[lpCustom].BaseUrl := ASrc.BaseUrl;
-    if Trim(ASrc.CustomDisplayName) <> '' then
-      FProviderCreds[lpCustom].CustomDisplayName := ASrc.CustomDisplayName
-    else if (Trim(FProviderCreds[lpCustom].CustomDisplayName) = '') and (Trim(ADefaultLabel) <> '') then
-      FProviderCreds[lpCustom].CustomDisplayName := ADefaultLabel;
-  end;
-end;
-
-procedure TWorkspaceState.MigrateLegacyLlmFromSlots(ALegacyActiveOrd: Integer;
-  const ALegacyCreds: TLegacySlotCreds; const ALegacyModels: TLegacySlotModels;
-  const AStoredCustomName: string);
-var
-  L, J: Integer;
-  NewP: TLlmProvider;
-  LabelStr: string;
-  PreferCustom: Boolean;
-begin
-  for L := 0 to LEGACY_PROV_COUNT - 1 do begin
-    if (L = LEGACY_PROV_ANTHROPIC) or (L = LEGACY_PROV_OLLAMA) or (L = LEGACY_PROV_CUSTOM) then
-      Continue;
-    if not MigrateLegacyProviderOrd(L, NewP, LabelStr) then
-      Continue;
-    FProviderCreds[NewP].ApiKey := ALegacyCreds[L].ApiKey;
-    FProviderCreds[NewP].BaseUrl := ALegacyCreds[L].BaseUrl;
-    FProviderCreds[NewP].CustomDisplayName := ALegacyCreds[L].CustomDisplayName;
-    SetLength(FProviderModels[NewP], Length(ALegacyModels[L]));
-    for J := 0 to High(ALegacyModels[L]) do begin
-      FProviderModels[NewP][J].ModelId := ALegacyModels[L][J].ModelId;
-      FProviderModels[NewP][J].DisplayName := ALegacyModels[L][J].DisplayName;
-    end;
-  end;
-
-  PreferCustom := (ALegacyActiveOrd = LEGACY_PROV_ANTHROPIC) or (ALegacyActiveOrd = LEGACY_PROV_OLLAMA) or
-    (ALegacyActiveOrd = LEGACY_PROV_CUSTOM);
-  MergeLegacyCustomCredentials(ALegacyCreds[LEGACY_PROV_CUSTOM], '', PreferCustom and
-    (ALegacyActiveOrd = LEGACY_PROV_CUSTOM));
-  MergeLegacyCustomCredentials(ALegacyCreds[LEGACY_PROV_ANTHROPIC], 'Anthropic',
-    PreferCustom and (ALegacyActiveOrd = LEGACY_PROV_ANTHROPIC));
-  MergeLegacyCustomCredentials(ALegacyCreds[LEGACY_PROV_OLLAMA], 'Ollama',
-    PreferCustom and (ALegacyActiveOrd = LEGACY_PROV_OLLAMA));
-  AppendUniqueSavedModels(lpCustom, ALegacyModels[LEGACY_PROV_CUSTOM]);
-  AppendUniqueSavedModels(lpCustom, ALegacyModels[LEGACY_PROV_ANTHROPIC]);
-  AppendUniqueSavedModels(lpCustom, ALegacyModels[LEGACY_PROV_OLLAMA]);
-  if Trim(AStoredCustomName) <> '' then
-    FProviderCreds[lpCustom].CustomDisplayName := Trim(AStoredCustomName);
-
-  if not MigrateLegacyProviderOrd(ALegacyActiveOrd, FProvider, LabelStr) then
-    FProvider := lpOpenRouter;
-  if (FProvider = lpCustom) and (Trim(LabelStr) <> '') and
-     (Trim(FProviderCreds[lpCustom].CustomDisplayName) = '') then
-    FProviderCreds[lpCustom].CustomDisplayName := LabelStr;
 end;
 
 function TWorkspaceState.HasActiveWorkspace: Boolean;
@@ -599,242 +487,16 @@ end;
 
 procedure TWorkspaceState.Load;
 begin
-  if GlobalConfigUseLegacyStorage then
-    LoadLegacyIni
-  else
-  begin
-    if not TAppDatabase.IsGlobalOpen then
-      TAppDatabase.OpenGlobal;
-    LoadFromGlobalDb;
-  end;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  LoadFromGlobalDb;
 end;
 
 procedure TWorkspaceState.Save;
 begin
-  if GlobalConfigUseLegacyStorage then
-    SaveLegacyIni
-  else
-  begin
-    if not TAppDatabase.IsGlobalOpen then
-      TAppDatabase.OpenGlobal;
-    SaveToGlobalDb;
-  end;
-end;
-
-procedure TWorkspaceState.LoadLegacyIni;
-var
-  I: TIniFile;
-  P: TPanelId;
-  Sec: string;
-  ConfigVersion, ProvOrd, ModelCount, J, L: Integer;
-  LegacyApiKey, LegacyBaseUrl, LegacyModel, StoredCustomName: string;
-  M: TSavedModel;
-  AnyModels: Boolean;
-  Prov: TLlmProvider;
-  LegacyCreds: TLegacySlotCreds;
-  LegacyModels: TLegacySlotModels;
-  UseLegacyLayout: Boolean;
-begin
-  LegacyApiKey := FApiKey;
-  LegacyBaseUrl := FBaseUrl;
-  LegacyModel := FModel;
-
-  I := TIniFile.Create(SettingsFileName);
-  try
-    FTheme := TThemeKind(I.ReadInteger('Appearance', 'Theme', Ord(FTheme)));
-    FMode := TWorkspaceMode(I.ReadInteger('Agent', 'Mode', Ord(FMode)));
-    FModel := I.ReadString('Agent', 'Model', FModel);
-    FWorkspaceName := I.ReadString('Workspace', 'Name', FWorkspaceName);
-    FWorkspaceRoot := I.ReadString('Workspace', 'Root', FWorkspaceRoot);
-    FActiveWorkspaceId := I.ReadString('Workspace', 'ActiveId', FActiveWorkspaceId);
-
-    ConfigVersion := I.ReadInteger('LLM', 'ConfigVersion', 1);
-    ProvOrd := I.ReadInteger('LLM', 'Provider', Ord(FProvider));
-    if (ConfigVersion < 2) and (ProvOrd = OLD_LLM_PROVIDER_CUSTOM_ORD) then
-      ProvOrd := LEGACY_PROV_CUSTOM;
-    StoredCustomName := I.ReadString('LLM', 'CustomDisplayName', '');
-    UseLegacyLayout := ConfigVersion < LLM_CONFIG_VERSION;
-
-    if UseLegacyLayout then begin
-      LegacyApiKey := I.ReadString('LLM', 'ApiKey', LegacyApiKey);
-      LegacyBaseUrl := I.ReadString('LLM', 'BaseUrl', LegacyBaseUrl);
-    end else begin
-      if (ProvOrd >= Ord(Low(TLlmProvider))) and (ProvOrd <= Ord(High(TLlmProvider))) then
-        FProvider := TLlmProvider(ProvOrd);
-    end;
-
-    FTemperature := I.ReadFloat('LLM', 'Temperature', FTemperature);
-    FMaxTokens := I.ReadInteger('LLM', 'MaxTokens', FMaxTokens);
-    FMaxSteps := I.ReadInteger('LLM', 'MaxSteps', FMaxSteps);
-    FDebuggingMode := I.ReadBool('General', 'DebuggingMode', FDebuggingMode);
-    FLearnMode := I.ReadBool('General', 'LearnMode', FLearnMode);
-    FAutoSummarizeContext := I.ReadBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
-    FContextWindowTokens := I.ReadInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
-    FSummarizeThreshold := I.ReadFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
-
-    FPromptCacheSettings := DefaultPromptCacheSettings;
-    FPromptCacheSettings.Mode := TPromptCacheMode(I.ReadInteger('PromptCache', 'Mode',
-      Ord(FPromptCacheSettings.Mode)));
-    FPromptCacheSettings.Retention := TPromptCacheRetention(I.ReadInteger('PromptCache', 'Retention',
-      Ord(FPromptCacheSettings.Retention)));
-    FPromptCacheSettings.CacheSystemInstructions := I.ReadBool('PromptCache', 'CacheSystem',
-      FPromptCacheSettings.CacheSystemInstructions);
-    FPromptCacheSettings.CacheToolDefinitions := I.ReadBool('PromptCache', 'CacheTools',
-      FPromptCacheSettings.CacheToolDefinitions);
-    FPromptCacheSettings.CacheProjectContext := I.ReadBool('PromptCache', 'CacheProject',
-      FPromptCacheSettings.CacheProjectContext);
-    FPromptCacheSettings.CacheConversationHistory := I.ReadBool('PromptCache', 'CacheHistory',
-      FPromptCacheSettings.CacheConversationHistory);
-
-    ResetProviderStorage;
-
-    if UseLegacyLayout then begin
-      for L := 0 to LEGACY_PROV_COUNT - 1 do begin
-        Sec := 'Provider_' + IntToStr(L);
-        if I.SectionExists(Sec) then begin
-          LegacyCreds[L].ApiKey := I.ReadString(Sec, 'ApiKey', '');
-          LegacyCreds[L].BaseUrl := I.ReadString(Sec, 'BaseUrl', '');
-          LegacyCreds[L].CustomDisplayName := I.ReadString(Sec, 'CustomDisplayName', '');
-        end;
-        Sec := 'Models_' + IntToStr(L);
-        ModelCount := I.ReadInteger(Sec, 'Count', -1);
-        if ModelCount >= 0 then begin
-          SetLength(LegacyModels[L], ModelCount);
-          for J := 0 to ModelCount - 1 do begin
-            M.ModelId := I.ReadString(Sec, 'Id_' + IntToStr(J), '');
-            M.DisplayName := I.ReadString(Sec, 'Name_' + IntToStr(J), M.ModelId);
-            if Trim(M.DisplayName) = '' then
-              M.DisplayName := M.ModelId;
-            LegacyModels[L][J].ModelId := M.ModelId;
-            LegacyModels[L][J].DisplayName := M.DisplayName;
-          end;
-        end;
-      end;
-      MigrateLegacyLlmFromSlots(ProvOrd, LegacyCreds, LegacyModels, StoredCustomName);
-      FProviderCreds[FProvider].ApiKey := LegacyApiKey;
-      FProviderCreds[FProvider].BaseUrl := LegacyBaseUrl;
-      AnyModels := False;
-      for Prov := Low(TLlmProvider) to High(TLlmProvider) do
-        if SavedModelCount(Prov) > 0 then
-          AnyModels := True;
-      if not AnyModels then
-        AddSavedModel(FProvider, FModel, FModel);
-    end else begin
-      for Prov := Low(TLlmProvider) to High(TLlmProvider) do begin
-        Sec := 'Provider_' + IntToStr(Ord(Prov));
-        if I.SectionExists(Sec) then begin
-          FProviderCreds[Prov].ApiKey := I.ReadString(Sec, 'ApiKey', '');
-          FProviderCreds[Prov].BaseUrl := I.ReadString(Sec, 'BaseUrl', '');
-          FProviderCreds[Prov].CustomDisplayName := I.ReadString(Sec, 'CustomDisplayName', '');
-        end;
-        Sec := 'Models_' + IntToStr(Ord(Prov));
-        ModelCount := I.ReadInteger(Sec, 'Count', -1);
-        if ModelCount >= 0 then begin
-          SetLength(FProviderModels[Prov], ModelCount);
-          for J := 0 to ModelCount - 1 do begin
-            M.ModelId := I.ReadString(Sec, 'Id_' + IntToStr(J), '');
-            M.DisplayName := I.ReadString(Sec, 'Name_' + IntToStr(J), M.ModelId);
-            if Trim(M.DisplayName) = '' then
-              M.DisplayName := M.ModelId;
-            FProviderModels[Prov][J] := M;
-          end;
-        end;
-      end;
-      if Trim(StoredCustomName) <> '' then
-        FProviderCreds[lpCustom].CustomDisplayName := Trim(StoredCustomName);
-    end;
-
-    SyncActiveFromProviderSlot;
-
-    for P := Low(TPanelId) to High(TPanelId) do begin
-      Sec := 'Panel_' + IntToStr(Ord(P));
-      FPanels[P].Visible := I.ReadBool(Sec, 'Visible', FPanels[P].Visible);
-      FPanels[P].Floating := I.ReadBool(Sec, 'Floating', FPanels[P].Floating);
-      FPanels[P].Left := I.ReadInteger(Sec, 'Left', FPanels[P].Left);
-      FPanels[P].Top := I.ReadInteger(Sec, 'Top', FPanels[P].Top);
-      FPanels[P].Width := I.ReadInteger(Sec, 'Width', FPanels[P].Width);
-      FPanels[P].Height := I.ReadInteger(Sec, 'Height', FPanels[P].Height);
-      FPanels[P].DockedHeight := I.ReadInteger(Sec, 'DockedHeight', FPanels[P].DockedHeight);
-    end;
-
-    { One-time migration: docked height was briefly stored in Height (not float size). }
-    if (FPanels[piTerminal].DockedHeight = 0) and (FPanels[piTerminal].Height >= 120) and
-       (FPanels[piTerminal].Height <= 500) then
-      FPanels[piTerminal].DockedHeight := FPanels[piTerminal].Height;
-  finally
-    I.Free;
-  end;
-end;
-
-procedure TWorkspaceState.SaveLegacyIni;
-var
-  I: TIniFile;
-  P: TPanelId;
-  Sec: string;
-  Prov: TLlmProvider;
-  J, N: Integer;
-begin
-  SyncActiveToProviderSlot;
-
-  I := TIniFile.Create(SettingsFileName);
-  try
-    I.WriteInteger('Appearance', 'Theme', Ord(FTheme));
-    I.WriteInteger('Agent', 'Mode', Ord(FMode));
-    I.WriteString('Agent', 'Model', FModel);
-    I.WriteString('Workspace', 'Name', FWorkspaceName);
-    I.WriteString('Workspace', 'Root', FWorkspaceRoot);
-    I.WriteString('Workspace', 'ActiveId', FActiveWorkspaceId);
-
-    I.WriteInteger('LLM', 'ConfigVersion', LLM_CONFIG_VERSION);
-    I.WriteInteger('LLM', 'Provider', Ord(FProvider));
-    I.WriteString('LLM', 'CustomDisplayName', FProviderCreds[lpCustom].CustomDisplayName);
-    I.WriteString('LLM', 'ApiKey', FApiKey);
-    I.WriteString('LLM', 'BaseUrl', FBaseUrl);
-    I.WriteFloat('LLM', 'Temperature', FTemperature);
-    I.WriteInteger('LLM', 'MaxTokens', FMaxTokens);
-    I.WriteInteger('LLM', 'MaxSteps', FMaxSteps);
-    I.WriteBool('General', 'DebuggingMode', FDebuggingMode);
-    I.WriteBool('General', 'LearnMode', FLearnMode);
-    I.WriteBool('General', 'AutoSummarizeContext', FAutoSummarizeContext);
-    I.WriteInteger('LLM', 'ContextWindowTokens', FContextWindowTokens);
-    I.WriteFloat('LLM', 'SummarizeThreshold', FSummarizeThreshold);
-
-    I.WriteInteger('PromptCache', 'Mode', Ord(FPromptCacheSettings.Mode));
-    I.WriteInteger('PromptCache', 'Retention', Ord(FPromptCacheSettings.Retention));
-    I.WriteBool('PromptCache', 'CacheSystem', FPromptCacheSettings.CacheSystemInstructions);
-    I.WriteBool('PromptCache', 'CacheTools', FPromptCacheSettings.CacheToolDefinitions);
-    I.WriteBool('PromptCache', 'CacheProject', FPromptCacheSettings.CacheProjectContext);
-    I.WriteBool('PromptCache', 'CacheHistory', FPromptCacheSettings.CacheConversationHistory);
-
-    for Prov := Low(TLlmProvider) to High(TLlmProvider) do begin
-      Sec := 'Provider_' + IntToStr(Ord(Prov));
-      I.WriteString(Sec, 'ApiKey', FProviderCreds[Prov].ApiKey);
-      I.WriteString(Sec, 'BaseUrl', FProviderCreds[Prov].BaseUrl);
-      if Prov = lpCustom then
-        I.WriteString(Sec, 'CustomDisplayName', FProviderCreds[Prov].CustomDisplayName);
-
-      Sec := 'Models_' + IntToStr(Ord(Prov));
-      N := SavedModelCount(Prov);
-      I.WriteInteger(Sec, 'Count', N);
-      for J := 0 to N - 1 do begin
-        I.WriteString(Sec, 'Id_' + IntToStr(J), FProviderModels[Prov][J].ModelId);
-        I.WriteString(Sec, 'Name_' + IntToStr(J), FProviderModels[Prov][J].DisplayName);
-      end;
-    end;
-
-    for P := Low(TPanelId) to High(TPanelId) do begin
-      Sec := 'Panel_' + IntToStr(Ord(P));
-      I.WriteBool(Sec, 'Visible', FPanels[P].Visible);
-      I.WriteBool(Sec, 'Floating', FPanels[P].Floating);
-      I.WriteInteger(Sec, 'Left', FPanels[P].Left);
-      I.WriteInteger(Sec, 'Top', FPanels[P].Top);
-      I.WriteInteger(Sec, 'Width', FPanels[P].Width);
-      I.WriteInteger(Sec, 'Height', FPanels[P].Height);
-      I.WriteInteger(Sec, 'DockedHeight', FPanels[P].DockedHeight);
-    end;
-  finally
-    I.Free;
-  end;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  SaveToGlobalDb;
 end;
 
 procedure TWorkspaceState.LoadFromGlobalDb;
@@ -847,11 +509,8 @@ var
   PanelRows: TPanelLayoutRows;
   P: TPanelId;
   Prov: TLlmProvider;
-  I, J, OrdVal, ConfigVersion, ActiveOrd: Integer;
+  I, J, OrdVal, ActiveOrd: Integer;
   StoredCustomName: string;
-  UseLegacyLayout: Boolean;
-  LegacyCreds: TLegacySlotCreds;
-  LegacyModels: TLegacySlotModels;
 begin
   Settings := TAppDatabase.GlobalSettings;
   Llm := TAppDatabase.GlobalLlmSettings;
@@ -863,8 +522,6 @@ begin
   FMode := TWorkspaceMode(SettingsTryGetInt(Settings, KEY_AGENT_MODE, Ord(FMode)));
   FModel := SettingsTryGetString(Settings, KEY_AGENT_MODEL, FModel);
 
-  ConfigVersion := SettingsTryGetInt(Settings, KEY_LLM_CONFIG_VERSION, 3);
-  UseLegacyLayout := ConfigVersion < LLM_CONFIG_VERSION;
   ActiveOrd := SettingsTryGetInt(Settings, KEY_LLM_PROVIDER, Ord(FProvider));
   StoredCustomName := SettingsTryGetString(Settings, KEY_LLM_CUSTOM_DISPLAY_NAME, '');
 
@@ -894,44 +551,28 @@ begin
   Llm.LoadProviders(ProvRows);
   Llm.LoadModels(ModelRows);
 
-  if UseLegacyLayout then begin
-    for I := 0 to High(ProvRows) do
-      if (ProvRows[I].ProviderOrd >= 0) and (ProvRows[I].ProviderOrd < LEGACY_PROV_COUNT) then begin
-        LegacyCreds[ProvRows[I].ProviderOrd].ApiKey := ProvRows[I].ApiKey;
-        LegacyCreds[ProvRows[I].ProviderOrd].BaseUrl := ProvRows[I].BaseUrl;
-      end;
-    for I := 0 to High(ModelRows) do
-      if (ModelRows[I].ProviderOrd >= 0) and (ModelRows[I].ProviderOrd < LEGACY_PROV_COUNT) then begin
-        J := Length(LegacyModels[ModelRows[I].ProviderOrd]);
-        SetLength(LegacyModels[ModelRows[I].ProviderOrd], J + 1);
-        LegacyModels[ModelRows[I].ProviderOrd][J].ModelId := ModelRows[I].ModelId;
-        LegacyModels[ModelRows[I].ProviderOrd][J].DisplayName := ModelRows[I].DisplayName;
-      end;
-    MigrateLegacyLlmFromSlots(ActiveOrd, LegacyCreds, LegacyModels, StoredCustomName);
-  end else begin
-    if (ActiveOrd >= Ord(Low(TLlmProvider))) and (ActiveOrd <= Ord(High(TLlmProvider))) then
-      FProvider := TLlmProvider(ActiveOrd);
-    for I := 0 to High(ProvRows) do
-      if (ProvRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and
-         (ProvRows[I].ProviderOrd <= Ord(High(TLlmProvider))) then
-      begin
-        Prov := TLlmProvider(ProvRows[I].ProviderOrd);
-        FProviderCreds[Prov].ApiKey := ProvRows[I].ApiKey;
-        FProviderCreds[Prov].BaseUrl := ProvRows[I].BaseUrl;
-      end;
-    for I := 0 to High(ModelRows) do
-      if (ModelRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and
-         (ModelRows[I].ProviderOrd <= Ord(High(TLlmProvider))) then
-      begin
-        Prov := TLlmProvider(ModelRows[I].ProviderOrd);
-        J := Length(FProviderModels[Prov]);
-        SetLength(FProviderModels[Prov], J + 1);
-        FProviderModels[Prov][J].ModelId := ModelRows[I].ModelId;
-        FProviderModels[Prov][J].DisplayName := ModelRows[I].DisplayName;
-      end;
-    if Trim(StoredCustomName) <> '' then
-      FProviderCreds[lpCustom].CustomDisplayName := Trim(StoredCustomName);
-  end;
+  if (ActiveOrd >= Ord(Low(TLlmProvider))) and (ActiveOrd <= Ord(High(TLlmProvider))) then
+    FProvider := TLlmProvider(ActiveOrd);
+  for I := 0 to High(ProvRows) do
+    if (ProvRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and
+       (ProvRows[I].ProviderOrd <= Ord(High(TLlmProvider))) then
+    begin
+      Prov := TLlmProvider(ProvRows[I].ProviderOrd);
+      FProviderCreds[Prov].ApiKey := ProvRows[I].ApiKey;
+      FProviderCreds[Prov].BaseUrl := ProvRows[I].BaseUrl;
+    end;
+  for I := 0 to High(ModelRows) do
+    if (ModelRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and
+       (ModelRows[I].ProviderOrd <= Ord(High(TLlmProvider))) then
+    begin
+      Prov := TLlmProvider(ModelRows[I].ProviderOrd);
+      J := Length(FProviderModels[Prov]);
+      SetLength(FProviderModels[Prov], J + 1);
+      FProviderModels[Prov][J].ModelId := ModelRows[I].ModelId;
+      FProviderModels[Prov][J].DisplayName := ModelRows[I].DisplayName;
+    end;
+  if Trim(StoredCustomName) <> '' then
+    FProviderCreds[lpCustom].CustomDisplayName := Trim(StoredCustomName);
 
   SyncActiveFromProviderSlot;
 

@@ -556,15 +556,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="data\uGlobalConfigLegacy.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="data\uGlobalConfigBootstrap.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="data\uLegacyGlobalConfigImporter.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

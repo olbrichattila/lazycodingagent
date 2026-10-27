@@ -7,7 +7,7 @@ uses
   Classes, SysUtils,
   uWebSearchTypes, uWebSearchUrl, uWebSearchProviderBrave, uWebSearchProviderSearxng,
   uWebSearchProviderTavily, uWebSearchManager, uWebSearchConfig, uWebSearchHttp,
-  uWebSearchSecrets;
+  uWebSearchSecrets, uAppDatabase;
 
 procedure Fail(const Msg: string);
 begin
@@ -78,11 +78,11 @@ var
   Mock: TMockTransport;
   Url: string;
   Body: string;
-  TestIni: string;
+  DbRoot: string;
 begin
-  TestIni := ExpandFileName(IncludeTrailingPathDelimiter(ExtractFilePath(ParamStr(0))) +
-    'ws-test-config.ini');
-  SetWebSearchSecretsIniPathForTests(TestIni);
+  DbRoot := IncludeTrailingPathDelimiter(GetTempDir) + 'lca-ws-test-' + IntToStr(GetProcessID);
+  TAppDatabase.SetConfigRootOverride(DbRoot);
+  TAppDatabase.OpenGlobal;
 
   Req.Query := 'hello world';
   Req.MaxResults := 5;
@@ -140,6 +140,8 @@ begin
   ClearWebSearchConfigOverrideForTests;
   ClearWebSearchApiKey('c1');
   ClearWebSearchApiKey('c2');
+  TAppDatabase.CloseGlobal;
+  TAppDatabase.ClearConfigRootOverride;
 
   if ValidateSearchResultUrl('http://user:pass@evil.com') then Fail('cred url');
   if not ValidateSearchResultUrl('https://example.com') then Fail('valid url');

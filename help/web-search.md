@@ -60,9 +60,8 @@ You should see JSON (not an HTML page).
 
 By default the app blocks private and local SearXNG hosts. For this stack, turn on **Allow local/private SearXNG (localhost, 127.0.0.1, LAN)** on the Web Search settings page.
 
-Alternatives (same effect):
+Alternative (same effect for local testing):
 
-- In your user `config.ini`, under `[WebSearch]`, set `AllowPrivateInstances=true`.
 - Launch with `LCA_WEB_SEARCH_TRUSTED_LOCAL=1` (on Linux, for example: `LCA_WEB_SEARCH_TRUSTED_LOCAL=1 ./scripts/run-linux.sh`).
 
 ### Stop and upgrades

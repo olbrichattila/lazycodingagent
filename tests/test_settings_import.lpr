@@ -3,7 +3,7 @@ program test_settings_import;
 {$mode objfpc}{$H+}
 
 uses
-  SysUtils, Classes, IniFiles, uAppDatabase, uGlobalConfigKeys, uAppSettingsCodec,
+  SysUtils, Classes, uAppDatabase, uGlobalConfigKeys, uAppSettingsCodec,
   uRepositoryInterfaces;
 
 procedure Fail(const Msg: string);
@@ -18,22 +18,12 @@ begin
 end;
 
 var
-  Root, IniPath: string;
-  I: TIniFile;
+  Root: string;
   ProvRows: TLlmProviderRows;
   WebRows: TWebSearchConnectionRows;
 begin
   Root := TempRoot;
   TAppDatabase.SetConfigRootOverride(Root);
-  IniPath := IncludeTrailingPathDelimiter(Root) + 'sample.ini';
-  I := TIniFile.Create(IniPath);
-  try
-    I.WriteString('Provider_0', 'ApiKey', 'test-api-key-import');
-    I.WriteString('Provider_0', 'BaseUrl', 'https://example.com/v1');
-  finally
-    I.Free;
-  end;
-
   TAppDatabase.OpenGlobal;
   SetLength(ProvRows, 1);
   ProvRows[0].ProviderOrd := 0;

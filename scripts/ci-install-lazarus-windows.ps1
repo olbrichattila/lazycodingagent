@@ -109,11 +109,17 @@ if (-not $env:LAZARUS_PRIMARY_CONFIG) {
 & $env:LAZBUILD --version
 
 if ($env:GITHUB_ENV) {
+    function Format-GithubEnvPath {
+        param([string]$Path)
+        if (-not $Path) { return $Path }
+        return $Path.Replace('\', '/')
+    }
+
     @(
-        "LAZARUS_DIR=$InstallDir"
-        "LAZBUILD=$lazBuild"
-        "LAZARUS_PRIMARY_CONFIG=$($env:LAZARUS_PRIMARY_CONFIG)"
-    ) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+        "LAZARUS_DIR=$(Format-GithubEnvPath $InstallDir)"
+        "LAZBUILD=$(Format-GithubEnvPath $lazBuild)"
+        "LAZARUS_PRIMARY_CONFIG=$(Format-GithubEnvPath $env:LAZARUS_PRIMARY_CONFIG)"
+    ) | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8NoBOM
 }
 
 Write-Host "ci-install-lazarus-windows: ready (LAZARUS_DIR=$InstallDir, LAZBUILD=$lazBuild)"

@@ -32,9 +32,21 @@ function Resolve-LazBuild {
 }
 
 $LazBuild = Resolve-LazBuild
-Write-Host "ci-lazbuild: $LazBuild $($LpiArgs -join ' ')"
 
-& $LazBuild @LpiArgs
+$prefixArgs = @()
+if (-not [string]::IsNullOrWhiteSpace($env:LAZARUS_DIR) -and
+    -not [string]::IsNullOrWhiteSpace($env:LAZARUS_PRIMARY_CONFIG)) {
+    $prefixArgs += "--lazarusdir=$($env:LAZARUS_DIR)"
+    $prefixArgs += "--primary-config-path=$($env:LAZARUS_PRIMARY_CONFIG)"
+}
+if (-not [string]::IsNullOrWhiteSpace($env:LCL_WIDGETSET)) {
+    $prefixArgs += "--widgetset=$($env:LCL_WIDGETSET)"
+}
+
+$allArgs = $prefixArgs + $LpiArgs
+Write-Host "ci-lazbuild: $LazBuild $($allArgs -join ' ')"
+
+& $LazBuild @allArgs
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
