@@ -1,4 +1,8 @@
-# Build sqlite3 embed object and link LazySqliteStatic for lazbuild.
+﻿# Build sqlite3 embed object and link LazySqliteStatic for lazbuild.
+#
+# Windows: prefer scripts\install-lazarus-sqlite.bat — it runs this file with
+# -ExecutionPolicy Bypass. Running .\install-lazarus-sqlite.ps1 directly often fails
+# with PSSecurityException when local scripts are disabled.
 param(
   [ValidateSet('win32', 'win64')]
   [string]$Arch = 'win64'
@@ -13,4 +17,8 @@ $Lpk = Join-Path $Root 'packages\LazySqliteStatic\LazySqliteStatic.lpk'
 if ($LASTEXITCODE -ne 0) {
   exit $LASTEXITCODE
 }
-Write-Host 'LazySqliteStatic is linked for lazbuild.'
+& "$Root\scripts\ci-lazbuild.ps1" -VerifyExe:$false $Lpk
+if ($LASTEXITCODE -ne 0) {
+  exit $LASTEXITCODE
+}
+Write-Host 'LazySqliteStatic is linked and compiled for lazbuild.'

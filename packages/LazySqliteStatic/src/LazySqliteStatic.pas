@@ -11,8 +11,11 @@ function LazySqliteEmbeddedVersion: PAnsiChar;
 implementation
 
 uses
-  ctypes;
+  uSqlite3Embed;
 
-function LazySqliteEmbeddedVersion: PAnsiChar; cdecl; external 'sqlite3_libversion';
+function LazySqliteEmbeddedVersion: PAnsiChar;
+begin
+  Result := sqlite3_libversion;
+end;
 
 end.

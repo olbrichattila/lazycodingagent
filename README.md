@@ -175,11 +175,13 @@ chmod +x scripts/install-lazarus-sqlite.sh
 ./scripts/install-lazarus-sqlite.sh
 ```
 
-**Windows:** needs a **real MinGW `gcc`** to compile the C amalgamation (not FPC’s windres `gcc` stub). Install [Chocolatey `mingw`](https://community.chocolatey.org/packages/mingw) (`choco install mingw`) or set **`SQLITE_CC`** to your `gcc.exe`. CI installs `mingw` before this step.
+**Windows:** compile the amalgamation with **MSVC `cl.exe`** (Visual Studio or [Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the **Desktop development with C++** workload). Example: `winget install --id Microsoft.VisualStudio.BuildTools -e`, then add that workload in **Visual Studio Installer**. GitHub Actions runners already include this toolchain. MinGW `gcc` objects are not linkable with FPC’s internal Win64 linker for SQLite (Win32 API import symbols).
 
 ```bat
-scripts\install-lazarus-sqlite.ps1
+scripts\install-lazarus-sqlite.bat
 ```
+
+If your policy blocks `.ps1` files, use the `.bat` wrapper (same as [`install-lca-lazarus.bat`](scripts/install-lca-lazarus.bat)). Equivalent: `powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install-lazarus-sqlite.ps1`
 
 This runs [`scripts/build-sqlite-static.sh`](scripts/build-sqlite-static.sh) (or [`.ps1`](scripts/build-sqlite-static.ps1)) and links [`packages/LazySqliteStatic/LazySqliteStatic.lpk`](packages/LazySqliteStatic/LazySqliteStatic.lpk) for `lazbuild`. You do **not** need to edit **Project → Options → Linker** manually: [`lazycodingagent.lpi`](lazycodingagent.lpi) already sets **Libraries** to `packages/LazySqliteStatic/src` and depends on **`LazySqliteStatic`**.
 

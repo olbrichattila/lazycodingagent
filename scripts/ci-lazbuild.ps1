@@ -1,4 +1,6 @@
 # lazbuild wrapper for CI (Windows): enforce exit code and verify lazycodingagent.exe.
+#
+# Windows: prefer scripts\ci-lazbuild.bat when PowerShell blocks .\ci-lazbuild.ps1.
 param(
     [bool]$VerifyExe = $true,
     [Parameter(ValueFromRemainingArguments = $true)]

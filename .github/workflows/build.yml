@@ -125,12 +125,16 @@ jobs:
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
 
-      - name: Install MinGW (compile SQLite amalgamation)
-        run: choco install mingw -y --no-progress
-
       - name: Build and link static SQLite
         shell: pwsh
         run: ./scripts/install-lazarus-sqlite.ps1
+
+      - name: Verify SQLite embed object
+        shell: pwsh
+        run: |
+          $o = 'packages/LazySqliteStatic/src/sqlite3_embed.o'
+          if (-not (Test-Path -LiteralPath $o)) { throw "Missing $o" }
+          if ((Get-Item -LiteralPath $o).Length -lt 500000) { throw "Suspiciously small $o" }
 
       - name: Install Python deps (owl branding)
         run: python -m pip install --upgrade pip pillow

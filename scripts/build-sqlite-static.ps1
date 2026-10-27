@@ -1,4 +1,6 @@
-# Compile third_party/sqlite/sqlite3.c to sqlite3.obj for LazySqliteStatic (Windows).
+﻿# Compile third_party/sqlite/sqlite3.c to a COFF object for LazySqliteStatic (Windows).
+# FPC's internal PE linker requires an MSVC (cl.exe) object — MinGW gcc .o files use
+# __imp_* imports that FPC cannot resolve (50+ undefined Win32 API symbols at link time).
 param(
   [ValidateSet('win32', 'win64')]
   [string]$Arch = 'win64'
@@ -19,95 +21,151 @@ if ($Arch -eq 'win32') {
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $Out = Join-Path $OutDir 'sqlite3.obj'
 
-function Test-RealGcc {
-  param([string]$GccPath)
+$MinEmbedBytes = 500000
 
-  if (-not (Test-Path -LiteralPath $GccPath -PathType Leaf)) {
-    return $false
+function Assert-SqliteEmbedObject {
+  param(
+    [string]$Path,
+    [string]$Label
+  )
+  if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+    throw "build-sqlite-static: missing $Label at $Path"
   }
-  $binDir = Split-Path -Parent $GccPath
-  if (Test-Path -LiteralPath (Join-Path $binDir 'cc1.exe') -PathType Leaf) {
-    return $true
+  $len = (Get-Item -LiteralPath $Path).Length
+  if ($len -lt $MinEmbedBytes) {
+    throw "build-sqlite-static: $Label too small ($len bytes, expected >= $MinEmbedBytes): $Path"
   }
-  $libexec = Join-Path $binDir 'libexec\gcc'
-  if (Test-Path -LiteralPath $libexec -PathType Container) {
-    $cc1 = Get-ChildItem -Path $libexec -Recurse -Filter 'cc1.exe' -ErrorAction SilentlyContinue |
-      Select-Object -First 1
-    if ($cc1) {
-      return $true
+}
+
+function Get-VcVarsBatchName {
+  param([string]$TargetArch)
+  if ($TargetArch -eq 'win32') { 'vcvars32.bat' } else { 'vcvars64.bat' }
+}
+
+function Resolve-VcVarsBatch {
+  param([string]$TargetArch)
+
+  if ($env:SQLITE_MSVC_VCVARS) {
+    if (Test-Path -LiteralPath $env:SQLITE_MSVC_VCVARS -PathType Leaf) {
+      return $env:SQLITE_MSVC_VCVARS
+    }
+    throw "SQLITE_MSVC_VCVARS is set but not found: $($env:SQLITE_MSVC_VCVARS)"
+  }
+
+  $name = Get-VcVarsBatchName -TargetArch $TargetArch
+  $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+  if (Test-Path -LiteralPath $vswhere -PathType Leaf) {
+    foreach ($requires in @(
+        'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+        $null
+      )) {
+      if ($requires) {
+        $installRoot = & $vswhere -latest -products * -requires $requires -property installationPath 2>$null
+      } else {
+        $installRoot = & $vswhere -latest -products * -property installationPath 2>$null
+      }
+      if (-not [string]::IsNullOrWhiteSpace($installRoot)) {
+        $vcvars = Join-Path $installRoot "VC\Auxiliary\Build\$name"
+        if (Test-Path -LiteralPath $vcvars -PathType Leaf) {
+          return $vcvars
+        }
+      }
     }
   }
-  $testC = Join-Path $env:TEMP "sqlite-gcc-test-$([Guid]::NewGuid().ToString('N')).c"
-  $testO = Join-Path $env:TEMP "sqlite-gcc-test-$([Guid]::NewGuid().ToString('N')).obj"
+
+  foreach ($root in @(
+      (Join-Path $env:ProgramFiles 'Microsoft Visual Studio'),
+      (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio')
+    )) {
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { continue }
+    $hit = Get-ChildItem -Path $root -Recurse -Filter $name -File -ErrorAction SilentlyContinue |
+      Where-Object { $_.DirectoryName -match '\\Auxiliary\\Build$' } |
+      Sort-Object FullName -Descending |
+      Select-Object -First 1
+    if ($hit) {
+      return $hit.FullName
+    }
+  }
+  return $null
+}
+
+function Test-MsvcClInPath {
+  $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+  if (-not $cl -or -not $cl.Source) {
+    return $false
+  }
+  if ($cl.Source -match '\\fpc\\') {
+    return $false
+  }
+  $testC = Join-Path $env:TEMP "sqlite-cl-test-$([Guid]::NewGuid().ToString('N')).c"
+  $testO = Join-Path $env:TEMP "sqlite-cl-test-$([Guid]::NewGuid().ToString('N')).obj"
   try {
     Set-Content -LiteralPath $testC -Value 'int x(void){return 0;}' -Encoding ASCII
-    & $GccPath -c -o $testO $testC 2>$null
+    & $cl.Source /nologo /c /W0 /Fo$testO $testC 2>$null
     return ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $testO -PathType Leaf))
   } finally {
     Remove-Item -LiteralPath $testC, $testO -Force -ErrorAction SilentlyContinue
   }
 }
 
-function Get-ChocolateyMingwGccCandidates {
-  $candidates = @(
-    'C:\tools\mingw64\bin\gcc.exe',
-    'C:\mingw64\bin\gcc.exe'
+function Invoke-SqliteCompileMsvc {
+  param(
+    [string]$OutObj,
+    [string]$SourceC,
+    [string]$VcVars = ''
   )
-  $chocoLib = 'C:\ProgramData\chocolatey\lib\mingw'
-  if (Test-Path -LiteralPath $chocoLib -PathType Container) {
-    foreach ($gcc in Get-ChildItem -Path $chocoLib -Recurse -Filter 'gcc.exe' -ErrorAction SilentlyContinue) {
-      $candidates += $gcc.FullName
-    }
+
+  if (Test-Path -LiteralPath $OutObj -PathType Leaf) {
+    Remove-Item -LiteralPath $OutObj -Force
   }
-  $candidates | Select-Object -Unique
+
+  $defines = '/DSQLITE_ENABLE_FTS5=1 /DSQLITE_THREADSAFE=1 /DSQLITE_ENABLE_JSON1=1'
+  $clLine = "cl.exe /nologo /c /O2 /W0 /utf-8 $defines /Fo`"$OutObj`" `"$SourceC`""
+  Write-Host "build-sqlite-static: $clLine"
+  if ($VcVars) {
+    $cmd = "`"$VcVars`" >nul && $clLine"
+    cmd /c $cmd
+  } else {
+    cmd /c $clLine
+  }
+  if ($LASTEXITCODE -ne 0) {
+    throw "build-sqlite-static: cl.exe failed compiling sqlite3.c (exit $LASTEXITCODE)"
+  }
+  if (-not (Test-Path -LiteralPath $OutObj -PathType Leaf)) {
+    throw "build-sqlite-static: cl.exe did not produce $OutObj"
+  }
 }
 
-function Resolve-RealGcc {
-  if ($env:SQLITE_CC) {
-    if (Test-RealGcc -GccPath $env:SQLITE_CC) {
-      return $env:SQLITE_CC
-    }
-    throw "SQLITE_CC is set but is not a working MinGW gcc: $($env:SQLITE_CC)"
-  }
-
-  foreach ($path in Get-ChocolateyMingwGccCandidates) {
-    if (Test-RealGcc -GccPath $path) {
-      return $path
-    }
-  }
-
-  $pathGcc = Get-Command gcc -ErrorAction SilentlyContinue
-  if ($pathGcc -and $pathGcc.Source) {
-    $src = $pathGcc.Source
-    if ($src -notmatch '\\fpc\\' -and (Test-RealGcc -GccPath $src)) {
-      return $src
-    }
-  }
-
+function Throw-MsvcNotFound {
   throw @'
-Real MinGW gcc not found for sqlite3.c (FPC windres gcc stub cannot compile C).
-Install MinGW (e.g. choco install mingw) or set SQLITE_CC to gcc.exe with cc1.
+build-sqlite-static: MSVC cl.exe not found (Visual Studio or Build Tools with "Desktop development with C++").
+MinGW gcc objects are incompatible with FPC's Win64 linker for the SQLite amalgamation.
+
+Install (pick one):
+  • winget install --id Microsoft.VisualStudio.BuildTools -e
+    Then in Visual Studio Installer, add workload "Desktop development with C++".
+  • https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+After install, run scripts\install-lazarus-sqlite.bat again, or open "x64 Native Tools Command Prompt for VS"
+and run from there (cl.exe on PATH). Optional: set SQLITE_MSVC_VCVARS to your vcvars64.bat path.
 '@
 }
 
-$Gcc = Resolve-RealGcc
-Write-Host "build-sqlite-static: using $Gcc"
-
-$Defines = @(
-  '-DSQLITE_ENABLE_FTS5',
-  '-DSQLITE_THREADSAFE=1',
-  '-DSQLITE_ENABLE_JSON1'
-)
-& $Gcc -c -O2 @Defines -o $Out $Src
-if ($LASTEXITCODE -ne 0) {
-  throw "gcc failed compiling sqlite3.c (exit $LASTEXITCODE)"
-}
-if (-not (Test-Path -LiteralPath $Out -PathType Leaf)) {
-  throw "gcc did not produce $Out"
+$vcvars = Resolve-VcVarsBatch -TargetArch $Arch
+if ($vcvars) {
+  Write-Host "build-sqlite-static: using MSVC via $vcvars"
+  Invoke-SqliteCompileMsvc -VcVars $vcvars -OutObj $Out -SourceC $Src
+} elseif (Test-MsvcClInPath) {
+  Write-Host 'build-sqlite-static: using cl.exe from PATH (Developer Command Prompt environment)'
+  Invoke-SqliteCompileMsvc -OutObj $Out -SourceC $Src
+} else {
+  Throw-MsvcNotFound
 }
 
 $SrcObj = Join-Path $Root 'packages\LazySqliteStatic\src\sqlite3_embed.o'
 $LibEmbed = Join-Path $OutDir 'sqlite3_embed.o'
 Copy-Item -Force $Out $SrcObj
 Copy-Item -Force $Out $LibEmbed
+Assert-SqliteEmbedObject -Path $SrcObj -Label 'sqlite3_embed.o (src)'
+Assert-SqliteEmbedObject -Path $LibEmbed -Label 'sqlite3_embed.o (lib)'
 Write-Host "Built $Out ($SrcObj and $LibEmbed)"

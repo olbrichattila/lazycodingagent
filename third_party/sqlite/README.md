@@ -4,7 +4,7 @@ Official amalgamation from [sqlite.org](https://www.sqlite.org/download.html). V
 
 ## Build flags (via `scripts/build-sqlite-static.sh` / `.ps1`)
 
-- `-Wno-discarded-qualifiers` — silences a known GCC warning in the upstream amalgamation (`sqlite3ShadowTableName`); we do not patch vendored `sqlite3.c` for that.
+- **Windows:** `build-sqlite-static.ps1` uses **MSVC `cl.exe`** (COFF object for FPC’s linker). **Linux/macOS:** GCC/Clang with `-Wno-discarded-qualifiers` (or `-Wno-ignored-qualifiers` on Darwin) — silences a known warning in the upstream amalgamation (`sqlite3ShadowTableName`); we do not patch vendored `sqlite3.c` for that.
 - `SQLITE_ENABLE_FTS5` — keyword search for future workspace knowledge base
 - `SQLITE_THREADSAFE=1`
 - `SQLITE_ENABLE_JSON1`
