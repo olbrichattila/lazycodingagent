@@ -1,12 +1,11 @@
 object HelpForm: THelpForm
-  Left = 200
+  Left = 2557
   Height = 600
-  Top = 120
+  Top = -30
   Width = 900
-  BorderStyle = bsSizeable
   Caption = 'User Guide'
-  ClientHeight = 560
-  ClientWidth = 884
+  ClientHeight = 600
+  ClientWidth = 900
   Font.Name = 'Segoe UI'
   Position = poScreenCenter
   LCLVersion = '4.8.0.0'
@@ -16,87 +15,86 @@ object HelpForm: THelpForm
     Left = 0
     Height = 56
     Top = 0
-    Width = 884
+    Width = 900
     Align = alTop
     BevelOuter = bvNone
     ClientHeight = 56
-    ClientWidth = 884
+    ClientWidth = 900
     TabOrder = 0
     object lblSearch: TLabel
       Left = 12
-      Height = 15
+      Height = 22
       Top = 8
-      Width = 78
+      Width = 94
       Caption = 'Search topics'
     end
     object edtSearch: TEdit
       Left = 12
-      Height = 23
+      Height = 30
       Top = 28
-      Width = 860
+      Width = 876
       Anchors = [akTop, akLeft, akRight]
-      OnChange = edtSearchChange
       TabOrder = 0
+      OnChange = edtSearchChange
     end
   end
   object splMain: TSplitter
     Left = 260
-    Height = 456
+    Height = 496
     Top = 56
     Width = 5
   end
   object pnlTopics: TPanel
     Left = 0
-    Height = 456
+    Height = 496
     Top = 56
     Width = 260
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 456
+    ClientHeight = 496
     ClientWidth = 260
     TabOrder = 1
     object lstTopics: TListBox
       Left = 0
-      Height = 456
+      Height = 496
       Top = 0
       Width = 260
       Align = alClient
       ItemHeight = 22
+      TabOrder = 0
+      TopIndex = -1
       OnClick = lstTopicsClick
       OnDrawItem = lstTopicsDrawItem
-      TabOrder = 0
     end
   end
   object pnlPreviewHost: TPanel
     Left = 265
-    Height = 456
+    Height = 496
     Top = 56
-    Width = 619
+    Width = 635
     Align = alClient
     BevelOuter = bvNone
-    ClientHeight = 456
-    ClientWidth = 619
     TabOrder = 2
   end
   object pnlBottom: TPanel
     Left = 0
     Height = 48
-    Top = 512
-    Width = 884
+    Top = 552
+    Width = 900
     Align = alBottom
     BevelOuter = bvNone
     ClientHeight = 48
-    ClientWidth = 884
+    ClientWidth = 900
     TabOrder = 3
     object btnClose: TLcaPaintButton
-      ButtonRole = tbrCancel
-      Left = 788
+      Cursor = crHandPoint
+      Left = 804
       Height = 28
       Top = 10
       Width = 88
-      Anchors = [akTop, akRight]
       Caption = 'Close'
       OnClick = btnCloseClick
+      Anchors = [akTop, akRight]
       TabOrder = 0
     end
   end
