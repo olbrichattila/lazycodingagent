@@ -22,8 +22,7 @@ type
     ToolOutputJson: string;
     ToolSuccess: Boolean;
     AssistantToolCalls: TToolCallArray;
-    function BuildInspectorText: string;
-    function BuildInspectorHtml(ATheme: TThemeKind): string;
+    function BuildInspectorMarkdown: string;
     destructor Destroy; override;
   end;
 
@@ -55,7 +54,7 @@ function FormatMessageBodyForLog(const AMsg: TChatMessage): string;
 implementation
 
 uses
-  fpjson, jsonparser, uAgentToolBase, uExecutionDetailHtml, uChatImageStore;
+  fpjson, jsonparser, uAgentToolBase, uExecutionDetailText, uChatImageStore;
 
 function PrettyJsonString(const S: string): string;
 var
@@ -388,7 +387,7 @@ begin
   inherited Destroy;
 end;
 
-function TExecutionLogEntry.BuildInspectorText: string;
+function TExecutionLogEntry.BuildInspectorMarkdown: string;
 var
   SB: TStringBuilder;
   I: Integer;
@@ -398,47 +397,41 @@ begin
     case Kind of
       elUserPrompt:
         begin
-          SB.AppendLine('=== User input ===');
-          SB.AppendLine(UserOrResponseText);
-          SB.AppendLine;
-          SB.AppendLine('=== Full prompt sent to model ===');
-          SB.AppendLine(ContextText);
+          AppendDetailSectionHeader(SB, 'User input');
+          AppendDetailProseBlock(SB, UserOrResponseText);
+          AppendDetailSectionHeader(SB, 'Full prompt sent to model');
+          AppendDetailProseBlock(SB, ContextText);
         end;
       elToolExecution:
         begin
-          SB.AppendLine('=== Tool ===');
-          SB.AppendLine(ToolName);
-          if not ToolSuccess then
-            SB.AppendLine('(failed)');
-          SB.AppendLine;
-          SB.AppendLine('=== Input (arguments) ===');
-          SB.AppendLine(PrettyJsonString(ToolArgsJson));
-          SB.AppendLine;
-          SB.AppendLine('=== Output ===');
-          SB.AppendLine(PrettyJsonString(ToolOutputJson));
+          AppendDetailSectionHeader(SB, 'Tool');
+          AppendDetailToolLine(SB, ToolName, not ToolSuccess);
+          AppendDetailSectionHeader(SB, 'Input (arguments)');
+          AppendDetailJsonBlock(SB, ToolArgsJson);
+          AppendDetailSectionHeader(SB, 'Output');
+          AppendDetailJsonBlock(SB, ToolOutputJson);
         end;
       elAssistantResponse:
         begin
           if Length(AssistantToolCalls) > 0 then begin
-            SB.AppendLine('=== Tool calls ===');
+            AppendDetailSectionHeader(SB, 'Tool calls');
             for I := Low(AssistantToolCalls) to High(AssistantToolCalls) do begin
-              SB.AppendLine(Format('--- %s ---', [AssistantToolCalls[I].Name]));
+              AppendDetailToolLine(SB, AssistantToolCalls[I].Name, False);
               if AssistantToolCalls[I].Id <> '' then
-                SB.AppendLine('id: ' + AssistantToolCalls[I].Id);
-              SB.AppendLine(PrettyJsonString(AssistantToolCalls[I].ArgumentsJson));
-              SB.AppendLine;
+                SB.AppendLine('_id: ' + AssistantToolCalls[I].Id + '_');
+              AppendDetailJsonBlock(SB, AssistantToolCalls[I].ArgumentsJson);
             end;
           end;
-          SB.AppendLine('=== Model response ===');
+          AppendDetailSectionHeader(SB, 'Model response');
           if Trim(UserOrResponseText) <> '' then
-            SB.AppendLine(UserOrResponseText)
+            AppendDetailProseBlock(SB, UserOrResponseText)
           else if Length(AssistantToolCalls) = 0 then
-            SB.AppendLine('(empty)')
+            SB.AppendLine('*(empty)*')
           else
-            SB.AppendLine('(empty content; tool calls only)');
+            SB.AppendLine('*(empty content; tool calls only)*');
           SB.AppendLine;
-          SB.AppendLine('=== Request context ===');
-          SB.AppendLine(ContextText);
+          AppendDetailSectionHeader(SB, 'Request context');
+          AppendDetailProseBlock(SB, ContextText);
         end;
     end;
     Result := SB.ToString;
@@ -548,66 +541,6 @@ begin
     E.Caption := StepCaptionPrefix(AStep, AMaxSteps) + 'Model: ' + Cap;
   end;
   Result := FEntries.Count - 1;
-end;
-
-function TExecutionLogEntry.BuildInspectorHtml(ATheme: TThemeKind): string;
-var
-  SB: TStringBuilder;
-  I: Integer;
-  Body: string;
-begin
-  SB := TStringBuilder.Create;
-  try
-    case Kind of
-      elUserPrompt:
-        begin
-          AppendHtmlSectionHeader(SB, 'User input');
-          SB.Append(ProseTextToHtmlBlock(UserOrResponseText));
-          AppendHtmlSectionHeader(SB, 'Full prompt sent to model');
-          SB.Append(ProseTextToHtmlBlock(ContextText));
-        end;
-      elToolExecution:
-        begin
-          AppendHtmlSectionHeader(SB, 'Tool');
-          SB.Append('<div class="tool-call"><span class="tool-name">');
-          SB.Append(ExecDetailEscapeHtml(ToolName));
-          SB.Append('</span>');
-          if not ToolSuccess then
-            AppendHtmlFailBadge(SB);
-          SB.Append('</div>');
-          AppendHtmlSectionHeader(SB, 'Input (arguments)');
-          SB.Append(JsonTextToHtmlBlock(ToolArgsJson));
-          AppendHtmlSectionHeader(SB, 'Output');
-          SB.Append(JsonTextToHtmlBlock(ToolOutputJson));
-        end;
-      elAssistantResponse:
-        begin
-          if Length(AssistantToolCalls) > 0 then begin
-            AppendHtmlSectionHeader(SB, 'Tool calls');
-            for I := Low(AssistantToolCalls) to High(AssistantToolCalls) do begin
-              AppendHtmlToolCallHeader(SB, AssistantToolCalls[I].Name);
-              if AssistantToolCalls[I].Id <> '' then
-                SB.Append('<p class="prose-empty">id: ' +
-                  ExecDetailEscapeHtml(AssistantToolCalls[I].Id) + '</p>');
-              SB.Append(JsonTextToHtmlBlock(AssistantToolCalls[I].ArgumentsJson));
-            end;
-          end;
-          AppendHtmlSectionHeader(SB, 'Model response');
-          if Trim(UserOrResponseText) <> '' then
-            SB.Append(ProseTextToHtmlBlock(UserOrResponseText))
-          else if Length(AssistantToolCalls) = 0 then
-            SB.Append('<p class="prose-empty">(empty)</p>')
-          else
-            SB.Append('<p class="prose-empty">(empty content; tool calls only)</p>');
-          AppendHtmlSectionHeader(SB, 'Request context');
-          SB.Append(ProseTextToHtmlBlock(ContextText));
-        end;
-    end;
-    Body := SB.ToString;
-  finally
-    SB.Free;
-  end;
-  Result := WrapExecDetailHtmlDocument(Body, ATheme);
 end;
 
 end.

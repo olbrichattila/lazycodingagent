@@ -388,7 +388,7 @@ var
 implementation
 
 uses
-  uExecutionDetailHtml, frmSplash, uAppIcon, LCLIntf,
+  frmSplash, uAppIcon, LCLIntf,
   frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes, uBrowserManager,
   uBrowserPermissions, frmBrowserConfirm,
   frmOpenMarkdown, frmHelp, frmPlanBuildConfirm
@@ -550,8 +550,6 @@ begin
     FChatPanel.ReloadFromMessages(Msgs, FState.DebuggingMode);
     FChatPanel.SetRunning(E.IsRunActive);
   end;
-  if Assigned(lcaChatHistory) then
-    lcaChatHistory.RequestRender;
   LoadAllowModifyOutsideForSession(ASessionId);
   ApplySessionComposerState;
   BindExecutionLogToNav(ASessionId);
@@ -846,8 +844,6 @@ begin
   end;
   if FState.IsPanelVisible(piTerminal) then
     ScheduleDeferredTerminalStart;
-  if Assigned(lcaChatHistory) then
-    lcaChatHistory.RequestRender;
 end;
 
 
@@ -1761,7 +1757,7 @@ begin
   FExecDetailSource := edsNone;
   FExecDetailIndex := -1;
   if Assigned(FExecDetailView) then
-    FExecDetailView.SetHtmlBody(WrapExecDetailHtmlDocument('', FState.Theme));
+    FExecDetailView.Clear;
 end;
 
 procedure TLazyCodingAgentForm.RefreshExecDetailView;
@@ -1796,7 +1792,7 @@ begin
   FExecDetailSource := edsExecLog;
   FExecDetailIndex := AIndex;
   if Assigned(FExecDetailView) then
-    FExecDetailView.SetHtmlBody(Entry.BuildInspectorHtml(FState.Theme));
+    FExecDetailView.SetMarkdown(Entry.BuildInspectorMarkdown);
   OpenUtilityExecutionDetailTab;
 end;
 
@@ -1813,7 +1809,7 @@ begin
   FExecDetailSource := edsToolError;
   FExecDetailIndex := AIndex;
   if Assigned(FExecDetailView) then
-    FExecDetailView.SetHtmlBody(Entry.BuildInspectorHtml(FState.Theme));
+    FExecDetailView.SetMarkdown(Entry.BuildInspectorMarkdown);
   OpenUtilityExecutionDetailTab;
 end;
 

@@ -60,7 +60,7 @@ Plan and Ask still use read/search/git tools to understand the tree.
 - **Step limit** — if the loop uses all allowed steps and the model still wanted tools, the assistant posts a short note that the step limit was reached (configure **Max steps** in Settings).
 - **Tool Errors** — failed tools for the session, plus a shared `tool-errors.log` file under your user config folder.
 
-With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & Logs**, opens the **utility panel** on **Execution Detail**, and follows each step so you can watch the enriched prompt and tool I/O during a demo or learning session. The inspector uses themed HTML (section headers, tool-call highlights, JSON in distinct blocks) rather than a plain text dump.
+With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & Logs**, opens the **utility panel** on **Execution Detail**, and follows each step so you can watch the enriched prompt and tool I/O during a demo or learning session. The inspector shows that content as readable plain text in the themed Markdown view.
 
 ## Safety and sandboxing
 

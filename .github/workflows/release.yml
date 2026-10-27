@@ -38,7 +38,7 @@ jobs:
         shell: pwsh
         run: ./scripts/ci-install-lazarus-windows.ps1
 
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Prepare SynEdit
         shell: pwsh
         env:
           LAZBUILD: C:\lazarus\lazbuild.exe
@@ -96,7 +96,7 @@ jobs:
           if-no-files-found: error
 
   build-linux:
-    # 22.04 apt ships Lazarus 2.2 (no TurboPower IpHtmlTypes); 24.04 has Lazarus 3.0+.
+    # 22.04 apt ships Lazarus 2.2; 24.04 has Lazarus 3.0+.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

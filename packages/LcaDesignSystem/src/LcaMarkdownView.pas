@@ -5,1366 +5,1147 @@ unit LcaMarkdownView;
 interface
 
 uses
-  Classes, SysUtils, Controls, ExtCtrls, Graphics, Forms, LCLType, LMessages, Types,
-  IpHtml, LcaTheme, LcaScrollHost;
-
-const
-  LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES = 20;
-  LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT = 512;
-  LCA_MARKDOWN_CONTENT_HEIGHT_SLACK = 3;
-  LCA_MARKDOWN_RESIZE_QUIESCENCE_MS = 120;
-  { LCL SendMoveSizeMessages rejects control sizes above ~32767 on Win32. }
-  LCA_MARKDOWN_MAX_CONTENT_EXTENT = 32767;
+  Classes, SysUtils, Contnrs, Controls, Graphics, Types, LCLType, LcaThemedControl, LcaTheme;
 
 type
-  TLcaMarkdownView = class;
-
-  { Forwards wheel to TLcaScrollHost; IPro must not keep native scroll. }
-  TLcaMarkdownHtmlPanel = class(TIpHtmlPanel)
+  TLcaMarkdownView = class(TLcaThemedControl)
   private
-    FScrollHost: TLcaScrollHost;
-    FOwnerView: TLcaMarkdownView;
-  public
-    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
-    procedure BindScrollHost(AHost: TLcaScrollHost);
-    procedure BindOwnerView(AView: TLcaMarkdownView);
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
-      MousePos: TPoint): Boolean; override;
-    procedure Click; override;
-  end;
-
-  TLcaMarkdownView = class(TPanel)
-  private
-    FScrollHost: TLcaScrollHost;
-    FHtmlPanel: TControl;
-    FThemeKind: TThemeKind;
-    FLastLayoutViewportW: Integer;
-    FLastSyncedContentW: Integer;
-    FLastSyncedContentH: Integer;
-    FMarkdown: string;
-    FRawHtml: string;
-    FUseRawHtml: Boolean;
-    FRenderDeferRetries: Integer;
-    FRenderDeferQueued: Boolean;
-    FRendering: Boolean;
-    FScrollToEndPending: Boolean;
-    FScrollDeferRetries: Integer;
-    FScrollDeferQueued: Boolean;
-    FContentSyncQueued: Boolean;
-    FContentSyncDeferRetries: Integer;
-    FContentStabilityMeasureH: Integer;
-    FViewportReflowQueued: Boolean;
-    FViewportReflowDeadline: QWord;
-    FLastRenderedMarkdownLen: Integer;
-    FLastRenderedRawHtmlLen: Integer;
-    FLastNotifiedContentH: Integer;
-    FIpHtmlScrollChromeHidden: Boolean;
-    function HasMarkdownContent: Boolean;
-    function ShouldResetLayoutBeforeRender: Boolean;
-    function MarkdownViewportSize: TSize;
-    function MarkdownMeasurePanelHeight(AViewH: Integer): Integer;
-    procedure ConfigureMarkdownScrollHost;
-    procedure ApplyMarkdownScrollOffset;
-    procedure ScrollHostPositionChanged(Sender: TObject);
-    procedure ResetIpHtmlPanelScrollPos(APanel: TIpHtmlPanel);
-    procedure HideIpHtmlNativeScroll(APanel: TIpHtmlPanel);
-    procedure SetHtmlPanelRedrawActive(AActive: Boolean);
-    procedure SetThemeKind(AValue: TThemeKind);
-    procedure ApplyViewportWidthReflow;
-    procedure ScheduleDebouncedViewportReflow;
-    procedure DeferredViewportReflow(Data: PtrInt);
-    function HostReadyForRender: Boolean;
-    procedure EnsureViewer;
-    procedure ScheduleDeferredRender;
-    procedure DeferredRender(Data: PtrInt);
-    procedure ScheduleDeferredScrollToEnd;
-    procedure DeferredScrollToEnd(Data: PtrInt);
-    procedure ScrollDocumentToEnd;
-    function IsDocumentScrolledToEnd: Boolean;
-    procedure ScheduleScrollToEndAfterRender;
-    procedure Render;
-    function SyncContentLayout: Boolean;
-    procedure ScheduleDeferredContentSync;
-    procedure DeferredContentSync(Data: PtrInt);
-    procedure ResetContentLayoutState;
-    procedure EnsureScrollHostFillsClient;
-    procedure DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
-    procedure EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
-    procedure HtmlDocumentOpened(Sender: TObject);
-    procedure TryHideIpHtmlScrollChrome(APanel: TIpHtmlPanel);
-    function ContentReadyForScrollToEnd: Boolean;
-    procedure TryScrollDocumentToEnd;
+    FSource: string;
+    FBlocks: TObjectList;
+    FContentHeight: Integer;
+    FLayoutTextWidth: Integer;
+    FScrollY: Integer;
+    FAutoScrollToEnd: Boolean;
+    FStickToBottom: Boolean;
+    FShowVBar: Boolean;
+    FDragScrollActive: Boolean;
+    FDragThumbOffset: Integer;
+    FWheelAccumY: Integer;
+    FWheelFlushQueued: Boolean;
+    FLayoutGuard: Boolean;
+    FNeedsLayout: Boolean;
+    procedure SetAutoScrollToEnd(AValue: Boolean);
+    procedure RebuildBlocksFromSource;
+    procedure RelayoutDocument;
+    function ContentPad: Integer;
+    function ScrollbarThickness: Integer;
+    function TextAreaWidth: Integer;
+    function MaxScrollY: Integer;
+    procedure ClampScroll;
+    procedure UpdateStickToBottomFromScroll;
+    procedure ApplyScrollPolicy(AForceStick: Boolean);
+    procedure ScrollToEnd;
+    function VerticalTrackRect: TRect;
+    function VerticalThumbRect: TRect;
+    function HitOnVerticalThumb(X, Y: Integer): Boolean;
+    function HitInVerticalTrack(X, Y: Integer): Boolean;
+    procedure ScrollByDelta(ADeltaY: Integer);
+    procedure ScheduleWheelFlush;
+    procedure WheelFlush(Data: PtrInt);
+    procedure PaintDocument(ACanvas: TCanvas; const P: TThemePalette);
+    procedure PaintCodeBlockLines(ACanvas: TCanvas; const ABlockRect: TRect; APad, ABodySize: Integer;
+      const P: TThemePalette; const ACode: string);
+    procedure PaintScrollbar(const P: TThemePalette);
+    procedure PaintScrollbarTrack(ACanvas: TCanvas; const ARect: TRect; const P: TThemePalette);
+    procedure PaintScrollbarThumb(ACanvas: TCanvas; const ARect: TRect; const P: TThemePalette);
   protected
+    procedure DoApplyThemeColors(const P: TThemePalette); override;
+    procedure PaintThemedClient(const ARect: TRect; const P: TThemePalette); override;
+    procedure Paint; override;
     procedure Loaded; override;
     procedure CreateWnd; override;
     procedure Resize; override;
-    procedure CMShowingChanged(var Message: TLMessage); message CM_SHOWINGCHANGED;
-    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
-      MousePos: TPoint): Boolean; override;
+    procedure ChangeScale(M, D: Integer); override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint): Boolean; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure AppendChunk(const AText: string);
+    procedure SetMarkdownText(const AText: string);
+    procedure Clear;
     procedure SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean = False);
-    procedure SetHtmlBody(const AFullHtml: string);
-    procedure ApplyTheme(ATheme: TThemeKind);
-    procedure NotifyContentMaybeResized;
     procedure RequestRender;
   published
-    property ThemeKind: TThemeKind read FThemeKind write SetThemeKind default tkDark;
+    property AutoScrollToEnd: Boolean read FAutoScrollToEnd write SetAutoScrollToEnd default True;
     property Align;
+    property Anchors;
+    property Left;
+    property Top;
+    property Width;
+    property Height;
+    property TabOrder;
+    property TabStop;
   end;
-
-function MarkdownSubsetToHtml(const AMarkdown: string): string;
-function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): string;
 
 implementation
 
 uses
-  Math, LCLIntf, IpHtmlTypes, StrUtils, LcaUiPaintProfile
-  {$IFDEF LCLwin32}, Windows{$ENDIF};
+  Math, LCLIntf, StrUtils, Forms, LcaUiPaintProfile;
+
+const
+  LCA_MD_BODY_FONT_BASE = 9;
+  LCA_MD_PAD_BASE = 8;
+  LCA_MD_CODE_PAD_BASE = 8;
+  LCA_MD_BULLET_INDENT_BASE = 18;
+  LCA_MD_LINE_EXTRA_BASE = 4;
+  LCA_MD_EMPTY_BLOCK_BASE = 6;
+  LCA_MD_HRULE_BLOCK_BASE = 16;
+  LCA_MD_SCROLL_BOTTOM_EPS = 4;
 
 type
-  TThemedHtmlDocumentShell = record
-    Head: string;
-    Tail: string;
+  TMarkdownBlockKind = (
+    mbkEmpty, mbkHeading, mbkParagraph, mbkCode, mbkBullet, mbkHRule,
+    mbkThinking, mbkTool);
+
+  TInlineStyle = (isNormal, isBold, isItalic, isCode);
+
+  TInlineRun = record
+    Text: string;
+    Style: TInlineStyle;
   end;
 
-var
-  GThemedHtmlShell: array[TThemeKind] of TThemedHtmlDocumentShell;
-  GThemedHtmlShellReady: array[TThemeKind] of Boolean;
+  TInlineRunArray = array of TInlineRun;
 
-function ColorToHex(AColor: TColor): string;
-begin
-  Result := '#' + LowerCase(IntToHex(Red(AColor), 2) + IntToHex(Green(AColor), 2) +
-    IntToHex(Blue(AColor), 2));
-end;
-
-procedure AppendEscapedHtml(AStream: TStringStream; const S: string);
-var
-  I: Integer;
-  C: Char;
-begin
-  for I := 1 to Length(S) do begin
-    C := S[I];
-    case C of
-      '&': AStream.WriteString('&amp;');
-      '<': AStream.WriteString('&lt;');
-      '>': AStream.WriteString('&gt;');
-      '"': AStream.WriteString('&quot;');
-    else
-      AStream.WriteString(C);
-    end;
+  TMarkdownBlockObj = class
+  public
+    Kind: TMarkdownBlockKind;
+    HeadingLevel: Byte;
+    Runs: array of TInlineRun;
+    CodeText: string;
+    CalculatedHeight: Integer;
+    LayoutTop: Integer;
   end;
-end;
 
-function EscapeHtml(const S: string): string;
+procedure AppendInlineRun(var ARuns: TInlineRunArray; const AText: string;
+  AStyle: TInlineStyle);
 var
-  Buf: TStringStream;
+  N: Integer;
 begin
-  Buf := TStringStream.Create('');
-  try
-    AppendEscapedHtml(Buf, S);
-    Result := Buf.DataString;
-  finally
-    Buf.Free;
-  end;
+  if AText = '' then Exit;
+  N := Length(ARuns);
+  SetLength(ARuns, N + 1);
+  ARuns[N].Text := AText;
+  ARuns[N].Style := AStyle;
 end;
 
-function UriCharNeedsEncoding(C: Char): Boolean;
-begin
-  Result := not (C in ['A'..'Z', 'a'..'z', '0'..'9', '-', '_', '.', '~', '/', ':']);
-end;
-
-function EncodeHtmlAttributeUri(const AUrl: string): string;
-var
-  I: Integer;
-  C: Char;
-  Lower: string;
-begin
-  Lower := LowerCase(AUrl);
-  if not StartsText('file://', Lower) then
-    Exit(EscapeHtml(AUrl));
-  Result := Copy(AUrl, 1, 7);
-  for I := 8 to Length(AUrl) do begin
-    C := AUrl[I];
-    if UriCharNeedsEncoding(C) then
-      Result := Result + '%' + LowerCase(IntToHex(Ord(C), 2))
-    else
-      Result := Result + C;
-  end;
-end;
-
-function InlineMarkdownToHtml(const S: string): string;
+procedure ParseInlineMarkdown(const S: string; out ARuns: TInlineRunArray);
 var
   I, N: Integer;
-  InBold, InCode: Boolean;
+  InBold, InCode, InItalic: Boolean;
   Token: string;
-  Buf: TStringStream;
+  Style: TInlineStyle;
 begin
-  Buf := TStringStream.Create('');
-  try
-    I := 1;
-    InBold := False;
-    InCode := False;
-    while I <= Length(S) do begin
-      if (I + 1 <= Length(S)) and (S[I] = '*') and (S[I + 1] = '*') then begin
-        if InCode then
-          AppendEscapedHtml(Buf, Copy(S, I, 2))
-        else begin
-          if InBold then
-            Buf.WriteString('</strong>')
-          else
-            Buf.WriteString('<strong>');
-          InBold := not InBold;
-        end;
-        Inc(I, 2);
-        Continue;
-      end;
-      if S[I] = '`' then begin
-        if InBold then
-          Buf.WriteString('`')
-        else begin
-          if InCode then
-            Buf.WriteString('</code>')
-          else
-            Buf.WriteString('<code>');
-          InCode := not InCode;
-        end;
-        Inc(I);
-        Continue;
-      end;
-      N := I;
-      while (N <= Length(S)) and not (
-        ((N + 1 <= Length(S)) and (S[N] = '*') and (S[N + 1] = '*')) or (S[N] = '`')) do
-        Inc(N);
-      Token := Copy(S, I, N - I);
-      AppendEscapedHtml(Buf, Token);
-      I := N;
+  SetLength(ARuns, 0);
+  I := 1;
+  InBold := False;
+  InCode := False;
+  InItalic := False;
+  while I <= Length(S) do begin
+    if (I + 1 <= Length(S)) and (S[I] = '*') and (S[I + 1] = '*') then begin
+      if InCode then
+        AppendInlineRun(ARuns, Copy(S, I, 2), isNormal)
+      else
+        InBold := not InBold;
+      Inc(I, 2);
+      Continue;
     end;
-    if InBold then
-      Buf.WriteString('</strong>');
+    if (not InBold) and (not InCode) and (S[I] = '*') then begin
+      InItalic := not InItalic;
+      Inc(I);
+      Continue;
+    end;
+    if S[I] = '`' then begin
+      if InBold or InItalic then
+        AppendInlineRun(ARuns, '`', isNormal)
+      else
+        InCode := not InCode;
+      Inc(I);
+      Continue;
+    end;
+    N := I;
+    while (N <= Length(S)) and not (
+      ((N + 1 <= Length(S)) and (S[N] = '*') and (S[N + 1] = '*')) or
+      (S[N] = '`') or
+      ((not InBold) and (not InCode) and (S[N] = '*'))) do
+      Inc(N);
+    Token := Copy(S, I, N - I);
     if InCode then
-      Buf.WriteString('</code>');
-    Result := Buf.DataString;
-  finally
-    Buf.Free;
+      Style := isCode
+    else if InBold then
+      Style := isBold
+    else if InItalic then
+      Style := isItalic
+    else
+      Style := isNormal;
+    AppendInlineRun(ARuns, Token, Style);
+    I := N;
   end;
 end;
 
-function MarkdownImageLineToHtml(const ALine: string): string;
+function IsHorizontalRuleLine(const ATrimmed: string): Boolean;
 var
-  S, Alt, Url: string;
-  P1, P2: Integer;
+  I: Integer;
 begin
-  Result := '';
-  S := Trim(ALine);
-  if Length(S) < 5 then Exit;
-  if not ((S[1] = '!') and (S[2] = '[')) then Exit;
-  P1 := Pos(']', S);
-  if P1 <= 3 then Exit;
-  Alt := Copy(S, 3, P1 - 3);
-  if (P1 + 1 > Length(S)) or (S[P1 + 1] <> '(') then Exit;
-  P2 := PosEx(')', S, P1 + 2);
-  if P2 = 0 then Exit;
-  Url := Copy(S, P1 + 2, P2 - P1 - 2);
-  if not (StartsText('file://', Url) or StartsText('http://', Url) or
-    StartsText('https://', Url)) then
-    Exit;
-  Result := '<p><img src="' + EncodeHtmlAttributeUri(Url) + '" alt="' + EscapeHtml(Alt) +
-    '" class="lca-md-img"/></p>';
+  if Length(ATrimmed) < 3 then Exit(False);
+  for I := 1 to Length(ATrimmed) do
+    if ATrimmed[I] <> '-' then
+      Exit(False);
+  Result := True;
 end;
 
-function MarkdownSubsetToHtml(const AMarkdown: string): string;
+procedure AddBlockParagraph(ABlocks: TObjectList;
+  AKind: TMarkdownBlockKind; const ALine: string; AHeadingLevel: Byte = 0);
+var
+  B: TMarkdownBlockObj;
+begin
+  B := TMarkdownBlockObj.Create;
+  B.Kind := AKind;
+  B.HeadingLevel := AHeadingLevel;
+  ParseInlineMarkdown(ALine, B.Runs);
+  ABlocks.Add(B);
+end;
+
+procedure ParseMarkdownSource(const AMarkdown: string; ABlocks: TObjectList);
 var
   Lines: TStringList;
   I, Level: Integer;
-  Line, Trimmed, FenceLang, ImgHtml: string;
+  Line, Trimmed, Body: string;
   InFence: Boolean;
   InList: Boolean;
-  Buf: TStringStream;
+  B: TMarkdownBlockObj;
 begin
+  ABlocks.Clear;
   Lines := TStringList.Create;
-  Buf := TStringStream.Create('');
   try
     Lines.Text := AMarkdown;
     InFence := False;
     InList := False;
-    FenceLang := '';
     for I := 0 to Lines.Count - 1 do begin
       Line := Lines[I];
       Trimmed := Trim(Line);
       if InFence then begin
         if Trimmed = '```' then begin
-          Buf.WriteString('</pre>');
           InFence := False;
-          FenceLang := '';
+        end else if ABlocks.Count > 0 then begin
+          B := TMarkdownBlockObj(ABlocks[ABlocks.Count - 1]);
+          if B.CodeText <> '' then
+            B.CodeText := B.CodeText + LineEnding;
+          B.CodeText := B.CodeText + Line;
         end else begin
-          AppendEscapedHtml(Buf, Line);
-          Buf.WriteString(#10);
+          B := TMarkdownBlockObj.Create;
+          B.Kind := mbkCode;
+          B.CodeText := Line;
+          ABlocks.Add(B);
         end;
         Continue;
       end;
       if (Length(Trimmed) >= 3) and (Copy(Trimmed, 1, 3) = '```') then begin
-        if InList then begin
-          Buf.WriteString('</ul>');
+        if InList then
           InList := False;
-        end;
-        FenceLang := Trim(Copy(Trimmed, 4, MaxInt));
-        Buf.WriteString('<pre><code>');
-        if FenceLang <> '' then begin
-          Buf.WriteString('<!-- ');
-          AppendEscapedHtml(Buf, FenceLang);
-          Buf.WriteString(' -->');
-        end;
+        B := TMarkdownBlockObj.Create;
+        B.Kind := mbkCode;
+        B.CodeText := '';
+        ABlocks.Add(B);
         InFence := True;
         Continue;
       end;
       if Trimmed = '' then begin
-        if InList then begin
-          Buf.WriteString('</ul>');
+        if InList then
           InList := False;
-        end;
-        Buf.WriteString('<p></p>');
+        B := TMarkdownBlockObj.Create;
+        B.Kind := mbkEmpty;
+        ABlocks.Add(B);
+        Continue;
+      end;
+      if IsHorizontalRuleLine(Trimmed) then begin
+        if InList then
+          InList := False;
+        B := TMarkdownBlockObj.Create;
+        B.Kind := mbkHRule;
+        ABlocks.Add(B);
         Continue;
       end;
       if (Length(Trimmed) > 0) and (Trimmed[1] = '#') then begin
-        if InList then begin
-          Buf.WriteString('</ul>');
+        if InList then
           InList := False;
-        end;
         Level := 0;
         while (Level < Length(Trimmed)) and (Trimmed[Level + 1] = '#') do
           Inc(Level);
-        if (Level >= 1) and (Level <= 6) and ((Level = Length(Trimmed)) or (Trimmed[Level + 1] = ' ')) then begin
-          Line := Trim(Copy(Trimmed, Level + 1, MaxInt));
-          Buf.WriteString(Format('<h%d>%s</h%d>', [Level, InlineMarkdownToHtml(Line), Level]));
+        if (Level >= 1) and (Level <= 6) and
+           ((Level = Length(Trimmed)) or (Trimmed[Level + 1] = ' ')) then begin
+          Body := Trim(Copy(Trimmed, Level + 1, MaxInt));
+          AddBlockParagraph(ABlocks, mbkHeading, Body, Level);
           Continue;
         end;
       end;
       if (Length(Trimmed) >= 2) and ((Copy(Trimmed, 1, 2) = '- ') or (Copy(Trimmed, 1, 2) = '* ')) then begin
-        if not InList then begin
-          Buf.WriteString('<ul>');
-          InList := True;
-        end;
-        Line := Trim(Copy(Trimmed, 3, MaxInt));
-        Buf.WriteString('<li>' + InlineMarkdownToHtml(Line) + '</li>');
+        Body := Trim(Copy(Trimmed, 3, MaxInt));
+        AddBlockParagraph(ABlocks, mbkBullet, Body);
+        InList := True;
         Continue;
       end;
-      if InList then begin
-        Buf.WriteString('</ul>');
+      if InList then
         InList := False;
-      end;
       if (Length(Trimmed) > Length('@think ')) and
          (Copy(Trimmed, 1, Length('@think ')) = '@think ') then begin
-        Line := Trim(Copy(Trimmed, Length('@think ') + 1, MaxInt));
-        Buf.WriteString('<p class="msg-thinking">' + InlineMarkdownToHtml(Line) + '</p>');
+        Body := Trim(Copy(Trimmed, Length('@think ') + 1, MaxInt));
+        AddBlockParagraph(ABlocks, mbkThinking, Body);
         Continue;
       end;
       if (Length(Trimmed) > Length('@tool ')) and
          (Copy(Trimmed, 1, Length('@tool ')) = '@tool ') then begin
-        Line := Trim(Copy(Trimmed, Length('@tool ') + 1, MaxInt));
-        Buf.WriteString('<p class="msg-tool">- ' + InlineMarkdownToHtml(Line) + '</p>');
+        Body := Trim(Copy(Trimmed, Length('@tool ') + 1, MaxInt));
+        AddBlockParagraph(ABlocks, mbkTool, '- ' + Body);
         Continue;
       end;
-      ImgHtml := MarkdownImageLineToHtml(Trimmed);
-      if ImgHtml <> '' then begin
-        Buf.WriteString(ImgHtml);
-        Continue;
-      end;
-      Buf.WriteString('<p>' + InlineMarkdownToHtml(Trimmed) + '</p>');
+      AddBlockParagraph(ABlocks, mbkParagraph, Trimmed);
     end;
-    if InList then
-      Buf.WriteString('</ul>');
-    if InFence then
-      Buf.WriteString('</pre></code>');
-    Result := Buf.DataString;
+    if InFence and (ABlocks.Count > 0) then
+      ; // leave open fence as code block
   finally
-    Buf.Free;
     Lines.Free;
   end;
 end;
 
-procedure EnsureThemedHtmlDocumentShell(ATheme: TThemeKind);
+function RunFontStyle(AStyle: TInlineStyle; ABase: TFontStyles): TFontStyles;
+begin
+  Result := ABase;
+  case AStyle of
+    isBold: Include(Result, fsBold);
+    isItalic: Include(Result, fsItalic);
+    isCode: ;
+  end;
+end;
+
+procedure ConfigureBodyFont(ACanvas: TCanvas; AControl: TControl; ASize: Integer);
+begin
+  ACanvas.Font.Name := ThemedUiFontName;
+  ACanvas.Font.Size := ASize;
+  ACanvas.Font.Style := [];
+end;
+
+procedure ConfigureMonoFont(ACanvas: TCanvas; AControl: TControl; ASize: Integer);
+begin
+  ApplyThemedMonospaceFont(ACanvas.Font, AControl);
+  ACanvas.Font.Size := ASize;
+end;
+
+function LineHeightForCanvas(ACanvas: TCanvas): Integer;
+begin
+  Result := ACanvas.TextHeight('Ag') + 1;
+end;
+
+function MeasureRunSegmentWidth(ACanvas: TCanvas; const AText: string;
+  AStyle: TInlineStyle): Integer;
 var
-  P: TThemePalette;
-  Css, UiFont, MonoFont: string;
+  SavedStyle: TFontStyles;
 begin
-  if GThemedHtmlShellReady[ATheme] then Exit;
-  P := ThemePalette(ATheme);
-  UiFont := ThemedUiFontName;
-  MonoFont := ThemedMonospaceFontName;
-  Css :=
-    'body { font-family: ' + UiFont + ', sans-serif; font-size: 10pt; margin: 8px; ' +
-    'background: ' + ColorToHex(P.Background) + '; color: ' + ColorToHex(P.Text) + '; } ' +
-    'h1 { color: ' + ColorToHex(P.Text) + '; font-size: 1.35em; font-weight: bold; ' +
-    'margin: 0.5em 0 0.35em; } ' +
-    'h2 { color: ' + ColorToHex(P.Text) + '; font-size: 1.2em; font-weight: bold; ' +
-    'margin: 0.5em 0 0.3em; } ' +
-    'h3 { color: ' + ColorToHex(P.Text) + '; font-size: 1.05em; font-weight: bold; ' +
-    'margin: 0.45em 0 0.25em; } ' +
-    'p { margin: 0.4em 0; line-height: 1.45; } ' +
-    'code { font-family: ' + MonoFont + ', monospace; background: ' + ColorToHex(P.SurfaceAlt) +
-    '; padding: 1px 4px; border-radius: 3px; } ' +
-    'pre { background: ' + ColorToHex(P.SurfaceAlt) + '; padding: 8px; ' +
-    'border: 1px solid ' + ColorToHex(P.Border) + '; border-radius: 4px; overflow-x: auto; } ' +
-    'pre code { background: transparent; padding: 0; } ' +
-    'ul { margin: 0.4em 0 0.4em 1.2em; } ' +
-    '.msg-user { border-left: 3px solid ' + ColorToHex(P.Accent) + '; padding-left: 8px; ' +
-    'margin: 10px 0; } ' +
-    '.msg-assistant { padding-left: 8px; margin: 10px 0; } ' +
-    '.msg-tool { color: ' + ColorToHex(P.TextMuted) + '; font-size: 9pt; margin: 6px 0; } ' +
-    '.msg-thinking { color: ' + ColorToHex(P.TextMuted) + '; font-size: 8pt; font-style: italic; ' +
-    'margin: 4px 0; } ' +
-    '.msg-label { font-weight: bold; color: ' + ColorToHex(P.TextMuted) + '; } ' +
-    'img.lca-md-img { max-width: 100%; height: auto; border-radius: 4px; ' +
-    'border: 1px solid ' + ColorToHex(P.Border) + '; margin: 4px 0; } ';
-  GThemedHtmlShell[ATheme].Head :=
-    '<html><head><meta charset="utf-8"><style>' + Css + '</style></head><body>';
-  GThemedHtmlShell[ATheme].Tail := '</body></html>';
-  GThemedHtmlShellReady[ATheme] := True;
+  SavedStyle := ACanvas.Font.Style;
+  ACanvas.Font.Style := RunFontStyle(AStyle, SavedStyle);
+  Result := ACanvas.TextWidth(AText);
+  ACanvas.Font.Style := SavedStyle;
 end;
 
-function WrapThemedHtmlDocument(const ABodyHtml: string; ATheme: TThemeKind): string;
+type
+  TWrapMeasureState = record
+    LineW: Integer;
+    TotalHeight: Integer;
+    MaxWidth: Integer;
+    LineHeight: Integer;
+  end;
+
+  TWrapDrawState = record
+    CurX, CurY, LineW: Integer;
+    OriginX: Integer;
+    MaxWidth, LineHeight: Integer;
+  end;
+
+procedure WrapMeasureFinishLine(var S: TWrapMeasureState);
 begin
-  EnsureThemedHtmlDocumentShell(ATheme);
-  Result := GThemedHtmlShell[ATheme].Head + ABodyHtml + GThemedHtmlShell[ATheme].Tail;
+  if S.TotalHeight = 0 then
+    S.TotalHeight := S.LineHeight
+  else
+    S.TotalHeight := S.TotalHeight + S.LineHeight;
+  S.LineW := 0;
 end;
 
-procedure TLcaMarkdownView.SetThemeKind(AValue: TThemeKind);
+procedure WrapMeasureEmitWord(ACanvas: TCanvas; var S: TWrapMeasureState;
+  const AW: string; AStyle: TInlineStyle);
+var
+  WW, I, W: Integer;
 begin
-  if FThemeKind = AValue then Exit;
-  FThemeKind := AValue;
-  ApplyTheme(FThemeKind);
+  if AW = '' then Exit;
+  WW := MeasureRunSegmentWidth(ACanvas, AW, AStyle);
+  if (S.LineW > 0) and (S.LineW + WW > S.MaxWidth) then
+    WrapMeasureFinishLine(S);
+  if WW > S.MaxWidth then begin
+    for I := 1 to Length(AW) do begin
+      W := MeasureRunSegmentWidth(ACanvas, AW[I], AStyle);
+      if (S.LineW > 0) and (S.LineW + W > S.MaxWidth) then
+        WrapMeasureFinishLine(S);
+      S.LineW := S.LineW + W;
+    end;
+  end else
+    S.LineW := S.LineW + WW;
+end;
+
+procedure WrapDrawFinishLine(var S: TWrapDrawState);
+begin
+  S.CurX := S.OriginX;
+  S.CurY := S.CurY + S.LineHeight;
+  S.LineW := 0;
+end;
+
+procedure WrapDrawWord(ACanvas: TCanvas; var S: TWrapDrawState; const AW: string;
+  AStyle: TInlineStyle; ATextColor, ACodeBg: TColor);
+var
+  WW, J, W: Integer;
+  SavedStyle: TFontStyles;
+  SavedColor: TColor;
+  TR: TRect;
+begin
+  if AW = '' then Exit;
+  SavedStyle := ACanvas.Font.Style;
+  SavedColor := ACanvas.Font.Color;
+  if AStyle = isCode then begin
+    ConfigureMonoFont(ACanvas, nil, ACanvas.Font.Size);
+    ACanvas.Font.Style := [];
+  end else
+    ACanvas.Font.Style := RunFontStyle(AStyle, SavedStyle);
+  WW := ACanvas.TextWidth(AW);
+  if (S.LineW > 0) and (S.CurX + WW - S.OriginX > S.MaxWidth) then
+    WrapDrawFinishLine(S);
+  if WW > S.MaxWidth then begin
+    for J := 1 to Length(AW) do begin
+      W := ACanvas.TextWidth(AW[J]);
+      if (S.CurX > S.OriginX) and (S.CurX + W - S.OriginX > S.MaxWidth) then
+        WrapDrawFinishLine(S);
+      if AStyle = isCode then begin
+        TR := Rect(S.CurX, S.CurY, S.CurX + W, S.CurY + S.LineHeight);
+        ACanvas.Brush.Color := ACodeBg;
+        ACanvas.FillRect(TR);
+      end;
+      ACanvas.Font.Color := ATextColor;
+      ACanvas.TextOut(S.CurX, S.CurY, AW[J]);
+      S.CurX := S.CurX + W;
+      S.LineW := S.CurX - S.OriginX;
+    end;
+  end else begin
+    if AStyle = isCode then begin
+      TR := Rect(S.CurX, S.CurY, S.CurX + WW, S.CurY + S.LineHeight);
+      ACanvas.Brush.Color := ACodeBg;
+      ACanvas.FillRect(TR);
+    end;
+    ACanvas.Font.Color := ATextColor;
+    ACanvas.TextOut(S.CurX, S.CurY, AW);
+    S.CurX := S.CurX + WW;
+    S.LineW := S.CurX - S.OriginX;
+  end;
+  ACanvas.Font.Style := SavedStyle;
+  ACanvas.Font.Color := SavedColor;
+end;
+
+function MeasureWrappedRunsHeight(ACanvas: TCanvas; const ARuns: TInlineRunArray;
+  AMaxWidth, ALineHeight: Integer; AMono: Boolean): Integer;
+var
+  R, I, W: Integer;
+  Word: string;
+  Ch: Char;
+  Style: TInlineStyle;
+  SavedName: string;
+  MS: TWrapMeasureState;
+begin
+  if AMaxWidth <= 0 then Exit(ALineHeight);
+  SavedName := ACanvas.Font.Name;
+  if AMono then
+    ConfigureMonoFont(ACanvas, nil, ACanvas.Font.Size)
+  else
+    ACanvas.Font.Name := ThemedUiFontName;
+  MS.LineW := 0;
+  MS.TotalHeight := 0;
+  MS.MaxWidth := AMaxWidth;
+  MS.LineHeight := ALineHeight;
+  for R := 0 to High(ARuns) do begin
+    Word := '';
+    Style := ARuns[R].Style;
+    for I := 1 to Length(ARuns[R].Text) do begin
+      Ch := ARuns[R].Text[I];
+      if Ch <= ' ' then begin
+        WrapMeasureEmitWord(ACanvas, MS, Word, Style);
+        Word := '';
+        if (Ch = ' ') and (MS.LineW > 0) then begin
+          W := MeasureRunSegmentWidth(ACanvas, ' ', Style);
+          if MS.LineW + W > MS.MaxWidth then
+            WrapMeasureFinishLine(MS)
+          else
+            MS.LineW := MS.LineW + W;
+        end;
+      end else
+        Word := Word + Ch;
+    end;
+    WrapMeasureEmitWord(ACanvas, MS, Word, Style);
+  end;
+  if (MS.LineW > 0) or (MS.TotalHeight = 0) then
+    WrapMeasureFinishLine(MS);
+  Result := MS.TotalHeight;
+  ACanvas.Font.Name := SavedName;
+end;
+
+function MeasureCodeBlockHeight(ACanvas: TCanvas; const ACode: string; AMaxWidth: Integer;
+  APad, ALineHeight: Integer): Integer;
+var
+  Lines: TStringList;
+  I, LineW, MaxLineW: Integer;
+begin
+  Lines := TStringList.Create;
+  try
+    if ACode = '' then
+      Lines.Add('')
+    else
+      Lines.Text := ACode;
+    MaxLineW := 0;
+    for I := 0 to Lines.Count - 1 do begin
+      LineW := ACanvas.TextWidth(Lines[I]);
+      if LineW > MaxLineW then
+        MaxLineW := LineW;
+    end;
+    if MaxLineW > AMaxWidth then
+      Result := ALineHeight * Lines.Count
+    else
+      Result := ALineHeight * Max(1, Lines.Count);
+    Result := Result + 2 * APad;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure DrawWrappedRuns(ACanvas: TCanvas; const ARuns: TInlineRunArray;
+  X, Y, AMaxWidth, ALineHeight: Integer; ATextColor, ACodeBg: TColor; AMono: Boolean);
+var
+  R, I, W: Integer;
+  Word: string;
+  Ch: Char;
+  Style: TInlineStyle;
+  SavedName: string;
+  DS: TWrapDrawState;
+begin
+  SavedName := ACanvas.Font.Name;
+  if AMono then
+    ConfigureMonoFont(ACanvas, nil, ACanvas.Font.Size)
+  else
+    ACanvas.Font.Name := ThemedUiFontName;
+  DS.OriginX := X;
+  DS.MaxWidth := AMaxWidth;
+  DS.LineHeight := ALineHeight;
+  DS.CurX := X;
+  DS.CurY := Y;
+  DS.LineW := 0;
+  for R := 0 to High(ARuns) do begin
+    Word := '';
+    Style := ARuns[R].Style;
+    for I := 1 to Length(ARuns[R].Text) do begin
+      Ch := ARuns[R].Text[I];
+      if Ch <= ' ' then begin
+        WrapDrawWord(ACanvas, DS, Word, Style, ATextColor, ACodeBg);
+        Word := '';
+        if (Ch = ' ') and (DS.LineW > 0) then begin
+          W := ACanvas.TextWidth(' ');
+          if DS.CurX + W - X > AMaxWidth then
+            WrapDrawFinishLine(DS)
+          else begin
+            ACanvas.TextOut(DS.CurX, DS.CurY, ' ');
+            DS.CurX := DS.CurX + W;
+          end;
+        end;
+      end else
+        Word := Word + Ch;
+    end;
+    WrapDrawWord(ACanvas, DS, Word, Style, ATextColor, ACodeBg);
+  end;
+  ACanvas.Font.Name := SavedName;
+end;
+
+{ TLcaMarkdownView }
+
+procedure TLcaMarkdownView.SetAutoScrollToEnd(AValue: Boolean);
+begin
+  if FAutoScrollToEnd = AValue then Exit;
+  FAutoScrollToEnd := AValue;
+  if FAutoScrollToEnd and FStickToBottom then
+    ScrollToEnd;
 end;
 
 constructor TLcaMarkdownView.Create(AOwner: TComponent);
 begin
+  { Before inherited: theme/apply may Invalidate and Paint — FBlocks must exist. }
+  FBlocks := TObjectList.Create(True);
+  FSource := '';
   inherited Create(AOwner);
-  BevelOuter := bvNone;
-  AutoSize := False;
-  FThemeKind := tkDark;
-  FMarkdown := '';
-  FRawHtml := '';
-  FUseRawHtml := False;
-  FRenderDeferRetries := 0;
-  FRenderDeferQueued := False;
-  FRendering := False;
-  FScrollToEndPending := False;
-  FScrollDeferRetries := 0;
-  FScrollDeferQueued := False;
-  FLastLayoutViewportW := 0;
-  FLastSyncedContentW := 0;
-  FLastSyncedContentH := 0;
-  FContentSyncQueued := False;
-  FContentSyncDeferRetries := 0;
-  FContentStabilityMeasureH := -1;
-  FViewportReflowQueued := False;
-  FViewportReflowDeadline := 0;
-  FLastRenderedMarkdownLen := 0;
-  FLastRenderedRawHtmlLen := 0;
-  FLastNotifiedContentH := -1;
-  FIpHtmlScrollChromeHidden := False;
-end;
-
-function TLcaMarkdownView.HasMarkdownContent: Boolean;
-begin
-  Result := (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> ''));
-end;
-
-procedure TLcaMarkdownHtmlPanel.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
-begin
-  LcaUiProfileRecordIpHtmlSetBounds;
-  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
-end;
-
-procedure TLcaMarkdownHtmlPanel.BindScrollHost(AHost: TLcaScrollHost);
-begin
-  FScrollHost := AHost;
-end;
-
-procedure TLcaMarkdownHtmlPanel.BindOwnerView(AView: TLcaMarkdownView);
-begin
-  FOwnerView := AView;
-end;
-
-procedure TLcaMarkdownHtmlPanel.Click;
-begin
-  inherited Click;
-  if Assigned(FOwnerView) then
-    FOwnerView.NotifyContentMaybeResized;
-end;
-
-function TLcaMarkdownHtmlPanel.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
-  MousePos: TPoint): Boolean;
-begin
-  if Assigned(FScrollHost) then begin
-    FScrollHost.HandleHostWheel(Shift, WheelDelta);
-    Exit(True);
-  end;
-  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
+  ControlStyle := ControlStyle + [csCaptureMouse, csClickEvents, csDoubleClicks];
+  FAutoScrollToEnd := True;
+  FStickToBottom := True;
+  FScrollY := 0;
 end;
 
 destructor TLcaMarkdownView.Destroy;
 begin
-  Application.RemoveAsyncCalls(Self);
-  FHtmlPanel := nil;
-  FScrollHost := nil;
+  FreeAndNil(FBlocks);
   inherited Destroy;
 end;
 
-type
-  { Intercepts wheel on IPro HyperPanel before IPro marks it handled with no host scroll. }
-  TLcaIproHyperWheelBridge = class(TComponent)
-  private
-    FHyper: TIpHtmlInternalPanel;
-    FScrollHost: TLcaScrollHost;
-    FPrevWindowProc: TWndMethod;
-    FChained: Boolean;
-    procedure HyperWindowProc(var Message: TLMessage);
-  protected
-    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-  public
-    destructor Destroy; override;
-    procedure Attach(AHyper: TIpHtmlInternalPanel; AHost: TLcaScrollHost);
-    procedure Detach;
-    procedure UpdateScrollHost(AHost: TLcaScrollHost);
-    function IsBoundTo(AHyper: TIpHtmlInternalPanel): Boolean;
-  end;
-
-function TLcaIproHyperWheelBridge.IsBoundTo(AHyper: TIpHtmlInternalPanel): Boolean;
+procedure TLcaMarkdownView.DoApplyThemeColors(const P: TThemePalette);
 begin
-  Result := FHyper = AHyper;
+  Color := P.Background;
+  Font.Color := P.Text;
 end;
 
-destructor TLcaIproHyperWheelBridge.Destroy;
+procedure TLcaMarkdownView.PaintThemedClient(const ARect: TRect; const P: TThemePalette);
 begin
-  Detach;
-  inherited Destroy;
+  Canvas.Brush.Color := P.Background;
+  Canvas.FillRect(ARect);
 end;
 
-procedure TLcaIproHyperWheelBridge.Notification(AComponent: TComponent;
-  Operation: TOperation);
+function TLcaMarkdownView.ContentPad: Integer;
 begin
-  inherited Notification(AComponent, Operation);
-  if (Operation = opRemove) and (AComponent = FHyper) then
-    Detach;
+  Result := ScaledLayoutMetric(Self, LCA_MD_PAD_BASE);
 end;
 
-procedure TLcaIproHyperWheelBridge.Detach;
+function TLcaMarkdownView.ScrollbarThickness: Integer;
 begin
-  if FChained and Assigned(FHyper) then
-    FHyper.WindowProc := FPrevWindowProc;
-  FChained := False;
-  FPrevWindowProc := nil;
-  if Assigned(FHyper) then
-    FHyper.RemoveFreeNotification(Self);
-  FHyper := nil;
-  FScrollHost := nil;
+  Result := ScaledThemedScrollbarThickness(Self);
 end;
 
-procedure TLcaIproHyperWheelBridge.UpdateScrollHost(AHost: TLcaScrollHost);
+function TLcaMarkdownView.TextAreaWidth: Integer;
+var
+  W: Integer;
 begin
-  FScrollHost := AHost;
+  W := ClientWidth - 2 * ContentPad;
+  if FShowVBar then
+    Dec(W, ScrollbarThickness);
+  if W < 1 then
+    W := 1;
+  Result := W;
 end;
 
-procedure TLcaIproHyperWheelBridge.Attach(AHyper: TIpHtmlInternalPanel;
-  AHost: TLcaScrollHost);
+function TLcaMarkdownView.MaxScrollY: Integer;
 begin
-  if (FHyper = AHyper) and FChained then begin
-    UpdateScrollHost(AHost);
+  Result := Max(0, FContentHeight - ClientHeight);
+end;
+
+procedure TLcaMarkdownView.ClampScroll;
+begin
+  if FScrollY < 0 then FScrollY := 0;
+  if FScrollY > MaxScrollY then FScrollY := MaxScrollY;
+end;
+
+procedure TLcaMarkdownView.UpdateStickToBottomFromScroll;
+begin
+  if MaxScrollY <= 0 then begin
+    FStickToBottom := True;
     Exit;
   end;
-  Detach;
-  FHyper := AHyper;
-  FScrollHost := AHost;
-  if not Assigned(FHyper) then Exit;
-  FHyper.FreeNotification(Self);
-  FPrevWindowProc := FHyper.WindowProc;
-  FHyper.WindowProc := @HyperWindowProc;
-  FChained := True;
-end;
-
-procedure TLcaIproHyperWheelBridge.HyperWindowProc(var Message: TLMessage);
-var
-  Ev: TLMMouseEvent absolute Message;
-  ShiftState: TShiftState;
-begin
-  if Assigned(FScrollHost) and ((Message.Msg = LM_MOUSEWHEEL) or
-    (Message.Msg = LM_MOUSEHWHEEL)) then begin
-    ShiftState := Ev.State - [ssCaps, ssNum, ssScroll];
-    if Message.Msg = LM_MOUSEHWHEEL then
-      Include(ShiftState, ssShift);
-    FScrollHost.HandleHostWheel(ShiftState, Ev.WheelDelta);
-    Message.Result := 1;
-    Exit;
-  end;
-  if Assigned(FPrevWindowProc) then
-    FPrevWindowProc(Message);
-end;
-
-procedure TLcaMarkdownView.EnsureHyperWheelBridge(HP: TIpHtmlInternalPanel);
-var
-  I: Integer;
-  B: TLcaIproHyperWheelBridge;
-begin
-  if csDestroying in ComponentState then Exit;
-  if not Assigned(FScrollHost) or not Assigned(HP) then Exit;
-  for I := 0 to ComponentCount - 1 do
-    if Components[I] is TLcaIproHyperWheelBridge then begin
-      B := TLcaIproHyperWheelBridge(Components[I]);
-      if B.IsBoundTo(HP) then begin
-        B.UpdateScrollHost(FScrollHost);
-        Exit;
-      end;
-    end;
-  B := TLcaIproHyperWheelBridge.Create(Self);
-  B.Attach(HP, FScrollHost);
-end;
-
-function ClampMarkdownContentExtent(AValue: Integer): Integer;
-begin
-  if AValue <= 0 then
-    Result := AValue
-  else if AValue > LCA_MARKDOWN_MAX_CONTENT_EXTENT then
-    Result := LCA_MARKDOWN_MAX_CONTENT_EXTENT
+  if FScrollY >= MaxScrollY - LCA_MD_SCROLL_BOTTOM_EPS then
+    FStickToBottom := True
   else
-    Result := AValue;
+    FStickToBottom := False;
 end;
 
-function ControlChainVisible(ACtrl: TControl): Boolean;
+procedure TLcaMarkdownView.ScrollToEnd;
+begin
+  FScrollY := MaxScrollY;
+  ClampScroll;
+end;
+
+procedure TLcaMarkdownView.ApplyScrollPolicy(AForceStick: Boolean);
+begin
+  if AForceStick then
+    FStickToBottom := True;
+  if FAutoScrollToEnd and FStickToBottom then
+    ScrollToEnd;
+end;
+
+procedure TLcaMarkdownView.RebuildBlocksFromSource;
 var
-  C: TControl;
+  NewBlocks: TObjectList;
 begin
-  C := ACtrl;
-  while Assigned(C) do begin
-    if not C.Visible then
-      Exit(False);
-    C := C.Parent;
-  end;
-  Result := True;
+  NewBlocks := TObjectList.Create(True);
+  ParseMarkdownSource(FSource, NewBlocks);
+  FreeAndNil(FBlocks);
+  FBlocks := NewBlocks;
 end;
 
-function TLcaMarkdownView.HostReadyForRender: Boolean;
-begin
-  Result := HandleAllocated and (ClientWidth > 0) and (ClientHeight > 0);
-  if not Result then Exit;
-  {$IFDEF LCLcocoa}
-  Result := ControlChainVisible(Self);
-  {$ELSE}
-  Result := Result and Showing;
-  {$ENDIF}
-end;
-
-procedure TLcaMarkdownView.ScheduleDeferredRender;
-begin
-  if FRenderDeferQueued then Exit;
-  if FRenderDeferRetries >= LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then
-    Exit;
-  Inc(FRenderDeferRetries);
-  FRenderDeferQueued := True;
-  Application.QueueAsyncCall(@DeferredRender, PtrInt(Self));
-end;
-
-procedure TLcaMarkdownView.DeferredRender(Data: PtrInt);
-begin
-  FRenderDeferQueued := False;
-  if PtrInt(Self) <> Data then Exit;
-  Render;
-end;
-
-function TLcaMarkdownView.IsDocumentScrolledToEnd: Boolean;
+procedure TLcaMarkdownView.RelayoutDocument;
 var
-  Panel: TIpHtmlPanel;
-  Sz, Synced: TSize;
+  I, Y, BodySize, LineH, CodePad, W: Integer;
+  B: TMarkdownBlockObj;
+  OldScroll: Integer;
 begin
-  Result := False;
-  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
-  if csDestroying in ComponentState then Exit;
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  Sz := Panel.GetContentSize;
-  if Sz.cy <= 0 then Exit;
-  Synced := FScrollHost.SyncedContentExtent;
-  if Sz.cy > Synced.cy + LCA_MARKDOWN_CONTENT_HEIGHT_SLACK then begin
-    ScheduleDeferredContentSync;
+  if not Assigned(FBlocks) or FLayoutGuard then Exit;
+  if not HandleAllocated then begin
+    FNeedsLayout := True;
     Exit;
   end;
-  if Synced.cy <= 0 then Exit;
-  if not FScrollHost.ContentScrolledToEnd then Exit;
-  Result := True;
-end;
-
-function TLcaMarkdownView.ContentReadyForScrollToEnd: Boolean;
-var
-  Panel: TIpHtmlPanel;
-  Sz: TSize;
-begin
-  Result := False;
-  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
-  if FLastSyncedContentH <= 0 then Exit;
-  if not (FHtmlPanel is TIpHtmlPanel) then Exit;
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  Sz := Panel.GetContentSize;
-  Result := Sz.cy > 0;
-end;
-
-procedure TLcaMarkdownView.TryScrollDocumentToEnd;
-begin
-  {$IFDEF LCLcocoa}
-  if not ContentReadyForScrollToEnd then Exit;
-  {$ENDIF}
-  ScrollDocumentToEnd;
-end;
-
-procedure TLcaMarkdownView.ScrollDocumentToEnd;
-begin
-  if not Assigned(FScrollHost) then Exit;
-  if csDestroying in ComponentState then Exit;
-  FScrollHost.ScrollContentToEnd;
-  ApplyMarkdownScrollOffset;
-end;
-
-procedure HideIpHtmlInternalScrollChrome(HP: TIpHtmlInternalPanel);
-begin
-  HP.HScroll.Visible := False;
-  HP.VScroll.Visible := False;
-end;
-
-procedure SyncIpHtmlPanelScrollPos(APanel: TIpHtmlPanel; AX, AY: Integer);
-
-  procedure WalkHosts(AHost: TWinControl);
-  var
-    I: Integer;
-    C: TControl;
-    HP: TIpHtmlInternalPanel;
-  begin
-    if AHost is TIpHtmlInternalPanel then begin
-      HP := TIpHtmlInternalPanel(AHost);
-      HP.VScroll.Position := AY;
-      HP.HScroll.Position := AX;
+  FLayoutGuard := True;
+  FNeedsLayout := False;
+  LcaUiProfileRecordMarkdownGetContentSize;
+  OldScroll := FScrollY;
+  W := TextAreaWidth;
+  FLayoutTextWidth := W;
+  FShowVBar := False;
+  BodySize := ScaledLayoutMetric(Self, LCA_MD_BODY_FONT_BASE);
+  ConfigureBodyFont(Canvas, Self, BodySize);
+  LineH := LineHeightForCanvas(Canvas);
+  CodePad := ScaledLayoutMetric(Self, LCA_MD_CODE_PAD_BASE);
+  Y := ContentPad;
+  for I := 0 to FBlocks.Count - 1 do begin
+    B := TMarkdownBlockObj(FBlocks[I]);
+    if B = nil then Continue;
+    case B.Kind of
+      mbkEmpty:
+        B.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_EMPTY_BLOCK_BASE);
+      mbkHRule:
+        B.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_HRULE_BLOCK_BASE);
+      mbkCode:
+        begin
+          ConfigureMonoFont(Canvas, Self, BodySize);
+          B.CalculatedHeight := MeasureCodeBlockHeight(Canvas, B.CodeText, W - 2 * CodePad,
+            CodePad, LineHeightForCanvas(Canvas));
+          ConfigureBodyFont(Canvas, Self, BodySize);
+        end;
+      mbkHeading:
+        begin
+          Canvas.Font.Style := [fsBold];
+          Canvas.Font.Size := BodySize + Max(0, 4 - B.HeadingLevel);
+          B.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, B.Runs, W,
+            LineHeightForCanvas(Canvas), False);
+          ConfigureBodyFont(Canvas, Self, BodySize);
+        end;
+      mbkBullet:
+        begin
+          B.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, B.Runs,
+            W - ScaledLayoutMetric(Self, LCA_MD_BULLET_INDENT_BASE),
+            LineH, False);
+        end;
+      mbkThinking, mbkTool, mbkParagraph:
+        B.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, B.Runs, W, LineH, False);
     end;
-    for I := 0 to AHost.ControlCount - 1 do begin
-      C := AHost.Controls[I];
-      if C is TWinControl then
-        WalkHosts(TWinControl(C));
-    end;
+    B.LayoutTop := Y;
+    Y := Y + B.CalculatedHeight + ScaledLayoutMetric(Self, LCA_MD_LINE_EXTRA_BASE);
   end;
-
-begin
-  if not Assigned(APanel) then Exit;
-  WalkHosts(APanel);
-  APanel.VScrollPos := AY;
-end;
-
-{$IFDEF LCLwin32}
-procedure HideWin32ScrollChrome(AWin: TWinControl);
-var
-  Style: PtrUInt;
-const
-  GWL_STYLE_WIN32 = -16;
-begin
-  if not Assigned(AWin) or not AWin.HandleAllocated then Exit;
-  Style := GetWindowLongPtr(AWin.Handle, GWL_STYLE_WIN32);
-  if (Style and (WS_VSCROLL or WS_HSCROLL)) <> 0 then begin
-    SetWindowLongPtr(AWin.Handle, GWL_STYLE_WIN32, Style and not (WS_VSCROLL or WS_HSCROLL));
-    SetWindowPos(AWin.Handle, 0, 0, 0, 0, 0,
-      SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or SWP_FRAMECHANGED or SWP_NOACTIVATE);
+  FContentHeight := Y + ContentPad;
+  FShowVBar := FContentHeight > ClientHeight;
+  W := TextAreaWidth;
+  if W <> FLayoutTextWidth then begin
+    FLayoutTextWidth := W;
+    FLayoutGuard := False;
+    RelayoutDocument;
+    Exit;
   end;
-  ShowScrollBar(AWin.Handle, SB_VERT, False);
-  ShowScrollBar(AWin.Handle, SB_HORZ, False);
-end;
-{$ENDIF}
-
-procedure DisableIpHtmlPanelChromeScroll(APanel: TWinControl; AOwnerView: TLcaMarkdownView);
-
-  procedure WalkIproHosts(AHost: TWinControl);
-  var
-    I: Integer;
-    C: TControl;
-    HP: TIpHtmlInternalPanel;
-  begin
-    if AHost is TIpHtmlInternalPanel then begin
-      HP := TIpHtmlInternalPanel(AHost);
-      HideIpHtmlInternalScrollChrome(HP);
-      {$IFDEF LCLwin32}
-      HideWin32ScrollChrome(HP);
-      {$ENDIF}
-      if Assigned(AOwnerView) then
-        AOwnerView.EnsureHyperWheelBridge(HP);
-    end;
-    for I := 0 to AHost.ControlCount - 1 do begin
-      C := AHost.Controls[I];
-      if C is TWinControl then
-        WalkIproHosts(TWinControl(C));
-    end;
-  end;
-
-begin
-  { IPro HyperPanel hosts only — do not ShowScrollBar on embedded HTML form controls (Qt breaks). }
-  if not Assigned(APanel) then Exit;
-  WalkIproHosts(APanel);
-  {$IFDEF LCLwin32}
-  HideWin32ScrollChrome(APanel);
-  {$ENDIF}
+  ClampScroll;
+  if (OldScroll <> FScrollY) and not (FAutoScrollToEnd and FStickToBottom) then
+    ; // keep user scroll
+  UpdateStickToBottomFromScroll;
+  FLayoutGuard := False;
 end;
 
-procedure TLcaMarkdownView.ResetIpHtmlPanelScrollPos(APanel: TIpHtmlPanel);
-begin
-  SyncIpHtmlPanelScrollPos(APanel, 0, 0);
-end;
-
-procedure TLcaMarkdownView.HideIpHtmlNativeScroll(APanel: TIpHtmlPanel);
-begin
-  if not Assigned(APanel) then Exit;
-  DisableIpHtmlPanelChromeScroll(APanel, Self);
-end;
-
-procedure TLcaMarkdownView.TryHideIpHtmlScrollChrome(APanel: TIpHtmlPanel);
+procedure TLcaMarkdownView.Clear;
 var
-  Sz: TSize;
+  Empty: TObjectList;
 begin
-  if not Assigned(APanel) then Exit;
-  if FIpHtmlScrollChromeHidden then Exit;
-  {$IFDEF LCLcocoa}
-  Sz := APanel.GetContentSize;
-  if Sz.cy <= 0 then Exit;
-  {$ENDIF}
-  FIpHtmlScrollChromeHidden := True;
-  HideIpHtmlNativeScroll(APanel);
+  FSource := '';
+  Empty := TObjectList.Create(True);
+  FreeAndNil(FBlocks);
+  FBlocks := Empty;
+  FContentHeight := ContentPad * 2;
+  FScrollY := 0;
+  FStickToBottom := True;
+  FNeedsLayout := False;
+  Invalidate;
 end;
 
-procedure TLcaMarkdownView.DisableIpHtmlNativeScroll(APanel: TIpHtmlPanel);
+procedure TLcaMarkdownView.SetMarkdownText(const AText: string);
 begin
-  ResetIpHtmlPanelScrollPos(APanel);
-  HideIpHtmlNativeScroll(APanel);
+  FSource := AText;
+  RebuildBlocksFromSource;
+  RelayoutDocument;
+  ApplyScrollPolicy(False);
+  Invalidate;
+  LcaUiProfileRecordMarkdownRender;
 end;
 
-function TLcaMarkdownView.MarkdownViewportSize: TSize;
+procedure TLcaMarkdownView.AppendChunk(const AText: string);
 begin
-  if Assigned(FScrollHost) then
-    Result := FScrollHost.LayoutViewportSize
-  else
-    Result := Types.Size(Max(1, ClientWidth), Max(1, ClientHeight));
+  if AText = '' then Exit;
+  FSource := FSource + AText;
+  RebuildBlocksFromSource;
+  RelayoutDocument;
+  ApplyScrollPolicy(False);
+  Invalidate;
+  LcaUiProfileRecordMarkdownRender;
 end;
 
-function TLcaMarkdownView.MarkdownMeasurePanelHeight(AViewH: Integer): Integer;
+procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean);
 begin
-  Result := Max(LCA_MARKDOWN_HTML_LAYOUT_MIN_HEIGHT, Max(FLastSyncedContentH, Max(1, AViewH)));
-end;
-
-procedure TLcaMarkdownView.ConfigureMarkdownScrollHost;
-begin
-  if csDesigning in ComponentState then Exit;
-  if not Assigned(FScrollHost) then Exit;
-  FScrollHost.ViewportOnlyContent := False;
-  FScrollHost.OnScrollPositionChange := @ScrollHostPositionChanged;
-end;
-
-procedure TLcaMarkdownView.ApplyMarkdownScrollOffset;
-var
-  Panel: TIpHtmlPanel;
-begin
-  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
-  if csDestroying in ComponentState then Exit;
-  if not (FHtmlPanel is TIpHtmlPanel) then Exit;
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  ResetIpHtmlPanelScrollPos(Panel);
-  Panel.Invalidate;
-end;
-
-procedure TLcaMarkdownView.ScrollHostPositionChanged(Sender: TObject);
-begin
-  if csDestroying in ComponentState then Exit;
-  ApplyMarkdownScrollOffset;
-end;
-
-procedure TLcaMarkdownView.HtmlDocumentOpened(Sender: TObject);
-begin
-  if Sender is TIpHtmlPanel then
-    TryHideIpHtmlScrollChrome(TIpHtmlPanel(Sender));
-  ScheduleDeferredContentSync;
+  SetMarkdownText(AMarkdown);
+  if AScrollToEndAfterRender then
+    ApplyScrollPolicy(True);
 end;
 
 procedure TLcaMarkdownView.RequestRender;
 begin
-  if csDesigning in ComponentState then Exit;
-  if csDestroying in ComponentState then Exit;
-  if not HasMarkdownContent then Exit;
-  FRenderDeferRetries := 0;
-  FRenderDeferQueued := False;
-  ScheduleDeferredRender;
+  RelayoutDocument;
+  Invalidate;
+end;
+
+function TLcaMarkdownView.VerticalTrackRect: TRect;
+var
+  BarW: Integer;
+begin
+  BarW := ScrollbarThickness;
+  Result := Rect(ClientWidth - BarW, 0, ClientWidth, ClientHeight);
+end;
+
+function TLcaMarkdownView.VerticalThumbRect: TRect;
+var
+  TrackR: TRect;
+  ThumbH, ThumbY, MinThumb, MaxS, ViewH: Integer;
+begin
+  TrackR := VerticalTrackRect;
+  Result := TrackR;
+  if not FShowVBar then Exit;
+  MaxS := MaxScrollY;
+  if MaxS <= 0 then Exit;
+  ViewH := ClientHeight;
+  MinThumb := Max(ScrollbarThickness, ScaledLayoutMetric(Self, 20));
+  ThumbH := Max(MinThumb, MulDiv(TrackR.Height, ViewH, FContentHeight));
+  if ThumbH > TrackR.Height then
+    ThumbH := TrackR.Height;
+  ThumbY := TrackR.Top;
+  if TrackR.Height > ThumbH then
+    ThumbY := TrackR.Top + MulDiv(TrackR.Height - ThumbH, FScrollY, MaxS);
+  Result := Rect(TrackR.Left + 2, ThumbY, TrackR.Right - 1, ThumbY + ThumbH);
+end;
+
+function TLcaMarkdownView.HitOnVerticalThumb(X, Y: Integer): Boolean;
+begin
+  if not FShowVBar then Exit(False);
+  Result := PtInRect(VerticalThumbRect, Point(X, Y));
+end;
+
+function TLcaMarkdownView.HitInVerticalTrack(X, Y: Integer): Boolean;
+begin
+  if not FShowVBar then Exit(False);
+  Result := PtInRect(VerticalTrackRect, Point(X, Y));
+end;
+
+procedure TLcaMarkdownView.ScrollByDelta(ADeltaY: Integer);
+begin
+  if ADeltaY = 0 then Exit;
+  FScrollY := FScrollY + ADeltaY;
+  ClampScroll;
+  UpdateStickToBottomFromScroll;
+  Invalidate;
+end;
+
+procedure TLcaMarkdownView.ScheduleWheelFlush;
+begin
+  if FWheelFlushQueued then Exit;
+  FWheelFlushQueued := True;
+  Application.QueueAsyncCall(@WheelFlush, PtrInt(Self));
+end;
+
+procedure TLcaMarkdownView.WheelFlush(Data: PtrInt);
+var
+  Delta: Integer;
+begin
+  FWheelFlushQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  Delta := FWheelAccumY;
+  FWheelAccumY := 0;
+  if Delta <> 0 then
+    ScrollByDelta(-Delta);
+end;
+
+procedure TLcaMarkdownView.PaintScrollbarTrack(ACanvas: TCanvas; const ARect: TRect;
+  const P: TThemePalette);
+begin
+  ACanvas.Brush.Color := P.SurfaceAlt;
+  ACanvas.FillRect(ARect);
+end;
+
+procedure TLcaMarkdownView.PaintScrollbarThumb(ACanvas: TCanvas; const ARect: TRect;
+  const P: TThemePalette);
+begin
+  ACanvas.Brush.Color := P.Border;
+  ACanvas.Pen.Color := P.Border;
+  if (ARect.Right - ARect.Left > 4) and (ARect.Bottom - ARect.Top > 4) then
+    ACanvas.RoundRect(ARect, 4, 4)
+  else
+    ACanvas.FillRect(ARect);
+end;
+
+procedure TLcaMarkdownView.PaintScrollbar(const P: TThemePalette);
+var
+  TrackR, ThumbR: TRect;
+begin
+  if not FShowVBar then Exit;
+  TrackR := VerticalTrackRect;
+  PaintScrollbarTrack(Canvas, TrackR, P);
+  ThumbR := VerticalThumbRect;
+  if (ThumbR.Right > ThumbR.Left) and (ThumbR.Bottom > ThumbR.Top) then
+    PaintScrollbarThumb(Canvas, ThumbR, P);
+end;
+
+procedure TLcaMarkdownView.PaintCodeBlockLines(ACanvas: TCanvas; const ABlockRect: TRect;
+  APad, ABodySize: Integer; const P: TThemePalette; const ACode: string);
+var
+  Lines: TStringList;
+  I, LineY, LineH: Integer;
+  ClipR: TRect;
+  SavedClip: TRect;
+begin
+  ConfigureMonoFont(ACanvas, Self, ABodySize);
+  ACanvas.Font.Color := P.Text;
+  LineH := LineHeightForCanvas(ACanvas);
+  ClipR := Rect(ABlockRect.Left + APad, ABlockRect.Top + APad,
+    ABlockRect.Right - APad, ABlockRect.Bottom - APad);
+  SavedClip := ACanvas.ClipRect;
+  ACanvas.ClipRect := ClipR;
+  Lines := TStringList.Create;
+  try
+    if ACode = '' then
+      Lines.Add('')
+    else
+      Lines.Text := ACode;
+    LineY := ClipR.Top;
+    for I := 0 to Lines.Count - 1 do begin
+      if LineY + LineH > ClipR.Bottom then
+        Break;
+      ACanvas.TextOut(ClipR.Left, LineY, Lines[I]);
+      LineY := LineY + LineH;
+    end;
+  finally
+    Lines.Free;
+    ACanvas.ClipRect := SavedClip;
+  end;
+end;
+
+procedure TLcaMarkdownView.PaintDocument(ACanvas: TCanvas; const P: TThemePalette);
+var
+  I, X, Y, W, BodySize, LineH, CodePad, BulletInd: Integer;
+  B: TMarkdownBlockObj;
+  ViewTop, ViewBottom: Integer;
+  BlockRect: TRect;
+  TextColor: TColor;
+  SavedClip: TRect;
+begin
+  if not Assigned(FBlocks) then Exit;
+  BodySize := ScaledLayoutMetric(Self, LCA_MD_BODY_FONT_BASE);
+  ConfigureBodyFont(ACanvas, Self, BodySize);
+  LineH := LineHeightForCanvas(ACanvas);
+  CodePad := ScaledLayoutMetric(Self, LCA_MD_CODE_PAD_BASE);
+  BulletInd := ScaledLayoutMetric(Self, LCA_MD_BULLET_INDENT_BASE);
+  W := TextAreaWidth;
+  X := ContentPad;
+  ViewTop := FScrollY;
+  ViewBottom := FScrollY + ClientHeight;
+  SavedClip := ACanvas.ClipRect;
+  ACanvas.ClipRect := ClientRect;
+  for I := 0 to FBlocks.Count - 1 do begin
+    B := TMarkdownBlockObj(FBlocks[I]);
+    if B = nil then Continue;
+    if (B.LayoutTop + B.CalculatedHeight < ViewTop) or (B.LayoutTop > ViewBottom) then
+      Continue;
+    Y := B.LayoutTop - FScrollY;
+    case B.Kind of
+      mbkEmpty:
+        Continue;
+      mbkHRule:
+        begin
+          ACanvas.Pen.Color := P.Border;
+          BlockRect := Rect(X, Y + B.CalculatedHeight div 2,
+            X + W, Y + B.CalculatedHeight div 2 + 1);
+          ACanvas.MoveTo(BlockRect.Left, BlockRect.Top);
+          ACanvas.LineTo(BlockRect.Right, BlockRect.Top);
+        end;
+      mbkCode:
+        begin
+          BlockRect := Rect(X, Y, X + W, Y + B.CalculatedHeight);
+          ACanvas.Brush.Color := P.SurfaceAlt;
+          ACanvas.FillRect(BlockRect);
+          ACanvas.Pen.Color := P.Border;
+          ACanvas.Rectangle(BlockRect);
+          PaintCodeBlockLines(ACanvas, BlockRect, CodePad, BodySize, P, B.CodeText);
+        end;
+      mbkHeading:
+        begin
+          ACanvas.Font.Style := [fsBold];
+          ACanvas.Font.Size := BodySize + Max(0, 4 - B.HeadingLevel);
+          ACanvas.Font.Color := P.Text;
+          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineHeightForCanvas(ACanvas), P.Text,
+            P.SurfaceAlt, False);
+          ConfigureBodyFont(ACanvas, Self, BodySize);
+        end;
+      mbkBullet:
+        begin
+          TextColor := P.Text;
+          ACanvas.Font.Color := TextColor;
+          ACanvas.TextOut(X, Y, #8226);
+          DrawWrappedRuns(ACanvas, B.Runs, X + BulletInd, Y, W - BulletInd, LineH,
+            TextColor, P.SurfaceAlt, False);
+        end;
+      mbkThinking:
+        begin
+          TextColor := P.TextMuted;
+          ACanvas.Font.Style := [fsItalic];
+          ACanvas.Font.Color := TextColor;
+          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+          ConfigureBodyFont(ACanvas, Self, BodySize);
+        end;
+      mbkTool:
+        begin
+          TextColor := P.TextMuted;
+          ACanvas.Font.Size := Max(8, BodySize - 1);
+          ACanvas.Font.Color := TextColor;
+          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+          ConfigureBodyFont(ACanvas, Self, BodySize);
+        end;
+      mbkParagraph:
+        begin
+          TextColor := P.Text;
+          ACanvas.Font.Color := TextColor;
+          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+        end;
+    end;
+  end;
+  ACanvas.ClipRect := SavedClip;
 end;
 
 procedure TLcaMarkdownView.CreateWnd;
 begin
   inherited CreateWnd;
-  RequestRender;
-end;
-
-procedure TLcaMarkdownView.NotifyContentMaybeResized;
-var
-  Panel: TIpHtmlPanel;
-  Sz: TSize;
-begin
-  if csDestroying in ComponentState then Exit;
-  if not Assigned(FHtmlPanel) or not (FHtmlPanel is TIpHtmlPanel) then Exit;
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  Sz := Panel.GetContentSize;
-  if (Sz.cy > 0) and (Sz.cy = FLastNotifiedContentH) then Exit;
-  FLastNotifiedContentH := Sz.cy;
-  ScheduleDeferredContentSync;
-end;
-
-procedure TLcaMarkdownView.ResetContentLayoutState;
-begin
-  FLastSyncedContentW := 0;
-  FLastSyncedContentH := 0;
-  FContentSyncDeferRetries := 0;
-  FContentStabilityMeasureH := -1;
-  FLastRenderedMarkdownLen := 0;
-  FLastRenderedRawHtmlLen := 0;
-  FLastNotifiedContentH := -1;
-  FIpHtmlScrollChromeHidden := False;
-  if Assigned(FScrollHost) then begin
-    FScrollHost.UpdateContentExtent(0, 0);
-    FScrollHost.SetScrollPosition(0, 0);
-  end;
-end;
-
-procedure TLcaMarkdownView.ScheduleDeferredContentSync;
-begin
-  if FContentSyncQueued then Exit;
-  if csDestroying in ComponentState then Exit;
-  FContentSyncQueued := True;
-  Application.QueueAsyncCall(@DeferredContentSync, PtrInt(Self));
-end;
-
-procedure TLcaMarkdownView.DeferredContentSync(Data: PtrInt);
-var
-  Settled: Boolean;
-begin
-  FContentSyncQueued := False;
-  if PtrInt(Self) <> Data then Exit;
-  if csDestroying in ComponentState then Exit;
-  if not Assigned(FHtmlPanel) or not Assigned(FScrollHost) then Exit;
-  Settled := SyncContentLayout;
-  if FScrollToEndPending and Settled then begin
-    TryScrollDocumentToEnd;
-    if IsDocumentScrolledToEnd then begin
-      FScrollToEndPending := False;
-      FScrollDeferRetries := 0;
-    end else
-      ScheduleDeferredScrollToEnd;
-  end;
-end;
-
-procedure TLcaMarkdownView.EnsureScrollHostFillsClient;
-begin
-  if not Assigned(FScrollHost) then Exit;
-  if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
-  if FScrollHost.Align <> alNone then
-    FScrollHost.Align := alNone;
-  FScrollHost.Anchors := [akLeft, akTop, akRight, akBottom];
-  FScrollHost.SetBounds(0, 0, ClientWidth, ClientHeight);
-  FScrollHost.Update;
-end;
-
-function TLcaMarkdownView.SyncContentLayout: Boolean;
-var
-  Panel: TIpHtmlPanel;
-  Sz, ViewSz: TSize;
-  ViewW, ViewH, CW, CH, LayPanelH: Integer;
-  NeedUpdate: Boolean;
-begin
-  Result := False;
-  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
-  if csDestroying in ComponentState then Exit;
-  LcaUiProfileRecordMarkdownSyncContent;
-  ConfigureMarkdownScrollHost;
-  EnsureScrollHostFillsClient;
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  ViewSz := MarkdownViewportSize;
-  ViewW := Max(1, ViewSz.cx);
-  ViewH := Max(1, ViewSz.cy);
-  FLastLayoutViewportW := ViewW;
-  LayPanelH := MarkdownMeasurePanelHeight(ViewH);
-  if (Panel.Width <> ViewW) or (Panel.Height < LayPanelH) then
-    Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
-  LcaUiProfileRecordMarkdownGetContentSize;
-  Sz := Panel.GetContentSize;
-  Sz.cx := ClampMarkdownContentExtent(Sz.cx);
-  Sz.cy := ClampMarkdownContentExtent(Sz.cy);
-  if Sz.cy <= 0 then begin
-    if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
-      Inc(FContentSyncDeferRetries);
-      ScheduleDeferredContentSync;
-    end;
-    Exit;
-  end;
-  FContentSyncDeferRetries := 0;
-  CH := Sz.cy;
-  if Sz.cx > ViewW then
-    CW := Sz.cx
-  else
-    CW := ViewW;
-  CW := ClampMarkdownContentExtent(CW);
-  CH := ClampMarkdownContentExtent(CH);
-  NeedUpdate := False;
-  if (CH > FLastSyncedContentH) or (CW <> FLastSyncedContentW) then
-    NeedUpdate := True
-  else if (FLastSyncedContentW <> CW) or (FLastSyncedContentH <> CH) then begin
-    if (FLastSyncedContentH <= 0) or (Abs(CH - FLastSyncedContentH) >= LCA_MARKDOWN_CONTENT_HEIGHT_SLACK) then
-      NeedUpdate := True;
-  end;
-  if not NeedUpdate then begin
-    Result := (FLastSyncedContentH > 0) and (FContentStabilityMeasureH = CH);
-    if Result then Exit;
-    if FContentStabilityMeasureH <> CH then
-      FContentStabilityMeasureH := CH
-    else if FContentSyncDeferRetries < LCA_MARKDOWN_HTML_MAX_RENDER_DEFER_RETRIES then begin
-      Inc(FContentSyncDeferRetries);
-      ScheduleDeferredContentSync;
-    end else
-      Result := True;
-    Exit;
-  end;
-  FLastSyncedContentW := CW;
-  FLastSyncedContentH := CH;
-  FLastNotifiedContentH := CH;
-  FScrollHost.UpdateContentExtent(CW, CH);
-  TryHideIpHtmlScrollChrome(Panel);
-  ApplyMarkdownScrollOffset;
-  {$IFDEF LCLcocoa}
-  EnsureScrollHostFillsClient;
-  FScrollHost.Invalidate;
-  {$ENDIF}
-  FContentStabilityMeasureH := CH;
-  Result := True;
-end;
-
-procedure TLcaMarkdownView.ScheduleDeferredScrollToEnd;
-begin
-  if FScrollDeferQueued then Exit;
-  if FScrollDeferRetries >= 4 then begin
-    FScrollToEndPending := False;
-    FScrollDeferRetries := 0;
-    Exit;
-  end;
-  Inc(FScrollDeferRetries);
-  FScrollDeferQueued := True;
-  Application.QueueAsyncCall(@DeferredScrollToEnd, PtrInt(Self));
-end;
-
-procedure TLcaMarkdownView.DeferredScrollToEnd(Data: PtrInt);
-begin
-  FScrollDeferQueued := False;
-  if PtrInt(Self) <> Data then Exit;
-  if csDestroying in ComponentState then Exit;
-  if not FScrollToEndPending then Exit;
-  if not Assigned(FHtmlPanel) or not HostReadyForRender then begin
-    ScheduleDeferredScrollToEnd;
-    Exit;
-  end;
-  if not SyncContentLayout then begin
-    ScheduleDeferredScrollToEnd;
-    Exit;
-  end;
-  {$IFDEF LCLcocoa}
-  if not ContentReadyForScrollToEnd then begin
-    ScheduleDeferredScrollToEnd;
-    Exit;
-  end;
-  {$ENDIF}
-  TryScrollDocumentToEnd;
-  if IsDocumentScrolledToEnd then begin
-    FScrollToEndPending := False;
-    FScrollDeferRetries := 0;
-  end else
-    ScheduleDeferredScrollToEnd;
-end;
-
-procedure TLcaMarkdownView.ScheduleScrollToEndAfterRender;
-begin
-  if not FScrollToEndPending then Exit;
-  FScrollDeferRetries := 0;
-  ScheduleDeferredScrollToEnd;
-end;
-
-procedure TLcaMarkdownView.EnsureViewer;
-var
-  Html: TLcaMarkdownHtmlPanel;
-begin
-  if csDesigning in ComponentState then Exit;
-  if (csDestroying in ComponentState) or not HandleAllocated then Exit;
-  if Assigned(FHtmlPanel) then Exit;
-  DisableAutoSizing;
-  try
-    if not Assigned(FScrollHost) then begin
-      FScrollHost := TLcaScrollHost.Create(Self);
-      FScrollHost.Parent := Self;
-      FScrollHost.ThemeKind := FThemeKind;
-      FScrollHost.SetViewportFillColor(ThemePalette(FThemeKind).Background);
-      FScrollHost.AutoSize := False;
-      EnsureScrollHostFillsClient;
-    end;
-    ConfigureMarkdownScrollHost;
-    Html := TLcaMarkdownHtmlPanel.Create(Self);
-    Html.Parent := FScrollHost;
-    Html.BindScrollHost(FScrollHost);
-    Html.BindOwnerView(Self);
-    Html.BorderStyle := bsNone;
-    Html.AllowTextSelect := True;
-    Html.DefaultTypeFace := ThemedUiFontName;
-    Html.FixedTypeface := ThemedMonospaceFontName;
-    Html.AutoSize := False;
-    Html.OnDocumentOpen := @HtmlDocumentOpened;
-    FHtmlPanel := Html;
-    FScrollHost.Content := Html;
-  finally
-    EnableAutoSizing;
-  end;
-end;
-
-function TLcaMarkdownView.ShouldResetLayoutBeforeRender: Boolean;
-var
-  CurLen, LastLen: Integer;
-begin
-  if FUseRawHtml then begin
-    CurLen := Length(FRawHtml);
-    LastLen := FLastRenderedRawHtmlLen;
-  end else begin
-    CurLen := Length(FMarkdown);
-    LastLen := FLastRenderedMarkdownLen;
-  end;
-  if LastLen <= 0 then Exit(True);
-  Result := CurLen < LastLen;
-end;
-
-procedure TLcaMarkdownView.SetHtmlPanelRedrawActive(AActive: Boolean);
-var
-  Panel: TIpHtmlPanel;
-  W: TWinControl;
-begin
-  {$IFDEF LCLwin32}
-  if not Assigned(FHtmlPanel) then Exit;
-  if not (FHtmlPanel is TWinControl) then Exit;
-  W := TWinControl(FHtmlPanel);
-  if not W.HandleAllocated then Exit;
-  if AActive then begin
-    SendMessage(W.Handle, WM_SETREDRAW, 1, 0);
-    InvalidateRect(W.Handle, nil, False);
-  end else
-    SendMessage(W.Handle, WM_SETREDRAW, 0, 0);
-  if FHtmlPanel is TIpHtmlPanel then begin
-    Panel := TIpHtmlPanel(FHtmlPanel);
-    HideIpHtmlNativeScroll(Panel);
-  end;
-  {$ELSE}
-  if not AActive then ;
-  {$ENDIF}
-end;
-
-procedure TLcaMarkdownView.Render;
-var
-  Html: string;
-  Panel: TIpHtmlPanel;
-  ViewSz: TSize;
-  ViewW, ViewH, LayPanelH: Integer;
-begin
-  if csDesigning in ComponentState then Exit;
-  if csDestroying in ComponentState then Exit;
-  if FRendering then Exit;
-  if not HostReadyForRender then begin
-    ScheduleDeferredRender;
-    Exit;
-  end;
-  EnsureViewer;
-  if not Assigned(FHtmlPanel) then begin
-    ScheduleDeferredRender;
-    Exit;
-  end;
-  if csDestroying in FHtmlPanel.ComponentState then Exit;
-  LcaUiProfileRecordMarkdownRender;
-  if FUseRawHtml then
-    Html := FRawHtml
-  else
-    Html := WrapThemedHtmlDocument(MarkdownSubsetToHtml(FMarkdown), FThemeKind);
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  FRendering := True;
-  DisableAutoSizing;
-  SetHtmlPanelRedrawActive(False);
-  try
-    if ShouldResetLayoutBeforeRender then
-      ResetContentLayoutState
-    else if not FScrollToEndPending and Assigned(FScrollHost) then
-      FScrollHost.SetScrollPosition(0, 0);
-    EnsureScrollHostFillsClient;
-    Panel.BgColor := ThemePalette(FThemeKind).Background;
-    Panel.TextColor := ThemePalette(FThemeKind).Text;
-    ViewSz := MarkdownViewportSize;
-    ViewW := Max(1, ViewSz.cx);
-    ViewH := Max(1, ViewSz.cy);
-    LayPanelH := MarkdownMeasurePanelHeight(ViewH);
-    if (Panel.Width <> ViewW) or (Panel.Height < LayPanelH) then
-      Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
-    Panel.SetHtmlFromStr(Html);
-    ResetIpHtmlPanelScrollPos(Panel);
-    TryHideIpHtmlScrollChrome(Panel);
-    if FUseRawHtml then
-      FLastRenderedRawHtmlLen := Length(FRawHtml)
-    else
-      FLastRenderedMarkdownLen := Length(FMarkdown);
-    ScheduleDeferredContentSync;
-  finally
-    SetHtmlPanelRedrawActive(True);
-    EnableAutoSizing;
-    FRendering := False;
-  end;
-  FRenderDeferRetries := 0;
-end;
-
-procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean = False);
-begin
-  FUseRawHtml := False;
-  FRawHtml := '';
-  if AScrollToEndAfterRender then
-    FScrollToEndPending := True
-  else
-    FScrollToEndPending := False;
-  if FMarkdown = AMarkdown then begin
-    if AScrollToEndAfterRender then
-      ScheduleScrollToEndAfterRender;
-    Exit;
-  end;
-  FMarkdown := AMarkdown;
-  if not AScrollToEndAfterRender and Assigned(FScrollHost) then
-    FScrollHost.SetScrollPosition(0, 0);
-  ScheduleDeferredRender;
-end;
-
-procedure TLcaMarkdownView.SetHtmlBody(const AFullHtml: string);
-begin
-  FUseRawHtml := True;
-  FMarkdown := '';
-  FRawHtml := AFullHtml;
-  ScheduleDeferredRender;
-end;
-
-procedure TLcaMarkdownView.ApplyTheme(ATheme: TThemeKind);
-var
-  P: TThemePalette;
-  EffTheme: TThemeKind;
-begin
-  FThemeKind := ATheme;
-  EffTheme := EffectiveControlTheme(Self, ATheme);
-  P := ThemePalette(EffTheme);
-  Color := P.Background;
-  if csDesigning in ComponentState then Exit;
-  if Assigned(FScrollHost) then begin
-    FScrollHost.SetViewportFillColor(P.Background);
-    FScrollHost.ThemeKind := ATheme;
-    FScrollHost.ApplyTheme(ATheme);
-  end;
-  if (FUseRawHtml and (FRawHtml <> '')) or (FMarkdown <> '') then
-    ScheduleDeferredRender;
+  if FNeedsLayout or (FSource <> '') then
+    RelayoutDocument;
 end;
 
 procedure TLcaMarkdownView.Loaded;
 begin
   inherited Loaded;
-  ApplyTheme(FThemeKind);
-  if csDesigning in ComponentState then Exit;
-  ConfigureMarkdownScrollHost;
-  EnsureScrollHostFillsClient;
-  if (FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> '')) then
-    ScheduleDeferredRender;
-end;
-
-procedure TLcaMarkdownView.ApplyViewportWidthReflow;
-var
-  Panel: TIpHtmlPanel;
-  ViewSz: TSize;
-  ViewW, ViewH, LayPanelH: Integer;
-begin
-  if csDesigning in ComponentState then Exit;
-  if not Assigned(FScrollHost) or not Assigned(FHtmlPanel) then Exit;
-  ConfigureMarkdownScrollHost;
-  EnsureScrollHostFillsClient;
-  Panel := TIpHtmlPanel(FHtmlPanel);
-  ViewSz := MarkdownViewportSize;
-  ViewW := Max(1, ViewSz.cx);
-  ViewH := Max(1, ViewSz.cy);
-  if (FLastLayoutViewportW > 0) and (ViewW <> FLastLayoutViewportW) then
-    FContentStabilityMeasureH := -1;
-  FLastLayoutViewportW := ViewW;
-  LayPanelH := MarkdownMeasurePanelHeight(ViewH);
-  if (Panel.Width <> ViewW) or (Panel.Height < LayPanelH) then
-    Panel.SetBounds(0, 0, ViewW, Max(Panel.Height, LayPanelH));
-  ScheduleDeferredContentSync;
-end;
-
-procedure TLcaMarkdownView.ScheduleDebouncedViewportReflow;
-begin
-  FViewportReflowDeadline := GetTickCount64 + LCA_MARKDOWN_RESIZE_QUIESCENCE_MS;
-  if FViewportReflowQueued then Exit;
-  FViewportReflowQueued := True;
-  Application.QueueAsyncCall(@DeferredViewportReflow, PtrInt(Self));
-end;
-
-procedure TLcaMarkdownView.DeferredViewportReflow(Data: PtrInt);
-begin
-  if PtrInt(Self) <> Data then Exit;
-  if csDestroying in ComponentState then Exit;
-  if GetTickCount64 < FViewportReflowDeadline then begin
-    Application.QueueAsyncCall(@DeferredViewportReflow, PtrInt(Self));
-    Exit;
+  if FNeedsLayout or (FSource <> '') then begin
+    RelayoutDocument;
+    Invalidate;
   end;
-  FViewportReflowQueued := False;
-  ApplyViewportWidthReflow;
+end;
+
+procedure TLcaMarkdownView.Paint;
+var
+  P: TThemePalette;
+  T0, Elapsed: QWord;
+begin
+  T0 := GetTickCount64;
+  P := EffectivePalette;
+  PaintThemedClient(ClientRect, P);
+  if LcaInDesignContext(Self) and (csDesigning in ComponentState) then begin
+    Canvas.Font.Color := P.TextMuted;
+    Canvas.Brush.Style := bsClear;
+    Canvas.TextOut(4, 4, ClassName);
+  end else begin
+    if Assigned(FBlocks) and (FBlocks.Count > 0) and not FLayoutGuard then
+      if FNeedsLayout or (FContentHeight <= ContentPad * 2) then
+        RelayoutDocument;
+    PaintDocument(Canvas, P);
+    PaintScrollbar(P);
+  end;
+  Elapsed := GetTickCount64 - T0;
+  LcaUiProfileRecordThemedPaint(Elapsed);
 end;
 
 procedure TLcaMarkdownView.Resize;
-var
-  ViewW: Integer;
-  WidthChanged: Boolean;
 begin
   inherited Resize;
-  if csDesigning in ComponentState then Exit;
-  if not Assigned(FScrollHost) then Exit;
-  if (ClientWidth <= 0) or (ClientHeight <= 0) then Exit;
-  EnsureScrollHostFillsClient;
-  ViewW := FScrollHost.LayoutViewportSize.cx;
-  if ViewW <= 0 then Exit;
-  WidthChanged := (FLastLayoutViewportW > 0) and (ViewW <> FLastLayoutViewportW);
-  if not ((FMarkdown <> '') or (FUseRawHtml and (FRawHtml <> ''))) then begin
-    FLastLayoutViewportW := ViewW;
+  RelayoutDocument;
+  Invalidate;
+end;
+
+procedure TLcaMarkdownView.ChangeScale(M, D: Integer);
+begin
+  inherited ChangeScale(M, D);
+  RelayoutDocument;
+end;
+
+procedure TLcaMarkdownView.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+var
+  TrackR: TRect;
+  MaxS, ThumbH, RelY: Integer;
+  ThumbR: TRect;
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if Button <> mbLeft then Exit;
+  if HitOnVerticalThumb(X, Y) then begin
+    FDragScrollActive := True;
+    ThumbR := VerticalThumbRect;
+    FDragThumbOffset := Y - ThumbR.Top;
+    SetCapture(Self.Handle);
     Exit;
   end;
-  if WidthChanged then
-    ApplyViewportWidthReflow
-  else
-    EnsureScrollHostFillsClient;
-  if WidthChanged then
-    ScheduleDebouncedViewportReflow;
+  if HitInVerticalTrack(X, Y) then begin
+    TrackR := VerticalTrackRect;
+    MaxS := MaxScrollY;
+    ThumbH := VerticalThumbRect.Bottom - VerticalThumbRect.Top;
+    RelY := Y - TrackR.Top - ThumbH div 2;
+    if TrackR.Height > ThumbH then
+      FScrollY := MulDiv(RelY, MaxS, TrackR.Height - ThumbH)
+    else
+      FScrollY := 0;
+    ClampScroll;
+    UpdateStickToBottomFromScroll;
+    Invalidate;
+  end;
+end;
+
+procedure TLcaMarkdownView.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  TrackR, ThumbR: TRect;
+  MaxS, ThumbH, NewTop: Integer;
+begin
+  inherited MouseMove(Shift, X, Y);
+  if not FDragScrollActive then Exit;
+  TrackR := VerticalTrackRect;
+  MaxS := MaxScrollY;
+  ThumbH := VerticalThumbRect.Bottom - VerticalThumbRect.Top;
+  NewTop := Y - FDragThumbOffset;
+  if TrackR.Height > ThumbH then begin
+    if NewTop < TrackR.Top then NewTop := TrackR.Top;
+    if NewTop > TrackR.Bottom - ThumbH then NewTop := TrackR.Bottom - ThumbH;
+    FScrollY := MulDiv(NewTop - TrackR.Top, MaxS, TrackR.Height - ThumbH);
+  end;
+  ClampScroll;
+  UpdateStickToBottomFromScroll;
+  Invalidate;
+end;
+
+procedure TLcaMarkdownView.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  if FDragScrollActive then begin
+    FDragScrollActive := False;
+    if GetCapture = Handle then
+      SetCapture(0);
+  end;
 end;
 
 function TLcaMarkdownView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
   MousePos: TPoint): Boolean;
+var
+  Step: Integer;
 begin
-  if Assigned(FScrollHost) then begin
-    FScrollHost.HandleHostWheel(Shift, WheelDelta);
-    Exit(True);
-  end;
-  Result := inherited DoMouseWheel(Shift, WheelDelta, MousePos);
-end;
-
-procedure TLcaMarkdownView.CMShowingChanged(var Message: TLMessage);
-begin
-  inherited CMShowingChanged(Message);
-  if csDesigning in ComponentState then Exit;
-  if not Showing then Exit;
-  ConfigureMarkdownScrollHost;
-  if (FMarkdown = '') and not (FUseRawHtml and (FRawHtml <> '')) then Exit;
-  RequestRender;
+  Step := ScaledLayoutMetric(Self, 40);
+  FWheelAccumY := FWheelAccumY + MulDiv(WheelDelta, Step, 120);
+  ScheduleWheelFlush;
+  Result := True;
 end;
 
 end.

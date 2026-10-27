@@ -144,9 +144,6 @@
         <PackageName Value="LCL"/>
       </Item>
       <Item>
-        <PackageName Value="TurboPowerIPro"/>
-      </Item>
-      <Item>
         <PackageName Value="TerminalFramework"/>
       </Item>
       <Item>

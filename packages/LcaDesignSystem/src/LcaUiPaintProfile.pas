@@ -17,7 +17,6 @@ procedure LcaUiProfileRecordLayoutFromScroll(ADurationMs: QWord; AContentSetBoun
 procedure LcaUiProfileRecordMarkdownRender;
 procedure LcaUiProfileRecordMarkdownSyncContent;
 procedure LcaUiProfileRecordMarkdownGetContentSize;
-procedure LcaUiProfileRecordIpHtmlSetBounds;
 
 implementation
 
@@ -41,7 +40,6 @@ type
     MarkdownRenderCount: QWord;
     MarkdownSyncCount: QWord;
     MarkdownGetContentSizeCount: QWord;
-    IpHtmlSetBoundsCount: QWord;
   end;
 
 var
@@ -70,12 +68,12 @@ begin
     LayoutAvg := 0;
   DebugLn(Format(
     'LCA_UI_PAINT_PROFILE 1s: themedPaint=%d avg=%.2f max=%.0fms gutterPaint=%d avg=%.2f max=%.0fms ' +
-    'layoutFromScroll=%d avg=%.2f max=%.0fms contentSetBounds=%d mdRender=%d mdSync=%d mdGetSize=%d ipHtmlSetBounds=%d',
+    'layoutFromScroll=%d avg=%.2f max=%.0fms contentSetBounds=%d mdRender=%d mdSync=%d mdGetSize=%d',
     [S.ThemedPaintCount, ThemedAvg, S.ThemedPaintMaxMs,
      S.GutterPaintCount, GutterAvg, S.GutterPaintMaxMs,
      S.LayoutFromScrollCount, LayoutAvg, S.LayoutFromScrollMaxMs,
      S.ContentSetBoundsCount, S.MarkdownRenderCount, S.MarkdownSyncCount,
-     S.MarkdownGetContentSizeCount, S.IpHtmlSetBoundsCount]));
+     S.MarkdownGetContentSizeCount]));
 end;
 
 procedure LcaUiProfileEnsureStarted;
@@ -136,12 +134,6 @@ begin
   Inc(GProfile.MarkdownGetContentSizeCount);
 end;
 
-procedure LcaUiProfileRecordIpHtmlSetBounds;
-begin
-  LcaUiProfileEnsureStarted;
-  Inc(GProfile.IpHtmlSetBoundsCount);
-end;
-
 {$ELSE}
 
 procedure LcaUiProfileEnsureStarted;
@@ -173,10 +165,6 @@ begin
 end;
 
 procedure LcaUiProfileRecordMarkdownGetContentSize;
-begin
-end;
-
-procedure LcaUiProfileRecordIpHtmlSetBounds;
 begin
 end;
 

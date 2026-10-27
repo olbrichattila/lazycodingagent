@@ -622,10 +622,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               Top = 0
               Width = 0
               Align = alClient
-              BevelOuter = bvNone
-              Color = 16184563
-              ParentBackground = False
-              ParentColor = False
               TabOrder = 2
             end
           end
@@ -1175,10 +1171,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 Top = 0
                 Width = 413
                 Align = alClient
-                BevelOuter = bvNone
-                Color = 16184563
-                ParentBackground = False
-                ParentColor = False
                 TabOrder = 0
               end
             end

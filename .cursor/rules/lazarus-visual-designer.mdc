@@ -28,7 +28,7 @@ alwaysApply: true
 - **Buttons:** prefer **`TLcaThemedButton`** on the form, or stock **`TButton`** + `StylePrimaryButton` / `StyleCancelButton` / `StyleDestructiveButton` from **LcaTheme**. On **Windows**, primary/cancel/destructive fills use **LcaThemeWin32Buttons** via LcaTheme.
 - **Tabs:** **`TPageControl`** / **`TTabSheet`** with **`ShowTabs = False`**; **`TLcaThemedPageTabBar`** on tab-strip host panels (`Align = alClient`, `PageControl` set in the designer).
 - **Terminal:** **`TLcaTerminalPanel`** on the terminal content area (`StatusLabel` → status label on the form).
-- **Markdown:** **`TLcaMarkdownView`** for chat history, previews, and help-style hosts.
+- **Markdown:** **`TLcaMarkdownView`** (`TLcaThemedControl`, canvas-painted subset) for chat history, previews, and help-style hosts.
 - **Do not reintroduce** removed bespoke UI: `uCustomTabControl`, `uDockPanel`, `uAppLogo`, `fraThemedTabs`, etc. **`uPanelDetach`** is allowed for floating panels.
 
 ### Published events and designer wiring

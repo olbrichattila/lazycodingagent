@@ -19,7 +19,7 @@ jobs:
             libgtk2.0-dev libgdk-pixbuf2.0-dev libglib2.0-dev libnotify-dev \
             libxml2-dev libxslt1-dev xvfb
 
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Prepare SynEdit
         run: |
           chmod +x scripts/*.sh
           ./scripts/ci-prepare-lazarus-deps.sh
@@ -49,7 +49,7 @@ jobs:
             libqt5pas-dev qtbase5-dev \
             libglib2.0-dev libgdk-pixbuf2.0-dev libxml2-dev libxslt1-dev xvfb
 
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Prepare SynEdit
         run: |
           chmod +x scripts/*.sh
           ./scripts/ci-prepare-lazarus-deps.sh
@@ -87,7 +87,7 @@ jobs:
         shell: pwsh
         run: ./scripts/ci-install-lazarus-windows.ps1
 
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Prepare SynEdit
         shell: pwsh
         env:
           LAZBUILD: C:\lazarus\lazbuild.exe
@@ -146,7 +146,7 @@ jobs:
           chmod +x scripts/*.sh
           CI_MACOS_ARCH=aarch64 ./scripts/ci-install-lazarus-macos.sh
 
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Prepare SynEdit
         run: ./scripts/ci-prepare-lazarus-deps.sh
 
       - name: Link LCA and terminal packages
@@ -176,7 +176,7 @@ jobs:
           chmod +x scripts/*.sh
           CI_MACOS_ARCH=x86_64 ./scripts/ci-install-lazarus-macos.sh
 
-      - name: Prepare SynEdit and TurboPower IPro
+      - name: Prepare SynEdit
         run: ./scripts/ci-prepare-lazarus-deps.sh
 
       - name: Link LCA and terminal packages

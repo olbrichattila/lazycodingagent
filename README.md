@@ -30,7 +30,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - Seamless Dark Mode default with instant Light Mode toggle via `View > Toggle Light / Dark Theme`.
 - **Navigation rail**: icon captions, tooltips, and accent `Active` state on painted rail buttons.
 - **Accent text selection** on navigation lists (painted rows — accent text, no OS highlight band).
-- **LCA-painted scrollbars** on chat/plan markdown (`TLcaMarkdownView` + `TLcaScrollHost`) and nav file/log/error lists. Scrollbars on the editor, prompt memo, tree, and terminal still follow the **OS widget theme**.
+- **LCA-painted scrollbars** on chat/plan markdown (`TLcaMarkdownView`) and nav file/log/error lists. Scrollbars on the editor, prompt memo, tree, and terminal still follow the **OS widget theme**.
 - **Linux**: **Qt5** widgetset is recommended (`./scripts/install-lca-lazarus.sh --widgetset=qt5`, `lazbuild --widgetset=qt5`) for consistent LCL behavior with painted controls.
 - **Linux main menubar**: in-app dark/light toggle syncs the native top menu bar (File, View, …) via the LCL widgetset — Qt5 `QMenuBar` stylesheet, or GTK2/GTK3 colors/CSS — so labels stay readable; dropdown menus are left on the OS theme. **macOS** uses the native menu bar (no in-app menubar sync).
 - Clean splitters allowing custom width resizing between all panels.
@@ -114,7 +114,7 @@ LazyCodingAgent is a cross-platform desktop AI coding assistant and editor built
 - [Free Pascal (FPC)](https://www.freepascal.org/)
 - [Lazarus IDE](https://www.lazarus-ide.org/)
 - Lazarus Component Library (LCL)
-- Chat history, Markdown file preview, and Help topics use a **Markdown subset → HTML** renderer (`TMarkdownHtmlView` on streamed `TPanel` hosts; TurboPower IPro at runtime).
+- Chat history, Markdown file preview, and Help topics use **`TLcaMarkdownView`** — a canvas-painted Markdown subset (no HTML engine).
 
 ---
 
@@ -204,9 +204,9 @@ Brave and Tavily are configured in the same settings screen with API keys. See *
 
 ### Raspberry Pi 4/5 (64-bit Linux / aarch64)
 
-LazyCodingAgent is not tuned for low-RAM boards, but the same **Linux aarch64** build applies on **Raspberry Pi OS (64-bit)** and similar distros. You need **Lazarus 3.0+** (TurboPower IPro in the Lazarus tree); if apt’s Lazarus is too old, use [fpcupdeluxe](https://github.com/LongDirtyAnimAlf/fpcupdeluxe) for a current FPC/Lazarus install.
+LazyCodingAgent is not tuned for low-RAM boards, but the same **Linux aarch64** build applies on **Raspberry Pi OS (64-bit)** and similar distros. You need **Lazarus 3.0+**; if apt’s Lazarus is too old, use [fpcupdeluxe](https://github.com/LongDirtyAnimAlf/fpcupdeluxe) for a current FPC/Lazarus install.
 
-**Packages (Debian / Raspberry Pi OS bookworm+):** `git`, `fpc`, `lazarus`, `lcl`, `libqt5pas-dev`, `qtbase5-dev`, `libssl-dev`, `build-essential`, and the same SynEdit/IPro prep as desktop Linux. For the integrated terminal, ensure **util-linux** / **bsdutils** (`forkpty`).
+**Packages (Debian / Raspberry Pi OS bookworm+):** `git`, `fpc`, `lazarus`, `lcl`, `libqt5pas-dev`, `qtbase5-dev`, `libssl-dev`, `build-essential`, and the same SynEdit prep as desktop Linux (`ci-prepare-lazarus-deps`). For the integrated terminal, ensure **util-linux** / **bsdutils** (`forkpty`).
 
 **Build on the Pi (native, Qt5 recommended):**
 
@@ -251,7 +251,7 @@ lazbuild lazycodingagent.lpi
 scripts\post-build.cmd
 ```
 
-**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux (**x86_64** and **aarch64** / `ubuntu-24.04-arm` with Qt5), Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux uses distro Lazarus; Windows and macOS install pinned Lazarus 4.8 from SourceForge on **`macos-14`** (Apple Silicon / `aarch64`) and **`macos-15-intel`** (Intel / `x86_64`; GitHub plans to retire Intel macOS runners around 2027). The Homebrew Lazarus cask is disabled for CI. [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit and TurboPower IPro from the Lazarus tree (not the removed TurboPack/IPro repo). On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
+**CI:** GitHub Actions workflow [`.github/workflows/build.yml`](.github/workflows/build.yml) runs the same flow on Linux (**x86_64** and **aarch64** / `ubuntu-24.04-arm` with Qt5), Windows, and macOS (headless `--link-only` install, no IDE palette rebuild). Linux uses distro Lazarus; Windows and macOS install pinned Lazarus 4.8 from SourceForge on **`macos-14`** (Apple Silicon / `aarch64`) and **`macos-15-intel`** (Intel / `x86_64`; GitHub plans to retire Intel macOS runners around 2027). The Homebrew Lazarus cask is disabled for CI. [`ci-prepare-lazarus-deps`](scripts/ci-prepare-lazarus-deps.sh) links SynEdit from the Lazarus tree. On Windows, [`gen-owl-branding.bat`](scripts/gen-owl-branding.bat) builds `lazycodingagent_appicon.res` with the Windows SDK **`rc.exe`** when available ([`compile-lazycodingagent-appicon-res.ps1`](scripts/compile-lazycodingagent-appicon-res.ps1)); FPC `windres` is only a fallback for Lazarus-only machines.
 
 ### Releasing
 
@@ -268,7 +268,7 @@ Pushing a version tag builds Windows, Linux, and macOS packages and publishes a 
    - **`LazyCodingAgent-0.1.0-aarch64.dmg`** — macOS Apple Silicon (Cocoa app bundle; drag **Lazy Coding Agent** to Applications)
    - **`LazyCodingAgent-0.1.0-x86_64.dmg`** — macOS Intel (same install flow; pick the DMG that matches your Mac)
 
-The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux **amd64** uses **ubuntu-24.04** (apt Lazarus 3.0+ with TurboPower **IpHtmlTypes**; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). Linux **arm64** uses **`ubuntu-24.04-arm`**, the same Qt5 release build, and an **`arm64` `.deb`** only (no AppImage). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
+The workflow [`.github/workflows/release.yml`](.github/workflows/release.yml) runs parallel jobs like [`.github/workflows/build.yml`](.github/workflows/build.yml): Windows mirrors `build.yml` and runs [`scripts/build-windows-installer.ps1`](scripts/build-windows-installer.ps1) against [`installer/lazycodingagent.iss`](installer/lazycodingagent.iss). Linux **amd64** uses **ubuntu-24.04** (apt Lazarus 3.0+; 22.04’s Lazarus 2.2 is too old), builds with **`--widgetset=qt5`** ([`scripts/ci-linux-qt5-release-build.sh`](scripts/ci-linux-qt5-release-build.sh)), then [`scripts/build-linux-deb.sh`](scripts/build-linux-deb.sh) and [`scripts/build-linux-appimage.sh`](scripts/build-linux-appimage.sh). Linux **arm64** uses **`ubuntu-24.04-arm`**, the same Qt5 release build, and an **`arm64` `.deb`** only (no AppImage). macOS builds twice: **Apple Silicon** on `macos-14` and **Intel** on `macos-15-intel`, each with SourceForge Lazarus 4.8, **`--widgetset=cocoa`** ([`scripts/ci-macos-release-build.sh`](scripts/ci-macos-release-build.sh)), then [`scripts/build-macos-dmg.sh`](scripts/build-macos-dmg.sh) (`hdiutil` DMG with **Lazy Coding Agent.app**). Release DMGs are **ad-hoc signed**; macOS may block the first launch until you right-click the app and choose **Open**, or run `xattr -cr` on the app (Developer ID notarization can be added later). A final **publish** job uploads all artifacts. Tags must match `v*` (for example `v1.2.3`); the `v` prefix is stripped for file names and the release title.
 
 **Linux QA (manual):** CI smoke-tests the built binary, packaged **`.deb`** ([`scripts/smoke-linux-deb.sh`](scripts/smoke-linux-deb.sh)), and **AppImage** under Xvfb with `QT_QPA_PLATFORM=xcb`. Before shipping a tag, test the AppImage and `.deb` on real desktops under **X11 and Wayland** — detachable panels, docking, and multi-monitor behavior differ between compositors. The app sets `QT_QPA_PLATFORM=xcb` on Wayland when unset ([`uLinuxDisplayEnv.pas`](uLinuxDisplayEnv.pas)); verify that still works for your environment.
 
@@ -326,7 +326,7 @@ If Fetch Models or chat fails with an OpenSSL error on Linux, install the runtim
 - `third_party/TerminalEmulator/` — Vendored TerminalEmulator: TerminalFramework + ViewLCL packages (see `VENDORED.md` there)
 - `uNavigationPanel.pas` — `TNavContentControl` binds to streamed nav controls on the main form
 - `uChatPanel.pas` — Binds composer memos/combos/buttons; chat history on `TLcaMarkdownView`
-- `packages/LcaDesignSystem/src/LcaMarkdownView.pas` — Markdown subset preview (TurboPower IPro) for chat, center preview, and Help
+- `packages/LcaDesignSystem/src/LcaMarkdownView.pas` — Canvas Markdown preview for chat, center preview, and Help
 - `uPanelDetach.pas` — Detach navigation, chat, guidelines, utility, and terminal panels to floating windows
 - `uThemeHooks.pas` — App hooks (SynEdit gutter); registers [`LcaThemeHooks`](packages/LcaDesignSystem/src/LcaThemeHooks.pas) for LCA components and terminal view
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)

@@ -19,7 +19,7 @@ The **main window** and **app dialogs** (Settings, rules, model search, themed m
 | `TLcaThemedComboBox` | Legacy owner-draw `TComboBox` (e.g. Settings) |
 | `TLcaNavRailButton` | Legacy `TSpeedButton` rail cell |
 | `TLcaSurfacePanel` | Card surface with optional accent border |
-| `TLcaMarkdownView` | Markdown preview (TurboPower IPro) with LCA scrollbars |
+| `TLcaMarkdownView` | Canvas-painted Markdown subset (chat, help, previews) with integrated themed scrollbar |
 | `TLcaTerminalPanel` | Embedded PTY terminal (requires TerminalEmulator packages) |
 | `TLcaThemedMainMenu` | In-window main menu (pairs with `TLcaThemedTitleBar` / menu bar) |
 | `TLcaThemedMenuBar` | Top menu strip inside the custom title bar |
@@ -72,9 +72,9 @@ Requires:
 
 - Lazarus + `lazbuild` on `PATH` (or `LAZBUILD` / `$env:LAZBUILD`)
 - Vendored `third_party/TerminalEmulator` (unless `--skip-terminal`)
-- IDE packages: **TurboPowerIPro**, **SynEdit** (app project; markdown uses IPro)
+- IDE packages: **SynEdit** (app project)
 
-The install script links the **runtime** package for `lazbuild`, installs **`LcaDesignSystemDesign`** into the IDE, and runs **`lazbuild --build-ide`** (close Lazarus first). Only the lightweight design package is linked into `lazarus.exe`; terminal and TurboPower stay in the runtime package used by projects.
+The install script links the **runtime** package for `lazbuild`, installs **`LcaDesignSystemDesign`** into the IDE, and runs **`lazbuild --build-ide`** (close Lazarus first). Only the lightweight design package is linked into `lazarus.exe`; terminal support stays in the runtime package used by projects.
 
 After it finishes, start Lazarus, open the **Component** palette, and select the **LCA Design** page.
 

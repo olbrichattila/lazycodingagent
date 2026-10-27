@@ -1,5 +1,7 @@
 # 010 — Markdown scroll integration
 
+> **Superseded (2026):** `TLcaMarkdownView` is now a **`TLcaThemedControl`** with canvas-painted markdown, an integrated scrollbar, and **no** TurboPower IPro or `TLcaScrollHost` wrapper. Historical notes below describe the earlier IPro integration only.
+
 **Depends on:** [005 — Scroll host](005-scroll-host.md)
 
 ## Goal

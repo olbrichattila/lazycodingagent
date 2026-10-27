@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Link SynEdit + TurboPower IPro for headless lazbuild (CI or fresh Linux/macOS install).
+# Link SynEdit for headless lazbuild (CI or fresh Linux/macOS install).
 set -euo pipefail
 
 LAZBUILD="${LAZBUILD:-lazbuild}"
@@ -89,7 +89,6 @@ LAZARUS_ROOT="$(resolve_lazarus_root)" || {
 }
 
 SYNEDIT_LPK="${LAZARUS_ROOT}/components/synedit/synedit.lpk"
-IPRO_LPK="${LAZARUS_ROOT}/components/turbopower_ipro/turbopoweripro.lpk"
 
 link_and_build "$SYNEDIT_LPK"
 
@@ -98,10 +97,4 @@ if [[ -f "$DSGN_LPK" ]]; then
   link_and_build "$DSGN_LPK"
 fi
 
-if [[ ! -f "$IPRO_LPK" ]]; then
-  echo "ci-prepare-lazarus-deps: TurboPower IPro .lpk not found at $IPRO_LPK (LAZARUS_ROOT=$LAZARUS_ROOT)" >&2
-  exit 1
-fi
-link_and_build "$IPRO_LPK"
-
-echo "ci-prepare-lazarus-deps: SynEdit and TurboPower IPro linked (LAZARUS_ROOT=$LAZARUS_ROOT)."
+echo "ci-prepare-lazarus-deps: SynEdit linked (LAZARUS_ROOT=$LAZARUS_ROOT)."

@@ -18,8 +18,7 @@ type
     Summary: string;
     WasException: Boolean;
     ExceptionClass: string;
-    function BuildInspectorText: string;
-    function BuildInspectorHtml(ATheme: TThemeKind): string;
+    function BuildInspectorMarkdown: string;
   end;
 
   TAgentToolErrorLog = class
@@ -51,7 +50,7 @@ procedure AppendToolErrorLogFile(const AWorkspaceId, AWorkspaceRoot, ASessionId,
 implementation
 
 uses
-  fpjson, DateUtils, uExecutionDetailHtml;
+  fpjson, DateUtils, uExecutionDetailText;
 
 function ToolErrorLogDir: string;
 begin
@@ -111,72 +110,30 @@ begin
   end;
 end;
 
-function TToolErrorLogEntry.BuildInspectorText: string;
+function TToolErrorLogEntry.BuildInspectorMarkdown: string;
 var
   SB: TStringBuilder;
 begin
   SB := TStringBuilder.Create;
   try
-    SB.AppendLine('=== Tool error ===');
+    AppendDetailSectionHeader(SB, 'Tool error');
     SB.AppendLine(FormatDateTime('yyyy-mm-dd hh:nn:ss', Timestamp));
-    SB.AppendLine(ToolName);
-    if WasException then
-    begin
-      SB.AppendLine('(unhandled exception)');
-      if ExceptionClass <> '' then
-        SB.AppendLine('Class: ' + ExceptionClass);
-    end;
     SB.AppendLine;
-    SB.AppendLine('=== Summary ===');
-    SB.AppendLine(Summary);
-    SB.AppendLine;
-    SB.AppendLine('=== Input (arguments) ===');
-    SB.AppendLine(PrettyJsonString(ToolArgsJson));
-    SB.AppendLine;
-    SB.AppendLine('=== Output ===');
-    SB.AppendLine(PrettyJsonString(ToolOutputJson));
-    SB.AppendLine;
-    SB.AppendLine('=== On-disk log ===');
-    SB.AppendLine(ToolErrorLogFilePath);
+    AppendDetailToolLine(SB, ToolName, WasException);
+    if WasException and (ExceptionClass <> '') then
+      SB.AppendLine('_Class: ' + ExceptionClass + '_');
+    AppendDetailSectionHeader(SB, 'Summary');
+    AppendDetailProseBlock(SB, Summary);
+    AppendDetailSectionHeader(SB, 'Input (arguments)');
+    AppendDetailJsonBlock(SB, ToolArgsJson);
+    AppendDetailSectionHeader(SB, 'Output');
+    AppendDetailJsonBlock(SB, ToolOutputJson);
+    AppendDetailSectionHeader(SB, 'On-disk log');
+    AppendDetailProseBlock(SB, ToolErrorLogFilePath);
     Result := SB.ToString;
   finally
     SB.Free;
   end;
-end;
-
-function TToolErrorLogEntry.BuildInspectorHtml(ATheme: TThemeKind): string;
-var
-  SB: TStringBuilder;
-  Body: string;
-begin
-  SB := TStringBuilder.Create;
-  try
-    AppendHtmlSectionHeader(SB, 'Tool error');
-    SB.Append('<p>');
-    SB.Append(ExecDetailEscapeHtml(FormatDateTime('yyyy-mm-dd hh:nn:ss', Timestamp)));
-    SB.Append('</p>');
-    SB.Append('<div class="tool-call"><span class="tool-name">');
-    SB.Append(ExecDetailEscapeHtml(ToolName));
-    SB.Append('</span>');
-    if WasException then
-      AppendHtmlFailBadge(SB);
-    SB.Append('</div>');
-    if WasException and (ExceptionClass <> '') then
-      SB.Append('<p class="prose-empty">Class: ' + ExecDetailEscapeHtml(ExceptionClass) +
-        '</p>');
-    AppendHtmlSectionHeader(SB, 'Summary');
-    SB.Append(ProseTextToHtmlBlock(Summary));
-    AppendHtmlSectionHeader(SB, 'Input (arguments)');
-    SB.Append(JsonTextToHtmlBlock(ToolArgsJson));
-    AppendHtmlSectionHeader(SB, 'Output');
-    SB.Append(JsonTextToHtmlBlock(ToolOutputJson));
-    AppendHtmlSectionHeader(SB, 'On-disk log');
-    SB.Append(ProseTextToHtmlBlock(ToolErrorLogFilePath));
-    Body := SB.ToString;
-  finally
-    SB.Free;
-  end;
-  Result := WrapExecDetailHtmlDocument(Body, ATheme);
 end;
 
 { TAgentToolErrorLog }

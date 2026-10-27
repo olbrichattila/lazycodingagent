@@ -1,4 +1,4 @@
-# Link SynEdit + TurboPower IPro for headless lazbuild (CI or fresh Windows install).
+# Link SynEdit for headless lazbuild (CI or fresh Windows install).
 param(
     [string]$LazBuild = $env:LAZBUILD
 )
@@ -59,7 +59,6 @@ $LazBuildExe = Resolve-LazBuild -Candidate $LazBuild
 $LazarusRoot = Resolve-LazarusRoot -LazBuildExe $LazBuildExe
 
 $synLpk = Join-Path $LazarusRoot 'components\synedit\synedit.lpk'
-$iproLpk = Join-Path $LazarusRoot 'components\turbopower_ipro\turbopoweripro.lpk'
 
 Link-And-Build -Lpk $synLpk -Laz $LazBuildExe
 $dsgn = Join-Path (Split-Path $synLpk) 'syneditdsgn.lpk'
@@ -67,9 +66,4 @@ if (Test-Path -LiteralPath $dsgn) {
     Link-And-Build -Lpk $dsgn -Laz $LazBuildExe
 }
 
-if (-not (Test-Path -LiteralPath $iproLpk)) {
-    throw "ci-prepare-lazarus-deps: TurboPower IPro .lpk not found at $iproLpk (LAZARUS_ROOT=$LazarusRoot)"
-}
-Link-And-Build -Lpk $iproLpk -Laz $LazBuildExe
-
-Write-Host "ci-prepare-lazarus-deps: SynEdit and TurboPower IPro linked (LAZARUS_ROOT=$LazarusRoot)."
+Write-Host "ci-prepare-lazarus-deps: SynEdit linked (LAZARUS_ROOT=$LazarusRoot)."

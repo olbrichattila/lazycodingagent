@@ -919,9 +919,6 @@ begin
   if FHistoryText = '' then
     InitWelcomeText;
   ApplyHistoryViewNow(False);
-  EnsureHistoryView;
-  if Assigned(FHistoryView) then
-    FHistoryView.RequestRender;
 end;
 
 procedure TChatPanel.SubmitPrompt(const APrompt: string);

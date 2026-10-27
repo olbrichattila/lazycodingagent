@@ -42,9 +42,6 @@
         <PackageName Value="LCL"/>
       </Item>
       <Item>
-        <PackageName Value="TurboPowerIPro"/>
-      </Item>
-      <Item>
         <PackageName Value="SynEdit"/>
       </Item>
       <Item>
@@ -556,7 +553,7 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="uExecutionDetailHtml.pas"/>
+        <Filename Value="uExecutionDetailText.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
