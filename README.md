@@ -175,7 +175,7 @@ chmod +x scripts/install-lazarus-sqlite.sh
 ./scripts/install-lazarus-sqlite.sh
 ```
 
-**Windows:** compile the amalgamation with **MSVC `cl.exe`** (Visual Studio or [Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the **Desktop development with C++** workload). Example: `winget install --id Microsoft.VisualStudio.BuildTools -e`, then add that workload in **Visual Studio Installer**. GitHub Actions runners already include this toolchain. MinGW `gcc` objects are not linkable with FPC’s internal Win64 linker for SQLite (Win32 API import symbols).
+**Windows:** compile the amalgamation with **MSVC `cl.exe`**. **Visual Studio Code is not enough** — you need [Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with **Desktop development with C++**. From the repo root run `scripts\install-msvc-build-tools.bat` (large download; admin may be required), then in a **new** terminal `scripts\install-lazarus-sqlite.bat`. GitHub Actions runners already include MSVC. MinGW `gcc` objects are not linkable with FPC’s internal Win64 linker for SQLite.
 
 ```bat
 scripts\install-lazarus-sqlite.bat

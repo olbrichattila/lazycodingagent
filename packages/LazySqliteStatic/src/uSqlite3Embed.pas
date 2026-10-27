@@ -53,7 +53,6 @@ implementation
   {$endif}
   {$endif}
 {$endif}
-{$L sqlite3_embed.o}
 
 function sqlite3_libversion: PAnsiChar; cdecl; external;
 function sqlite3_open_v2(filename: PAnsiChar; ppDb: PPSqlite3; flags: cint; zVfs: PAnsiChar): cint; cdecl; external;
@@ -69,5 +68,7 @@ function sqlite3_bind_int(pStmt: PSqlite3Stmt; i: cint; iValue: cint): cint; cde
 function sqlite3_reset(pStmt: PSqlite3Stmt): cint; cdecl; external;
 function sqlite3_column_text(pStmt: PSqlite3Stmt; iCol: cint): PAnsiChar; cdecl; external;
 function sqlite3_column_int(pStmt: PSqlite3Stmt; iCol: cint): cint; cdecl; external;
+
+{$L sqlite3_embed.o}
 
 end.

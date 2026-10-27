@@ -18,6 +18,120 @@ function Get-NativePathForLazbuild {
     return $Path.Replace('/', '\')
 }
 
+function Get-ShortPathName {
+    param([string]$LongPath)
+    if (-not (Test-Path -LiteralPath $LongPath)) {
+        return $LongPath
+    }
+    $fso = New-Object -ComObject Scripting.FileSystemObject
+    if (Test-Path -LiteralPath $LongPath -PathType Leaf) {
+        return $fso.GetFile($LongPath).ShortPath
+    }
+    return $fso.GetFolder($LongPath).ShortPath
+}
+
+function Get-WindowsSdkUmx64LibDir {
+    $kitsRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Lib'
+    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
+        return $null
+    }
+    $versionDir = Get-ChildItem -Path $kitsRoot -Directory -ErrorAction SilentlyContinue |
+        Sort-Object { [version]$_.Name } -Descending |
+        Select-Object -First 1
+    if (-not $versionDir) {
+        return $null
+    }
+    $um = Join-Path $versionDir.FullName 'um\x64'
+    if (Test-Path -LiteralPath $um -PathType Container) {
+        return $um
+    }
+    return $null
+}
+
+function Get-WindowsSdkUcrtX64LibDir {
+    $kitsRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Lib'
+    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
+        return $null
+    }
+    $versionDir = Get-ChildItem -Path $kitsRoot -Directory -ErrorAction SilentlyContinue |
+        Sort-Object { [version]$_.Name } -Descending |
+        Select-Object -First 1
+    if (-not $versionDir) {
+        return $null
+    }
+    $ucrt = Join-Path $versionDir.FullName 'ucrt\x64'
+    if (Test-Path -LiteralPath $ucrt -PathType Container) {
+        return $ucrt
+    }
+    return $null
+}
+
+function Get-MsvcUcrtLibDir {
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+    if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
+        return $null
+    }
+    $installRoot = & $vswhere -latest -products * -property installationPath 2>$null
+    if ([string]::IsNullOrWhiteSpace($installRoot)) {
+        return $null
+    }
+    $toolsRoot = Join-Path $installRoot 'VC\Tools\MSVC'
+    if (-not (Test-Path -LiteralPath $toolsRoot -PathType Container)) {
+        return $null
+    }
+    $verDir = Get-ChildItem -Path $toolsRoot -Directory -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if (-not $verDir) {
+        return $null
+    }
+    $lib = Join-Path $verDir.FullName 'lib\x64'
+    if (Test-Path -LiteralPath $lib -PathType Container) {
+        return $lib
+    }
+    return $null
+}
+
+function Add-MsvcEmbedLinkOpts {
+    param([ref]$PrefixArgs, [string[]]$LpiArgs)
+
+    $buildingMain = $LpiArgs | Where-Object { $_ -match 'lazycodingagent\.lpi$' }
+    if (-not $buildingMain) {
+        return
+    }
+    $embedObj = Join-Path $Root 'packages\LazySqliteStatic\src\sqlite3_embed.o'
+    if (-not (Test-Path -LiteralPath $embedObj -PathType Leaf)) {
+        return
+    }
+
+    $libDirs = @()
+    $umLib = Get-WindowsSdkUmx64LibDir
+    if ($umLib) { $libDirs += $umLib }
+    $sdkUcrt = Get-WindowsSdkUcrtX64LibDir
+    if ($sdkUcrt) { $libDirs += $sdkUcrt }
+    $msvcLib = Get-MsvcUcrtLibDir
+    if ($msvcLib) { $libDirs += $msvcLib }
+
+    $PrefixArgs.Value += '--opt=-Xe'
+
+    $libSets = @(
+        @{ Dir = $umLib; Libs = @('kernel32.lib', 'advapi32.lib', 'user32.lib') },
+        @{ Dir = $sdkUcrt; Libs = @('ucrt.lib') },
+        @{ Dir = $msvcLib; Libs = @('msvcrt.lib', 'vcruntime.lib') }
+    )
+    foreach ($set in $libSets) {
+        if (-not $set.Dir) { continue }
+        foreach ($lib in $set.Libs) {
+            $path = Join-Path $set.Dir $lib
+            if (Test-Path -LiteralPath $path -PathType Leaf) {
+                $short = Get-ShortPathName -LongPath $path
+                $PrefixArgs.Value += "--opt=-k$short"
+            }
+        }
+    }
+    Write-Host 'ci-lazbuild: passing Windows/MSVC import libs for MSVC sqlite3_embed.o'
+}
+
 function Resolve-LazBuild {
     if ($env:LAZBUILD) {
         $candidate = $env:LAZBUILD
@@ -53,6 +167,8 @@ if (-not [string]::IsNullOrWhiteSpace($env:LAZARUS_DIR) -and
 if (-not [string]::IsNullOrWhiteSpace($env:LCL_WIDGETSET)) {
     $prefixArgs += "--widgetset=$($env:LCL_WIDGETSET)"
 }
+
+Add-MsvcEmbedLinkOpts -PrefixArgs ([ref]$prefixArgs) -LpiArgs $LpiArgs
 
 $allArgs = $prefixArgs + $LpiArgs
 Write-Host "ci-lazbuild: $LazBuild $($allArgs -join ' ')"

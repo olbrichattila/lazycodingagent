@@ -120,7 +120,12 @@ function Invoke-SqliteCompileMsvc {
   }
 
   $defines = '/DSQLITE_ENABLE_FTS5=1 /DSQLITE_THREADSAFE=1 /DSQLITE_ENABLE_JSON1=1'
-  $clLine = "cl.exe /nologo /c /O2 /W0 /utf-8 $defines /Fo`"$OutObj`" `"$SourceC`""
+  # FPC 3.2.x internal linker rejects MSVC associative COMDAT .pdata/.xdata (function-level linking).
+  $clFlags = @(
+    '/nologo', '/c', '/TC', '/O2', '/W0', '/utf-8', '/MD', '/Zl',
+    '/Gy-', '/GS-', '/guard:cf-'
+  ) -join ' '
+  $clLine = "cl.exe $clFlags $defines /Fo`"$OutObj`" `"$SourceC`""
   Write-Host "build-sqlite-static: $clLine"
   if ($VcVars) {
     $cmd = "`"$VcVars`" >nul && $clLine"
@@ -134,20 +139,68 @@ function Invoke-SqliteCompileMsvc {
   if (-not (Test-Path -LiteralPath $OutObj -PathType Leaf)) {
     throw "build-sqlite-static: cl.exe did not produce $OutObj"
   }
+  Remove-MsvcObjectDrectve -Path $OutObj
+}
+
+function Resolve-ObjCopy {
+  $candidates = @(
+    'C:\Program Files\Git\usr\bin\objcopy.exe',
+    'C:\tools\mingw64\bin\objcopy.exe',
+    'C:\msys64\mingw64\bin\objcopy.exe'
+  )
+  $winGetRoot = Join-Path $env:LOCALAPPDATA 'Microsoft\WinGet\Packages'
+  if (Test-Path -LiteralPath $winGetRoot -PathType Container) {
+    foreach ($pkg in Get-ChildItem -Path $winGetRoot -Filter 'BrechtSanders.WinLibs*' -Directory -ErrorAction SilentlyContinue) {
+      $candidates += Join-Path $pkg.FullName 'mingw64\bin\objcopy.exe'
+    }
+  }
+  $pathObjcopy = Get-Command objcopy -ErrorAction SilentlyContinue
+  if ($pathObjcopy -and $pathObjcopy.Source -notmatch '\\fpc\\') {
+    $candidates += $pathObjcopy.Source
+  }
+  foreach ($path in ($candidates | Select-Object -Unique)) {
+    if (Test-Path -LiteralPath $path -PathType Leaf) {
+      return $path
+    }
+  }
+  return $null
+}
+
+function Remove-MsvcObjectDrectve {
+  param([string]$Path)
+
+  $objcopy = Resolve-ObjCopy
+  if (-not $objcopy) {
+    $msg = 'build-sqlite-static: objcopy not found; cannot strip .drectve (install Git for Windows usr bin, WinLibs, or MSYS2 mingw64)'
+    if ($env:CI -eq 'true' -or $env:GITHUB_ACTIONS -eq 'true') {
+      throw $msg
+    }
+    Write-Host "$msg — continuing; lazbuild -Xe link may fail"
+    return
+  }
+  $tmp = "$Path.drectve-stripped"
+  & $objcopy -R .drectve $Path $tmp
+  if ($LASTEXITCODE -ne 0) {
+    Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
+    throw "build-sqlite-static: objcopy failed stripping .drectve (exit $LASTEXITCODE)"
+  }
+  Move-Item -LiteralPath $tmp -Destination $Path -Force
+  Write-Host "build-sqlite-static: stripped .drectve from $Path"
 }
 
 function Throw-MsvcNotFound {
   throw @'
-build-sqlite-static: MSVC cl.exe not found (Visual Studio or Build Tools with "Desktop development with C++").
-MinGW gcc objects are incompatible with FPC's Win64 linker for the SQLite amalgamation.
+build-sqlite-static: MSVC cl.exe not found (Visual Studio BUILD TOOLS with "Desktop development with C++").
+Visual Studio Code is only an editor — it does NOT include cl.exe. MinGW gcc objects cannot be used here.
 
 Install (pick one):
+  • From repo root: scripts\install-msvc-build-tools.bat
   • winget install --id Microsoft.VisualStudio.BuildTools -e
-    Then in Visual Studio Installer, add workload "Desktop development with C++".
+    then add workload "Desktop development with C++" in Visual Studio Installer
   • https://visualstudio.microsoft.com/visual-cpp-build-tools/
 
-After install, run scripts\install-lazarus-sqlite.bat again, or open "x64 Native Tools Command Prompt for VS"
-and run from there (cl.exe on PATH). Optional: set SQLITE_MSVC_VCVARS to your vcvars64.bat path.
+After install, open a NEW terminal and run: scripts\install-lazarus-sqlite.bat
+Or use "x64 Native Tools Command Prompt for VS". Optional: SQLITE_MSVC_VCVARS=path\to\vcvars64.bat
 '@
 }
 
