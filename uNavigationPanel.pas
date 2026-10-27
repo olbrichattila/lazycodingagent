@@ -6,9 +6,10 @@ interface
 
 uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
-  ComCtrls, LCLType, uAppTypes, LcaTheme, LcaPaintButton, LcaThemedMessageBox,
+  ComCtrls, Menus, LCLType, uAppTypes, LcaTheme, LcaPaintButton, LcaThemedMessageBox,
   uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, LcaPaintNavList;
+  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, LcaPaintNavList,
+  uOsShell, FileUtil;
 
 type
   TNavWorkspaceSelectEvent = procedure(Sender: TObject; const AWorkspaceId: string) of object;
@@ -48,6 +49,11 @@ type
     FActiveSessionId: string;
     FLastPopulatedRoot: string;
     FSessionTaskCaptions: TStringList;
+    FProjectsTreePopup: TPopupMenu;
+    FMnuTreeOpenInApp: TMenuItem;
+    FMnuTreeOpenInFileManager: TMenuItem;
+    FMnuTreeOpenDefault: TMenuItem;
+    FContextTreeNode: TTreeNode;
 
     FOnWorkspaceSelect: TNavWorkspaceSelectEvent;
     FOnWorkspaceNew: TNavWorkspaceActionEvent;
@@ -79,7 +85,17 @@ type
     procedure FreeFileTreeNodePaths;
     procedure TreeViewDblClick(Sender: TObject);
     procedure TreeViewKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure TreeViewMouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer);
+    procedure ProjectsTreeMenuPopup(Sender: TObject);
+    procedure MnuTreeOpenInAppClick(Sender: TObject);
+    procedure MnuTreeOpenInFileManagerClick(Sender: TObject);
+    procedure MnuTreeOpenDefaultClick(Sender: TObject);
+    function TreeNodeDisplaySegment(const ACaption: string): string;
+    function TreeNodeAbsolutePath(ANode: TTreeNode): string;
+    function IsTreePathAFile(const APath: string): Boolean;
     procedure TryOpenSelectedTreeFile;
+    procedure TryOpenTreePathInApp(const APath: string);
     procedure RebuildView;
     procedure MaybePopulateProjectsTree;
     procedure ApplyNavListMetrics;
@@ -88,6 +104,8 @@ type
     destructor Destroy; override;
     procedure Bind(ATitle: TLabel; ASub: TLabel; AComingSoon: TLabel; AFileList: TControl;
       ATree: TTreeView; ALogList, AErrorLogList: TControl; APrimaryBtn, ASecondaryBtn: TLcaPaintButton);
+    procedure BindProjectsTreeContextMenu(APopup: TPopupMenu; AOpenInApp, AOpenInFileManager,
+      AOpenDefault: TMenuItem);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -251,6 +269,7 @@ begin
   if Assigned(FTreeView) then begin
     FTreeView.OnDblClick := @TreeViewDblClick;
     FTreeView.OnKeyDown := @TreeViewKeyDown;
+    FTreeView.OnMouseDown := @TreeViewMouseDown;
   end;
   if Assigned(FLogList) then begin
     NavListWireClick(FLogList, @LogListClick);
@@ -570,6 +589,64 @@ begin
   end;
 end;
 
+function TNavContentControl.TreeNodeDisplaySegment(const ACaption: string): string;
+var
+  P: Integer;
+begin
+  P := Pos(' ', ACaption);
+  if P > 0 then
+    Result := Copy(ACaption, P + 1, MaxInt)
+  else
+    Result := ACaption;
+end;
+
+function TNavContentControl.TreeNodeAbsolutePath(ANode: TTreeNode): string;
+var
+  Parts: TStringList;
+  N: TTreeNode;
+  Seg: string;
+  Root: string;
+  I: Integer;
+begin
+  Result := '';
+  if ANode = nil then Exit;
+  if ANode.Data <> nil then
+    Exit(string(PChar(ANode.Data)));
+  Root := Trim(FWorkspaceRoot);
+  if Root = '' then Exit;
+  Parts := TStringList.Create;
+  try
+    N := ANode;
+    while N <> nil do begin
+      Seg := Trim(TreeNodeDisplaySegment(N.Text));
+      if Seg <> '' then
+        Parts.Insert(0, Seg);
+      N := N.Parent;
+    end;
+    if Parts.Count = 0 then Exit;
+    if SameText(Parts[0], ExtractFileName(Root)) then
+      Parts.Delete(0);
+    Result := Root;
+    for I := 0 to Parts.Count - 1 do
+      Result := IncludeTrailingPathDelimiter(Result) + Parts[I];
+    Result := ExpandFileName(Result);
+  finally
+    Parts.Free;
+  end;
+end;
+
+function TNavContentControl.IsTreePathAFile(const APath: string): Boolean;
+begin
+  Result := (APath <> '') and FileExists(APath) and not DirectoryExists(APath);
+end;
+
+procedure TNavContentControl.TryOpenTreePathInApp(const APath: string);
+begin
+  if not IsTreePathAFile(APath) then Exit;
+  if Assigned(FOnFileOpen) then
+    FOnFileOpen(Self, APath);
+end;
+
 procedure TNavContentControl.TryOpenSelectedTreeFile;
 var
   N: TTreeNode;
@@ -577,10 +654,98 @@ var
 begin
   if not Assigned(FTreeView) then Exit;
   N := FTreeView.Selected;
-  if (N = nil) or (N.Data = nil) then Exit;
-  Path := string(PChar(N.Data));
-  if (Path <> '') and Assigned(FOnFileOpen) then
-    FOnFileOpen(Self, Path);
+  if N = nil then Exit;
+  Path := TreeNodeAbsolutePath(N);
+  TryOpenTreePathInApp(Path);
+end;
+
+procedure TNavContentControl.BindProjectsTreeContextMenu(APopup: TPopupMenu; AOpenInApp,
+  AOpenInFileManager, AOpenDefault: TMenuItem);
+begin
+  FProjectsTreePopup := APopup;
+  FMnuTreeOpenInApp := AOpenInApp;
+  FMnuTreeOpenInFileManager := AOpenInFileManager;
+  FMnuTreeOpenDefault := AOpenDefault;
+  if not Assigned(FTreeView) then Exit;
+  FTreeView.PopupMenu := APopup;
+  if Assigned(APopup) then
+    APopup.OnPopup := @ProjectsTreeMenuPopup;
+  if Assigned(AOpenInApp) then
+    AOpenInApp.OnClick := @MnuTreeOpenInAppClick;
+  if Assigned(AOpenInFileManager) then
+    AOpenInFileManager.OnClick := @MnuTreeOpenInFileManagerClick;
+  if Assigned(AOpenDefault) then
+    AOpenDefault.OnClick := @MnuTreeOpenDefaultClick;
+end;
+
+procedure TNavContentControl.TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
+  {%H-}Shift: TShiftState; X, Y: Integer);
+begin
+  if Button <> mbRight then Exit;
+  if not Assigned(FTreeView) then Exit;
+  FContextTreeNode := FTreeView.GetNodeAt(X, Y);
+end;
+
+procedure TNavContentControl.ProjectsTreeMenuPopup(Sender: TObject);
+var
+  Path: string;
+  Valid: Boolean;
+begin
+  if FSelected <> niProjects then begin
+    if Assigned(FMnuTreeOpenInApp) then FMnuTreeOpenInApp.Visible := False;
+    if Assigned(FMnuTreeOpenInFileManager) then FMnuTreeOpenInFileManager.Visible := False;
+    if Assigned(FMnuTreeOpenDefault) then FMnuTreeOpenDefault.Visible := False;
+    Exit;
+  end;
+  if FContextTreeNode = nil then begin
+    if Assigned(FTreeView) then begin
+      FContextTreeNode := FTreeView.GetNodeAt(
+        FTreeView.ScreenToClient(Mouse.CursorPos).X,
+        FTreeView.ScreenToClient(Mouse.CursorPos).Y);
+    end;
+  end;
+  Path := TreeNodeAbsolutePath(FContextTreeNode);
+  Valid := (Path <> '') and (FileExists(Path) or DirectoryExists(Path));
+  if Assigned(FMnuTreeOpenInApp) then begin
+    FMnuTreeOpenInApp.Visible := Valid;
+    FMnuTreeOpenInApp.Enabled := IsTreePathAFile(Path);
+  end;
+  if Assigned(FMnuTreeOpenInFileManager) then begin
+    FMnuTreeOpenInFileManager.Visible := Valid;
+    FMnuTreeOpenInFileManager.Enabled := Valid;
+  end;
+  if Assigned(FMnuTreeOpenDefault) then begin
+    FMnuTreeOpenDefault.Visible := Valid;
+    FMnuTreeOpenDefault.Enabled := Valid;
+  end;
+end;
+
+procedure TNavContentControl.MnuTreeOpenInAppClick(Sender: TObject);
+var
+  Path: string;
+begin
+  Path := TreeNodeAbsolutePath(FContextTreeNode);
+  TryOpenTreePathInApp(Path);
+end;
+
+procedure TNavContentControl.MnuTreeOpenInFileManagerClick(Sender: TObject);
+var
+  Path: string;
+begin
+  Path := TreeNodeAbsolutePath(FContextTreeNode);
+  if Path = '' then Exit;
+  if not RevealPathInFileManager(Path) then
+    LcaShowMessage('Could not open the file manager for this path.', FTheme);
+end;
+
+procedure TNavContentControl.MnuTreeOpenDefaultClick(Sender: TObject);
+var
+  Path: string;
+begin
+  Path := TreeNodeAbsolutePath(FContextTreeNode);
+  if Path = '' then Exit;
+  if not OpenPathWithDefaultApplication(Path) then
+    LcaShowMessage('Could not open this path with the default application.', FTheme);
 end;
 
 procedure TNavContentControl.TreeViewDblClick(Sender: TObject);
@@ -612,8 +777,10 @@ var
           Continue;
 
         if (Rec.Attr and faDirectory) <> 0 then begin
+          FullPath := IncludeTrailingPathDelimiter(ADir) + Rec.Name;
           ChildNode := FTreeView.Items.AddChild(AParentNode, '📁 ' + Rec.Name);
-          AddFolder(ChildNode, IncludeTrailingPathDelimiter(ADir) + Rec.Name);
+          ChildNode.Data := StrNew(PChar(FullPath));
+          AddFolder(ChildNode, FullPath);
         end else begin
           FullPath := IncludeTrailingPathDelimiter(ADir) + Rec.Name;
           ChildNode := FTreeView.Items.AddChild(AParentNode, '📄 ' + Rec.Name);
@@ -628,6 +795,7 @@ begin
   FreeFileTreeNodePaths;
   FTreeView.Items.Clear;
   RootNode := FTreeView.Items.Add(nil, '📦 ' + ExtractFileName(ARoot));
+  RootNode.Data := StrNew(PChar(ExcludeTrailingPathDelimiter(ARoot)));
   AddFolder(RootNode, ARoot);
   RootNode.Expand(False);
 end;

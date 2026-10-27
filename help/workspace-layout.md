@@ -22,7 +22,7 @@ After building on GTK2 or Cocoa, verify: drag the title bar to move; double-clic
 The narrow left **activity bar** switches views:
 
 - **Workspace** — registered workspaces list. Select one to switch the active project. **+ New Workspace** opens the new-workspace flow. **Remove from List** (or **Delete** with a row selected) drops the workspace from LazyCodingAgent only; the folder on disk and saved chat sessions in app config are kept.
-- **Projects** — file tree for the workspace.
+- **Projects** — file tree for the workspace. **Right-click** a file or folder for **Open in Lazy Coding Agent** (files only; same as double-click), **Open in File Manager** (reveal in the OS file browser), or **Open with Default Application** (OS default handler). On Linux, revealing a file in the file manager uses the desktop’s FileManager1 service when available; otherwise the parent folder may open without a guaranteed selection.
 - **Agents** — chat session list (active and archived).
 - **Bots** — agent presets and prompt setups.
 - **Tools & Logs** — per-step execution log for the active session: user prompts, model steps (`Step N/M · Model:`), and each tool’s input/output (`Step N/M · tool_name(...)`). Click a row to open **Execution Detail**; during an active run new rows follow into that panel until you select an older row.

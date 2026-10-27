@@ -168,6 +168,10 @@ type
     mnuHelp: TMenuItem;
     mnuHelpUserGuide: TMenuItem;
     mnuHelpAbout: TMenuItem;
+    popNavProjects: TPopupMenu;
+    mnuTreeOpenInApp: TMenuItem;
+    mnuTreeOpenInFileManager: TMenuItem;
+    mnuTreeOpenDefault: TMenuItem;
 
     procedure PanelHideClick(Sender: TObject);
     procedure PanelDetachClick(Sender: TObject);
@@ -1133,6 +1137,8 @@ begin
   FNavContent.OnToolErrorEntrySelected := @NavToolErrorEntrySelected;
   FNavContent.OnClearToolErrorLog := @NavClearToolErrorLog;
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
+  FNavContent.BindProjectsTreeContextMenu(popNavProjects, mnuTreeOpenInApp,
+    mnuTreeOpenInFileManager, mnuTreeOpenDefault);
 
   if not Assigned(lcaChatHistory) then begin
     lcaChatHistory := TLcaMarkdownView.Create(Self);

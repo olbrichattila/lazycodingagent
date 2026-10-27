@@ -378,6 +378,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
           Top = 101
           Width = 502
           Align = alClient
+          PopupMenu = popNavProjects
           ReadOnly = True
           TabOrder = 3
           Visible = False
@@ -1408,6 +1409,19 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     BevelOuter = bvNone
     TabOrder = 5
     Visible = False
+  end
+  object popNavProjects: TPopupMenu
+    Left = 48
+    Top = 400
+    object mnuTreeOpenInApp: TMenuItem
+      Caption = 'Open in Lazy Coding Agent'
+    end
+    object mnuTreeOpenInFileManager: TMenuItem
+      Caption = 'Open in File Manager'
+    end
+    object mnuTreeOpenDefault: TMenuItem
+      Caption = 'Open with Default Application'
+    end
   end
   object StatusBar1: TStatusBar
     Left = 0

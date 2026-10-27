@@ -529,6 +529,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uOsShell.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uNavigationPanel.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
