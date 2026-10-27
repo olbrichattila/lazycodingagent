@@ -1,28 +1,22 @@
 # m3-cutover-default-sqlite — SQLite-only default backend
 
-**Status:** Not started
+**Status:** Partial — global config done; chat and syntax still JSON
 
-**Depends on:** [m3-migration-orchestrator.md](m3-migration-orchestrator.md), [m3-legacy-storage-flag.md](m3-legacy-storage-flag.md)
+## Global config (done)
 
-## Out of scope
+- `uWorkspaceState`, `uWorkspaceRegistry`, web search, browser read settings: **SQLite only** in `global.db`.
+- New installs do not create legacy INI or `workspaces.json` for these concerns.
 
-- RAG tables (M6).
+## Still on disk (pending M1)
 
-## Goal
-
-Default path: repositories write **only** SQLite. Stop creating/updating legacy INI, `workspaces.json`, session JSON, syntax files (parent §9 item 5). JSON session files not used at runtime after cutover.
-
-## Deliverables
-
-- Remove dual-write to legacy from M1 read-through paths.
-- Ensure new installs never create legacy files.
+- Chat: `uChatSessionStore.pas` → `sessions/<workspaceId>.json`
+- Syntax: `uSyntaxSchemeRegistry.pas` → `syntax-schemes.json` and per-scheme files
 
 ## Acceptance criteria
 
-- [ ] Fresh install: only `global.db` + `workspace.db` under config.
-- [ ] Existing migrated users: no writes to `.bak` originals.
-- [ ] Legacy flag still works for support.
+- [x] Fresh install: `global.db` holds app settings and workspace registry.
+- [ ] Chat and syntax use only DB files under config (after m1e / m1f).
 
 ## References
 
-- Parent §9, M1 read-through units
+- [m1-read-through-chat-sessions.md](m1-read-through-chat-sessions.md), [m1-read-through-syntax-schemes.md](m1-read-through-syntax-schemes.md)

@@ -1,16 +1,19 @@
 # Application data storage
 
-LazyCodingAgent keeps application settings and workspace registry in a SQLite database under your user config area.
+LazyCodingAgent keeps application settings and the workspace registry in a SQLite database under your user config area.
 
 ## Location
 
 On a typical Linux setup:
 
 - Database: `~/.config/lazycodingagent/lazycodingagent/global.db`
+- Per-workspace databases (when used): `…/lazycodingagent/workspaces/<workspaceId>/workspace.db`
 
 The exact config root follows Lazarus `GetAppConfigDir` (under a `lazycodingagent/` subfolder).
 
 ## What is stored
+
+In **`global.db`:**
 
 - LLM provider settings and saved model lists
 - Web search connection settings and API keys
@@ -18,7 +21,10 @@ The exact config root follows Lazarus `GetAppConfigDir` (under a `lazycodingagen
 - Workspace registry (list of workspaces and active workspace id)
 - Panel layout and general application preferences
 
-Chat sessions and syntax schemes may still use JSON files until later storage migrations.
+**Still on JSON files (until later storage work):**
+
+- Chat sessions: `…/lazycodingagent/sessions/<workspaceId>.json`
+- Syntax highlighting schemes: `syntax-schemes.json` and related files under `syntax-schemes/`
 
 ## Secrets
 
@@ -26,7 +32,9 @@ API keys and similar secrets are encrypted in the database before they are writt
 
 ## Recovery
 
-If something goes wrong:
+If something goes wrong with application settings:
 
 1. Quit LazyCodingAgent.
-2. Restore `global.db` from a backup copy, or remove it to start with empty application settings (workspaces and chat sessions on disk are separate).
+2. Restore `global.db` from a backup copy, or remove it to start with empty application settings (your project folders on disk are unchanged).
+
+There is no INI/JSON import path for settings. Back up `global.db` before major upgrades if you rely on saved API keys and workspace list.

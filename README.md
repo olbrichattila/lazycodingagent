@@ -117,7 +117,7 @@ The **interaction model** is a native Lazarus/LCL desktop app (menu bar, docked 
 - [Lazarus IDE](https://www.lazarus-ide.org/)
 - Lazarus Component Library (LCL)
 - Chat history, Markdown file preview, and Help topics use **`TLcaMarkdownView`** — a canvas-painted Markdown subset (no HTML engine).
-- **Embedded SQLite (M0 foundation):** vendored amalgamation in [`third_party/sqlite/`](third_party/sqlite/), static link via [`LazySqliteStatic`](packages/LazySqliteStatic/) — no system `libsqlite3` at runtime. App settings still use INI/JSON today; see [`future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md`](future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md).
+- **Embedded SQLite:** vendored amalgamation in [`third_party/sqlite/`](third_party/sqlite/), static link via [`LazySqliteStatic`](packages/LazySqliteStatic/) — no system `libsqlite3` at runtime. App settings and workspace registry use `global.db`; chat and syntax schemes still use JSON until later M1 work. See [`future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md`](future-plan/Lazarus_Embedded_Storage_and_Vector_Plan.md) and [`future-plan/sqlite/README.md`](future-plan/sqlite/README.md).
 
 ---
 
@@ -360,7 +360,7 @@ If Fetch Models or chat fails with an OpenSSL error on Linux, install the runtim
 - `uThemeHooks.pas` — App hooks (SynEdit gutter); registers [`LcaThemeHooks`](packages/LcaDesignSystem/src/LcaThemeHooks.pas) for LCA components and terminal view
 - `uChatSessionStore.pas` — Per-workspace JSON persistence for chat sessions (messages, archive flag)
 - `uChatSessionHub.pas` — Per-workspace session hub: one `TAgentEngine` per session, parallel runs, save/shutdown
-- `uWorkspaceState.pas` — State management and INI persistence for bounds, docking, modes, and themes
+- `uWorkspaceState.pas` — State management; bounds, docking, modes, themes, and LLM settings in `global.db`
 - `packages/LcaDesignSystem/src/LcaTheme.pas` — Dark/light design tokens, platform chrome (`ApplyPlatformChrome`), ComboBox/list owner-draw; on Windows, `LcaThemeWin32Buttons.pas` custom-paints primary/cancel/destructive buttons
 - `uAppTypes.pas` — Shared enumerations, modes, and helpers
 - `uAgentTypes.pas` — Chat roles, LLM providers, tool schemas, and token usage records

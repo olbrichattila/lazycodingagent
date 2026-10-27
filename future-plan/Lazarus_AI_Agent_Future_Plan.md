@@ -35,7 +35,7 @@ Items to confirm against the code before planning implementation:
 
 Visible responses and execution traces do not necessarily expose a model's private internal reasoning. The application should describe its visibility accurately.
 
-**Embedded persistence:** [Lazarus_Embedded_Storage_and_Vector_Plan.md](Lazarus_Embedded_Storage_and_Vector_Plan.md) specifies statically embedded SQLite for app configuration (replacing INI/JSON under the config dir), per-workspace databases for chat and future indexes, and a minimal-dependency hybrid retrieval strategy for the knowledge base below. **M0 is in the tree** (`LazySqliteStatic`, `uAppDatabase`, repository interfaces, tests) — the running app still uses INI/JSON for settings until migration sprints; optional hosted Knowledge Base and Brain APIs are planned as remote backends behind the same service/repository boundaries (see embedded plan §9 and `.cursor/rules/persistence-and-data-access.mdc`).
+**Embedded persistence:** [Lazarus_Embedded_Storage_and_Vector_Plan.md](Lazarus_Embedded_Storage_and_Vector_Plan.md) specifies statically embedded SQLite for app configuration (`global.db`), per-workspace databases for chat and future indexes, and a minimal-dependency hybrid retrieval strategy for the knowledge base below. **Global settings and workspace registry already use SQLite** (`LazySqliteStatic`, `uAppDatabase`, repository adapters); chat sessions and syntax schemes remain JSON until M1 store work completes. Optional hosted Knowledge Base and Brain APIs are planned as remote backends behind the same service/repository boundaries (see embedded plan §9 and `.cursor/rules/persistence-and-data-access.mdc`).
 
 ## 3. Overall system responsibilities
 
@@ -213,7 +213,7 @@ Sources include URLs, free text, PDF, Markdown, TXT and Confluence. Confluence s
 
 These are options to evaluate for Free Pascal integration and packaging, not selected dependencies.
 
-**Selected direction (planning):** [Lazarus_Embedded_Storage_and_Vector_Plan.md](Lazarus_Embedded_Storage_and_Vector_Plan.md) chooses embedded static SQLite for document/chunk metadata, FTS5 for keyword recall, `float32` embedding blobs with in-process vector rerank (Phase A), and optional sqlite-vec or USearch only if profiling requires approximate nearest-neighbor search (Phase B). Static SQLite and migration v1 schema are **implemented at M0**; ingest, hybrid search, and user-visible cutover remain future work.
+**Selected direction (planning):** [Lazarus_Embedded_Storage_and_Vector_Plan.md](Lazarus_Embedded_Storage_and_Vector_Plan.md) chooses embedded static SQLite for document/chunk metadata, FTS5 for keyword recall, `float32` embedding blobs with in-process vector rerank (Phase A), and optional sqlite-vec or USearch only if profiling requires approximate nearest-neighbor search (Phase B). Static SQLite, global config repositories, and migration v2 global schema are **implemented**; chat/syntax SQLite wiring, ingest, and hybrid search remain future work.
 
 ### Retrieval modes
 

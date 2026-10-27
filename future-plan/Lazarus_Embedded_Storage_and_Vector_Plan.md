@@ -2,23 +2,25 @@
 
 Author: Attila Olbrich  
 Date: 9 October 2026 (implementation status updated October 2026)  
-Status: Architecture and migration plan. **M0 (static engine + repository skeleton) is implemented**; INI/JSON cutover (M1–M4) and RAG are not.
+Status: Architecture and migration plan. **M0 + global SQLite config are implemented**; chat/syntax SQLite wiring and RAG remain. **No** INI/JSON importers or legacy read-through (see [`sqlite/README.md`](sqlite/README.md)).
 
-## Implementation status — M0 (landed)
+## Implementation status (landed)
 
 | Item | Location | Notes |
 | --- | --- | --- |
 | Vendored amalgamation (FTS5 compile flags) | `third_party/sqlite/` | Built via `scripts/build-sqlite-static.*` |
 | Static link package | `packages/LazySqliteStatic/` | `uSqlite3Embed.pas` + `{$L sqlite3_embed.o}`; **not** system `libsqlite3` |
-| Connections + migration v1 | `uAppDatabase.pas` | `global.db`, `workspaces/<wsId>/workspace.db`; pragmas WAL / foreign_keys |
-| Repository pattern (first port) | `data/uRepositoryInterfaces.pas`, `data/sqlite/uSqliteAppSettingsRepository.pas` | `IAppSettingsRepository`; SQL stays in sqlite adapters |
-| Tests | `tests/test_app_database.*` | Store/retrieve via repository; no production startup DB I/O yet |
-| Agent / IDE conventions | `.cursor/rules/persistence-and-data-access.mdc` | Repositories; future `IKnowledgeBackend` / `IBrainBackend`; optional PostgreSQL/MySQL as alternate adapters |
-| Build / IDE | `scripts/install-lazarus-sqlite.*`, `lazycodingagent.lpi` **Libraries** | No manual Linker dialog; run install script before first build |
+| Connections + migrations v1–v2 (global) | `uAppDatabase.pas` | `global.db`, `workspaces/<wsId>/workspace.db`; pragmas WAL / foreign_keys |
+| Repository ports | `data/uRepositoryInterfaces.pas`, `data/sqlite/*` | Settings, registry, LLM, panels, web search, browser read |
+| Startup | `lazycodingagent.lpr`, `data/uGlobalConfigBootstrap.pas` | Opens `global.db` before main form |
+| Stores on SQLite | `uWorkspaceState.pas`, `uWorkspaceRegistry.pas` | Load/Save via repositories in `global.db` |
+| Tests | `tests/test_app_database.*`, `tests/test_settings_import.lpr` | Schema v2 + repository round-trip (CI) |
+| Agent / IDE conventions | `.cursor/rules/persistence-and-data-access.mdc` | Repositories; future `IKnowledgeBackend` / `IBrainBackend` |
+| Build / IDE | `scripts/install-lazarus-sqlite.*`, `lazycodingagent.lpi` **Libraries** | Run install script before first build |
 
-**Deferred from original M0 sketch:** `TSQLite3Connection` / SQLdb — M0 uses the minimal C API in `uSqlite3Embed` to avoid `sqlite3dyn`. SQLdb may return when store migrations need datasets.
+**Deferred from original M0 sketch:** `TSQLite3Connection` / SQLdb — uses the minimal C API in `uSqlite3Embed` to avoid `sqlite3dyn`.
 
-**Still production behavior:** `uWorkspaceState`, `uWorkspaceRegistry`, `uChatSessionStore`, `uSyntaxSchemeRegistry` read/write INI and JSON only.
+**Still on JSON files:** `uChatSessionStore.pas` (sessions), `uSyntaxSchemeRegistry.pas` (syntax schemes). **Post-M0 hygiene:** split global vs workspace migration DDL (workspace DB currently receives global v2 tables — see [`sqlite/m0-foundation.md`](sqlite/m0-foundation.md)).
 
 ## Relation to the main future plan
 
@@ -31,7 +33,7 @@ Guiding principles (aligned with the main roadmap): **embedded, cross-platform, 
 ## 1. Goals
 
 1. **No external SQLite shared library** — users must not install or ship `sqlite3.dll`, `libsqlite3.so`, or a separate `.dylib`. The SQLite engine is compiled into the LazyCodingAgent executable per OS/CPU.
-2. **Unify app persistence** — migrate all application config under `GetAppConfigDir` from INI and JSON files into SQLite, with one-time importers and rollback-friendly legacy backups.
+2. **Unify app persistence** — store application config under `GetAppConfigDir` in SQLite (`global.db` and per-workspace `workspace.db`). Recovery is backup/restore of database files ([`help/app-data-storage.md`](../help/app-data-storage.md)); no INI/JSON import path.
 3. **Prepare for RAG** — reserve schema and retrieval strategy in the same workspace database: FTS5 keyword search plus in-process vector rerank (Phase A); optional ANN extension only if profiling requires it (Phase B).
 4. **Keep user-owned text on disk** — project rules (`.rules/*.md`), agent plans (`.plan/*.md`), and repository source stay files; do not force them into the DB for editability and git workflows.
 
@@ -41,10 +43,9 @@ Guiding principles (aligned with the main roadmap): **embedded, cross-platform, 
 
 | Source | Unit | Path / pattern | Contents |
 | --- | --- | --- | --- |
-| App settings | `uWorkspaceState.pas` | `GetAppConfigFile(False)` (INI) | Theme, agent mode/model, workspace name/root/active id, LLM provider settings (`LLM_CONFIG_VERSION = 3`), per-provider API keys and base URLs, saved model lists, panel visibility/floating/bounds/docked height, debugging mode |
-| Workspace registry | `uWorkspaceRegistry.pas` | `…/lazycodingagent/workspaces.json` | Workspace id, display name, folder path, last session id; includes `MigrateFromLegacyIni` |
-| Chat sessions | `uChatSessionStore.pas` | `…/lazycodingagent/sessions/<workspaceId>.json` | Session metadata (title, dates, archived) and full message arrays (roles, content, tool calls, timestamps) |
-| Syntax highlighting | `uSyntaxSchemeRegistry.pas` | `…/lazycodingagent/syntax-schemes.json` + `*.json` files | Scheme index and per-scheme JSON (built-in generic scheme seeded on disk) |
+| App settings + registry | `uWorkspaceState.pas`, `uWorkspaceRegistry.pas` | `…/lazycodingagent/global.db` | Theme, agent mode/model, LLM providers/models, panel layout, web search, browser read prefs, workspace list and active id (`LLM_CONFIG_VERSION` in `app_settings`) |
+| Chat sessions | `uChatSessionStore.pas` | `…/lazycodingagent/sessions/<workspaceId>.json` | Session metadata and messages (SQLite migration pending — [`sqlite/m1-read-through-chat-sessions.md`](sqlite/m1-read-through-chat-sessions.md)) |
+| Syntax highlighting | `uSyntaxSchemeRegistry.pas` | `…/lazycodingagent/syntax-schemes.json` + `*.json` files | Scheme index and bodies (SQLite migration pending — [`sqlite/m1-read-through-syntax-schemes.md`](sqlite/m1-read-through-syntax-schemes.md)) |
 
 **Explicitly out of scope for SQLite replacement**
 
@@ -217,6 +218,20 @@ CREATE TABLE panel_layout (
   height          INTEGER NOT NULL,
   docked_height   INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE web_search_connections (
+  id                  TEXT PRIMARY KEY,
+  name                TEXT NOT NULL,
+  provider            TEXT NOT NULL,
+  enabled             INTEGER NOT NULL,
+  priority            INTEGER NOT NULL,
+  timeout_ms          INTEGER NOT NULL,
+  instance_url        TEXT NOT NULL DEFAULT '',
+  tavily_search_depth TEXT NOT NULL DEFAULT 'basic',
+  custom_header_name  TEXT NOT NULL DEFAULT '',
+  custom_header_value TEXT NOT NULL DEFAULT '',
+  api_key             TEXT NOT NULL DEFAULT ''
+);
 ```
 
 Active LLM provider, temperature, max tokens/steps, theme, agent mode, debugging flag, and active workspace id can live in `app_settings` or dedicated columns on a singleton `app_state` row — implementers should pick one style and stay consistent.
@@ -325,41 +340,30 @@ FTS5 sync triggers (insert/update/delete on `chunks`) should be added in the mig
 
 ## 6. Migration strategy
 
-**Scope (accepted):** all app config — INI, `workspaces.json`, session JSON (metadata + messages), syntax scheme index and files.
+**Scope:** SQLite schema migrations and repository wiring only. **No** one-shot INI/JSON importers, read-through dual backends, or `.bak` legacy file rename (cancelled — see [`sqlite/README.md`](sqlite/README.md)).
 
 ### 6.1 Phases
 
 | Phase | Deliverable |
 | --- | --- |
-| **M0 — Foundation** | `uAppDatabase`, migrations, static SQLite package, open global + workspace DBs |
-| **M1 — Read-through** | If DB missing or empty, load legacy INI/JSON; on successful save, write SQLite |
-| **M2 — Importers** | One-shot import: INI → global tables; `workspaces.json` → `workspaces`; each `sessions/<wsId>.json` → workspace DB; syntax schemes → `syntax_schemes` |
-| **M3 — Cutover** | Default backend SQLite; rename legacy files to `.bak` after verified import (never silent delete) |
-| **M4 — Tests** | Temp-dir fixtures in `tests/` asserting row counts and sample fields post-import |
+| **M0 — Foundation** | Static SQLite, `uAppDatabase`, first repositories, CI tests (**done**) |
+| **M1 — Stores** | Global v2 tables + `uWorkspaceState` / `uWorkspaceRegistry` on SQLite (**done**); workspace chat schema + `uChatSessionStore`; `syntax_schemes` + `uSyntaxSchemeRegistry`; split global vs workspace migration runner |
+| **M5 — Help** | User Guide storage topic ([`sqlite/m5-user-help-storage.md`](sqlite/m5-user-help-storage.md)) |
+| **M6 — RAG** | Workspace knowledge tables, FTS5, hybrid retrieval |
 
-### 6.2 INI import notes
+### 6.2 Session message mapping (for M1 chat store)
 
-Preserve behavior from `uWorkspaceState.pas`:
+Reuse field names from `uChatSessionStore.pas` (`MessageToJson` / `MessageFromJson`): `role`, `content`, `toolCallId`, `timestamp`, `tokensUsed`, `visualSummary`, `toolCalls` array. Persist `lastSessionId` in `session_prefs` or `workspaces.last_session_id`.
 
-- **`LLM_CONFIG_VERSION`** and upgrade path from version 1/2 (legacy single `LLM` section, `OLD_LLM_PROVIDER_CUSTOM_ORD`).
-- **Panel terminal docked height:** one-time correction when `DockedHeight = 0` and `Height` between 120 and 500 (lines 542–545) — apply during import or first load from DB.
-- **Provider/model sections:** map `Provider_<ord>` and `Models_<ord>` to `llm_providers` / `saved_models`.
+### 6.3 Recovery
 
-### 6.3 Session JSON import
+- Quit the app; restore `global.db` from backup or remove it to reset application settings (workspace folders on disk are unchanged).
+- When chat uses `workspace.db`, back up `…/workspaces/<wsId>/workspace.db` similarly.
+- Optional future menu: **Export settings** archive for support.
 
-Reuse parsing from `uChatSessionStore.pas` (`MessageToJson` / `MessageFromJson` field names): `role`, `content`, `toolCallId`, `timestamp`, `tokensUsed`, `visualSummary`, `toolCalls` array.
+### 6.4 Syntax schemes (v1 recommendation)
 
-Store `lastSessionId` from JSON root into `session_prefs` or `workspaces.last_session_id` in global DB.
-
-### 6.4 Rollback and recovery
-
-- After import, rename `*.ini`, `workspaces.json`, `sessions/*.json`, `syntax-schemes.json` to `*.bak` with timestamp suffix.
-- Document manual recovery: quit app, restore or remove `global.db` (SQLite-only cutover; no INI/JSON readers).
-- Optional future menu: **Export settings** to JSON archive for support.
-
-### 6.5 Syntax schemes (v1 recommendation)
-
-**Store full scheme JSON in `syntax_schemes.json_body`** in global DB; stop writing per-id files under `syntax-schemes/` after migration (or keep files as export-only). Built-in generic scheme becomes a seeded migration row. Import existing files on first run.
+Store full scheme JSON in `syntax_schemes.json_body` in global DB; built-in generic scheme as a seeded migration row. Per-id files under `syntax-schemes/` optional as export-only after SQLite cutover.
 
 ---
 
@@ -403,7 +407,7 @@ Do not add Chroma, Qdrant, Milvus, or Docker sidecars for the desktop app.
 
 ## 8. Security and secrets
 
-Settings migration (M1–M3 for app config) stores LLM and web-search API keys in `global.db` with **field-level AES-256-GCM** via `uSecurityManager` (OpenSSL), using key material embedded in the application binary. This is **obfuscation against casual disk inspection**, not protection against a determined analyst with the binary and database.
+App settings in `global.db` may store LLM and web-search API keys with **field-level AES-256-GCM** via `uSecurityManager` (OpenSSL), using key material embedded in the application binary. This is **obfuscation against casual disk inspection**, not protection against a determined analyst with the binary and database.
 
 | v1 (settings cutover) | Follow-up |
 | --- | --- |
@@ -416,18 +420,17 @@ Settings migration (M1–M3 for app config) stores LLM and web-search API keys i
 
 **Sprint order (one item per PR):** see [`future-plan/sqlite/README.md`](sqlite/README.md).
 
-Ordered checklist (M0 items done; remainder is later sprints):
+Ordered checklist (see [`sqlite/README.md`](sqlite/README.md) for **NEXT** item):
 
-1. ~~**`third_party/sqlite/`** + **`LazySqliteStatic`** package + build script(s).~~ **Done (M0).**
-2. ~~**`uAppDatabase.pas`** — connections, migrations, pragmas; **`IAppSettingsRepository`** + SQLite adapter.~~ **Done (M0).**
-3. **`uWorkspaceState`** — replace `TIniFile` Load/Save with repository.
-4. **`uWorkspaceRegistry`** — DB backend; retain legacy JSON import.
-5. **`uChatSessionStore`** — SQL for sessions/messages; remove dependency on per-workspace JSON file at cutover.
-6. **`uSyntaxSchemeRegistry`** — load/save from `syntax_schemes` table.
-7. **Startup migration orchestrator** — run importers once, `.bak` legacy files.
-8. **Tests** — importer fixtures; optional in-memory SQLite for unit tests if static link allows.
-9. **Help** — when shipping: update [`help/`](../help/) and [`help/index.json`](../help/index.json) (storage location, backup/recovery).
-10. **RAG** — ingest jobs, FTS, embeddings, hybrid search (main future plan §7).
+1. ~~**`third_party/sqlite/`** + **`LazySqliteStatic`** package + build script(s).~~ **Done.**
+2. ~~**`uAppDatabase.pas`** — connections, migrations, pragmas; repository adapters.~~ **Done (global v2; split workspace migrations pending).**
+3. ~~**`uWorkspaceState`** — SQLite repositories.~~ **Done.**
+4. ~~**`uWorkspaceRegistry`** — SQLite backend.~~ **Done.**
+5. ~~**Startup `global.db`** — `EnsureGlobalConfigReady`.~~ **Done.**
+6. **`uChatSessionStore`** — SQL for sessions/messages in workspace DB.
+7. **`uSyntaxSchemeRegistry`** — `syntax_schemes` table in global DB.
+8. **Help** — update [`help/`](../help/) and [`help/index.json`](../help/index.json) (storage, backup/recovery).
+9. **RAG** — ingest jobs, FTS, embeddings, hybrid search (main future plan §7).
 
 | Area | File |
 | --- | --- |
@@ -467,4 +470,4 @@ Resolve during implementation planning:
 
 ## 12. Summary
 
-LazyCodingAgent should use **statically embedded SQLite** for all app-level persistence currently spread across INI and JSON, with **per-workspace databases** for chat and future knowledge indexes. **FTS5 plus in-process vector rerank** delivers effective RAG with minimal dependencies; **sqlite-vec or USearch** remains optional until scale or latency requires it. User-facing Markdown in the repo stays on the filesystem; migrations must be **visible, reversible, and testable**.
+LazyCodingAgent uses **statically embedded SQLite** for global app configuration today, with **per-workspace databases** for chat (in progress) and future knowledge indexes. **FTS5 plus in-process vector rerank** delivers effective RAG with minimal dependencies; **sqlite-vec or USearch** remains optional until scale or latency requires it. User-facing Markdown in the repo stays on the filesystem; schema migrations are **versioned and testable**; recovery is **database backup/restore**, not legacy file import.

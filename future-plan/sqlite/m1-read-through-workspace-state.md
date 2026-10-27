@@ -1,32 +1,24 @@
-# m1-read-through-workspace-state — Workspace state repository
+# m1-read-through-workspace-state — Workspace state (SQLite)
 
-**Status:** Not started
+**Status:** Done
 
 **Depends on:** [m1-global-schema-v2.md](m1-global-schema-v2.md)
 
-## Out of scope
-
-- Full INI import on first launch (M2); read-through may **load** existing INI when DB tables are empty.
-- Cutover / stop writing INI (M3).
-
 ## Goal
 
-Introduce `IWorkspaceStateRepository` + SQLite adapter. `uWorkspaceState.pas` delegates load/save: if SQLite has no rows for providers/panels/settings, load legacy INI; on **Save**, persist to SQLite (dual-write to INI optional in M1 — prefer SQLite write + keep INI read until M3).
+Persist workspace-global state (LLM providers/models, panel layout, app prefs) via repository ports. `uWorkspaceState.pas` uses `LoadFromGlobalDb` / `SaveToGlobalDb` with `ILlmSettingsRepository`, `IPanelLayoutRepository`, and `IAppSettingsRepository` (split by concern, not a single `IWorkspaceStateRepository`).
 
-## Deliverables
+## Delivered
 
-- `data/uRepositoryInterfaces.pas` — interface for workspace-global state (providers, models, panel layout, app prefs mapped to tables).
-- `data/sqlite/uSqliteWorkspaceStateRepository.pas` (or split by concern if too large).
-- Refactor `uWorkspaceState.pas` to use repository when DB available; preserve **`LLM_CONFIG_VERSION`** upgrade behavior (parent §6.2).
-- Panel **docked height** correction (§6.2) applied on load path (INI or DB).
+- Interfaces and adapters: `data/uRepositoryInterfaces.pas`, `data/sqlite/uSqliteLlmSettingsRepository.pas`, `uSqlitePanelLayoutRepository.pas`, `uSqliteAppSettingsRepository.pas`.
+- `uWorkspaceState.pas` Load/Save → SQLite only; `LLM_CONFIG_VERSION` stored in `app_settings`.
 
 ## Acceptance criteria
 
-- [ ] Existing users: unchanged behavior when `global.db` empty (INI only).
-- [ ] After save with DB open: corresponding rows in `llm_providers`, `saved_models`, `panel_layout`, and/or `app_settings`.
-- [ ] `LLM_CONFIG_VERSION` migration from v1/v2 INI still runs once.
-- [ ] No SQL types leak above repository layer (persistence rule).
+- [x] Load/Save round-trip providers, models, panels, and typed app settings in `global.db`.
+- [x] No SQL types leak above repository layer (persistence rule).
+- [x] SQLite-only; no INI read/write paths.
 
 ## References
 
-- Parent §6.2, `uWorkspaceState.pas`
+- `uWorkspaceState.pas`, `data/uGlobalConfigKeys.pas`

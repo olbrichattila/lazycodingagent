@@ -2,12 +2,11 @@
 
 **Status:** Not started
 
-**Depends on:** [m1-global-schema-v2.md](m1-global-schema-v2.md)
+**Depends on:** [m0-foundation.md](m0-foundation.md) post-M0 hygiene — **split global vs workspace `RunMigrations`** (today workspace files incorrectly receive global v2 DDL).
 
 ## Out of scope
 
-- Chat store read-through (separate item).
-- Session JSON import (M2).
+- Chat store wiring ([m1-read-through-chat-sessions.md](m1-read-through-chat-sessions.md)).
 
 ## Goal
 
@@ -15,13 +14,14 @@ Add migration **version 2** on per-workspace `workspace.db` for chat persistence
 
 ## Deliverables
 
-- Migration v2 SQL: `sessions`, `messages`, `session_prefs` (with `ON DELETE CASCADE` on messages).
+- Split migration runner: global file vs workspace file.
+- Migration v2 SQL on workspace DB only: `sessions`, `messages`, `session_prefs` (with `ON DELETE CASCADE` on messages).
 - Test: create workspace DB under temp dir, migrate to v2, optional smoke insert/select.
 
 ## Acceptance criteria
 
-- [ ] `OpenWorkspace(wsId)` applies v2 when global path layout already exists from M0.
-- [ ] Schema version row shows **2** after migrate.
+- [ ] `OpenWorkspace(wsId)` applies workspace v2 only (not global registry/LLM tables).
+- [ ] Schema version row shows **2** after migrate on workspace DB.
 - [ ] Tables match §5.2; composite PK on `(session_id, seq)` for messages.
 
 ## References

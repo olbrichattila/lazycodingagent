@@ -1,29 +1,25 @@
-# m1-read-through-workspace-registry — Workspace registry repository
+# m1-read-through-workspace-registry — Workspace registry (SQLite)
 
-**Status:** Not started
+**Status:** Done
 
 **Depends on:** [m1-global-schema-v2.md](m1-global-schema-v2.md)
 
-## Out of scope
-
-- Bulk import of `workspaces.json` (M2).
-- Removing JSON file (M3).
-
 ## Goal
 
-`IWorkspaceRegistryRepository` + SQLite adapter. `uWorkspaceRegistry.pas`: if `workspaces` table empty, load `workspaces.json`; on mutations, write SQLite. Respect existing **`MigrateFromLegacyIni`** path.
+`IWorkspaceRegistryRepository` + SQLite adapter. `uWorkspaceRegistry.pas` loads and saves via `workspaces` table in `global.db`.
 
-## Deliverables
+## Delivered
 
-- Interface + `uSqliteWorkspaceRegistryRepository.pas`.
-- Integration in `uWorkspaceRegistry.pas` (list, add, remove, reorder, active workspace id).
+- `data/sqlite/uSqliteWorkspaceRegistryRepository.pas`
+- `uWorkspaceRegistry.pas` — `Load` / `Save` → `LoadFromGlobalDb` / `SaveToGlobalDb`
+
+**Note:** `MigrateFromLegacyIni` seeds a first workspace from in-memory workspace name/root when the registry is empty (not an INI file import). `WorkspaceRegistryFileName` remains as a legacy path constant only if still referenced; runtime does not read `workspaces.json`.
 
 ## Acceptance criteria
 
-- [ ] Empty DB + existing `workspaces.json` → same UI as today.
-- [ ] Add/rename/remove workspace updates `workspaces` table.
-- [ ] `folder_path` UNIQUE constraint enforced; errors surfaced like JSON path today.
-- [ ] Legacy INI migration hook still runs when applicable.
+- [x] Add/rename/remove workspace updates `workspaces` table.
+- [x] `folder_path` UNIQUE constraint enforced via SQLite.
+- [x] Active workspace id persisted with registry rows.
 
 ## References
 

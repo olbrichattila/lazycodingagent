@@ -1,29 +1,23 @@
-# m5-user-help-storage — User Guide: storage and recovery
+# m5-user-help-storage — In-app User Guide (storage)
 
-**Status:** Not started
+**Status:** Not started (partial content in `help/app-data-storage.md`)
 
-**Depends on:** [m3-cutover-default-sqlite.md](m3-cutover-default-sqlite.md)
-
-## Out of scope
-
-- RAG / knowledge base topics (future).
+**Depends on:** Chat/syntax SQLite cutover optional for full topic; global storage topic can ship earlier.
 
 ## Goal
 
-When cutover ships, update in-app User Guide per user-help rule: where `global.db` and `workspace.db` live, what happened to INI/JSON, backup tips, `LAZYCODINGAGENT_LEGACY_STORAGE`, manual recovery from `.bak`.
+When storage behavior stabilizes, update in-app User Guide per user-help rule: where `global.db` and `workspace.db` live, what is stored where, backup tips, manual recovery (restore or replace `global.db`).
 
 ## Deliverables
 
-- New or updated `help/*.md` topic(s).
-- `help/index.json` keywords (`sqlite`, `database`, `backup`, `migration`).
-- Optional README pointer (not duplicate of full help).
+- Extend or add help topic(s); update `help/index.json` keywords (`sqlite`, `database`, `backup`, `migration`).
+- Align with [help/app-data-storage.md](../../help/app-data-storage.md) — no legacy INI/JSON recovery or `LAZYCODINGAGENT_LEGACY_STORAGE`.
 
 ## Acceptance criteria
 
-- [ ] Help menu shows storage topic after build (post-build copy).
-- [ ] Recovery steps match orchestrator behavior.
-- [ ] No promise of SQLCipher/encryption (§8).
+- [ ] Help menu topic discoverable via search keywords.
+- [ ] Describes SQLite layout and backup/recovery without referencing cancelled importers.
 
 ## References
 
-- `.cursor/rules/user-help.mdc`, parent §6.4, §8
+- `.cursor/rules/user-help.mdc`, `uHelpContent.pas`
