@@ -19,6 +19,8 @@ function NewWebSearchConnectionId: string;
 procedure SortConnectionsByPriority(var AConnections: array of TWebSearchConnection);
 procedure SetWebSearchConfigOverrideForTests(const AConfig: TWebSearchGlobalConfig);
 procedure ClearWebSearchConfigOverrideForTests;
+procedure SaveWebSearchConfigToGlobalDb(const AConfig: TWebSearchGlobalConfig);
+function LoadWebSearchConfigFromIniFile(const AIniPath: string): TWebSearchGlobalConfig;
 
 implementation
 
@@ -27,7 +29,8 @@ uses
   {$IFDEF LCL}
   , Forms
   {$ENDIF}
-  , uWebSearchSecrets, uWebSearchUrl;
+  , uWebSearchSecrets, uWebSearchUrl, uAppDatabase, uRepositoryInterfaces,
+  uGlobalConfigKeys, uAppSettingsCodec, uGlobalConfigLegacy;
 
 var
   GTestConfigOverride: TWebSearchGlobalConfig;
@@ -44,7 +47,9 @@ begin
   GTestConfigOverrideActive := False;
 end;
 
-procedure LoadWebSearchConfigFromIni(out Result: TWebSearchGlobalConfig); forward;
+procedure LoadWebSearchConfigFromIni(out Result: TWebSearchGlobalConfig; const AIniPath: string = ''); forward;
+procedure LoadWebSearchConfigFromGlobalDb(out Result: TWebSearchGlobalConfig); forward;
+procedure SaveWebSearchConfigToIni(const AConfig: TWebSearchGlobalConfig); forward;
 
 function WebSearchConfigIniPath: string;
 begin
@@ -76,10 +81,30 @@ begin
   if GTestConfigOverrideActive then
     Exit(GTestConfigOverride);
   Result := DefaultWebSearchGlobalConfig;
-  LoadWebSearchConfigFromIni(Result);
+  if GlobalConfigUseLegacyStorage then
+    LoadWebSearchConfigFromIni(Result)
+  else
+  begin
+    if not TAppDatabase.IsGlobalOpen then
+      TAppDatabase.OpenGlobal;
+    LoadWebSearchConfigFromGlobalDb(Result);
+  end;
 end;
 
-procedure LoadWebSearchConfigFromIni(out Result: TWebSearchGlobalConfig);
+function LoadWebSearchConfigFromIniFile(const AIniPath: string): TWebSearchGlobalConfig;
+begin
+  Result := DefaultWebSearchGlobalConfig;
+  if AIniPath <> '' then
+    SetWebSearchSecretsIniPathForTests(AIniPath);
+  try
+    LoadWebSearchConfigFromIni(Result, AIniPath);
+  finally
+    if AIniPath <> '' then
+      ClearWebSearchSecretsIniPathForTests;
+  end;
+end;
+
+procedure LoadWebSearchConfigFromIni(out Result: TWebSearchGlobalConfig; const AIniPath: string = '');
 var
   I: TIniFile;
   Path: string;
@@ -88,7 +113,10 @@ var
   Conn: TWebSearchConnection;
   KindStr: string;
 begin
-  Path := WebSearchConfigIniPath;
+  if AIniPath <> '' then
+    Path := AIniPath
+  else
+    Path := WebSearchConfigIniPath;
   if Path = '' then Exit;
   if not FileExists(Path) then Exit;
   I := TIniFile.Create(Path);
@@ -140,6 +168,18 @@ begin
 end;
 
 procedure SaveWebSearchConfig(const AConfig: TWebSearchGlobalConfig);
+begin
+  if GlobalConfigUseLegacyStorage then
+    SaveWebSearchConfigToIni(AConfig)
+  else
+  begin
+    if not TAppDatabase.IsGlobalOpen then
+      TAppDatabase.OpenGlobal;
+    SaveWebSearchConfigToGlobalDb(AConfig);
+  end;
+end;
+
+procedure SaveWebSearchConfigToIni(const AConfig: TWebSearchGlobalConfig);
 var
   I: TIniFile;
   Path, Dir: string;
@@ -189,6 +229,86 @@ begin
     OldIds.Free;
     I.Free;
   end;
+end;
+
+procedure LoadWebSearchConfigFromGlobalDb(out Result: TWebSearchGlobalConfig);
+var
+  Settings: IAppSettingsRepository;
+  Repo: IWebSearchRepository;
+  Rows: TWebSearchConnectionRows;
+  I: Integer;
+  Conn: TWebSearchConnection;
+  KindStr: string;
+begin
+  Result := DefaultWebSearchGlobalConfig;
+  Settings := TAppDatabase.GlobalSettings;
+  Result.ConfigVersion := SettingsTryGetInt(Settings, KEY_WEBSEARCH_CONFIG_VERSION, WEB_SEARCH_CONFIG_VERSION);
+  Result.Enabled := SettingsTryGetBool(Settings, KEY_WEBSEARCH_ENABLED, False);
+  Result.MaxResults := SettingsTryGetInt(Settings, KEY_WEBSEARCH_MAX_RESULTS, WEB_SEARCH_DEFAULT_MAX_RESULTS);
+  if Result.MaxResults < 1 then Result.MaxResults := 1;
+  if Result.MaxResults > 50 then Result.MaxResults := 50;
+  Result.TotalTimeoutMs := SettingsTryGetInt(Settings, KEY_WEBSEARCH_TOTAL_TIMEOUT, WEB_SEARCH_DEFAULT_TOTAL_TIMEOUT_MS);
+  if Result.TotalTimeoutMs < 1000 then Result.TotalTimeoutMs := 1000;
+  Result.AutomaticFallback := SettingsTryGetBool(Settings, KEY_WEBSEARCH_AUTO_FALLBACK, True);
+  Result.FallbackOnEmptyResults := SettingsTryGetBool(Settings, KEY_WEBSEARCH_FALLBACK_EMPTY, False);
+  Result.AllowPrivateInstances := SettingsTryGetBool(Settings, KEY_WEBSEARCH_ALLOW_PRIVATE, False);
+  Repo := TAppDatabase.GlobalWebSearch;
+  Repo.LoadConnections(Rows);
+  SetLength(Result.Connections, Length(Rows));
+  for I := 0 to High(Rows) do
+  begin
+    Conn.Id := Rows[I].Id;
+    Conn.Name := Rows[I].Name;
+    KindStr := Rows[I].Provider;
+    if not ParseWebSearchProviderKind(KindStr, Conn.Kind) then
+      Conn.Kind := wspkBrave;
+    Conn.Enabled := Rows[I].Enabled;
+    Conn.Priority := Rows[I].Priority;
+    Conn.TimeoutMs := Rows[I].TimeoutMs;
+    if Conn.TimeoutMs < 1000 then Conn.TimeoutMs := 1000;
+    Conn.InstanceUrl := Rows[I].InstanceUrl;
+    Conn.TavilySearchDepth := Rows[I].TavilySearchDepth;
+    Conn.CustomHeaderName := Rows[I].CustomHeaderName;
+    Conn.CustomHeaderValue := Rows[I].CustomHeaderValue;
+    Result.Connections[I] := Conn;
+  end;
+  SortConnectionsByPriority(Result.Connections);
+end;
+
+procedure SaveWebSearchConfigToGlobalDb(const AConfig: TWebSearchGlobalConfig);
+var
+  Settings: IAppSettingsRepository;
+  Repo: IWebSearchRepository;
+  Rows: TWebSearchConnectionRows;
+  I: Integer;
+  Key: string;
+begin
+  Settings := TAppDatabase.GlobalSettings;
+  SettingsSetInt(Settings, KEY_WEBSEARCH_CONFIG_VERSION, WEB_SEARCH_CONFIG_VERSION);
+  SettingsSetBool(Settings, KEY_WEBSEARCH_ENABLED, AConfig.Enabled);
+  SettingsSetInt(Settings, KEY_WEBSEARCH_MAX_RESULTS, AConfig.MaxResults);
+  SettingsSetInt(Settings, KEY_WEBSEARCH_TOTAL_TIMEOUT, AConfig.TotalTimeoutMs);
+  SettingsSetBool(Settings, KEY_WEBSEARCH_AUTO_FALLBACK, AConfig.AutomaticFallback);
+  SettingsSetBool(Settings, KEY_WEBSEARCH_FALLBACK_EMPTY, AConfig.FallbackOnEmptyResults);
+  SettingsSetBool(Settings, KEY_WEBSEARCH_ALLOW_PRIVATE, AConfig.AllowPrivateInstances);
+  SetLength(Rows, Length(AConfig.Connections));
+  for I := 0 to High(AConfig.Connections) do
+  begin
+    Rows[I].Id := AConfig.Connections[I].Id;
+    Rows[I].Name := AConfig.Connections[I].Name;
+    Rows[I].Provider := WebSearchProviderKindToString(AConfig.Connections[I].Kind);
+    Rows[I].Enabled := AConfig.Connections[I].Enabled;
+    Rows[I].Priority := AConfig.Connections[I].Priority;
+    Rows[I].TimeoutMs := AConfig.Connections[I].TimeoutMs;
+    Rows[I].InstanceUrl := AConfig.Connections[I].InstanceUrl;
+    Rows[I].TavilySearchDepth := AConfig.Connections[I].TavilySearchDepth;
+    Rows[I].CustomHeaderName := AConfig.Connections[I].CustomHeaderName;
+    Rows[I].CustomHeaderValue := AConfig.Connections[I].CustomHeaderValue;
+    Key := GetWebSearchApiKey(AConfig.Connections[I].Id);
+    Rows[I].ApiKey := Key;
+  end;
+  Repo := TAppDatabase.GlobalWebSearch;
+  Repo.SaveConnections(Rows);
 end;
 
 function ConnectionIsConfigured(const AConn: TWebSearchConnection): Boolean;

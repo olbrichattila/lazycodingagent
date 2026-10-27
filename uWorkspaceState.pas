@@ -5,7 +5,7 @@ unit uWorkspaceState;
 interface
 
 uses
-  Classes, SysUtils, IniFiles, Forms, uAppTypes, uAgentTypes, uLlmPromptCacheTypes;
+  Classes, SysUtils, IniFiles, uAppTypes, uAgentTypes, uLlmPromptCacheTypes;
 
 type
   TPanelState = record
@@ -80,6 +80,10 @@ type
     function GetPanelDockedHeight(AId: TPanelId): Integer;
     procedure Load;
     procedure Save;
+    procedure LoadLegacyIni;
+    procedure SaveLegacyIni;
+    procedure LoadFromGlobalDb;
+    procedure SaveToGlobalDb;
 
     procedure GetProviderCredentials(AProv: TLlmProvider; out AApiKey, ABaseUrl: string);
     procedure SetProviderCredentials(AProv: TLlmProvider; const AApiKey, ABaseUrl: string);
@@ -124,6 +128,9 @@ function LoadPersistedThemeKind: TThemeKind;
 
 implementation
 
+uses
+  Forms, uAppDatabase, uRepositoryInterfaces, uGlobalConfigKeys, uAppSettingsCodec, uGlobalConfigLegacy;
+
 const
   LLM_CONFIG_VERSION = 3;
   OLD_LLM_PROVIDER_CUSTOM_ORD = 4;
@@ -137,18 +144,31 @@ function LoadPersistedThemeKind: TThemeKind;
 var
   I: TIniFile;
   OrdVal: Integer;
+  Settings: IAppSettingsRepository;
 begin
   Result := tkDark;
-  I := TIniFile.Create(SettingsFileName);
-  try
-    OrdVal := I.ReadInteger('Appearance', 'Theme', Ord(tkDark));
-    if (OrdVal >= Ord(Low(TThemeKind))) and (OrdVal <= Ord(High(TThemeKind))) then
-      Result := TThemeKind(OrdVal)
-    else
-      Result := tkDark;
-  finally
-    I.Free;
+  if GlobalConfigUseLegacyStorage then
+  begin
+    I := TIniFile.Create(SettingsFileName);
+    try
+      OrdVal := I.ReadInteger('Appearance', 'Theme', Ord(tkDark));
+      if (OrdVal >= Ord(Low(TThemeKind))) and (OrdVal <= Ord(High(TThemeKind))) then
+        Result := TThemeKind(OrdVal)
+      else
+        Result := tkDark;
+    finally
+      I.Free;
+    end;
+    Exit;
   end;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  Settings := TAppDatabase.GlobalSettings;
+  OrdVal := SettingsTryGetInt(Settings, KEY_APPEARANCE_THEME, Ord(tkDark));
+  if (OrdVal >= Ord(Low(TThemeKind))) and (OrdVal <= Ord(High(TThemeKind))) then
+    Result := TThemeKind(OrdVal)
+  else
+    Result := tkDark;
 end;
 
 function DefaultBaseUrlForProvider(AProv: TLlmProvider): string;
@@ -484,6 +504,30 @@ begin
 end;
 
 procedure TWorkspaceState.Load;
+begin
+  if GlobalConfigUseLegacyStorage then
+    LoadLegacyIni
+  else
+  begin
+    if not TAppDatabase.IsGlobalOpen then
+      TAppDatabase.OpenGlobal;
+    LoadFromGlobalDb;
+  end;
+end;
+
+procedure TWorkspaceState.Save;
+begin
+  if GlobalConfigUseLegacyStorage then
+    SaveLegacyIni
+  else
+  begin
+    if not TAppDatabase.IsGlobalOpen then
+      TAppDatabase.OpenGlobal;
+    SaveToGlobalDb;
+  end;
+end;
+
+procedure TWorkspaceState.LoadLegacyIni;
 var
   I: TIniFile;
   P: TPanelId;
@@ -601,7 +645,7 @@ begin
   end;
 end;
 
-procedure TWorkspaceState.Save;
+procedure TWorkspaceState.SaveLegacyIni;
 var
   I: TIniFile;
   P: TPanelId;
@@ -667,6 +711,182 @@ begin
   finally
     I.Free;
   end;
+end;
+
+procedure TWorkspaceState.LoadFromGlobalDb;
+var
+  Settings: IAppSettingsRepository;
+  Llm: ILlmSettingsRepository;
+  Panels: IPanelLayoutRepository;
+  ProvRows: TLlmProviderRows;
+  ModelRows: TSavedModelRows;
+  PanelRows: TPanelLayoutRows;
+  P: TPanelId;
+  Prov: TLlmProvider;
+  I, J, OrdVal: Integer;
+begin
+  Settings := TAppDatabase.GlobalSettings;
+  Llm := TAppDatabase.GlobalLlmSettings;
+  Panels := TAppDatabase.GlobalPanelLayout;
+
+  OrdVal := SettingsTryGetInt(Settings, KEY_APPEARANCE_THEME, Ord(FTheme));
+  if (OrdVal >= Ord(Low(TThemeKind))) and (OrdVal <= Ord(High(TThemeKind))) then
+    FTheme := TThemeKind(OrdVal);
+  FMode := TWorkspaceMode(SettingsTryGetInt(Settings, KEY_AGENT_MODE, Ord(FMode)));
+  FModel := SettingsTryGetString(Settings, KEY_AGENT_MODEL, FModel);
+
+  OrdVal := SettingsTryGetInt(Settings, KEY_LLM_PROVIDER, Ord(FProvider));
+  if (OrdVal >= Ord(Low(TLlmProvider))) and (OrdVal <= Ord(High(TLlmProvider))) then
+    FProvider := TLlmProvider(OrdVal);
+
+  FTemperature := SettingsTryGetFloat(Settings, KEY_LLM_TEMPERATURE, FTemperature);
+  FMaxTokens := SettingsTryGetInt(Settings, KEY_LLM_MAX_TOKENS, FMaxTokens);
+  FMaxSteps := SettingsTryGetInt(Settings, KEY_LLM_MAX_STEPS, FMaxSteps);
+  FDebuggingMode := SettingsTryGetBool(Settings, KEY_GENERAL_DEBUGGING, FDebuggingMode);
+  FLearnMode := SettingsTryGetBool(Settings, KEY_GENERAL_LEARN, FLearnMode);
+  FAutoSummarizeContext := SettingsTryGetBool(Settings, KEY_GENERAL_AUTO_SUMMARIZE, FAutoSummarizeContext);
+  FContextWindowTokens := SettingsTryGetInt(Settings, KEY_LLM_CONTEXT_WINDOW, FContextWindowTokens);
+  FSummarizeThreshold := SettingsTryGetFloat(Settings, KEY_LLM_SUMMARIZE_THRESHOLD, FSummarizeThreshold);
+
+  FPromptCacheSettings.Mode := TPromptCacheMode(SettingsTryGetInt(Settings, KEY_PROMPT_CACHE_MODE,
+    Ord(FPromptCacheSettings.Mode)));
+  FPromptCacheSettings.Retention := TPromptCacheRetention(SettingsTryGetInt(Settings, KEY_PROMPT_CACHE_RETENTION,
+    Ord(FPromptCacheSettings.Retention)));
+  FPromptCacheSettings.CacheSystemInstructions := SettingsTryGetBool(Settings, KEY_PROMPT_CACHE_SYSTEM,
+    FPromptCacheSettings.CacheSystemInstructions);
+  FPromptCacheSettings.CacheToolDefinitions := SettingsTryGetBool(Settings, KEY_PROMPT_CACHE_TOOLS,
+    FPromptCacheSettings.CacheToolDefinitions);
+  FPromptCacheSettings.CacheProjectContext := SettingsTryGetBool(Settings, KEY_PROMPT_CACHE_PROJECT,
+    FPromptCacheSettings.CacheProjectContext);
+  FPromptCacheSettings.CacheConversationHistory := SettingsTryGetBool(Settings, KEY_PROMPT_CACHE_HISTORY,
+    FPromptCacheSettings.CacheConversationHistory);
+
+  ResetProviderStorage;
+  Llm.LoadProviders(ProvRows);
+  for I := 0 to High(ProvRows) do
+  begin
+    if (ProvRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and
+       (ProvRows[I].ProviderOrd <= Ord(High(TLlmProvider))) then
+    begin
+      Prov := TLlmProvider(ProvRows[I].ProviderOrd);
+      FProviderCreds[Prov].ApiKey := ProvRows[I].ApiKey;
+      FProviderCreds[Prov].BaseUrl := ProvRows[I].BaseUrl;
+      if Trim(FProviderCreds[Prov].BaseUrl) = '' then
+        FProviderCreds[Prov].BaseUrl := DefaultBaseUrlForProvider(Prov);
+    end;
+  end;
+
+  Llm.LoadModels(ModelRows);
+  for I := 0 to High(ModelRows) do
+  begin
+    if (ModelRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and
+       (ModelRows[I].ProviderOrd <= Ord(High(TLlmProvider))) then
+    begin
+      Prov := TLlmProvider(ModelRows[I].ProviderOrd);
+      J := Length(FProviderModels[Prov]);
+      SetLength(FProviderModels[Prov], J + 1);
+      FProviderModels[Prov][J].ModelId := ModelRows[I].ModelId;
+      FProviderModels[Prov][J].DisplayName := ModelRows[I].DisplayName;
+    end;
+  end;
+
+  SyncActiveFromProviderSlot;
+
+  Panels.LoadAll(PanelRows);
+  if Length(PanelRows) = 0 then
+    ResetLayout
+  else
+    for P := Low(TPanelId) to High(TPanelId) do
+      for I := 0 to High(PanelRows) do
+        if PanelRows[I].PanelOrd = Ord(P) then
+        begin
+          FPanels[P].Visible := PanelRows[I].Visible;
+          FPanels[P].Floating := PanelRows[I].Floating;
+          FPanels[P].Left := PanelRows[I].LeftPos;
+          FPanels[P].Top := PanelRows[I].TopPos;
+          FPanels[P].Width := PanelRows[I].Width;
+          FPanels[P].Height := PanelRows[I].Height;
+          FPanels[P].DockedHeight := PanelRows[I].DockedHeight;
+          Break;
+        end;
+end;
+
+procedure TWorkspaceState.SaveToGlobalDb;
+var
+  Settings: IAppSettingsRepository;
+  Llm: ILlmSettingsRepository;
+  Panels: IPanelLayoutRepository;
+  ProvRows: TLlmProviderRows;
+  ModelRows: TSavedModelRows;
+  PanelRows: TPanelLayoutRows;
+  P: TPanelId;
+  Prov: TLlmProvider;
+  I, J, N: Integer;
+begin
+  SyncActiveToProviderSlot;
+  Settings := TAppDatabase.GlobalSettings;
+  SettingsSetInt(Settings, KEY_APPEARANCE_THEME, Ord(FTheme));
+  SettingsSetInt(Settings, KEY_AGENT_MODE, Ord(FMode));
+  SettingsSetString(Settings, KEY_AGENT_MODEL, FModel);
+  SettingsSetInt(Settings, KEY_LLM_CONFIG_VERSION, LLM_CONFIG_VERSION);
+  SettingsSetInt(Settings, KEY_LLM_PROVIDER, Ord(FProvider));
+  SettingsSetFloat(Settings, KEY_LLM_TEMPERATURE, FTemperature);
+  SettingsSetInt(Settings, KEY_LLM_MAX_TOKENS, FMaxTokens);
+  SettingsSetInt(Settings, KEY_LLM_MAX_STEPS, FMaxSteps);
+  SettingsSetBool(Settings, KEY_GENERAL_DEBUGGING, FDebuggingMode);
+  SettingsSetBool(Settings, KEY_GENERAL_LEARN, FLearnMode);
+  SettingsSetBool(Settings, KEY_GENERAL_AUTO_SUMMARIZE, FAutoSummarizeContext);
+  SettingsSetInt(Settings, KEY_LLM_CONTEXT_WINDOW, FContextWindowTokens);
+  SettingsSetFloat(Settings, KEY_LLM_SUMMARIZE_THRESHOLD, FSummarizeThreshold);
+
+  SettingsSetInt(Settings, KEY_PROMPT_CACHE_MODE, Ord(FPromptCacheSettings.Mode));
+  SettingsSetInt(Settings, KEY_PROMPT_CACHE_RETENTION, Ord(FPromptCacheSettings.Retention));
+  SettingsSetBool(Settings, KEY_PROMPT_CACHE_SYSTEM, FPromptCacheSettings.CacheSystemInstructions);
+  SettingsSetBool(Settings, KEY_PROMPT_CACHE_TOOLS, FPromptCacheSettings.CacheToolDefinitions);
+  SettingsSetBool(Settings, KEY_PROMPT_CACHE_PROJECT, FPromptCacheSettings.CacheProjectContext);
+  SettingsSetBool(Settings, KEY_PROMPT_CACHE_HISTORY, FPromptCacheSettings.CacheConversationHistory);
+
+  N := Ord(High(TLlmProvider)) - Ord(Low(TLlmProvider)) + 1;
+  SetLength(ProvRows, N);
+  I := 0;
+  for Prov := Low(TLlmProvider) to High(TLlmProvider) do
+  begin
+    ProvRows[I].ProviderOrd := Ord(Prov);
+    ProvRows[I].ApiKey := FProviderCreds[Prov].ApiKey;
+    ProvRows[I].BaseUrl := FProviderCreds[Prov].BaseUrl;
+    Inc(I);
+  end;
+  Llm := TAppDatabase.GlobalLlmSettings;
+  Llm.SaveProviders(ProvRows);
+
+  SetLength(ModelRows, 0);
+  for Prov := Low(TLlmProvider) to High(TLlmProvider) do
+    for J := 0 to High(FProviderModels[Prov]) do
+    begin
+      N := Length(ModelRows);
+      SetLength(ModelRows, N + 1);
+      ModelRows[N].ProviderOrd := Ord(Prov);
+      ModelRows[N].Seq := J;
+      ModelRows[N].ModelId := FProviderModels[Prov][J].ModelId;
+      ModelRows[N].DisplayName := FProviderModels[Prov][J].DisplayName;
+    end;
+  Llm.SaveModels(ModelRows);
+
+  SetLength(PanelRows, Ord(High(TPanelId)) - Ord(Low(TPanelId)) + 1);
+  for P := Low(TPanelId) to High(TPanelId) do
+  begin
+    I := Ord(P) - Ord(Low(TPanelId));
+    PanelRows[I].PanelOrd := Ord(P);
+    PanelRows[I].Visible := FPanels[P].Visible;
+    PanelRows[I].Floating := FPanels[P].Floating;
+    PanelRows[I].LeftPos := FPanels[P].Left;
+    PanelRows[I].TopPos := FPanels[P].Top;
+    PanelRows[I].Width := FPanels[P].Width;
+    PanelRows[I].Height := FPanels[P].Height;
+    PanelRows[I].DockedHeight := FPanels[P].DockedHeight;
+  end;
+  Panels := TAppDatabase.GlobalPanelLayout;
+  Panels.SaveAll(PanelRows);
 end;
 
 end.

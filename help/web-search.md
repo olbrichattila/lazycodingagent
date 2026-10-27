@@ -95,7 +95,7 @@ docker run --rm -v "$PWD/core-config:/data" alpine chown $(id -u):$(id -g) /data
 
 ## Credentials
 
-API keys are stored in the same local config file as LLM API keys (not in the project workspace). They are **not encrypted** by the application today—protect your user config directory like any secret file.
+API keys are stored in the application `global.db` SQLite database (not in the project workspace), with field-level encryption at rest. This reduces casual exposure in backups but is **not** a substitute for OS-level protection of your config directory—see **Application data and settings** in the User Guide.
 
 Leave the API key field blank when editing to keep the existing key.
 

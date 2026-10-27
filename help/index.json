@@ -36,6 +36,12 @@
     "keywords": ["read_file", "write_file", "edit_file", "apply_patch", "shell", "patch", "hunk", "grep", "git", "todo", "plan", "web_fetch", "browser_read", "browser_navigate", "browser_click", "chromium", "javascript", "url", "fetch", "website", "documentation", "automation", "screenshot", "cdp"]
   },
   {
+    "id": "app-data-storage",
+    "title": "Application data and settings",
+    "file": "app-data-storage.md",
+    "keywords": ["sqlite", "global.db", "config", "settings", "migration", "backup", "encrypted", "api key", "legacy", "ini"]
+  },
+  {
     "id": "web-search",
     "title": "Web Search",
     "file": "web-search.md",

@@ -15,7 +15,7 @@ uses
   Interfaces, // this includes the LCL widgetset (keep cthreads/uLinuxDisplayEnv before Interfaces on Unix)
   SysUtils,
   Forms, mainunit, frmSplash, uWorkspaceState,
-  uSqlite3Embed
+  uSqlite3Embed, uGlobalConfigBootstrap
   { you can add units after this };
 
 {$IFDEF WINDOWS}
@@ -34,6 +34,7 @@ begin
   {$POP}
   Application.Initialize;
   Application.ShowMainForm := False;
+  EnsureGlobalConfigReady;
   Splash := TSplashForm.Create(Application);
   try
     SetActiveSplashForm(Splash);

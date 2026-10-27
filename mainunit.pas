@@ -396,7 +396,7 @@ uses
   frmSplash, uAppIcon, LCLIntf,
   frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes, uBrowserManager,
   uBrowserPermissions, frmBrowserConfirm,
-  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm
+  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, uGlobalConfigBootstrap
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 {$R *.lfm}
@@ -651,6 +651,7 @@ begin
   FPostShowStartupTimer.Interval := 1;
   FPostShowStartupTimer.OnTimer := @PostShowStartup;
 
+  EnsureGlobalConfigReady;
   FState := TWorkspaceState.Create;
   FState.Load;
   FState.OnChange := @StateChanged;

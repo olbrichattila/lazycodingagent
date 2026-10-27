@@ -36,6 +36,42 @@
         <Filename Value="..\data\sqlite\uSqliteAppSettingsRepository.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
+      <Unit>
+        <Filename Value="..\data\sqlite\uSqliteWorkspaceRegistryRepository.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\sqlite\uSqliteLlmSettingsRepository.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\sqlite\uSqlitePanelLayoutRepository.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\sqlite\uSqliteWebSearchRepository.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\sqlite\uSqliteBrowserReadRepository.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\uSecurityManager.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\uSqliteCheck.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\uGlobalConfigKeys.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="..\data\uAppSettingsCodec.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -45,7 +81,7 @@
       <Filename Value="test_app_database"/>
     </Target>
     <SearchPaths>
-      <OtherUnitFiles Value="..;..\data;..\data\sqlite"/>
+      <OtherUnitFiles Value="..;..\data;..\data\sqlite;..\third_party\fpc-openssl3\src"/>
       <Libraries Value="..\packages\LazySqliteStatic\src"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>

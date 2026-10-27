@@ -20,14 +20,7 @@ type
 implementation
 
 uses
-  SysUtils, Classes;
-
-function CheckSqlite(const ACode: Integer; ADb: PSqlite3; const AContext: string): Integer;
-begin
-  if ACode <> SQLITE_OK then
-    raise Exception.CreateFmt('%s: %s', [AContext, string(sqlite3_errmsg(ADb))]);
-  Result := ACode;
-end;
+  SysUtils, Classes, uSqliteCheck;
 
 constructor TSqliteAppSettingsRepository.Create(ADb: PSqlite3);
 begin
@@ -46,9 +39,9 @@ begin
   AValue := '';
   Result := False;
   RC := sqlite3_prepare_v2(FDb, 'SELECT value FROM app_settings WHERE key = ?1', -1, @Stmt, nil);
-  CheckSqlite(RC, FDb, 'prepare app_settings get');
+  SqliteCheck(RC, FDb, 'prepare app_settings get');
   try
-    CheckSqlite(sqlite3_bind_text(Stmt, 1, PAnsiChar(AnsiString(AKey)), -1, SQLITE_TRANSIENT), FDb, 'bind key');
+    SqliteCheck(sqlite3_bind_text(Stmt, 1, PAnsiChar(AnsiString(AKey)), -1, SQLITE_TRANSIENT), FDb, 'bind key');
     RC := sqlite3_step(Stmt);
     if RC = SQLITE_ROW then
     begin
@@ -58,7 +51,7 @@ begin
       Result := True;
     end
     else if RC <> SQLITE_DONE then
-      CheckSqlite(RC, FDb, 'step app_settings get');
+      SqliteCheck(RC, FDb, 'step app_settings get');
   finally
     sqlite3_finalize(Stmt);
   end;
@@ -69,15 +62,15 @@ var
   Stmt: PSqlite3Stmt;
   RC: Integer;
 begin
-  CheckSqlite(sqlite3_prepare_v2(FDb,
+  SqliteCheck(sqlite3_prepare_v2(FDb,
     'INSERT INTO app_settings(key, value, type) VALUES(?1, ?2, ''string'') ' +
     'ON CONFLICT(key) DO UPDATE SET value = excluded.value, type = ''string''', -1, @Stmt, nil), FDb, 'prepare app_settings set');
   try
-    CheckSqlite(sqlite3_bind_text(Stmt, 1, PAnsiChar(AnsiString(AKey)), -1, SQLITE_TRANSIENT), FDb, 'bind key');
-    CheckSqlite(sqlite3_bind_text(Stmt, 2, PAnsiChar(AnsiString(AValue)), -1, SQLITE_TRANSIENT), FDb, 'bind value');
+    SqliteCheck(sqlite3_bind_text(Stmt, 1, PAnsiChar(AnsiString(AKey)), -1, SQLITE_TRANSIENT), FDb, 'bind key');
+    SqliteCheck(sqlite3_bind_text(Stmt, 2, PAnsiChar(AnsiString(AValue)), -1, SQLITE_TRANSIENT), FDb, 'bind value');
     RC := sqlite3_step(Stmt);
     if RC <> SQLITE_DONE then
-      CheckSqlite(RC, FDb, 'step app_settings set');
+      SqliteCheck(RC, FDb, 'step app_settings set');
   finally
     sqlite3_finalize(Stmt);
   end;

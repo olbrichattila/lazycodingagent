@@ -37,6 +37,8 @@ function sqlite3_prepare_v2(db: PSqlite3; zSql: PAnsiChar; nByte: cint; ppStmt: 
 function sqlite3_finalize(pStmt: PSqlite3Stmt): cint; cdecl;
 function sqlite3_step(pStmt: PSqlite3Stmt): cint; cdecl;
 function sqlite3_bind_text(pStmt: PSqlite3Stmt; i: cint; z: PAnsiChar; n: cint; xDel: Pointer): cint; cdecl;
+function sqlite3_bind_int(pStmt: PSqlite3Stmt; i: cint; iValue: cint): cint; cdecl;
+function sqlite3_reset(pStmt: PSqlite3Stmt): cint; cdecl;
 function sqlite3_column_text(pStmt: PSqlite3Stmt; iCol: cint): PAnsiChar; cdecl;
 function sqlite3_column_int(pStmt: PSqlite3Stmt; iCol: cint): cint; cdecl;
 
@@ -58,6 +60,8 @@ function sqlite3_prepare_v2(db: PSqlite3; zSql: PAnsiChar; nByte: cint; ppStmt: 
 function sqlite3_finalize(pStmt: PSqlite3Stmt): cint; cdecl; external;
 function sqlite3_step(pStmt: PSqlite3Stmt): cint; cdecl; external;
 function sqlite3_bind_text(pStmt: PSqlite3Stmt; i: cint; z: PAnsiChar; n: cint; xDel: Pointer): cint; cdecl; external;
+function sqlite3_bind_int(pStmt: PSqlite3Stmt; i: cint; iValue: cint): cint; cdecl; external;
+function sqlite3_reset(pStmt: PSqlite3Stmt): cint; cdecl; external;
 function sqlite3_column_text(pStmt: PSqlite3Stmt; iCol: cint): PAnsiChar; cdecl; external;
 function sqlite3_column_int(pStmt: PSqlite3Stmt; iCol: cint): cint; cdecl; external;
 

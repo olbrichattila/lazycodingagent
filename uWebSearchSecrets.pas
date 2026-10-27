@@ -22,7 +22,7 @@ uses
   {$IFDEF LCL}
   , Forms
   {$ENDIF}
-  ;
+  , uAppDatabase, uRepositoryInterfaces, uGlobalConfigLegacy;
 
 var
   GTestSecretsIniPath: string = '';
@@ -54,6 +54,58 @@ begin
   Result := 'WebSearchSecret_' + AConnectionId;
 end;
 
+function GetWebSearchApiKeyFromDb(const AConnectionId: string): string;
+var
+  Repo: IWebSearchRepository;
+  Rows: TWebSearchConnectionRows;
+  I: Integer;
+begin
+  Result := '';
+  if Trim(AConnectionId) = '' then Exit;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  Repo := TAppDatabase.GlobalWebSearch;
+  Repo.LoadConnections(Rows);
+  for I := 0 to High(Rows) do
+    if SameText(Rows[I].Id, AConnectionId) then
+      Exit(Rows[I].ApiKey);
+end;
+
+procedure SetWebSearchApiKeyInDb(const AConnectionId, AApiKey: string);
+var
+  Repo: IWebSearchRepository;
+  Rows: TWebSearchConnectionRows;
+  I: Integer;
+  Found: Boolean;
+begin
+  if Trim(AConnectionId) = '' then Exit;
+  if not TAppDatabase.IsGlobalOpen then
+    TAppDatabase.OpenGlobal;
+  Repo := TAppDatabase.GlobalWebSearch;
+  Repo.LoadConnections(Rows);
+  Found := False;
+  for I := 0 to High(Rows) do
+    if SameText(Rows[I].Id, AConnectionId) then
+    begin
+      Rows[I].ApiKey := AApiKey;
+      Found := True;
+      Break;
+    end;
+  if not Found then
+  begin
+    I := Length(Rows);
+    SetLength(Rows, I + 1);
+    Rows[I].Id := AConnectionId;
+    Rows[I].Name := 'Connection';
+    Rows[I].Provider := 'brave';
+    Rows[I].Enabled := True;
+    Rows[I].Priority := I + 1;
+    Rows[I].TimeoutMs := 10000;
+    Rows[I].ApiKey := AApiKey;
+  end;
+  Repo.SaveConnections(Rows);
+end;
+
 function GetWebSearchApiKey(const AConnectionId: string): string;
 var
   I: TIniFile;
@@ -61,6 +113,8 @@ var
 begin
   Result := '';
   if Trim(AConnectionId) = '' then Exit;
+  if not GlobalConfigUseLegacyStorage then
+    Exit(GetWebSearchApiKeyFromDb(AConnectionId));
   Path := WebSearchSecretsIniPath;
   if Path = '' then Exit;
   I := TIniFile.Create(Path);
@@ -77,6 +131,11 @@ var
   Path, Dir: string;
 begin
   if Trim(AConnectionId) = '' then Exit;
+  if not GlobalConfigUseLegacyStorage then
+  begin
+    SetWebSearchApiKeyInDb(AConnectionId, AApiKey);
+    Exit;
+  end;
   Path := WebSearchSecretsIniPath;
   if Path = '' then Exit;
   Dir := ExtractFilePath(Path);

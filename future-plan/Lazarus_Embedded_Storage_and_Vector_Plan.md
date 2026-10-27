@@ -403,16 +403,18 @@ Do not add Chroma, Qdrant, Milvus, or Docker sidecars for the desktop app.
 
 ## 8. Security and secrets
 
-Today API keys live in plain INI (`Provider_*` sections). Moving to SQLite **does not** by itself improve secrecy; the DB file is user-readable on disk.
+Settings migration (M1–M3 for app config) stores LLM and web-search API keys in `global.db` with **field-level AES-256-GCM** via `uSecurityManager` (OpenSSL), using key material embedded in the application binary. This is **obfuscation against casual disk inspection**, not protection against a determined analyst with the binary and database.
 
-| v1 | Follow-up |
+| v1 (settings cutover) | Follow-up |
 | --- | --- |
-| Same practical security as INI (file permissions under user config dir) | OS credential store (Windows Credential Manager, macOS Keychain, libsecret on Linux) for API keys with SQLite holding non-secret prefs only |
-| Document backup/export implications | Optional SQLCipher / encryption appendix — **non-goal for v1** (see below) |
+| Encrypted secret columns; non-secrets in plain SQLite text | OS credential store (Windows Credential Manager, macOS Keychain, libsecret on Linux) with SQLite holding references only |
+| Document backup/recovery in User Guide (`help/app-data-storage.md`) | Optional full-database SQLCipher — still **non-goal** (see below) |
 
 ---
 
 ## 9. Application integration map (implementation epics)
+
+**Sprint order (one item per PR):** see [`future-plan/sqlite/README.md`](sqlite/README.md).
 
 Ordered checklist (M0 items done; remainder is later sprints):
 

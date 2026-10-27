@@ -37,6 +37,10 @@ type
 
     procedure Load;
     procedure Save;
+    procedure LoadLegacyJson;
+    procedure SaveLegacyJson;
+    procedure LoadFromGlobalDb;
+    procedure SaveToGlobalDb;
     procedure MigrateFromLegacyIni(const ALegacyName, ALegacyRoot: string);
   end;
 
@@ -46,7 +50,8 @@ function NormalizeWorkspaceFolderPath(const APath: string): string;
 implementation
 
 uses
-  Forms, fpjson, jsonparser;
+  Forms, fpjson, jsonparser, uAppDatabase, uRepositoryInterfaces, uGlobalConfigLegacy,
+  uGlobalConfigKeys, uAppSettingsCodec;
 
 function WorkspaceRegistryFileName: string;
 begin
@@ -202,6 +207,30 @@ begin
 end;
 
 procedure TWorkspaceRegistry.Load;
+begin
+  if GlobalConfigUseLegacyStorage then
+    LoadLegacyJson
+  else
+  begin
+    if not TAppDatabase.IsGlobalOpen then
+      TAppDatabase.OpenGlobal;
+    LoadFromGlobalDb;
+  end;
+end;
+
+procedure TWorkspaceRegistry.Save;
+begin
+  if GlobalConfigUseLegacyStorage then
+    SaveLegacyJson
+  else
+  begin
+    if not TAppDatabase.IsGlobalOpen then
+      TAppDatabase.OpenGlobal;
+    SaveToGlobalDb;
+  end;
+end;
+
+procedure TWorkspaceRegistry.LoadLegacyJson;
 var
   Path: string;
   Raw: string;
@@ -253,7 +282,7 @@ begin
   end;
 end;
 
-procedure TWorkspaceRegistry.Save;
+procedure TWorkspaceRegistry.SaveLegacyJson;
 var
   Root, Item: TJSONObject;
   Arr: TJSONArray;
@@ -304,6 +333,45 @@ begin
   if FActiveWorkspaceId = '' then
     FActiveWorkspaceId := Id;
   Save;
+end;
+
+procedure TWorkspaceRegistry.LoadFromGlobalDb;
+var
+  Repo: IWorkspaceRegistryRepository;
+  Rows: TRegistryWorkspaceRows;
+  I: Integer;
+begin
+  SetLength(FEntries, 0);
+  FActiveWorkspaceId := '';
+  Repo := TAppDatabase.GlobalWorkspaceRegistry;
+  Repo.LoadAll(Rows, FActiveWorkspaceId);
+  SetLength(FEntries, Length(Rows));
+  for I := 0 to High(Rows) do
+  begin
+    FEntries[I].Id := Rows[I].Id;
+    FEntries[I].DisplayName := Rows[I].DisplayName;
+    FEntries[I].FolderPath := Rows[I].FolderPath;
+    FEntries[I].LastSessionId := Rows[I].LastSessionId;
+  end;
+end;
+
+procedure TWorkspaceRegistry.SaveToGlobalDb;
+var
+  Repo: IWorkspaceRegistryRepository;
+  Rows: TRegistryWorkspaceRows;
+  I: Integer;
+begin
+  SetLength(Rows, Length(FEntries));
+  for I := 0 to High(FEntries) do
+  begin
+    Rows[I].Id := FEntries[I].Id;
+    Rows[I].DisplayName := FEntries[I].DisplayName;
+    Rows[I].FolderPath := FEntries[I].FolderPath;
+    Rows[I].LastSessionId := FEntries[I].LastSessionId;
+    Rows[I].SortOrder := I;
+  end;
+  Repo := TAppDatabase.GlobalWorkspaceRegistry;
+  Repo.SaveAll(Rows, FActiveWorkspaceId);
 end;
 
 end.

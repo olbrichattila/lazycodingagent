@@ -24,8 +24,8 @@ begin
   TAppDatabase.SetConfigRootOverride(TempDataRoot);
   TAppDatabase.OpenGlobal;
   try
-    if TAppDatabase.SchemaVersion(adsGlobal) <> 1 then
-      Fail('Expected schema version 1 on global database');
+    if TAppDatabase.SchemaVersion(adsGlobal) <> 2 then
+      Fail('Expected schema version 2 on global database');
     TAppDatabase.GlobalSettings.SetString('m0.probe', Probe);
   finally
     TAppDatabase.CloseGlobal;
@@ -39,7 +39,7 @@ begin
       Fail('m0.probe missing after reopen');
     if ReadBack <> Probe then
       Fail('m0.probe value mismatch after reopen');
-    if TAppDatabase.SchemaVersion(adsGlobal) <> 1 then
+    if TAppDatabase.SchemaVersion(adsGlobal) <> 2 then
       Fail('Schema version mismatch after reopen');
   finally
     TAppDatabase.CloseGlobal;
@@ -69,7 +69,7 @@ begin
       Fail('ws.smoke missing after reopen');
     if ReadBack <> Probe then
       Fail('ws.smoke value mismatch after reopen');
-    if TAppDatabase.SchemaVersion(adsWorkspace, WsId) <> 1 then
+    if TAppDatabase.SchemaVersion(adsWorkspace, WsId) <> 2 then
       Fail('Workspace schema version mismatch');
   finally
     TAppDatabase.CloseWorkspace(WsId);

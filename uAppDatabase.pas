@@ -31,13 +31,21 @@ type
     class procedure CloseAll;
     class function GlobalSettings: IAppSettingsRepository;
     class function WorkspaceSettings(const AWsId: string): IAppSettingsRepository;
+    class function GlobalWorkspaceRegistry: IWorkspaceRegistryRepository;
+    class function GlobalLlmSettings: ILlmSettingsRepository;
+    class function GlobalPanelLayout: IPanelLayoutRepository;
+    class function GlobalWebSearch: IWebSearchRepository;
+    class function GlobalBrowserRead: IBrowserReadRepository;
+    class function IsGlobalOpen: Boolean;
     class function SchemaVersion(AScope: TAppDatabaseScope; const AWsId: string = ''): Integer;
   end;
 
 implementation
 
 uses
-  uSqlite3Embed, uSqliteAppSettingsRepository;
+  uSqlite3Embed, uSqliteAppSettingsRepository, uSqliteWorkspaceRegistryRepository,
+  uSqliteLlmSettingsRepository, uSqlitePanelLayoutRepository, uSqliteWebSearchRepository,
+  uSqliteBrowserReadRepository;
 
 const
   ENV_DATA_ROOT = 'LAZYCODINGAGENT_DATA_ROOT';
@@ -125,38 +133,109 @@ begin
   if Err <> nil then sqlite3_free(Err);
 end;
 
+procedure RecordMigration(ADb: PSqlite3; AVersion: Integer);
+var
+  Err: PAnsiChar;
+  AppliedAt: AnsiString;
+  Sql: AnsiString;
+begin
+  AppliedAt := AnsiString(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss"Z"', Now));
+  Sql := AnsiString(Format('INSERT INTO schema_migrations(version, applied_at) VALUES(%d, ''%s'');',
+    [AVersion, AppliedAt]));
+  Err := nil;
+  SqliteCheck(sqlite3_exec(ADb, PAnsiChar(Sql), nil, nil, @Err), ADb, 'migration record');
+  if Err <> nil then sqlite3_free(Err);
+end;
+
 class procedure TAppDatabase.RunMigrations(ADb: Pointer);
 var
   Db: PSqlite3;
   Ver: Integer;
   Err: PAnsiChar;
-  AppliedAt: AnsiString;
 begin
   Db := PSqlite3(ADb);
   Ver := QuerySchemaVersion(ADb);
-  if Ver >= 1 then
-    Exit;
-  AppliedAt := AnsiString(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss"Z"', Now));
-  Err := nil;
-  SqliteCheck(sqlite3_exec(Db,
-    'CREATE TABLE schema_migrations (' +
-    '  version INTEGER PRIMARY KEY,' +
-    '  applied_at TEXT NOT NULL' +
-    ');', nil, nil, @Err), Db, 'migration v1 schema_migrations');
-  if Err <> nil then sqlite3_free(Err);
-  Err := nil;
-  SqliteCheck(sqlite3_exec(Db,
-    'CREATE TABLE app_settings (' +
-    '  key TEXT PRIMARY KEY,' +
-    '  value TEXT NOT NULL,' +
-    '  type TEXT NOT NULL CHECK (type IN (''string'',''int'',''float'',''bool''))' +
-    ');', nil, nil, @Err), Db, 'migration v1 app_settings');
-  if Err <> nil then sqlite3_free(Err);
-  Err := nil;
-  SqliteCheck(sqlite3_exec(Db, PAnsiChar(AnsiString(
-    'INSERT INTO schema_migrations(version, applied_at) VALUES(1, ''' + AppliedAt + ''');')),
-    nil, nil, @Err), Db, 'migration v1 record');
-  if Err <> nil then sqlite3_free(Err);
+  if Ver < 1 then
+  begin
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE schema_migrations (' +
+      '  version INTEGER PRIMARY KEY,' +
+      '  applied_at TEXT NOT NULL' +
+      ');', nil, nil, @Err), Db, 'migration v1 schema_migrations');
+    if Err <> nil then sqlite3_free(Err);
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE app_settings (' +
+      '  key TEXT PRIMARY KEY,' +
+      '  value TEXT NOT NULL,' +
+      '  type TEXT NOT NULL CHECK (type IN (''string'',''int'',''float'',''bool''))' +
+      ');', nil, nil, @Err), Db, 'migration v1 app_settings');
+    if Err <> nil then sqlite3_free(Err);
+    RecordMigration(Db, 1);
+    Ver := 1;
+  end;
+  if Ver < 2 then
+  begin
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE workspaces (' +
+      '  id TEXT PRIMARY KEY,' +
+      '  display_name TEXT NOT NULL,' +
+      '  folder_path TEXT NOT NULL UNIQUE,' +
+      '  last_session_id TEXT NOT NULL DEFAULT '''',' +
+      '  sort_order INTEGER NOT NULL DEFAULT 0' +
+      ');', nil, nil, @Err), Db, 'migration v2 workspaces');
+    if Err <> nil then sqlite3_free(Err);
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE llm_providers (' +
+      '  provider_ord INTEGER PRIMARY KEY,' +
+      '  api_key TEXT NOT NULL DEFAULT '''',' +
+      '  base_url TEXT NOT NULL DEFAULT ''''' +
+      ');', nil, nil, @Err), Db, 'migration v2 llm_providers');
+    if Err <> nil then sqlite3_free(Err);
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE saved_models (' +
+      '  provider_ord INTEGER NOT NULL,' +
+      '  seq INTEGER NOT NULL,' +
+      '  model_id TEXT NOT NULL,' +
+      '  display_name TEXT NOT NULL,' +
+      '  PRIMARY KEY (provider_ord, seq)' +
+      ');', nil, nil, @Err), Db, 'migration v2 saved_models');
+    if Err <> nil then sqlite3_free(Err);
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE panel_layout (' +
+      '  panel_ord INTEGER PRIMARY KEY,' +
+      '  visible INTEGER NOT NULL,' +
+      '  floating INTEGER NOT NULL,' +
+      '  left_pos INTEGER NOT NULL,' +
+      '  top_pos INTEGER NOT NULL,' +
+      '  width INTEGER NOT NULL,' +
+      '  height INTEGER NOT NULL,' +
+      '  docked_height INTEGER NOT NULL DEFAULT 0' +
+      ');', nil, nil, @Err), Db, 'migration v2 panel_layout');
+    if Err <> nil then sqlite3_free(Err);
+    Err := nil;
+    SqliteCheck(sqlite3_exec(Db,
+      'CREATE TABLE web_search_connections (' +
+      '  id TEXT PRIMARY KEY,' +
+      '  name TEXT NOT NULL,' +
+      '  provider TEXT NOT NULL,' +
+      '  enabled INTEGER NOT NULL,' +
+      '  priority INTEGER NOT NULL,' +
+      '  timeout_ms INTEGER NOT NULL,' +
+      '  instance_url TEXT NOT NULL DEFAULT '''',' +
+      '  tavily_search_depth TEXT NOT NULL DEFAULT ''basic'',' +
+      '  custom_header_name TEXT NOT NULL DEFAULT '''',' +
+      '  custom_header_value TEXT NOT NULL DEFAULT '''',' +
+      '  api_key TEXT NOT NULL DEFAULT ''''' +
+      ');', nil, nil, @Err), Db, 'migration v2 web_search_connections');
+    if Err <> nil then sqlite3_free(Err);
+    RecordMigration(Db, 2);
+  end;
 end;
 
 class function TAppDatabase.QuerySchemaVersion(ADb: Pointer): Integer;
@@ -281,11 +360,51 @@ begin
   FreeAndNil(GWorkspaceDbs);
 end;
 
+class function TAppDatabase.IsGlobalOpen: Boolean;
+begin
+  Result := GGlobalDb <> nil;
+end;
+
 class function TAppDatabase.GlobalSettings: IAppSettingsRepository;
 begin
   if GGlobalSettings = nil then
     raise Exception.Create('Global database is not open');
   Result := GGlobalSettings;
+end;
+
+class function TAppDatabase.GlobalWorkspaceRegistry: IWorkspaceRegistryRepository;
+begin
+  if GGlobalDb = nil then
+    raise Exception.Create('Global database is not open');
+  Result := TSqliteWorkspaceRegistryRepository.Create(PSqlite3(GGlobalDb));
+end;
+
+class function TAppDatabase.GlobalLlmSettings: ILlmSettingsRepository;
+begin
+  if GGlobalDb = nil then
+    raise Exception.Create('Global database is not open');
+  Result := TSqliteLlmSettingsRepository.Create(PSqlite3(GGlobalDb));
+end;
+
+class function TAppDatabase.GlobalPanelLayout: IPanelLayoutRepository;
+begin
+  if GGlobalDb = nil then
+    raise Exception.Create('Global database is not open');
+  Result := TSqlitePanelLayoutRepository.Create(PSqlite3(GGlobalDb));
+end;
+
+class function TAppDatabase.GlobalWebSearch: IWebSearchRepository;
+begin
+  if GGlobalDb = nil then
+    raise Exception.Create('Global database is not open');
+  Result := TSqliteWebSearchRepository.Create(PSqlite3(GGlobalDb));
+end;
+
+class function TAppDatabase.GlobalBrowserRead: IBrowserReadRepository;
+begin
+  if GGlobalDb = nil then
+    raise Exception.Create('Global database is not open');
+  Result := TSqliteBrowserReadRepository.Create(PSqlite3(GGlobalDb));
 end;
 
 class function TAppDatabase.WorkspaceSettings(const AWsId: string): IAppSettingsRepository;
