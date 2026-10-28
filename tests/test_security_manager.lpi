@@ -34,7 +34,7 @@
       <Filename Value="test_security_manager"/>
     </Target>
     <SearchPaths>
-      <OtherUnitFiles Value="..\data;..\third_party\fpc-openssl3\src"/>
+      <OtherUnitFiles Value="..\data"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
   </CompilerOptions>

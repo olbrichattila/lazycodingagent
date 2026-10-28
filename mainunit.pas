@@ -28,10 +28,6 @@ type
     Panel1: TPanel;
     pnlMainContainer: TPanel;
     pnlNavRailHost: TPanel;
-    sbtnNavBrain: TLcaPaintNavRailButton;
-    sbtnNavKnowledge: TLcaPaintNavRailButton;
-    sbtnNavExecPlans: TLcaPaintNavRailButton;
-    sbtnNavMultiAgent: TLcaPaintNavRailButton;
     sbtnNavToolErrors: TLcaPaintNavRailButton;
     sbtnNavTasks: TLcaPaintNavRailButton;
     sbtnNavTools: TLcaPaintNavRailButton;
@@ -156,6 +152,10 @@ type
     mnuViewSyntaxSchemes: TMenuItem;
     mnuViewActiveSchemes: TMenuItem;
     mnuWorkspace: TMenuItem;
+    mnuWorkspaceMultiAgent: TMenuItem;
+    mnuWorkspaceExecutionPlans: TMenuItem;
+    mnuWorkspaceKnowledgeBase: TMenuItem;
+    mnuWorkspaceTheBrain: TMenuItem;
     mnuWorkspaceSepRules: TMenuItem;
     mnuWorkspaceProjectRules: TMenuItem;
     mnuAgent: TMenuItem;
@@ -172,6 +172,11 @@ type
     mnuTreeOpenInApp: TMenuItem;
     mnuTreeOpenInFileManager: TMenuItem;
     mnuTreeOpenDefault: TMenuItem;
+    popNavSessions: TPopupMenu;
+    mnuSessionArchive: TMenuItem;
+    mnuSessionRestore: TMenuItem;
+    mnuSessionDeleteSep: TMenuItem;
+    mnuSessionDeletePermanent: TMenuItem;
 
     procedure PanelHideClick(Sender: TObject);
     procedure PanelDetachClick(Sender: TObject);
@@ -196,6 +201,10 @@ type
     procedure MnuAgentStopClick(Sender: TObject);
     procedure MnuSettingsOptionsClick(Sender: TObject);
     procedure MnuWorkspaceProjectRulesClick(Sender: TObject);
+    procedure MnuWorkspaceMultiAgentClick(Sender: TObject);
+    procedure MnuWorkspaceExecutionPlansClick(Sender: TObject);
+    procedure MnuWorkspaceKnowledgeBaseClick(Sender: TObject);
+    procedure MnuWorkspaceTheBrainClick(Sender: TObject);
     procedure MnuHelpUserGuideClick(Sender: TObject);
     procedure MnuHelpAboutClick(Sender: TObject);
     procedure NavRailBtnClick(Sender: TObject);
@@ -263,6 +272,7 @@ type
     procedure ActivateWorkspace(const AWorkspaceId: string);
     procedure DeactivateWorkspace;
     procedure RemoveWorkspaceFromList(const AWorkspaceId: string);
+    function ResolveWorkspaceIdForRemoval: string;
     function AddOrActivateFolder(const ADisplayName, AFolderPath: string): Boolean;
     procedure RefreshWorkspaceNav;
     procedure RefreshSessionNav;
@@ -395,8 +405,9 @@ implementation
 uses
   frmSplash, uAppIcon, LCLIntf,
   frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes, uBrowserManager,
+  frmMultiAgentWorkspace, frmExecutionPlansConfig, frmKnowledgeBaseConfig, frmTheBrainConfig,
   uBrowserPermissions, frmBrowserConfirm,
-  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, uGlobalConfigBootstrap
+  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, uGlobalConfigBootstrap, uAppDatabase
   {$IFDEF WINDOWS}, Windows{$ENDIF};
 
 {$R *.lfm}
@@ -659,7 +670,6 @@ begin
 
   FRegistry := TWorkspaceRegistry.Create;
   FRegistry.Load;
-  FRegistry.MigrateFromLegacyIni(FState.WorkspaceName, FState.WorkspaceRoot);
   ReportSplashLoadProgress(35);
 
   FSessionHubs := TChatSessionHubManager.Create;
@@ -833,6 +843,8 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.PostShowStartup(Sender: TObject);
+var
+  Entry: TWorkspaceEntry;
 begin
   FPostShowStartupTimer.Enabled := False;
   if csDesigning in ComponentState then Exit;
@@ -843,7 +855,9 @@ begin
     ApplyInitialStartupThemes;
   if FPendingInitialWorkspaceUI then begin
     FPendingInitialWorkspaceUI := False;
-    if Trim(FRegistry.ActiveWorkspaceId) <> '' then
+    if FRegistry.Count = 0 then
+      DeactivateWorkspace
+    else if FRegistry.FindById(FRegistry.ActiveWorkspaceId, Entry) then
       ActivateWorkspace(FRegistry.ActiveWorkspaceId)
     else
       DeactivateWorkspace;
@@ -940,10 +954,6 @@ begin
   FNavRailBtns[niTools] := sbtnNavTools;
   FNavRailBtns[niTasks] := sbtnNavTasks;
   FNavRailBtns[niToolErrors] := sbtnNavToolErrors;
-  FNavRailBtns[niMultiAgent] := sbtnNavMultiAgent;
-  FNavRailBtns[niExecutionPlans] := sbtnNavExecPlans;
-  FNavRailBtns[niKnowledgeBase] := sbtnNavKnowledge;
-  FNavRailBtns[niTheBrain] := sbtnNavBrain;
   for Nav := Low(TNavigationItem) to High(TNavigationItem) do begin
     Btn := FNavRailBtns[Nav];
     if not Assigned(Btn) then Continue;
@@ -1140,6 +1150,8 @@ begin
   FNavContent.OnTasksRefresh := @NavTasksRefresh;
   FNavContent.BindProjectsTreeContextMenu(popNavProjects, mnuTreeOpenInApp,
     mnuTreeOpenInFileManager, mnuTreeOpenDefault);
+  FNavContent.BindSessionsListContextMenu(popNavSessions, mnuSessionArchive, mnuSessionRestore,
+    mnuSessionDeletePermanent);
 
   if not Assigned(lcaChatHistory) then begin
     lcaChatHistory := TLcaMarkdownView.Create(Self);
@@ -1216,17 +1228,8 @@ begin
   end;
 
   for Nav := High(TNavigationItem) downto Low(TNavigationItem) do begin
-    if Nav = NavigationFutureFeatureFirst then begin
-      SubItem := TMenuItem.Create(mnuWorkspace);
-      SubItem.Caption := '-';
-      SubItem.Tag := -2;
-      mnuWorkspace.Insert(0, SubItem);
-      SubItem := TMenuItem.Create(mnuWorkspace);
-      SubItem.Caption := 'Future Features';
-      SubItem.Enabled := False;
-      SubItem.Tag := -3;
-      mnuWorkspace.Insert(0, SubItem);
-    end;
+    if NavigationIsFutureFeature(Nav) then
+      Continue;
     SubItem := TMenuItem.Create(mnuWorkspace);
     SubItem.Caption := NavigationCaption(Nav);
     SubItem.Hint := NavigationHint(Nav);
@@ -1453,7 +1456,7 @@ begin
     if Assigned(mnuViewTerminal) then
       mnuViewTerminal.Checked := FState.IsPanelVisible(piTerminal);
     if Assigned(mnuFileRemoveWorkspace) then
-      mnuFileRemoveWorkspace.Enabled := FState.HasActiveWorkspace;
+      mnuFileRemoveWorkspace.Enabled := FRegistry.Count > 0;
 
     if FState.HasActiveWorkspace then
       WsLabel := FState.WorkspaceName
@@ -2208,13 +2211,20 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.MnuFileRemoveWorkspaceClick(Sender: TObject);
+var
+  WsId: string;
 begin
-  if not FState.HasActiveWorkspace then begin
-    LcaShowMessage('No workspace is active. Select one on the Home panel or open a project folder.',
+  if FRegistry.Count = 0 then begin
+    LcaShowMessage('There are no workspaces in the list.', FState.Theme);
+    Exit;
+  end;
+  WsId := ResolveWorkspaceIdForRemoval;
+  if WsId = '' then begin
+    LcaShowMessage('Select a workspace on the Home panel, or activate one, then try again.',
       FState.Theme);
     Exit;
   end;
-  NavWorkspaceDelete(Self, FState.ActiveWorkspaceId);
+  NavWorkspaceDelete(Self, WsId);
 end;
 
 procedure TLazyCodingAgentForm.MnuFileSaveClick(Sender: TObject);
@@ -2267,6 +2277,26 @@ begin
     Exit;
   end;
   TWorkspaceRulesForm.Execute(Self, FState.Theme, FState.WorkspaceRoot);
+end;
+
+procedure TLazyCodingAgentForm.MnuWorkspaceMultiAgentClick(Sender: TObject);
+begin
+  TMultiAgentWorkspaceForm.Execute(Self, FState.Theme, FState.WorkspaceName);
+end;
+
+procedure TLazyCodingAgentForm.MnuWorkspaceExecutionPlansClick(Sender: TObject);
+begin
+  TExecutionPlansConfigForm.Execute(Self, FState.Theme, FState.WorkspaceName);
+end;
+
+procedure TLazyCodingAgentForm.MnuWorkspaceKnowledgeBaseClick(Sender: TObject);
+begin
+  TKnowledgeBaseConfigForm.Execute(Self, FState.Theme, FState.WorkspaceName);
+end;
+
+procedure TLazyCodingAgentForm.MnuWorkspaceTheBrainClick(Sender: TObject);
+begin
+  TTheBrainConfigForm.Execute(Self, FState.Theme, FState.WorkspaceName);
 end;
 
 procedure TLazyCodingAgentForm.MnuHelpUserGuideClick(Sender: TObject);
@@ -2524,16 +2554,38 @@ begin
       Hub.SaveAll;
   end;
   FSessionHubs.RemoveHub(AWorkspaceId, True, False);
+  TAppDatabase.CloseWorkspace(AWorkspaceId);
   FRegistry.RemoveWorkspace(AWorkspaceId);
   FRegistry.Save;
-  if WasActive then begin
-    if FRegistry.Count > 0 then begin
-      NextId := FRegistry.GetEntry(0).Id;
-      ActivateWorkspace(NextId);
-    end else
-      DeactivateWorkspace;
+  if FRegistry.Count = 0 then
+    DeactivateWorkspace
+  else if WasActive then begin
+    NextId := FRegistry.GetEntry(0).Id;
+    ActivateWorkspace(NextId);
   end else
     StateChanged(Self);
+end;
+
+function TLazyCodingAgentForm.ResolveWorkspaceIdForRemoval: string;
+var
+  Entry: TWorkspaceEntry;
+  Idx: Integer;
+begin
+  Result := '';
+  if FRegistry.Count = 0 then Exit;
+  if FRegistry.FindById(FState.ActiveWorkspaceId, Entry) then begin
+    Result := Entry.Id;
+    Exit;
+  end;
+  if FRegistry.Count = 1 then begin
+    Result := FRegistry.GetEntry(0).Id;
+    Exit;
+  end;
+  if (FState.Navigation = niHome) and Assigned(lstNavFile) then begin
+    Idx := lstNavFile.ItemIndex;
+    if (Idx >= 0) and (Idx < FNavWorkIds.Count) then
+      Result := FNavWorkIds[Idx];
+  end;
 end;
 
 procedure TLazyCodingAgentForm.NavWorkspaceDelete(Sender: TObject; const AWorkspaceId: string);

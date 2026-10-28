@@ -704,12 +704,12 @@ begin
         SelIdx := I;
     end;
     if SelIdx >= 0 then
-      FModelCombo.ItemIndex := SelIdx
+      FModelCombo.SetItemIndexSilent(SelIdx)
     else if FModelCombo.Items.Count > 0 then begin
-      FModelCombo.ItemIndex := 0;
+      FModelCombo.SetItemIndexSilent(0);
       FModel := FModelIds[0];
     end else begin
-      FModelCombo.ItemIndex := -1;
+      FModelCombo.SetItemIndexSilent(-1);
       FModel := '';
     end;
   finally
@@ -726,9 +726,9 @@ begin
   Idx := FModelIds.IndexOf(AModel);
   if Assigned(FModelCombo) then begin
     if Idx >= 0 then
-      FModelCombo.ItemIndex := Idx
+      FModelCombo.SetItemIndexSilent(Idx)
     else if FModel = '' then
-      FModelCombo.ItemIndex := -1;
+      FModelCombo.SetItemIndexSilent(-1);
   end;
 end;
 

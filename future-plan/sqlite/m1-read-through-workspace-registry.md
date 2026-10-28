@@ -13,7 +13,7 @@
 - `data/sqlite/uSqliteWorkspaceRegistryRepository.pas`
 - `uWorkspaceRegistry.pas` — `Load` / `Save` → `LoadFromGlobalDb` / `SaveToGlobalDb`
 
-**Note:** `MigrateFromLegacyIni` seeds a first workspace from in-memory workspace name/root when the registry is empty (not an INI file import). `WorkspaceRegistryFileName` remains as a legacy path constant only if still referenced; runtime does not read `workspaces.json`.
+**Note:** The registry is never auto-seeded on launch; workspaces are added only when the user opens or creates a project folder. `WorkspaceRegistryFileName` remains as a legacy path constant only if still referenced; runtime does not read `workspaces.json`.
 
 ## Acceptance criteria
 

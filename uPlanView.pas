@@ -123,9 +123,9 @@ begin
         SelIdx := I;
     end;
     if SelIdx >= 0 then
-      FModelCombo.ItemIndex := SelIdx
+      FModelCombo.SetItemIndexSilent(SelIdx)
     else if FModelCombo.Items.Count > 0 then begin
-      FModelCombo.ItemIndex := 0;
+      FModelCombo.SetItemIndexSilent(0);
       FModel := FModelIds[0];
     end else
       FModel := '';
@@ -142,7 +142,7 @@ begin
   FModel := AModel;
   Idx := FModelIds.IndexOf(AModel);
   if Assigned(FModelCombo) and (Idx >= 0) then
-    FModelCombo.ItemIndex := Idx;
+    FModelCombo.SetItemIndexSilent(Idx);
 end;
 
 function TPlanView.SelectedModelId: string;

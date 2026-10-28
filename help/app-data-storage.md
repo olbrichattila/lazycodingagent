@@ -28,7 +28,7 @@ In **`global.db`:**
 
 ## Secrets
 
-API keys and similar secrets are encrypted in the database before they are written. This protects casual inspection of backup files; it does **not** stop someone who has both the application binary and your database file from recovering keys (the app embeds the decryption material).
+API keys and similar secrets are **obfuscated** in the database before they are written, using built-in Free Pascal code (embedded key material, per-secret salt, and Base64 storage). No OpenSSL or other crypto DLL is required for settings. This protects casual inspection of backup files; it does **not** stop someone who has both the application binary and your database file from recovering keys (the app embeds the decryption material).
 
 ## Recovery
 

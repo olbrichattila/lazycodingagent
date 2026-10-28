@@ -9,13 +9,13 @@
     "id": "workspace-layout",
     "title": "Workspace layout and panels",
     "file": "workspace-layout.md",
-    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "painted", "scrollbar", "native", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "editor", "markdown", "html preview", "detach", "floating panel", "execution detail", "json", "remove workspace", "workspaces list"]
+    "keywords": ["navigation", "layout", "page control", "terminal", "utility", "splitter", "theme", "painted", "scrollbar", "native", "tool error", "tool-errors.log", "roadmap", "future", "multi-agent", "knowledge base", "execution plans", "brain", "coming soon", "workspace menu", "setup dialog", "project rules", "tasks and plans", "editor", "markdown", "html preview", "detach", "floating panel", "execution detail", "json", "remove workspace", "workspaces list"]
   },
   {
     "id": "chat-and-modes",
     "title": "Chat, sessions, and modes",
     "file": "chat-and-modes.md",
-    "keywords": ["session", "new session", "archive", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment", "sandbox", "outside", "working directory", "allow modify"]
+    "keywords": ["session", "new session", "archive", "delete session", "permanently delete", "right-click", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment", "sandbox", "outside", "working directory", "allow modify", "base url", "base api endpoint", "provider", "nous research", "openrouter", "endpoint"]
   },
   {
     "id": "project-rules",

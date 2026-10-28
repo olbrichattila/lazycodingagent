@@ -130,7 +130,8 @@ function LoadPersistedThemeKind: TThemeKind;
 implementation
 
 uses
-  Forms, uAppDatabase, uRepositoryInterfaces, uGlobalConfigKeys, uAppSettingsCodec;
+  Forms, uAppDatabase, uRepositoryInterfaces, uGlobalConfigKeys, uAppSettingsCodec,
+  uLlmProviderCatalog;
 
 const
   LLM_CONFIG_VERSION = 4;
@@ -153,7 +154,7 @@ end;
 
 function DefaultBaseUrlForProvider(AProv: TLlmProvider): string;
 begin
-  Result := '';
+  Result := LlmProviderDefaultApiBaseUrl(AProv);
 end;
 
 function TWorkspaceState.HasActiveWorkspace: Boolean;
@@ -560,6 +561,8 @@ begin
       Prov := TLlmProvider(ProvRows[I].ProviderOrd);
       FProviderCreds[Prov].ApiKey := ProvRows[I].ApiKey;
       FProviderCreds[Prov].BaseUrl := ProvRows[I].BaseUrl;
+      if Trim(FProviderCreds[Prov].BaseUrl) = '' then
+        FProviderCreds[Prov].BaseUrl := LlmProviderDefaultApiBaseUrl(Prov);
     end;
   for I := 0 to High(ModelRows) do
     if (ModelRows[I].ProviderOrd >= Ord(Low(TLlmProvider))) and

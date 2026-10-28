@@ -446,6 +446,8 @@ begin
   if not Assigned(FState) then Exit;
   FState.GetProviderCredentials(AProv, Key, Url);
   edtApiKey.Text := Key;
+  if Trim(Url) = '' then
+    Url := LlmProviderDefaultApiBaseUrl(AProv);
   edtBaseUrl.Text := Url;
   if Assigned(edtCustomName) then
     edtCustomName.Text := FState.GetProviderCustomDisplayName(lpCustom);

@@ -63,58 +63,6 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       ParentBackground = False
       ParentColor = False
       TabOrder = 0
-      object sbtnNavBrain: TLcaPaintNavRailButton
-        Tag = 10
-        Cursor = crHandPoint
-        Left = 0
-        Height = 40
-        Top = 360
-        Width = 76
-        Caption = '◉'
-        OnClick = NavRailBtnClick
-        Align = alTop
-        Font.Color = 7237230
-        Font.Height = -24
-      end
-      object sbtnNavKnowledge: TLcaPaintNavRailButton
-        Tag = 9
-        Cursor = crHandPoint
-        Left = 0
-        Height = 40
-        Top = 320
-        Width = 76
-        Caption = '📖'
-        OnClick = NavRailBtnClick
-        Align = alTop
-        Font.Color = 7237230
-        Font.Height = -24
-      end
-      object sbtnNavExecPlans: TLcaPaintNavRailButton
-        Tag = 8
-        Cursor = crHandPoint
-        Left = 0
-        Height = 40
-        Top = 280
-        Width = 76
-        Caption = '☑'
-        OnClick = NavRailBtnClick
-        Align = alTop
-        Font.Color = 7237230
-        Font.Height = -24
-      end
-      object sbtnNavMultiAgent: TLcaPaintNavRailButton
-        Tag = 7
-        Cursor = crHandPoint
-        Left = 0
-        Height = 40
-        Top = 400
-        Width = 76
-        Caption = '⬡'
-        OnClick = NavRailBtnClick
-        Align = alTop
-        Font.Color = 7237230
-        Font.Height = -24
-      end
       object sbtnNavToolErrors: TLcaPaintNavRailButton
         Tag = 6
         Cursor = crHandPoint
@@ -1430,6 +1378,22 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
       Caption = 'Open with Default Application'
     end
   end
+  object popNavSessions: TPopupMenu
+    Left = 36
+    Top = 340
+    object mnuSessionArchive: TMenuItem
+      Caption = 'Archive Session'
+    end
+    object mnuSessionRestore: TMenuItem
+      Caption = 'Restore Session'
+    end
+    object mnuSessionDeleteSep: TMenuItem
+      Caption = '-'
+    end
+    object mnuSessionDeletePermanent: TMenuItem
+      Caption = 'Permanently Delete...'
+    end
+  end
   object lcaMainMenu: TLcaThemedMainMenu
     Left = 540
     Top = 18
@@ -1492,6 +1456,26 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
     end
     object mnuWorkspace: TMenuItem
       Caption = '&Workspace'
+      object mnuWorkspaceMultiAgent: TMenuItem
+        Tag = -1
+        Caption = 'Multi-Agent Workspace...'
+        OnClick = MnuWorkspaceMultiAgentClick
+      end
+      object mnuWorkspaceExecutionPlans: TMenuItem
+        Tag = -1
+        Caption = 'Execution Plans...'
+        OnClick = MnuWorkspaceExecutionPlansClick
+      end
+      object mnuWorkspaceKnowledgeBase: TMenuItem
+        Tag = -1
+        Caption = 'Workspace Knowledge Base...'
+        OnClick = MnuWorkspaceKnowledgeBaseClick
+      end
+      object mnuWorkspaceTheBrain: TMenuItem
+        Tag = -1
+        Caption = 'The Brain...'
+        OnClick = MnuWorkspaceTheBrainClick
+      end
       object mnuWorkspaceSepRules: TMenuItem
         Tag = -1
         Caption = '-'

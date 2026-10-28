@@ -514,6 +514,38 @@
         <ResourceBaseClass Value="Form"/>
       </Unit>
       <Unit>
+        <Filename Value="uFutureFeatureFormCommon.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmMultiAgentWorkspace.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="MultiAgentWorkspaceForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmExecutionPlansConfig.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="ExecutionPlansConfigForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmKnowledgeBaseConfig.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="KnowledgeBaseConfigForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
+        <Filename Value="frmTheBrainConfig.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="TheBrainConfigForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+      </Unit>
+      <Unit>
         <Filename Value="uAgentRules.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

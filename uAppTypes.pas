@@ -58,10 +58,10 @@ begin
     niTools: Result := 'Tools - Local tool execution & logs';
     niTasks: Result := 'Tasks - Active plan & task checklists';
     niToolErrors: Result := 'Tool Errors - Failed tools & on-disk error log';
-    niMultiAgent: Result := 'Multi-Agent Workspace - Specialised collaborating agents (coming soon)';
-    niExecutionPlans: Result := 'Execution Plans - Structured plans and progress tracking (coming soon)';
-    niKnowledgeBase: Result := 'Workspace Knowledge Base - RAG and project documentation (coming soon)';
-    niTheBrain: Result := 'The Brain - Adaptive learning and memory (coming soon)';
+    niMultiAgent: Result := 'Multi-Agent Workspace - Configure from Workspace menu (coming soon)';
+    niExecutionPlans: Result := 'Execution Plans - Configure from Workspace menu (coming soon)';
+    niKnowledgeBase: Result := 'Workspace Knowledge Base - Configure from Workspace menu (coming soon)';
+    niTheBrain: Result := 'The Brain - Configure from Workspace menu (coming soon)';
   end;
 end;
 

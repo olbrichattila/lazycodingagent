@@ -39,7 +39,6 @@ type
     procedure Save;
     procedure LoadFromGlobalDb;
     procedure SaveToGlobalDb;
-    procedure MigrateFromLegacyIni(const ALegacyName, ALegacyRoot: string);
   end;
 
 function WorkspaceRegistryFileName: string;
@@ -217,25 +216,12 @@ begin
   SaveToGlobalDb;
 end;
 
-procedure TWorkspaceRegistry.MigrateFromLegacyIni(const ALegacyName, ALegacyRoot: string);
-var
-  Norm: string;
-  Id: string;
-begin
-  if Count > 0 then Exit;
-  Norm := NormalizeWorkspaceFolderPath(ALegacyRoot);
-  if (Norm = '') or not DirectoryExists(Norm) then Exit;
-  Id := AddWorkspace(ALegacyName, Norm);
-  if FActiveWorkspaceId = '' then
-    FActiveWorkspaceId := Id;
-  Save;
-end;
-
 procedure TWorkspaceRegistry.LoadFromGlobalDb;
 var
   Repo: IWorkspaceRegistryRepository;
   Rows: TRegistryWorkspaceRows;
   I: Integer;
+  SanitizeActive: Boolean;
 begin
   SetLength(FEntries, 0);
   FActiveWorkspaceId := '';
@@ -249,6 +235,18 @@ begin
     FEntries[I].FolderPath := Rows[I].FolderPath;
     FEntries[I].LastSessionId := Rows[I].LastSessionId;
   end;
+  SanitizeActive := False;
+  if Count = 0 then begin
+    if FActiveWorkspaceId <> '' then begin
+      FActiveWorkspaceId := '';
+      SanitizeActive := True;
+    end;
+  end else if (Trim(FActiveWorkspaceId) <> '') and (IndexOfId(FActiveWorkspaceId) < 0) then begin
+    FActiveWorkspaceId := '';
+    SanitizeActive := True;
+  end;
+  if SanitizeActive then
+    SaveToGlobalDb;
 end;
 
 procedure TWorkspaceRegistry.SaveToGlobalDb;

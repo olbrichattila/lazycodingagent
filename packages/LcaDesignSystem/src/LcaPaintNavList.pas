@@ -9,7 +9,7 @@ unit LcaPaintNavList;
 interface
 
 uses
-  Classes, Controls, Graphics, LcaThemedControl, LcaTheme, LcaScrollHost;
+  Classes, Controls, Graphics, Menus, LcaThemedControl, LcaTheme, LcaScrollHost;
 
 type
   TLcaPaintNavList = class;
@@ -73,6 +73,7 @@ type
     property ItemHeight: Integer read FItemHeight write SetItemHeight;
     property OnClick: TNotifyEvent read FOnClick write FOnClick;
     property OnKeyDown: TKeyEvent read FOnKeyDown write FOnKeyDown;
+    property PopupMenu;
     property Align;
     property Anchors;
     property Left;
@@ -444,6 +445,15 @@ procedure TLcaPaintNavList.ContentMouseDown(Button: TMouseButton; {%H-}Shift: TS
 var
   Idx: Integer;
 begin
+  if Button = mbRight then begin
+    SetFocus;
+    Idx := IndexAtContentY(Y);
+    if Idx >= 0 then
+      ChangeItemIndex(Idx, True, False);
+    if Assigned(PopupMenu) then
+      PopupMenu.Popup(Mouse.CursorPos.X, Mouse.CursorPos.Y);
+    Exit;
+  end;
   if Button <> mbLeft then Exit;
   SetFocus;
   Idx := IndexAtContentY(Y);

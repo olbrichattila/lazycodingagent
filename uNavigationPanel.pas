@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Types, Controls, ExtCtrls, StdCtrls, Graphics, Dialogs,
   ComCtrls, Menus, LCLType, uAppTypes, LcaTheme, LcaPaintButton, LcaThemedMessageBox,
   uCodingAgentPresets,
-  uAgentExecutionLog, uAgentToolErrorLog, uNavFuturePlaceholder, LcaPaintNavList,
+  uAgentExecutionLog, uAgentToolErrorLog, LcaPaintNavList,
   uOsShell, FileUtil;
 
 type
@@ -54,6 +54,10 @@ type
     FMnuTreeOpenInFileManager: TMenuItem;
     FMnuTreeOpenDefault: TMenuItem;
     FContextTreeNode: TTreeNode;
+    FSessionsListPopup: TPopupMenu;
+    FMnuSessionArchive: TMenuItem;
+    FMnuSessionRestore: TMenuItem;
+    FMnuSessionDeletePermanent: TMenuItem;
 
     FOnWorkspaceSelect: TNavWorkspaceSelectEvent;
     FOnWorkspaceNew: TNavWorkspaceActionEvent;
@@ -91,6 +95,11 @@ type
     procedure MnuTreeOpenInAppClick(Sender: TObject);
     procedure MnuTreeOpenInFileManagerClick(Sender: TObject);
     procedure MnuTreeOpenDefaultClick(Sender: TObject);
+    procedure SessionsListMenuPopup(Sender: TObject);
+    procedure MnuSessionArchiveMenuClick(Sender: TObject);
+    procedure MnuSessionRestoreMenuClick(Sender: TObject);
+    procedure MnuSessionDeletePermanentMenuClick(Sender: TObject);
+    procedure ApplyNavFileListPopupMenu;
     function TreeNodeDisplaySegment(const ACaption: string): string;
     function TreeNodeAbsolutePath(ANode: TTreeNode): string;
     function IsTreePathAFile(const APath: string): Boolean;
@@ -106,6 +115,8 @@ type
       ATree: TTreeView; ALogList, AErrorLogList: TControl; APrimaryBtn, ASecondaryBtn: TLcaPaintButton);
     procedure BindProjectsTreeContextMenu(APopup: TPopupMenu; AOpenInApp, AOpenInFileManager,
       AOpenDefault: TMenuItem);
+    procedure BindSessionsListContextMenu(APopup: TPopupMenu; AArchive, ARestore,
+      ADeletePermanent: TMenuItem);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure ApplyPlatformChrome(ATheme: TThemeKind);
     procedure SetSelected(AItem: TNavigationItem; const AWorkspaceName, AWorkspaceRoot: string);
@@ -224,6 +235,14 @@ procedure NavListWireDrawItem(ACtrl: TControl; AHandler: TDrawItemEvent);
 begin
   if ACtrl is TListBox then
     TListBox(ACtrl).OnDrawItem := AHandler;
+end;
+
+procedure NavListSetPopupMenu(ACtrl: TControl; APopup: TPopupMenu);
+begin
+  if ACtrl is TLcaPaintNavList then
+    TLcaPaintNavList(ACtrl).PopupMenu := APopup
+  else if ACtrl is TListBox then
+    TListBox(ACtrl).PopupMenu := APopup;
 end;
 
 constructor TNavContentControl.Create(AOwner: TComponent);
@@ -497,8 +516,9 @@ procedure TNavContentControl.SetSelected(AItem: TNavigationItem; const AWorkspac
 begin
   FSelected := AItem;
   FWorkspaceName := AWorkspaceName;
-  if Trim(AWorkspaceRoot) <> '' then
-    FWorkspaceRoot := AWorkspaceRoot;
+  FWorkspaceRoot := AWorkspaceRoot;
+  if Trim(AWorkspaceRoot) = '' then
+    FLastPopulatedRoot := '';
   RebuildView;
 end;
 
@@ -678,6 +698,95 @@ begin
     AOpenDefault.OnClick := @MnuTreeOpenDefaultClick;
 end;
 
+procedure TNavContentControl.BindSessionsListContextMenu(APopup: TPopupMenu; AArchive,
+  ARestore, ADeletePermanent: TMenuItem);
+begin
+  FSessionsListPopup := APopup;
+  FMnuSessionArchive := AArchive;
+  FMnuSessionRestore := ARestore;
+  FMnuSessionDeletePermanent := ADeletePermanent;
+  if Assigned(APopup) then
+    APopup.OnPopup := @SessionsListMenuPopup;
+  if Assigned(AArchive) then
+    AArchive.OnClick := @MnuSessionArchiveMenuClick;
+  if Assigned(ARestore) then
+    ARestore.OnClick := @MnuSessionRestoreMenuClick;
+  if Assigned(ADeletePermanent) then
+    ADeletePermanent.OnClick := @MnuSessionDeletePermanentMenuClick;
+  ApplyNavFileListPopupMenu;
+end;
+
+procedure TNavContentControl.ApplyNavFileListPopupMenu;
+begin
+  if not Assigned(FFileList) then Exit;
+  if FSelected = niSessions then
+    NavListSetPopupMenu(FFileList, FSessionsListPopup)
+  else
+    NavListSetPopupMenu(FFileList, nil);
+end;
+
+procedure TNavContentControl.SessionsListMenuPopup(Sender: TObject);
+var
+  Idx: Integer;
+  Archived: Boolean;
+  OnSessions: Boolean;
+begin
+  OnSessions := FSelected = niSessions;
+  if Assigned(FMnuSessionArchive) then
+    FMnuSessionArchive.Visible := OnSessions;
+  if Assigned(FMnuSessionRestore) then
+    FMnuSessionRestore.Visible := OnSessions;
+  if Assigned(FMnuSessionDeletePermanent) then
+    FMnuSessionDeletePermanent.Visible := OnSessions;
+  if not OnSessions then Exit;
+  Idx := NavListItemIndex(FFileList);
+  Archived := (Idx >= 0) and (Idx < FSessionArchived.Count) and
+    SameText(FSessionArchived[Idx], '1');
+  if Assigned(FMnuSessionArchive) then begin
+    FMnuSessionArchive.Visible := not Archived;
+    FMnuSessionArchive.Enabled := (Idx >= 0) and (Idx < FSessionIds.Count);
+  end;
+  if Assigned(FMnuSessionRestore) then begin
+    FMnuSessionRestore.Visible := Archived;
+    FMnuSessionRestore.Enabled := (Idx >= 0) and (Idx < FSessionIds.Count);
+  end;
+  if Assigned(FMnuSessionDeletePermanent) then
+    FMnuSessionDeletePermanent.Enabled := (Idx >= 0) and (Idx < FSessionIds.Count);
+end;
+
+procedure TNavContentControl.MnuSessionArchiveMenuClick(Sender: TObject);
+var
+  Idx: Integer;
+begin
+  if FSelected <> niSessions then Exit;
+  Idx := NavListItemIndex(FFileList);
+  if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
+  if Assigned(FOnSessionArchive) then
+    FOnSessionArchive(Self, FSessionIds[Idx]);
+end;
+
+procedure TNavContentControl.MnuSessionRestoreMenuClick(Sender: TObject);
+var
+  Idx: Integer;
+begin
+  if FSelected <> niSessions then Exit;
+  Idx := NavListItemIndex(FFileList);
+  if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
+  if Assigned(FOnSessionRestore) then
+    FOnSessionRestore(Self, FSessionIds[Idx]);
+end;
+
+procedure TNavContentControl.MnuSessionDeletePermanentMenuClick(Sender: TObject);
+var
+  Idx: Integer;
+begin
+  if FSelected <> niSessions then Exit;
+  Idx := NavListItemIndex(FFileList);
+  if (Idx < 0) or (Idx >= FSessionIds.Count) then Exit;
+  if Assigned(FOnSessionDelete) then
+    FOnSessionDelete(Self, FSessionIds[Idx]);
+end;
+
 procedure TNavContentControl.TreeViewMouseDown(Sender: TObject; Button: TMouseButton;
   {%H-}Shift: TShiftState; X, Y: Integer);
 begin
@@ -832,8 +941,6 @@ begin
     niToolErrors:
       if Assigned(FOnClearToolErrorLog) then
         FOnClearToolErrorLog(Self);
-    niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain:
-      ;
   end;
 end;
 
@@ -966,19 +1073,8 @@ begin
           NavListItems(FFileList).Add('No tasks tracked for this session.');
         FActionBtn.Caption := '🔄 Refresh Tasks';
       end;
-    niMultiAgent, niExecutionPlans, niKnowledgeBase, niTheBrain:
-      begin
-        FFileList.Visible := True;
-        FTitleLabel.Caption := NavigationFutureFeatureTitle(FSelected);
-        FSubLabel.Caption := 'Roadmap preview — functionality not available yet.';
-        if Assigned(FComingSoonLabel) then begin
-          FComingSoonLabel.Caption := 'COMING SOON';
-          FComingSoonLabel.Visible := True;
-        end;
-        PopulateFutureFeatureNavList(FSelected, NavListItems(FFileList));
-        FActionBtn.Visible := False;
-      end;
   end;
+  ApplyNavFileListPopupMenu;
 end;
 
 procedure TNavContentControl.SetCenterAddTabAvailable(AAvailable: Boolean);

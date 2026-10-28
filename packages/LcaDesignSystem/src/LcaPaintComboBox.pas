@@ -21,6 +21,8 @@ type
     FDropDown: TObject;
     FOnChange: TNotifyEvent;
     FOnSelect: TNotifyEvent;
+    procedure DeferredFireSelectionEvents({%H-}Data: PtrInt);
+    procedure DetachDropDownInstance(ADropDown: TObject);
     procedure SetItemIndex(AValue: Integer);
     procedure SetItemHeight(AValue: Integer);
     procedure SetShowFocusRing(AValue: Boolean);
@@ -47,6 +49,7 @@ type
     procedure NotifyDropDownSelected(AIndex: Integer);
     procedure NotifyDropDownClosed;
     procedure NotifyDropDownOpened;
+    procedure SetItemIndexSilent(AValue: Integer);
   published
     property Items: TStrings read FItems;
     property ItemIndex: Integer read FItemIndex write SetItemIndex default -1;
@@ -119,6 +122,14 @@ var
   GComboDropDownHooksInstalled: Boolean = False;
   GComboDropDownHookHelper: TComboDropDownHookHelper;
   GComboDropDownDismissSuppressUntil: QWord = 0;
+
+function ComboDropDownPanel(ACombo: TLcaPaintComboBox): TLcaPaintComboDropDown;
+begin
+  Result := nil;
+  if not Assigned(ACombo) then Exit;
+  if ACombo.FDropDown is TLcaPaintComboDropDown then
+    Result := TLcaPaintComboDropDown(ACombo.FDropDown);
+end;
 
 procedure InstallComboDropDownHooks;
 begin
@@ -226,8 +237,9 @@ end;
 
 destructor TLcaPaintComboDropDown.Destroy;
 begin
-  if Visible then
-    UnregisterComboDropDown(Self);
+  UnregisterComboDropDown(Self);
+  if Assigned(FCombo) then
+    FCombo.DetachDropDownInstance(Self);
   inherited Destroy;
 end;
 
@@ -277,10 +289,13 @@ begin
 end;
 
 procedure TLcaPaintComboDropDown.CommitIndex(AIndex: Integer);
+var
+  Combo: TLcaPaintComboBox;
 begin
-  if Assigned(FCombo) then
-    FCombo.NotifyDropDownSelected(AIndex);
+  Combo := FCombo;
   HideDropDown;
+  if Assigned(Combo) then
+    Combo.NotifyDropDownSelected(AIndex);
 end;
 
 procedure TLcaPaintComboDropDown.CancelDropDown;
@@ -295,6 +310,7 @@ var
   Origin, P: TPoint;
   WorkArea: TRect;
   F: TCustomForm;
+  Mon: TMonitor;
 begin
   if not Assigned(ACombo) then Exit;
   F := GetParentForm(ACombo);
@@ -318,7 +334,11 @@ begin
   if Height = 0 then Exit;
 
   Origin := ACombo.ClientToScreen(Point(0, ACombo.Height));
-  WorkArea := Screen.MonitorFromPoint(Origin).WorkareaRect;
+  Mon := Screen.MonitorFromPoint(Origin);
+  if Mon <> nil then
+    WorkArea := Mon.WorkareaRect
+  else
+    WorkArea := Screen.DesktopRect;
   if Origin.X + Width > WorkArea.Right then
     Origin.X := WorkArea.Right - Width;
   if Origin.Y + Height > WorkArea.Bottom then begin
@@ -550,22 +570,29 @@ begin
 end;
 
 procedure TLcaPaintComboBox.CloseDropDown;
+var
+  DD: TLcaPaintComboDropDown;
 begin
   FDroppedDown := False;
-  if Assigned(FDropDown) and TLcaPaintComboDropDown(FDropDown).Visible then
-    TLcaPaintComboDropDown(FDropDown).HideDropDown;
+  DD := ComboDropDownPanel(Self);
+  if Assigned(DD) and DD.Visible then
+    DD.HideDropDown;
   Invalidate;
 end;
 
 procedure TLcaPaintComboBox.OpenDropDown;
+var
+  DD: TLcaPaintComboDropDown;
 begin
   if not Enabled then Exit;
   if not Assigned(FItems) or (FItems.Count = 0) then Exit;
   if FDropDown = nil then
-    FDropDown := TLcaPaintComboDropDown.Create(nil);
+    FDropDown := TLcaPaintComboDropDown.Create(Self);
   FDroppedDown := True;
   Invalidate;
-  TLcaPaintComboDropDown(FDropDown).ShowForCombo(Self);
+  DD := ComboDropDownPanel(Self);
+  if Assigned(DD) then
+    DD.ShowForCombo(Self);
 end;
 
 constructor TLcaPaintComboBox.Create(AOwner: TComponent);
@@ -586,6 +613,8 @@ end;
 
 destructor TLcaPaintComboBox.Destroy;
 begin
+  if Assigned(Application) then
+    Application.RemoveAsyncCalls(Self);
   CloseDropDown;
   FreeAndNil(FDropDown);
   FreeAndNil(FItems);
@@ -629,10 +658,13 @@ begin
 end;
 
 procedure TLcaPaintComboBox.ApplyTheme(ATheme: TThemeKind);
+var
+  DD: TLcaPaintComboDropDown;
 begin
   inherited ApplyTheme(ATheme);
-  if Assigned(FDropDown) and TLcaPaintComboDropDown(FDropDown).Visible then
-    TLcaPaintComboDropDown(FDropDown).ApplyTheme(ATheme);
+  DD := ComboDropDownPanel(Self);
+  if Assigned(DD) and DD.Visible then
+    DD.ApplyTheme(ATheme);
 end;
 
 procedure TLcaPaintComboBox.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
@@ -691,11 +723,38 @@ begin
   Invalidate;
 end;
 
-procedure TLcaPaintComboBox.NotifyDropDownSelected(AIndex: Integer);
+procedure TLcaPaintComboBox.SetItemIndexSilent(AValue: Integer);
 begin
-  ChangeSelection(AIndex, True);
+  if (AValue < -1) or (Assigned(FItems) and (AValue >= FItems.Count)) then Exit;
+  ChangeSelection(AValue, False);
+end;
+
+procedure TLcaPaintComboBox.DetachDropDownInstance(ADropDown: TObject);
+begin
+  if FDropDown = ADropDown then
+    FDropDown := nil;
   FDroppedDown := False;
+end;
+
+procedure TLcaPaintComboBox.DeferredFireSelectionEvents({%H-}Data: PtrInt);
+begin
+  if csDestroying in ComponentState then Exit;
+  if Assigned(FOnSelect) then
+    FOnSelect(Self);
+  if Assigned(FOnChange) then
+    FOnChange(Self);
+end;
+
+procedure TLcaPaintComboBox.NotifyDropDownSelected(AIndex: Integer);
+var
+  IndexChanged: Boolean;
+begin
+  FDroppedDown := False;
+  IndexChanged := FItemIndex <> AIndex;
+  ChangeSelection(AIndex, False);
   Invalidate;
+  if IndexChanged and Assigned(Application) then
+    Application.QueueAsyncCall(@DeferredFireSelectionEvents, 0);
 end;
 
 procedure TLcaPaintComboBox.NotifyDropDownClosed;

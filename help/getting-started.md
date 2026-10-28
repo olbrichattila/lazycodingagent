@@ -2,20 +2,24 @@
 
 LazyCodingAgent is a desktop AI coding workspace. You open a **project folder** as a workspace, chat with an LLM in multiple **sessions**, and (in Agent mode) let the assistant read and change files under that folder using **tools**.
 
-On launch, a **branded splash image** appears while the workspace starts (about one second after loading finishes). Window chrome follows your saved theme (dark by default, or light if you chose **View → Toggle Light / Dark Theme** last time).
+On launch, a **branded splash image** appears while the app loads (about one second after loading finishes). Window chrome follows your saved theme (dark by default, or light if you chose **View → Toggle Light / Dark Theme** last time).
+
+LazyCodingAgent does **not** register a project folder automatically. On a fresh install you can have **zero workspaces** until you add one.
 
 ## Open or create a workspace
 
-1. Use **File → Open Project Folder** to point at an existing code tree, or create a workspace from the home flow when offered.
-2. The status bar and chat hero show the active workspace name.
-3. Panel layout, theme, and dock state are saved per workspace in application settings.
+1. Use **File → Open Project Folder** to point at an existing code tree, or **File → New Workspace** (or **Home → + New Workspace**) to create one.
+2. After you select a workspace, the status bar and chat hero show its name.
+3. Panel layout, theme, and dock state are saved in application settings.
 
 ## Remove a workspace from the list
 
 To stop showing a project in LazyCodingAgent without deleting anything on disk:
 
 - **Home** (Workspaces panel): select a workspace, then **Remove from List** or press **Delete**.
-- **File → Remove Workspace from List…** removes the **currently active** workspace.
+- **File → Remove Workspace from List…** removes the active workspace, the only listed workspace, or the row selected on Home when several are registered.
+
+You may remove **every** workspace from the list. The Home panel then shows **No workspace yet — create or open a project folder**, the status bar shows **Workspace: (none)**, and chat stays hidden until you use **File → Open Project Folder** or **+ New Workspace**.
 
 The app only updates its workspace list and related settings. Your **project folder is not modified or deleted**. **Chat session history** stays in application config; if you open the same folder again later, sessions can reappear.
 
@@ -51,7 +55,7 @@ Chat, **Fetch Models**, and the agent need **HTTPS**. On Linux the app uses the 
 - **arm64 `.deb` (Raspberry Pi OS, Debian, Ubuntu):** Installing the release package should pull in **`libssl3`** automatically. If HTTPS still fails after an upgrade, run `sudo apt install libssl3` (on some distros the package is named `libssl3t64`).
 - **Built from source on the Pi:** Install the runtime before using AI features: `sudo apt install libssl3`. You do not need the `-dev` package to run the app.
 
-Settings and chat show a clear error instead of crashing when OpenSSL is missing.
+Chat and **Fetch Models** show a clear error instead of crashing when OpenSSL is missing on Linux. Saving API keys in **Settings** does not require OpenSSL on any platform.
 
 ## Your first chat
 

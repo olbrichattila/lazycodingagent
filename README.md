@@ -339,7 +339,7 @@ All HTTPS traffic goes through [`uLlmClient.pas`](uLlmClient.pas) (Settings **Fe
 
 | Platform | Transport | Notes |
 |----------|-----------|--------|
-| **Windows** | WinHTTP + Schannel ([`uWindowsHTTP.pas`](uWindowsHTTP.pas)) | No OpenSSL DLLs beside the exe |
+| **Windows** | WinHTTP + Schannel ([`uWindowsHTTP.pas`](uWindowsHTTP.pas)) | HTTPS does not need OpenSSL DLLs. **Settings** API keys use built-in obfuscation ([`data/uSecurityManager.pas`](data/uSecurityManager.pas)), not external crypto libraries. |
 | **Linux / macOS** | `fphttpclient` + `opensslsockets` | **OpenSSL 3** runtime (`libssl3` on Debian / Raspberry Pi OS bookworm+). The project vendors a small FPC `openssl` unit tweak so `libssl.so.3` is found (see [`third_party/fpc-openssl3/`](third_party/fpc-openssl3/)). Socket `IOTimeout` is in **milliseconds**, matching `TLlmClient.TimeoutMs` (default 60s). |
 
 If Fetch Models or chat fails with an OpenSSL error on Linux, install the runtime package: `sudo apt install libssl3` (on some releases the package name is `libssl3t64`). You do **not** need `libssl-dev` to run the app. The app surfaces a dialog instead of crashing when SSL is unavailable. On macOS, use system libs or Homebrew `openssl@3` as usual.

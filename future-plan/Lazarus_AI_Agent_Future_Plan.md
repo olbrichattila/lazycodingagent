@@ -54,25 +54,24 @@ Keep orchestration separate from an individual agent's execution loop. The orche
 
 ### Intended scope
 
-Add menu/navigation options and real navigable panels for all four future areas:
+Expose all four future areas from the **Workspace** menu as classic modal setup dialogs (same interaction model as Project Rules and other `frm*` configuration forms). Each dialog previews the eventual settings layout with **disabled** controls, a visible **Coming Soon** label, and a read-only capabilities list sourced from the roadmap.
 
-| Navigation entry | Panel heading |
+| Workspace menu item | Dialog title |
 | --- | --- |
-| Multi-Agent Workspace | Multi-Agent Workspace |
-| Execution Plans | Execution Plans & Progress Tracking |
-| Workspace Knowledge Base | Workspace Knowledge Base (RAG) |
-| The Brain | The Brain — Adaptive Learning & Memory |
+| Multi-Agent Workspace… | Multi-Agent Workspace |
+| Execution Plans… | Execution Plans & Progress Tracking |
+| Workspace Knowledge Base… | Workspace Knowledge Base (RAG) |
+| The Brain… | The Brain — Adaptive Learning & Memory |
 
-Every panel should contain a title, concise explanation, a visible **Coming Soon** label and a brief capabilities list. Group these within the existing navigation, preferably under **Future Features**. Reuse the current visual style and navigation conventions.
+These entries are **not** on the left navigation rail. The rail keeps **Tasks & Plans**, which shows the live session todo list from the agent todo tool. **Execution Plans** (this menu item) is the future project-level numbered plan tracker described in section 6 — a separate product surface from session tasks.
 
 ### Constraints and completion criteria
 
-- Use existing Lazarus LCL components and project conventions.
+- Use existing Lazarus LCL components, LCA Design themed buttons, and project form conventions (`.pas` + `.lfm`, `ApplyThemedForm`).
 - Preserve chat, tools, logs, execution details and provider integration.
-- Support resizing, panel switching and returning to existing functionality.
 - Preserve Windows and Linux compatibility; avoid platform-specific UI additions.
-- Add no functional agents, storage, crawling, RAG, memory or orchestration in this stage.
-- Compile through the existing build process and verify navigation in the running app where available.
+- Add no functional agents, storage, crawling, RAG, memory or orchestration in this stage; all preview controls remain disabled.
+- Compile through the existing build process and verify each menu item opens the correct dialog where available.
 - Report build results and runtime checks separately; do not claim checks that were not performed.
 
 ## 5. Multi-Agent Workspace
@@ -348,7 +347,7 @@ The order below is a recommendation for later planning, not a delivery commitmen
 
 | Phase | Deliverable | Exit condition |
 | --- | --- | --- |
-| 0 | Future-feature menus and Coming Soon panels | All four panels navigate correctly; existing UI remains usable |
+| 0 | Future-feature Workspace menu and Coming Soon setup forms | All four dialogs open from the menu with disabled previews; nav rail unchanged for live views; existing UI remains usable |
 | 1 | Recorder/replay foundation review | Exact trace behavior documented; persistence and replay gaps resolved |
 | 2 | Persistent plans and central tracker | Tasks, approvals, evidence and restart recovery work |
 | 3 | Workspace knowledge MVP | Local/free-text sources retrieve with citations and refresh correctly |

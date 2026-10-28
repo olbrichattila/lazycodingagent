@@ -8,7 +8,7 @@ Each workspace can run **several chat sessions** in parallel:
 - Switching sessions or workspaces does **not** stop a run in another session; it continues in the background.
 - Switch sessions from the **tab strip inside the Chat page** (one tab per active chat) or from **Sessions** in the nav rail; the active session name also appears in the **Session:** label on the Chat page.
 
-Create sessions from **Sessions** (**+ New Chat Session**) or click **+** on the **session tab strip** at the top of the Chat page (same action). **✕** on a session tab archives that chat (restore from **Sessions**). Archive, restore, or permanently delete from the **Sessions** nav view (archiving is not a permanent delete until you delete from the archive list).
+Create sessions from **Sessions** (**+ New Chat Session**) or click **+** on the **session tab strip** at the top of the Chat page (same action). **✕** on a session tab archives that chat (restore from **Sessions**). In the **Sessions** nav view, use **Archive Session** / **Restore Session** (button below the list), **right-click** a row (**Archive Session**, **Restore Session**, or **Permanently Delete...**), or press **Delete** to permanently remove the selected session. Permanent delete removes chat history from app config only; your project folder on disk is unchanged. Archiving is not a permanent delete until you permanently delete from the list.
 
 ## Composer modes
 
@@ -43,7 +43,7 @@ The **model** combo lists models you configured in Settings. The choice is kept 
 
 ## LLM provider and endpoint
 
-**Settings → Provider** offers a fixed catalog of hosted inference providers plus **Custom**. The app does **not** fill in a default API base URL—you enter the **Base API Endpoint** from your provider’s documentation (OpenAI-compatible `/v1` style for most entries). Use **Open provider portal** for signup links when available.
+**Settings → Provider** offers a fixed catalog of hosted inference providers plus **Custom**. For catalog providers, the app **prefills a default Base API Endpoint** (OpenAI-compatible `/v1` style for most entries). You can edit that URL—for example for a proxy or staging endpoint. Use **Open provider portal** for signup links when available.
 
 **Custom** is a single profile: set a **display name**, endpoint URL, API key, and saved models like any other provider. Per-provider API keys and URLs are stored separately so you can switch providers without retyping.
 
