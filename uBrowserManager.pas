@@ -271,15 +271,31 @@ end;
 
 procedure BrowserManagerShutdownAll;
 var
-  I: Integer;
+  I, N: Integer;
 begin
   StopBrowserCdpPump;
   if GSessionLock = nil then Exit;
   GSessionLock.Enter;
   try
+    N := GSessions.Count;
     for I := GSessions.Count - 1 downto 0 do
       TBrowserManagedSession(GSessions[I]).Free;
     GSessions.Clear;
+    if N > 0 then
+    begin
+      if GLock = nil then
+        GLock := TCriticalSection.Create;
+      GLock.Enter;
+      try
+        while (N > 0) and (GActive > 0) do
+        begin
+          Dec(GActive);
+          Dec(N);
+        end;
+      finally
+        GLock.Leave;
+      end;
+    end;
   finally
     GSessionLock.Leave;
   end;

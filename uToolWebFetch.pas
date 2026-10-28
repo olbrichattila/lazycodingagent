@@ -69,7 +69,7 @@ begin
   MaxLen := Args.Get('max_length', WEB_FETCH_DEFAULT_MAX_LENGTH);
   Config := DefaultWebFetchConfig;
 
-  FetchRes := FetchWebContent(Url, Fmt, MaxLen, Config, nil, nil);
+  FetchRes := FetchWebContent(Url, Fmt, MaxLen, Config, @ToolCancelled, nil);
   Result := ToolResultFromJson(WebFetchResultToJson(FetchRes));
 end;
 

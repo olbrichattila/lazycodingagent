@@ -5,7 +5,7 @@ unit uCdpConnection;
 interface
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, uCdpWebSocket, uBrowserReadTypes;
+  Classes, SysUtils, SyncObjs, fpjson, jsonparser, uCdpWebSocket, uBrowserReadTypes;
 
 type
   TCdpEventHandler = procedure(Sender: TObject; const Method, ParamsJson: AnsiString) of object;
@@ -36,8 +36,19 @@ type
     FOnEvent: TCdpEventHandler;
     FSessionId: string;
     FTag: PtrUInt;
+    FReadLock: TCriticalSection;
+    FPending: TStringList;
     function WaitForResponse(AId: Integer; TimeoutMs: Integer;
       CancelCheck: TBrowserReadCancelCheck; out ResultObj: TJSONObject): Boolean;
+    procedure ClearPending;
+    procedure StorePendingResponse(AId: Integer; const Root: TJSONObject);
+    function TakePendingResponse(AId: Integer; out ResultObj: TJSONObject): Boolean;
+    function BuildResultFromRoot(const Root: TJSONObject; out ResultObj: TJSONObject): Boolean;
+    procedure DispatchEvent(const Root: TJSONObject);
+    function RouteIncomingRoot(const Root: TJSONObject; AWaitId: Integer;
+      out Matched: Boolean; out ResultObj: TJSONObject): Boolean;
+    function ReadAndRouteOne(TimeoutMs: Integer; CancelCheck: TBrowserReadCancelCheck;
+      AWaitId: Integer; out Matched: Boolean; out ResultObj: TJSONObject): Boolean;
   public
     constructor Create(ATransport: ICdpTransport);
     destructor Destroy; override;
@@ -101,18 +112,50 @@ begin
   FTransport := ATransport;
   FNextId := 1;
   FSessionId := '';
+  FReadLock := TCriticalSection.Create;
+  FPending := TStringList.Create;
+  FPending.Sorted := True;
+  FPending.Duplicates := dupError;
 end;
 
 destructor TCdpConnection.Destroy;
 begin
   Disconnect;
+  FreeAndNil(FPending);
+  FreeAndNil(FReadLock);
   inherited Destroy;
+end;
+
+procedure TCdpConnection.ClearPending;
+var
+  I: Integer;
+  Obj: TJSONObject;
+begin
+  if FPending = nil then Exit;
+  if Assigned(FReadLock) then
+    FReadLock.Enter;
+  try
+    for I := 0 to FPending.Count - 1 do
+    begin
+      Obj := TJSONObject(FPending.Objects[I]);
+      if Assigned(Obj) then
+        Obj.Free;
+    end;
+    FPending.Clear;
+  finally
+    if Assigned(FReadLock) then
+      FReadLock.Leave;
+  end;
 end;
 
 procedure TCdpConnection.Disconnect;
 begin
   if Assigned(FTransport) then
+  begin
     FTransport.Disconnect;
+    FTransport := nil;
+  end;
+  ClearPending;
 end;
 
 procedure TCdpConnection.NotifyEvent(const Method, ParamsJson: AnsiString);
@@ -126,37 +169,150 @@ begin
   Result := Assigned(FTransport) and FTransport.Connected;
 end;
 
-function TCdpConnection.ProcessOneEventMessage(TimeoutMs: Integer;
-  CancelCheck: TBrowserReadCancelCheck): Boolean;
+function TCdpConnection.BuildResultFromRoot(const Root: TJSONObject;
+  out ResultObj: TJSONObject): Boolean;
+var
+  Err: TJSONObject;
+begin
+  ResultObj := nil;
+  Result := False;
+  if Root.Find('error') <> nil then
+  begin
+    Err := TJSONObject(Root.Find('error'));
+    ResultObj := TJSONObject.Create;
+    ResultObj.Add('error', Err.Clone);
+    Exit(True);
+  end;
+  if Root.Find('result') <> nil then
+  begin
+    ResultObj := TJSONObject(TJSONObject(Root.Find('result')).Clone);
+    Exit(True);
+  end;
+end;
+
+procedure TCdpConnection.StorePendingResponse(AId: Integer; const Root: TJSONObject);
+var
+  Payload: TJSONObject;
+  Key: string;
+  Idx: Integer;
+begin
+  if not BuildResultFromRoot(Root, Payload) then
+    Exit;
+  Key := IntToStr(AId);
+  FReadLock.Enter;
+  try
+    Idx := FPending.IndexOf(Key);
+    if Idx >= 0 then
+    begin
+      TJSONObject(FPending.Objects[Idx]).Free;
+      FPending.Delete(Idx);
+    end;
+    FPending.AddObject(Key, Payload);
+  finally
+    FReadLock.Leave;
+  end;
+end;
+
+function TCdpConnection.TakePendingResponse(AId: Integer;
+  out ResultObj: TJSONObject): Boolean;
+var
+  Key: string;
+  Idx: Integer;
+begin
+  Result := False;
+  ResultObj := nil;
+  Key := IntToStr(AId);
+  FReadLock.Enter;
+  try
+    Idx := FPending.IndexOf(Key);
+    if Idx < 0 then Exit;
+    ResultObj := TJSONObject(FPending.Objects[Idx]);
+    FPending.Objects[Idx] := nil;
+    FPending.Delete(Idx);
+    Result := Assigned(ResultObj);
+  finally
+    FReadLock.Leave;
+  end;
+end;
+
+procedure TCdpConnection.DispatchEvent(const Root: TJSONObject);
+var
+  Method: string;
+  Params: TJSONObject;
+begin
+  Method := Root.Get('method', '');
+  if Method = '' then Exit;
+  if Root.Find('params') <> nil then
+    Params := TJSONObject(Root.Find('params').Clone)
+  else
+    Params := TJSONObject.Create;
+  try
+    if Assigned(FOnEvent) then
+      FOnEvent(Self, AnsiString(Method), AnsiString(Params.AsJSON));
+  finally
+    Params.Free;
+  end;
+end;
+
+function TCdpConnection.RouteIncomingRoot(const Root: TJSONObject; AWaitId: Integer;
+  out Matched: Boolean; out ResultObj: TJSONObject): Boolean;
+var
+  IdVal: TJSONNumber;
+  MsgId: Integer;
+begin
+  Matched := False;
+  ResultObj := nil;
+  Result := True;
+  if Root.Find('id') <> nil then
+  begin
+    IdVal := TJSONNumber(Root.Find('id'));
+    MsgId := IdVal.AsInteger;
+    if (AWaitId >= 0) and (MsgId = AWaitId) then
+    begin
+      Matched := BuildResultFromRoot(Root, ResultObj);
+      Exit;
+    end;
+    StorePendingResponse(MsgId, Root);
+    Exit;
+  end;
+  DispatchEvent(Root);
+end;
+
+function TCdpConnection.ReadAndRouteOne(TimeoutMs: Integer;
+  CancelCheck: TBrowserReadCancelCheck; AWaitId: Integer; out Matched: Boolean;
+  out ResultObj: TJSONObject): Boolean;
 var
   Text: UTF8String;
-  Root, Params: TJSONObject;
-  Method: string;
+  Root: TJSONObject;
 begin
+  Matched := False;
+  ResultObj := nil;
   Result := False;
   if not ConnectLoopAlive then Exit;
   if Assigned(CancelCheck) and CancelCheck() then Exit;
-  if not FTransport.TryReceiveText(Text, TimeoutMs) then Exit;
+  FReadLock.Enter;
+  try
+    if not FTransport.TryReceiveText(Text, TimeoutMs) then Exit;
+  finally
+    FReadLock.Leave;
+  end;
   Root := TJSONObject(GetJSON(Text));
   try
-    if Root.Find('id') <> nil then
-      Exit;
-    Method := Root.Get('method', '');
-    if Method = '' then Exit;
-    if Root.Find('params') <> nil then
-      Params := TJSONObject(Root.Find('params').Clone)
-    else
-      Params := TJSONObject.Create;
-    try
-      if Assigned(FOnEvent) then
-        FOnEvent(Self, AnsiString(Method), AnsiString(Params.AsJSON));
-    finally
-      Params.Free;
-    end;
-    Result := True;
+    Result := RouteIncomingRoot(Root, AWaitId, Matched, ResultObj);
   finally
     Root.Free;
   end;
+end;
+
+function TCdpConnection.ProcessOneEventMessage(TimeoutMs: Integer;
+  CancelCheck: TBrowserReadCancelCheck): Boolean;
+var
+  Matched: Boolean;
+  Dummy: TJSONObject;
+begin
+  Result := ReadAndRouteOne(TimeoutMs, CancelCheck, -1, Matched, Dummy);
+  if Assigned(Dummy) then
+    Dummy.Free;
 end;
 
 procedure TCdpConnection.PumpEvents(TimeoutMs: Integer;
@@ -185,60 +341,21 @@ function TCdpConnection.WaitForResponse(AId: Integer; TimeoutMs: Integer;
   CancelCheck: TBrowserReadCancelCheck; out ResultObj: TJSONObject): Boolean;
 var
   Start: QWord;
-  Text: UTF8String;
-  Root, Err: TJSONObject;
-  IdVal: TJSONNumber;
-  Method: string;
-  Params: TJSONObject;
+  Matched: Boolean;
 begin
   ResultObj := nil;
   Result := False;
+  if TakePendingResponse(AId, ResultObj) then
+    Exit(True);
   Start := GetTickCount64;
   while GetTickCount64 - Start < QWord(TimeoutMs) do
   begin
     if Assigned(CancelCheck) and CancelCheck() then Exit;
     if not ConnectLoopAlive then Exit;
-    if FTransport.TryReceiveText(Text, 200) then
+    if ReadAndRouteOne(200, CancelCheck, AId, Matched, ResultObj) then
     begin
-      Root := TJSONObject(GetJSON(Text));
-      try
-        if Root.Find('id') <> nil then
-        begin
-          IdVal := TJSONNumber(Root.Find('id'));
-          if IdVal.AsInteger = AId then
-          begin
-            if Root.Find('error') <> nil then
-            begin
-              Err := TJSONObject(Root.Find('error'));
-              ResultObj := TJSONObject.Create;
-              ResultObj.Add('error', Err.Clone);
-              Exit(True);
-            end;
-            if Root.Find('result') <> nil then
-              ResultObj := TJSONObject(TJSONObject(Root.Find('result')).Clone);
-            Result := True;
-            Exit;
-          end;
-        end
-        else
-        begin
-          Method := Root.Get('method', '');
-          if (Method <> '') and Assigned(FOnEvent) then
-          begin
-            if Root.Find('params') <> nil then
-              Params := TJSONObject(Root.Find('params').Clone)
-            else
-              Params := TJSONObject.Create;
-            try
-              FOnEvent(Self, AnsiString(Method), AnsiString(Params.AsJSON));
-            finally
-              Params.Free;
-            end;
-          end;
-        end;
-      finally
-        Root.Free;
-      end;
+      if Matched then
+        Exit(True);
     end;
   end;
 end;

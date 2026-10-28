@@ -65,7 +65,7 @@ begin
   Result.Params[1].Required := False;
   Result.Params[2].Name := 'wait_strategy';
   Result.Params[2].ParamType := 'string';
-  Result.Params[2].Description := 'domcontentloaded, load (default), or selector.';
+  Result.Params[2].Description := 'domcontentloaded (default), load, or selector.';
   Result.Params[2].Required := False;
   Result.Params[3].Name := 'wait_selector';
   Result.Params[3].ParamType := 'string';

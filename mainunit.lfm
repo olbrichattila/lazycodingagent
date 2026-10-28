@@ -917,7 +917,7 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               end
               object memChatPrompt: TMemo
                 Left = 4
-                Height = 152
+                Height = 160
                 Top = 48
                 Width = 608
                 Align = alClient
@@ -927,13 +927,13 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               end
               object pnlChatFooter: TPanel
                 Left = 8
-                Height = 118
-                Top = 208
+                Height = 110
+                Top = 216
                 Width = 600
                 Align = alBottom
                 BorderSpacing.Around = 8
                 BevelOuter = bvNone
-                ClientHeight = 118
+                ClientHeight = 110
                 ClientWidth = 600
                 ParentBackground = False
                 TabOrder = 1
@@ -1069,9 +1069,9 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 object pnlChatFooterRowCheck: TPanel
                   Left = 0
                   Height = 32
-                  Top = 44
+                  Top = 78
                   Width = 600
-                  Align = alTop
+                  Align = alBottom
                   BevelOuter = bvNone
                   ClientHeight = 32
                   ClientWidth = 600

@@ -120,7 +120,17 @@ begin
   fpsetsockopt(FSocket, SOL_SOCKET, SO_SNDTIMEO, @Tv, SizeOf(Tv));
 end;
 {$ELSE}
+var
+  Opt: LongInt;
+  Len: LongInt;
 begin
+  if FSocket = LCA_INVALID_SOCKET then Exit;
+  Opt := Ms;
+  if Opt < 1 then
+    Opt := 1;
+  Len := SizeOf(Opt);
+  fpsetsockopt(FSocket, SOL_SOCKET, SO_RCVTIMEO, @Opt, Len);
+  fpsetsockopt(FSocket, SOL_SOCKET, SO_SNDTIMEO, @Opt, Len);
 end;
 {$ENDIF}
 

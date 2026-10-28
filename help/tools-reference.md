@@ -135,7 +135,9 @@ See **Help → Web Search** for Brave, SearXNG, Tavily setup, and local Docker S
 
 Open a **public** `http` or `https` URL in a headless Chromium-compatible browser (Chrome, Chromium, or Edge), wait for rendering, and extract readable content. Use when `web_fetch` returns an empty or incomplete JavaScript application shell.
 
-**Parameters:** `url` (required); `format` — `markdown` (default), `text`, or `html`; `wait_strategy` — `domcontentloaded`, `load` (default), or `selector`; `wait_selector` — required when `wait_strategy` is `selector`; `timeout_ms` (default 30000); `max_length` (default 20000).
+**Parameters:** `url` (required); `format` — `markdown` (default), `text`, or `html`; `wait_strategy` — `domcontentloaded` (default), `load`, or `selector`; `wait_selector` — required when `wait_strategy` is `selector`; `timeout_ms` (default 30000); `max_length` (default 20000).
+
+For heavy SPAs, prefer `wait_strategy: selector` with a stable root (for example `main` or a known `data-testid`) or increase `timeout_ms`. With `load`, navigation waits for the load event when it fires; if the page never fires load (common on SPAs), the tool continues after DOM content loaded plus a short grace period.
 
 **Modes:** Ask, Plan, Agent.
 
@@ -173,7 +175,7 @@ Persistent **browser sessions** for interactive testing (Chromium via CDP). Typi
 
 If `browser_navigate` creates a session (no `session_id`) but navigation fails, the app closes that session automatically so it does not block the next browser tool. When navigation succeeds, call `browser_close` when you are done, or reuse the returned `session_id`.
 
-**Visible browser:** On a **new** session, set `visible` to `true` on `browser_navigate` to open a normal Chromium window. Automation starts **paused** (`automation_paused: true`) so the user can log in without competing CDP clicks or fills. Call `browser_resume_automation` before `browser_click`, `browser_fill`, `browser_select`, `browser_set_viewport`, or navigating again with the same `session_id`. Use `browser_pause_automation` to hand control back. Read-only tools work while paused. You and the agent share the same tab over CDP. Visible sessions are not auto-closed by idle timeout; call `browser_close` when finished. Default headless sessions are unchanged.
+**Visible browser:** On a **new** session, set `visible` to `true` on `browser_navigate` to open a normal Chromium window. The tool returns when navigation finishes (chat continues) while the window stays open. Automation starts **paused** (`automation_paused: true`) so the user can log in without competing CDP clicks or fills. Call `browser_resume_automation` before `browser_click`, `browser_fill`, `browser_select`, `browser_set_viewport`, or navigating again with the same `session_id`. Use `browser_pause_automation` to hand control back. Read-only tools work while paused. **`browser_close`** ends the session and frees the browser concurrency slot (important when **Max concurrent** is 1). Visible sessions are not auto-closed by idle timeout. Default headless sessions are unchanged.
 
 **AUTOMATION_PAUSED** — Interactive tool called on a visible session before `browser_resume_automation`.
 

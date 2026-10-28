@@ -284,7 +284,9 @@ var
   Args: TStringList;
   Port: Word;
   LaunchTimeout: Integer;
+  StartTick: QWord;
 begin
+  Port := 0;
   WebSocketUrl := '';
   ErrKind := brekNone;
   ErrMsg := '';
@@ -333,7 +335,9 @@ begin
   end;
 
   LaunchTimeout := Min(TimeoutMs, 30000);
-  while not Assigned(CancelCheck) or not CancelCheck() do
+  StartTick := GetTickCount64;
+  while (GetTickCount64 - StartTick < QWord(LaunchTimeout)) and
+    (not Assigned(CancelCheck) or not CancelCheck()) do
   begin
     Port := ReadDevToolsPort(LaunchTimeout);
     if Port > 0 then Break;
@@ -345,6 +349,13 @@ begin
       Exit(False);
     end;
     Sleep(50);
+  end;
+  if Port = 0 then
+  begin
+    ErrKind := brekBrowserStartFailed;
+    ErrMsg := 'Timed out waiting for DevToolsActivePort';
+    Stop;
+    Exit(False);
   end;
   if Assigned(CancelCheck) and CancelCheck() then
   begin

@@ -5,7 +5,7 @@ unit uBrowserAutomation;
 interface
 
 uses
-  SysUtils, fpjson, uBrowserReadTypes, uBrowserManager, uBrowserReadUrl, uBrowserNavigate;
+  SysUtils, Math, fpjson, uBrowserReadTypes, uBrowserManager, uBrowserReadUrl, uBrowserNavigate;
 
 function BrowserAutomationNavigate(S: TBrowserManagedSession; const Url: string;
   Strategy: TBrowserReadWaitStrategy; const WaitSelector: string; TimeoutMs: Integer;
@@ -22,11 +22,14 @@ function BrowserAutomationNavigate(S: TBrowserManagedSession; const Url: string;
   Strategy: TBrowserReadWaitStrategy; const WaitSelector: string; TimeoutMs: Integer;
   CancelCheck: TBrowserReadCancelCheck; out FinalUrl, Title: string;
   out ErrKind: TBrowserReadErrorKind; out ErrMsg: string): Boolean;
+var
+  Deadline: QWord;
 begin
   S.Touch;
+  Deadline := GetTickCount64 + QWord(TimeoutMs);
   if not ValidateBrowserReadUrl(Url, S.AllowLocalhost, ErrKind, ErrMsg) then
     Exit(False);
-  if not S.Navigator.Navigate(Url, Strategy, WaitSelector, TimeoutMs, CancelCheck,
+  if not S.Navigator.Navigate(Url, Strategy, WaitSelector, Deadline, CancelCheck,
     FinalUrl, ErrKind, ErrMsg) then
     Exit(False);
   if not ValidateBrowserReadUrl(FinalUrl, S.AllowLocalhost, ErrKind, ErrMsg) then
@@ -35,7 +38,8 @@ begin
     ErrMsg := 'Final URL not allowed: ' + ErrMsg;
     Exit(False);
   end;
-  Title := S.Navigator.EvaluateString('document.title', 5000, CancelCheck);
+  Title := S.Navigator.EvaluateString('document.title',
+    Min(5000, BrowserReadRemainingMs(Deadline)), CancelCheck);
   Result := True;
 end;
 

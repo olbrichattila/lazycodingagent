@@ -95,11 +95,13 @@ var
   ErrMsg: string;
   Truncated: Boolean;
   Title: string;
+  Deadline: QWord;
 begin
   InitBrowserReadResult(Result);
   Result.Url := Trim(Url);
   Result.Format := Format;
   Start := GetTickCount64;
+  Deadline := Start + QWord(TimeoutMs);
 
   if not ValidateBrowserReadUrl(Url, Config.AllowLocalhost, ErrKind, ErrMsg) then
   begin
@@ -199,7 +201,7 @@ begin
       Exit;
     end;
 
-    if not Navigator.Navigate(Url, Strategy, WaitSelector, TimeoutMs, CancelCheck,
+    if not Navigator.Navigate(Url, Strategy, WaitSelector, Deadline, CancelCheck,
       FinalUrl, ErrKind, ErrMsg) then
     begin
       Result.ErrorKind := ErrKind;
@@ -214,7 +216,7 @@ begin
       Exit;
     end;
 
-    if not ExtractRenderedContent(Connection, Format, MaxLength, TimeoutMs, CancelCheck,
+    if not ExtractRenderedContent(Connection, Format, MaxLength, Deadline, CancelCheck,
       Title, Content, Truncated, ErrKind, ErrMsg) then
     begin
       Result.ErrorKind := ErrKind;

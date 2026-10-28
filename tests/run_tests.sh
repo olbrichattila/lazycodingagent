@@ -29,6 +29,8 @@ fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
 fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_browser_read.lpr
 fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
+  -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_cdp_connection.lpr
+fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_web_search.lpr
 fpc -Mobjfpc -Scghi -Fu"$ROOT" "${FPC_EXTRA[@]}" \
   -FU"$TEST_OUTPUT" -FE"$TEST_OUTPUT" tests/test_cdp_websocket.lpr
@@ -46,6 +48,7 @@ fi
 "$TEST_OUTPUT/test_agent_rules" "$TEST_OUTPUT/rules-fixture"
 "$TEST_OUTPUT/test_web_fetch" "$ROOT/tests/fixtures/web_fetch/sample.html"
 "$TEST_OUTPUT/test_browser_read"
+"$TEST_OUTPUT/test_cdp_connection"
 "$TEST_OUTPUT/test_web_search"
 "$TEST_OUTPUT/test_cdp_websocket"
 "$TEST_OUTPUT/test_llm_cache_usage"

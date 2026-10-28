@@ -9,8 +9,11 @@ uses
 
 const
   BROWSER_READ_DEFAULT_FORMAT = 'markdown';
-  BROWSER_READ_DEFAULT_WAIT_STRATEGY = 'load';
+  BROWSER_READ_DEFAULT_WAIT_STRATEGY = 'domcontentloaded';
   BROWSER_READ_DEFAULT_TIMEOUT_MS = 30000;
+  BROWSER_LOAD_GRACE_AFTER_DOM_MS = 8000;
+  BROWSER_CDP_EVAL_TIMEOUT_CAP_MS = 15000;
+  BROWSER_JS_SETTLE_MAX_MS = 3000;
   BROWSER_READ_MAX_TIMEOUT_MS = 120000;
   BROWSER_READ_DEFAULT_MAX_LENGTH = 20000;
   BROWSER_READ_MAX_MAX_LENGTH = 100000;
@@ -80,8 +83,35 @@ procedure InitBrowserReadResult(out R: TBrowserReadResult);
 function ParseBrowserReadWaitStrategy(const S: string;
   out Strategy: TBrowserReadWaitStrategy): Boolean;
 function ParseBrowserReadFormat(const S: string; out Fmt: string): Boolean;
+function BrowserReadRemainingMs(DeadlineTick: QWord): Integer;
+function BrowserReadEvalTimeoutMs(DeadlineTick: QWord): Integer;
 
 implementation
+
+function BrowserReadRemainingMs(DeadlineTick: QWord): Integer;
+var
+  Now: QWord;
+  Rem: QWord;
+begin
+  Now := GetTickCount64;
+  if DeadlineTick <= Now then
+    Exit(0);
+  Rem := DeadlineTick - Now;
+  if Rem > High(Integer) then
+    Result := High(Integer)
+  else
+    Result := Integer(Rem);
+end;
+
+function BrowserReadEvalTimeoutMs(DeadlineTick: QWord): Integer;
+begin
+  Result := BrowserReadRemainingMs(DeadlineTick);
+  if Result <= 0 then
+    Exit(0);
+  if Result > BROWSER_CDP_EVAL_TIMEOUT_CAP_MS then
+    Result := BROWSER_CDP_EVAL_TIMEOUT_CAP_MS;
+end;
+
 
 function DefaultBrowserReadConfig: TBrowserReadConfig;
 begin
