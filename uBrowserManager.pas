@@ -43,7 +43,8 @@ type
     procedure Execute; override;
   end;
 
-procedure BrowserManagerAcquire(const Config: TBrowserReadConfig);
+function BrowserManagerTryAcquire(const Config: TBrowserReadConfig;
+  CancelCheck: TBrowserReadCancelCheck; out ErrMsg: string): Boolean;
 procedure BrowserManagerRelease;
 procedure BrowserManagerShutdownAll;
 
@@ -181,27 +182,47 @@ begin
   Result := Lock;
 end;
 
-procedure BrowserManagerAcquire(const Config: TBrowserReadConfig);
+function BrowserManagerTryAcquire(const Config: TBrowserReadConfig;
+  CancelCheck: TBrowserReadCancelCheck; out ErrMsg: string): Boolean;
+var
+  Start: QWord;
+  WaitMs: Integer;
 begin
+  ErrMsg := '';
   if GLock = nil then
     GLock := TCriticalSection.Create;
   GMaxConcurrent := Config.MaxConcurrent;
   if GMaxConcurrent < 1 then
     GMaxConcurrent := 1;
-  while True do
+  WaitMs := Config.MaxTimeoutMs;
+  if WaitMs < 1000 then
+    WaitMs := 60000;
+  if WaitMs > 120000 then
+    WaitMs := 120000;
+  Start := GetTickCount64;
+  while GetTickCount64 - Start < QWord(WaitMs) do
   begin
+    if Assigned(CancelCheck) and CancelCheck() then
+    begin
+      ErrMsg := 'Cancelled';
+      Exit(False);
+    end;
     GLock.Enter;
     try
       if GActive < GMaxConcurrent then
       begin
         Inc(GActive);
-        Exit;
+        Exit(True);
       end;
     finally
       GLock.Leave;
     end;
     Sleep(50);
   end;
+  ErrMsg := Format(
+    'Timed out waiting for a browser slot (max concurrent %d). ' +
+    'Close other sessions with browser_close or retry later.', [GMaxConcurrent]);
+  Result := False;
 end;
 
 procedure BrowserManagerRelease;
@@ -323,7 +344,13 @@ begin
     Exit(False);
   end;
 
-  BrowserManagerAcquire(Config);
+  if not BrowserManagerTryAcquire(Config, CancelCheck, ErrMsg) then
+  begin
+    ErrKind := brekInternal;
+    if Trim(ErrMsg) = '' then
+      ErrMsg := 'Could not acquire browser slot';
+    Exit(False);
+  end;
   Session := TBrowserManagedSession.Create;
   Session.Id := NewBrowserSessionId;
   Session.WorkspaceRoot := WorkspaceRoot;

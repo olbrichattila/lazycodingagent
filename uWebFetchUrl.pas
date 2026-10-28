@@ -189,7 +189,7 @@ var
 begin
   Result := False;
   ErrKind := wfekDnsFailure;
-  ErrMsg := 'Could not resolve host';
+  ErrMsg := 'Could not resolve host: ' + Host;
 
   if HostLooksLikeIPv4(Host) then
   begin

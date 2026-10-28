@@ -164,32 +164,59 @@ begin
   end;
 end;
 
-function TBrowserProcess.ReadDevToolsPort(TimeoutMs: Integer): Word;
+function TryReadDevToolsPortFile(const PortFile: string; out APort: Word): Boolean;
 var
-  PortFile: string;
+  FS: TFileStream;
+  Buf: RawByteString;
   Lines: TStringList;
-  T0: QWord;
+  I, N: Integer;
 begin
-  Result := 0;
-  PortFile := IncludeTrailingPathDelimiter(FUserDataDir) + 'DevToolsActivePort';
+  Result := False;
+  APort := 0;
+  if not FileExists(PortFile) then Exit;
   Lines := TStringList.Create;
-  T0 := GetTickCount64;
   try
-    while GetTickCount64 - T0 < QWord(TimeoutMs) do
-    begin
-      if FileExists(PortFile) then
-      begin
-        Lines.LoadFromFile(PortFile);
-        if Lines.Count > 0 then
-        begin
-          Result := StrToIntDef(Trim(Lines[0]), 0);
-          if Result > 0 then Exit;
-        end;
+    try
+      FS := TFileStream.Create(PortFile, fmOpenRead or fmShareDenyNone);
+      try
+        SetLength(Buf, FS.Size);
+        if FS.Size > 0 then
+          FS.ReadBuffer(Buf[1], FS.Size);
+        Lines.Text := string(Buf);
+      finally
+        FS.Free;
       end;
-      Sleep(50);
+    except
+      Exit;
+    end;
+    for I := 0 to Lines.Count - 1 do
+    begin
+      N := StrToIntDef(Trim(Lines[I]), 0);
+      if (N > 0) and (N <= 65535) then
+      begin
+        APort := Word(N);
+        Exit(True);
+      end;
     end;
   finally
     Lines.Free;
+  end;
+end;
+
+function TBrowserProcess.ReadDevToolsPort(TimeoutMs: Integer): Word;
+var
+  PortFile: string;
+  T0: QWord;
+  P: Word;
+begin
+  Result := 0;
+  PortFile := IncludeTrailingPathDelimiter(FUserDataDir) + 'DevToolsActivePort';
+  T0 := GetTickCount64;
+  while GetTickCount64 - T0 < QWord(TimeoutMs) do
+  begin
+    if TryReadDevToolsPortFile(PortFile, P) then
+      Exit(P);
+    Sleep(50);
   end;
 end;
 

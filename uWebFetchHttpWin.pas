@@ -28,6 +28,11 @@ const
   WINHTTP_QUERY_FLAG_NUMBER = $20000000;
   WINHTTP_QUERY_STATUS_CODE = 19;
   WINHTTP_FLAG_SECURE = $00800000;
+  ERROR_WINHTTP_SECURE_FAILURE = 12175;
+  ERROR_WINHTTP_SECURE_INVALID_CERT = 12157;
+  ERROR_WINHTTP_NAME_NOT_RESOLVED = 12007;
+  ERROR_INTERNET_SEC_CERT_DATE_INVALID = 12037;
+  ERROR_INTERNET_SEC_CERT_CN_INVALID = 12038;
 
 type
   HInternet = Pointer;
@@ -126,6 +131,72 @@ begin
     Result := '';
 end;
 
+function QueryHeaderDword(Request: HInternet; InfoLevel: DWORD): DWORD;
+var
+  Status: DWORD;
+  Len, Idx: DWORD;
+begin
+  Status := 0;
+  Len := SizeOf(Status);
+  Idx := 0;
+  if WinHttpQueryHeaders(Request, InfoLevel, nil, @Status, Len, Idx) then
+    Result := Status
+  else
+    Result := 0;
+end;
+
+function Win32ErrorText(AError: DWORD): string;
+var
+  Flags: DWORD;
+  Buf: array[0..1023] of Char;
+begin
+  Result := '';
+  if AError = 0 then Exit;
+  Flags := FORMAT_MESSAGE_FROM_SYSTEM or FORMAT_MESSAGE_IGNORE_INSERTS;
+  if FormatMessage(Flags, nil, AError, 0, Buf, Length(Buf), nil) > 0 then
+    Result := Trim(string(Buf));
+end;
+
+function ClassifyWinHttpError(AError: DWORD): TWebFetchErrorKind;
+begin
+  case AError of
+    ERROR_WINHTTP_NAME_NOT_RESOLVED:
+      Result := wfekDnsFailure;
+    ERROR_WINHTTP_SECURE_FAILURE,
+    ERROR_WINHTTP_SECURE_INVALID_CERT,
+    ERROR_INTERNET_SEC_CERT_DATE_INVALID,
+    ERROR_INTERNET_SEC_CERT_CN_INVALID:
+      Result := wfekTlsFailure;
+  else
+    if (AError >= 12000) and (AError <= 12199) then
+    begin
+      if (AError >= 12150) and (AError <= 12180) then
+        Result := wfekTlsFailure
+      else
+        Result := wfekInternal;
+    end
+    else
+      Result := wfekInternal;
+  end;
+end;
+
+procedure SetWinHttpFailure(const Stage: string; AError: DWORD;
+  out ErrKind: TWebFetchErrorKind; out ErrMsg: string);
+var
+  Detail: string;
+begin
+  ErrKind := ClassifyWinHttpError(AError);
+  Detail := Win32ErrorText(AError);
+  if ErrKind = wfekTlsFailure then
+    ErrMsg := 'TLS/HTTPS handshake failed'
+  else
+    ErrMsg := Stage;
+  if Detail <> '' then
+    ErrMsg := ErrMsg + ': ' + Detail;
+  if AError <> 0 then
+    ErrMsg := ErrMsg + ' (' + IntToStr(AError) + ')';
+end;
+
 function WebFetchHttpWinGet(const RequestUrl, VHost: string;
   const Config: TWebFetchConfig; CancelCheck: TWebFetchCancelCheck;
   out Resp: THttpFetchResponse; out ErrKind: TWebFetchErrorKind;
@@ -144,6 +215,7 @@ var
   StartTick: QWord;
   RawBody: RawByteString;
   ContentEncoding: string;
+  LastErr: DWORD;
 begin
   Result := False;
   FillChar(Resp, SizeOf(Resp), 0);
@@ -165,18 +237,30 @@ begin
     HeaderW := UTF8Decode(HeaderText);
 
     Session := WinHttpOpen(PWideChar(AgentW), 0, nil, nil, 0);
-    if Session = nil then Exit;
+    if Session = nil then
+    begin
+      SetWinHttpFailure('WinHTTP open failed', GetLastError, ErrKind, ErrMsg);
+      Exit;
+    end;
     WinHttpSetTimeouts(Session, Config.ConnectTimeoutMs, Config.ConnectTimeoutMs,
       Config.RequestTimeoutMs, Config.RequestTimeoutMs);
 
     Connection := WinHttpConnect(Session, PWideChar(HostW), Port, 0);
-    if Connection = nil then Exit;
+    if Connection = nil then
+    begin
+      SetWinHttpFailure('WinHTTP connect failed', GetLastError, ErrKind, ErrMsg);
+      Exit;
+    end;
     if Secure then
       Request := WinHttpOpenRequest(Connection, 'GET', PWideChar(PathW), nil, nil, nil,
         WINHTTP_FLAG_SECURE)
     else
       Request := WinHttpOpenRequest(Connection, 'GET', PWideChar(PathW), nil, nil, nil, 0);
-    if Request = nil then Exit;
+    if Request = nil then
+    begin
+      SetWinHttpFailure('WinHTTP open request failed', GetLastError, ErrKind, ErrMsg);
+      Exit;
+    end;
 
     Policy := WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
     WinHttpSetOption(Request, WINHTTP_OPTION_REDIRECT_POLICY, @Policy, SizeOf(Policy));
@@ -188,13 +272,19 @@ begin
       begin
         ErrKind := wfekTimeout;
         ErrMsg := 'Request timed out';
-      end;
+      end
+      else
+        SetWinHttpFailure('WinHTTP send failed', GetLastError, ErrKind, ErrMsg);
       Exit;
     end;
-    if not WinHttpReceiveResponse(Request, nil) then Exit;
+    if not WinHttpReceiveResponse(Request, nil) then
+    begin
+      SetWinHttpFailure('WinHTTP receive failed', GetLastError, ErrKind, ErrMsg);
+      Exit;
+    end;
 
-    Resp.StatusCode := StrToIntDef(QueryHeaderString(Request,
-      WINHTTP_QUERY_STATUS_CODE or WINHTTP_QUERY_FLAG_NUMBER), 0);
+    Resp.StatusCode := Integer(QueryHeaderDword(Request,
+      WINHTTP_QUERY_STATUS_CODE or WINHTTP_QUERY_FLAG_NUMBER));
     Resp.ContentType := QueryHeaderString(Request, WINHTTP_QUERY_CONTENT_TYPE);
     Resp.Location := QueryHeaderString(Request, WINHTTP_QUERY_LOCATION);
     ContentEncoding := QueryHeaderString(Request, WINHTTP_QUERY_CONTENT_ENCODING);
@@ -215,7 +305,15 @@ begin
       end;
       BytesRead := 0;
       if not WinHttpReadData(Request, @Buffer[0], SizeOf(Buffer), BytesRead) then
+      begin
+        LastErr := GetLastError;
+        if LastErr <> 0 then
+        begin
+          SetWinHttpFailure('WinHTTP read failed', LastErr, ErrKind, ErrMsg);
+          Exit;
+        end;
         Break;
+      end;
       if BytesRead > 0 then
       begin
         if Total + BytesRead > Config.MaxBodyBytes then

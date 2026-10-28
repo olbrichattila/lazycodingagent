@@ -253,6 +253,8 @@ var
   TimeoutMs: Integer;
   Visible: Boolean;
   HadExistingSession: Boolean;
+  CreatedNewSession: Boolean;
+  Succeeded: Boolean;
   S: TBrowserManagedSession;
   ErrKind: TBrowserReadErrorKind;
   ErrMsg, Err: string;
@@ -275,6 +277,8 @@ begin
   TimeoutMs := Args.Get('timeout_ms', BROWSER_AUTOMATION_DEFAULT_TIMEOUT_MS);
   Cfg := Config;
   Adapter := TBrowserCancelAdapter.Create(FContext);
+  CreatedNewSession := False;
+  Succeeded := False;
   try
     if Sid = '' then
     begin
@@ -288,6 +292,7 @@ begin
         FContext.AllowBrowserLocalhost or Cfg.AllowLocalhost, Visible, Cfg,
         @Adapter.Check, S, ErrKind, ErrMsg) then
         Exit(JsonErr(BrowserReadErrorKindToCode(ErrKind), ErrMsg));
+      CreatedNewSession := True;
       Sid := S.Id;
     end
     else if not GetSession(Sid, S, Err) then
@@ -300,7 +305,10 @@ begin
     try
       if not BrowserAutomationNavigate(S, Url, Strategy, WaitSel, TimeoutMs, @Adapter.Check,
         FinalUrl, Title, ErrKind, ErrMsg) then
-        Exit(JsonErr(BrowserReadErrorKindToCode(ErrKind), ErrMsg));
+      begin
+        Result := JsonErr(BrowserReadErrorKindToCode(ErrKind), ErrMsg);
+        Exit;
+      end;
     finally
       S.Lock.Leave;
     end;
@@ -312,8 +320,11 @@ begin
     O.Add('visible', S.Visible);
     O.Add('automation_paused', S.AutomationPaused);
     O.Add('status', 'ok');
+    Succeeded := True;
     Result := JsonOk(O);
   finally
+    if CreatedNewSession and not Succeeded and (Sid <> '') then
+      BrowserSessionClose(Sid, @Adapter.Check);
     Adapter.Free;
   end;
 end;

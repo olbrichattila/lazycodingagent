@@ -139,7 +139,10 @@ begin
     if (Resp.StatusCode < 200) or (Resp.StatusCode >= 300) then
     begin
       Result.ErrorKind := wfekHttpError;
-      Result.ErrorMessage := 'HTTP error';
+      if Resp.StatusCode > 0 then
+        Result.ErrorMessage := 'HTTP ' + IntToStr(Resp.StatusCode)
+      else
+        Result.ErrorMessage := 'HTTP error';
       Result.HttpStatus := Resp.StatusCode;
       Exit;
     end;

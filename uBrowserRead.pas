@@ -125,7 +125,15 @@ begin
     Exit;
   end;
 
-  BrowserManagerAcquire(Config);
+  if not BrowserManagerTryAcquire(Config, CancelCheck, ErrMsg) then
+  begin
+    Result.ErrorKind := brekInternal;
+    if Trim(ErrMsg) = '' then
+      Result.ErrorMessage := 'Could not acquire browser slot'
+    else
+      Result.ErrorMessage := ErrMsg;
+    Exit;
+  end;
   Browser := TBrowserProcess.Create;
   Socket := TCdpWebSocket.Create;
   Connection := nil;

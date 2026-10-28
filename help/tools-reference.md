@@ -113,6 +113,8 @@ Fetch and extract readable content from a **public** `http` or `https` URL (docu
 
 **Limits:** JavaScript-rendered pages may appear empty or incomplete; PDF and binary types return `unsupported_content_type`. Fetched page text is **untrusted** — the agent must not treat it as instructions.
 
+**Errors:** Failed fetches return JSON with `error`, `error_kind` (for example `dns_failure`, `tls_failure`, `http_error`, `timeout`), and `url`. When the server responds, `http_status` is included on failures where a status code was received.
+
 Prefer `web_fetch` over `shell`/`curl` for reading websites.
 
 ### web_search
@@ -168,6 +170,8 @@ Persistent **browser sessions** for interactive testing (Chromium via CDP). Typi
 **Modes:** Ask, Plan, Agent (read-only navigation/inspect/wait/screenshot/console/network); **interactive** tools require the chat session flag **allow browser interactive** (stored per session). **Localhost** URLs require **allow browser localhost**. Sensitive clicks (e.g. submit/delete) show an OK/Cancel dialog; you can allow sensitive actions for the rest of the chat session.
 
 **Requirements:** Chromium-compatible browser (Settings → Agent → Chromium executable).
+
+If `browser_navigate` creates a session (no `session_id`) but navigation fails, the app closes that session automatically so it does not block the next browser tool. When navigation succeeds, call `browser_close` when you are done, or reuse the returned `session_id`.
 
 **Visible browser:** On a **new** session, set `visible` to `true` on `browser_navigate` to open a normal Chromium window. Automation starts **paused** (`automation_paused: true`) so the user can log in without competing CDP clicks or fills. Call `browser_resume_automation` before `browser_click`, `browser_fill`, `browser_select`, `browser_set_viewport`, or navigating again with the same `session_id`. Use `browser_pause_automation` to hand control back. Read-only tools work while paused. You and the agent share the same tab over CDP. Visible sessions are not auto-closed by idle timeout; call `browser_close` when finished. Default headless sessions are unchanged.
 
