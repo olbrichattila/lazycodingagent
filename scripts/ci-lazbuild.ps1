@@ -1,4 +1,4 @@
-# lazbuild wrapper for CI (Windows): enforce exit code and verify lazycodingagent.exe.
+﻿# lazbuild wrapper for CI (Windows): enforce exit code and verify lazycodingagent.exe.
 #
 # Windows: prefer scripts\ci-lazbuild.bat when PowerShell blocks .\ci-lazbuild.ps1.
 param(
@@ -30,68 +30,6 @@ function Get-ShortPathName {
     return $fso.GetFolder($LongPath).ShortPath
 }
 
-function Get-WindowsSdkUmx64LibDir {
-    $kitsRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Lib'
-    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
-        return $null
-    }
-    $versionDir = Get-ChildItem -Path $kitsRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object { [version]$_.Name } -Descending |
-        Select-Object -First 1
-    if (-not $versionDir) {
-        return $null
-    }
-    $um = Join-Path $versionDir.FullName 'um\x64'
-    if (Test-Path -LiteralPath $um -PathType Container) {
-        return $um
-    }
-    return $null
-}
-
-function Get-WindowsSdkUcrtX64LibDir {
-    $kitsRoot = Join-Path ${env:ProgramFiles(x86)} 'Windows Kits\10\Lib'
-    if (-not (Test-Path -LiteralPath $kitsRoot -PathType Container)) {
-        return $null
-    }
-    $versionDir = Get-ChildItem -Path $kitsRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object { [version]$_.Name } -Descending |
-        Select-Object -First 1
-    if (-not $versionDir) {
-        return $null
-    }
-    $ucrt = Join-Path $versionDir.FullName 'ucrt\x64'
-    if (Test-Path -LiteralPath $ucrt -PathType Container) {
-        return $ucrt
-    }
-    return $null
-}
-
-function Get-MsvcUcrtLibDir {
-    $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-    if (-not (Test-Path -LiteralPath $vswhere -PathType Leaf)) {
-        return $null
-    }
-    $installRoot = & $vswhere -latest -products * -property installationPath 2>$null
-    if ([string]::IsNullOrWhiteSpace($installRoot)) {
-        return $null
-    }
-    $toolsRoot = Join-Path $installRoot 'VC\Tools\MSVC'
-    if (-not (Test-Path -LiteralPath $toolsRoot -PathType Container)) {
-        return $null
-    }
-    $verDir = Get-ChildItem -Path $toolsRoot -Directory -ErrorAction SilentlyContinue |
-        Sort-Object Name -Descending |
-        Select-Object -First 1
-    if (-not $verDir) {
-        return $null
-    }
-    $lib = Join-Path $verDir.FullName 'lib\x64'
-    if (Test-Path -LiteralPath $lib -PathType Container) {
-        return $lib
-    }
-    return $null
-}
-
 function Add-MsvcEmbedLinkOpts {
     param([ref]$PrefixArgs, [string[]]$LpiArgs)
 
@@ -103,33 +41,11 @@ function Add-MsvcEmbedLinkOpts {
     if (-not (Test-Path -LiteralPath $embedObj -PathType Leaf)) {
         return
     }
-
-    $libDirs = @()
-    $umLib = Get-WindowsSdkUmx64LibDir
-    if ($umLib) { $libDirs += $umLib }
-    $sdkUcrt = Get-WindowsSdkUcrtX64LibDir
-    if ($sdkUcrt) { $libDirs += $sdkUcrt }
-    $msvcLib = Get-MsvcUcrtLibDir
-    if ($msvcLib) { $libDirs += $msvcLib }
-
-    $PrefixArgs.Value += '--opt=-Xe'
-
-    $libSets = @(
-        @{ Dir = $umLib; Libs = @('kernel32.lib', 'advapi32.lib', 'user32.lib') },
-        @{ Dir = $sdkUcrt; Libs = @('ucrt.lib') },
-        @{ Dir = $msvcLib; Libs = @('msvcrt.lib', 'vcruntime.lib') }
-    )
-    foreach ($set in $libSets) {
-        if (-not $set.Dir) { continue }
-        foreach ($lib in $set.Libs) {
-            $path = Join-Path $set.Dir $lib
-            if (Test-Path -LiteralPath $path -PathType Leaf) {
-                $short = Get-ShortPathName -LongPath $path
-                $PrefixArgs.Value += "--opt=-k$short"
-            }
-        }
+    Write-Host 'ci-lazbuild: MSVC sqlite3_embed.o — internal linker + uSqliteWinEmbedBridge'
+    if ($env:LCA_WIN_LINK_XE -eq '1') {
+        $PrefixArgs.Value += '--opt=-Xe'
+        Write-Host 'ci-lazbuild: LCA_WIN_LINK_XE=1 — using link.exe for final PE link'
     }
-    Write-Host 'ci-lazbuild: passing Windows/MSVC import libs for MSVC sqlite3_embed.o'
 }
 
 function Resolve-LazBuild {

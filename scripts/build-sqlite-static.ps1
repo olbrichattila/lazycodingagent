@@ -108,6 +108,39 @@ function Test-MsvcClInPath {
   }
 }
 
+function Invoke-SqliteCompileClangMsvc {
+  param(
+    [string]$OutObj,
+    [string]$SourceC
+  )
+
+  if (Test-Path -LiteralPath $OutObj -PathType Leaf) {
+    Remove-Item -LiteralPath $OutObj -Force
+  }
+
+  $clang = Get-Command clang -ErrorAction SilentlyContinue
+  if (-not $clang -or -not $clang.Source) {
+    throw 'build-sqlite-static: SQLITE_CC=clang but clang not found on PATH (install LLVM)'
+  }
+
+  $defines = '-DSQLITE_ENABLE_FTS5=1 -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_JSON1=1'
+  $flags = @(
+    '-c', '-O2', '-w', '-target', 'x86_64-pc-windows-msvc',
+    '-fno-function-sections', '-fno-data-sections',
+    '-D_CRT_SECURE_NO_WARNINGS'
+  ) -join ' '
+  $line = "`"$($clang.Source)`" $flags $defines -o `"$OutObj`" `"$SourceC`""
+  Write-Host "build-sqlite-static: $line"
+  cmd /c $line
+  if ($LASTEXITCODE -ne 0) {
+    throw "build-sqlite-static: clang failed compiling sqlite3.c (exit $LASTEXITCODE)"
+  }
+  if (-not (Test-Path -LiteralPath $OutObj -PathType Leaf)) {
+    throw "build-sqlite-static: clang did not produce $OutObj"
+  }
+  Remove-MsvcObjectDrectve -Path $OutObj
+}
+
 function Invoke-SqliteCompileMsvc {
   param(
     [string]$OutObj,
@@ -205,7 +238,12 @@ Or use "x64 Native Tools Command Prompt for VS". Optional: SQLITE_MSVC_VCVARS=pa
 }
 
 $vcvars = Resolve-VcVarsBatch -TargetArch $Arch
-if ($vcvars) {
+$useClang = ($env:SQLITE_CC -eq 'clang')
+
+if ($useClang) {
+  Write-Host 'build-sqlite-static: SQLITE_CC=clang (MSVC ABI via LLVM)'
+  Invoke-SqliteCompileClangMsvc -OutObj $Out -SourceC $Src
+} elseif ($vcvars) {
   Write-Host "build-sqlite-static: using MSVC via $vcvars"
   Invoke-SqliteCompileMsvc -VcVars $vcvars -OutObj $Out -SourceC $Src
 } elseif (Test-MsvcClInPath) {

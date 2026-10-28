@@ -8,7 +8,7 @@ unit LazySqliteStatic;
 interface
 
 uses
-  uSqlite3Embed;
+  uSqlite3Embed, uSqliteWinEmbedBridge;
 
 implementation
 

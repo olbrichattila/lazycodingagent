@@ -3,7 +3,10 @@ unit uSqlite3Embed;
 {$mode objfpc}{$H+}
 {$packrecords C}
 
-{ Minimal SQLite3 C API bindings for statically linked amalgamation. }
+{ Minimal SQLite3 C API bindings for statically linked amalgamation (Unix) or
+  winsqlite3.dll on Windows (MSVC sqlite3_embed.o + FPC internal linker still
+  faults inside sqlite3_initialize at runtime). Define LCA_SQLITE_EMBED_WIN to
+  force the experimental static embed + uSqliteWinEmbedBridge path on Windows. }
 
 interface
 
@@ -44,16 +47,54 @@ function sqlite3_column_int(pStmt: PSqlite3Stmt; iCol: cint): cint; cdecl;
 
 implementation
 
-{$ifdef UNIX}
-  {$linklib c}
-  {$linklib m}
-  {$ifdef CPUAARCH64}
-  {$ifdef LINUX}
-  {$linklib gcc_s}
-  {$endif}
+{$ifdef MSWINDOWS}
+  {$ifndef LCA_SQLITE_EMBED_WIN}
+  {$define LCA_SQLITE_USE_WINSQLITE3}
   {$endif}
 {$endif}
 
+{$ifdef LCA_SQLITE_USE_WINSQLITE3}
+const
+  SQLITE_DLL = 'winsqlite3.dll';
+{$else}
+  {$ifdef MSWINDOWS}
+  uses
+    uSqliteWinEmbedBridge;
+  {$endif}
+  {$ifdef UNIX}
+    {$linklib c}
+    {$linklib m}
+    {$ifdef CPUAARCH64}
+    {$ifdef LINUX}
+    {$linklib gcc_s}
+    {$endif}
+    {$endif}
+  {$endif}
+{$endif}
+
+{$ifdef LCA_SQLITE_USE_WINSQLITE3}
+function sqlite3_libversion: PAnsiChar; cdecl; external SQLITE_DLL name 'sqlite3_libversion';
+function sqlite3_open_v2(filename: PAnsiChar; ppDb: PPSqlite3; flags: cint; zVfs: PAnsiChar): cint; cdecl;
+  external SQLITE_DLL name 'sqlite3_open_v2';
+function sqlite3_close(db: PSqlite3): cint; cdecl; external SQLITE_DLL name 'sqlite3_close';
+function sqlite3_errmsg(db: PSqlite3): PAnsiChar; cdecl; external SQLITE_DLL name 'sqlite3_errmsg';
+function sqlite3_exec(db: PSqlite3; sql: PAnsiChar; callback: Pointer; arg: Pointer; errmsg: PPAnsiChar): cint; cdecl;
+  external SQLITE_DLL name 'sqlite3_exec';
+function sqlite3_free(ptr: Pointer): cint; cdecl; external SQLITE_DLL name 'sqlite3_free';
+function sqlite3_prepare_v2(db: PSqlite3; zSql: PAnsiChar; nByte: cint; ppStmt: PPSqlite3Stmt; pzTail: PPAnsiChar): cint; cdecl;
+  external SQLITE_DLL name 'sqlite3_prepare_v2';
+function sqlite3_finalize(pStmt: PSqlite3Stmt): cint; cdecl; external SQLITE_DLL name 'sqlite3_finalize';
+function sqlite3_step(pStmt: PSqlite3Stmt): cint; cdecl; external SQLITE_DLL name 'sqlite3_step';
+function sqlite3_bind_text(pStmt: PSqlite3Stmt; i: cint; z: PAnsiChar; n: cint; xDel: Pointer): cint; cdecl;
+  external SQLITE_DLL name 'sqlite3_bind_text';
+function sqlite3_bind_int(pStmt: PSqlite3Stmt; i: cint; iValue: cint): cint; cdecl;
+  external SQLITE_DLL name 'sqlite3_bind_int';
+function sqlite3_reset(pStmt: PSqlite3Stmt): cint; cdecl; external SQLITE_DLL name 'sqlite3_reset';
+function sqlite3_column_text(pStmt: PSqlite3Stmt; iCol: cint): PAnsiChar; cdecl;
+  external SQLITE_DLL name 'sqlite3_column_text';
+function sqlite3_column_int(pStmt: PSqlite3Stmt; iCol: cint): cint; cdecl;
+  external SQLITE_DLL name 'sqlite3_column_int';
+{$else}
 function sqlite3_libversion: PAnsiChar; cdecl; external;
 function sqlite3_open_v2(filename: PAnsiChar; ppDb: PPSqlite3; flags: cint; zVfs: PAnsiChar): cint; cdecl; external;
 function sqlite3_close(db: PSqlite3): cint; cdecl; external;
@@ -70,5 +111,6 @@ function sqlite3_column_text(pStmt: PSqlite3Stmt; iCol: cint): PAnsiChar; cdecl;
 function sqlite3_column_int(pStmt: PSqlite3Stmt; iCol: cint): cint; cdecl; external;
 
 {$L sqlite3_embed.o}
+{$endif}
 
 end.
