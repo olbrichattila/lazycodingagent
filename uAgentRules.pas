@@ -21,9 +21,6 @@ type
 
 implementation
 
-uses
-  DateUtils;
-
 class function TAgentRules.DirectoryForProject(const AProjectRoot: string): string;
 begin
   if Trim(AProjectRoot) = '' then Exit('');
@@ -96,7 +93,7 @@ begin
     for I := 0 to Files.Count - 1 do begin
       if FindFirst(Files[I], faAnyFile, Info) = 0 then
       try
-        Parts.Add(Format('%s:%d:%d', [Files[I], Info.Size, FileDateToDateTime(Info.Time)]));
+        Parts.Add(Format('%s:%d:%d', [Files[I], Info.Size, Info.Time]));
       finally
         FindClose(Info);
       end;

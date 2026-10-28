@@ -19,6 +19,8 @@ begin
     Combined := TAgentRules.ReadAll(Root);
     if (Pos('First rule.', Combined) = 0) or (Pos('Last rule.', Combined) <= Pos('First rule.', Combined)) then
       raise Exception.Create('Rules were not combined in filename order.');
+    if Trim(TAgentRules.RulesContentFingerprint(Root)) = '' then
+      raise Exception.Create('Rules content fingerprint failed.');
     Path := TAgentRules.CreateRule(Root, 'Generated rule.');
     if not FileExists(Path) or (TAgentRules.ReadFile(Path) <> 'Generated rule.') then
       raise Exception.Create('Generated rule file persistence failed.');
