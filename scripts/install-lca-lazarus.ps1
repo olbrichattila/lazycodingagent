@@ -19,6 +19,25 @@ $LpkRuntime = Join-Path $Root 'packages\LcaDesignSystem\LcaDesignSystem.lpk'
 $LpkDesign = Join-Path $Root 'packages\LcaDesignSystem\LcaDesignSystemDesign.lpk'
 $LcaDesignLib = Join-Path $Root 'packages\LcaDesignSystem\lib\x86_64-win64-design'
 
+function Invoke-LcaGlyphBuild {
+    $glyphScript = Join-Path $PSScriptRoot 'build-lca-glyphs.bat'
+    $outRes = Join-Path $Root 'packages\LcaDesignSystem\res\lca_design_glyphs.res'
+    if (-not (Test-Path -LiteralPath $glyphScript)) {
+        if (-not (Test-Path -LiteralPath $outRes)) {
+            Write-Error "Missing LCA palette glyphs: $outRes (build-lca-glyphs.bat not found)"
+        }
+        Write-Warning "Skipping glyph rebuild; using existing $outRes"
+        return
+    }
+    & $glyphScript
+    if ($LASTEXITCODE -ne 0) {
+        if (-not (Test-Path -LiteralPath $outRes)) {
+            Write-Error "LCA palette glyph build failed and $outRes is missing. Install Lazarus lazres or restore the .res from git."
+        }
+        Write-Warning 'build-lca-glyphs.bat failed; continuing with existing lca_design_glyphs.res'
+    }
+}
+
 function Clear-LcaDesignPackageOutput {
     param([string]$DesignLibDir)
     if (-not (Test-Path -LiteralPath $DesignLibDir)) {
@@ -93,6 +112,7 @@ Invoke-LazBuild --add-package-link $LpkRuntime
 Invoke-LazBuild $LpkRuntime --build-all
 
 if (-not $LinkOnly) {
+    Invoke-LcaGlyphBuild
     Clear-LcaDesignPackageOutput -DesignLibDir $LcaDesignLib
     Invoke-LazBuild --add-package $LpkDesign
     Invoke-LazBuild $LpkDesign --build-all

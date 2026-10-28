@@ -174,6 +174,10 @@ procedure StyleGhostButton(ABtn: TButton; ATheme: TThemeKind);
 procedure ConfigureThemedListBox(AList: TListBox; ATheme: TThemeKind);
 procedure ConfigureThemedTreeView(ATree: TTreeView; ATheme: TThemeKind);
 procedure ConfigureThemedCheckBox(ACheck: TCheckBox; ATheme: TThemeKind);
+procedure ConfigureThemedRadioButton(ARadio: TRadioButton; ATheme: TThemeKind);
+{ Checkbox/radio caption on a TLabel avoids Win32 black caption text on dark tab pages. }
+procedure StyleThemedToggleCaptionLabel(ALabel: TLabel; ATheme: TThemeKind);
+procedure StyleThemedSectionLabel(ALabel: TLabel; ATheme: TThemeKind);
 procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
   const AFontName: string = 'Segoe UI'; ABackground: TColor = clNone);
 procedure ConfigureThemedExecDetailMemo(AMemo: TCustomMemo; ATheme: TThemeKind);
@@ -226,6 +230,17 @@ uses
   {$IFDEF LCLGtk2}, gtk2, gdk2, glib2{$ENDIF}
   {$IFDEF LCLcocoa}, CocoaAll, CocoaUtils{$ENDIF}
   ;
+
+procedure ApplyWin32ToggleCaptionOpaqueStyle(AWin: TWinControl);
+begin
+  if not Assigned(AWin) then Exit;
+  { Win32 tab pages: without csOpaque, WM_CTLCOLORBTN parent-paint path skips SetTextColor. }
+  AWin.ControlStyle := AWin.ControlStyle + [csOpaque] - [csParentBackground];
+{$IFDEF WINDOWS}
+  if AWin.HandleAllocated then
+    RecreateWnd(AWin);
+{$ENDIF}
+end;
 
 function ParentFormHandlesReady(AControl: TControl): Boolean;
 var
@@ -694,6 +709,18 @@ procedure SetWindowTheme(hwnd: TWinHwnd; pszSubAppName, pszSubIdList: PWideChar)
 function DwmSetWindowAttribute(hwnd: TWinHwnd; dwAttribute: LongWord;
   pvAttribute: Pointer; cbAttribute: LongWord): LongInt; stdcall;
   external 'dwmapi' name 'DwmSetWindowAttribute';
+
+procedure ApplyWin32ExplorerControlTheme(AHandle: TWinHwnd; ATheme: TThemeKind);
+var
+  ThemeId: PWideChar;
+begin
+  if AHandle = 0 then Exit;
+  if ATheme = tkDark then
+    ThemeId := 'DarkMode_Explorer'
+  else
+    ThemeId := 'Explorer';
+  SetWindowTheme(AHandle, ThemeId, nil);
+end;
 {$ENDIF}
 
 function LazarusIdeHostExecutable: Boolean;
@@ -1407,6 +1434,7 @@ var
 begin
   if not Assigned(ACheck) then Exit;
   P := ThemePalette(ATheme);
+  ApplyWin32ToggleCaptionOpaqueStyle(ACheck);
   ACheck.ParentFont := False;
   ACheck.Font.Name := 'Segoe UI';
   ACheck.Font.Color := P.Text;
@@ -1418,9 +1446,83 @@ begin
   ACheck.Color := Bg;
 {$IFDEF WINDOWS}
   if ACheck.HandleAllocated then
-    SetWindowTheme(ACheck.Handle, '', '');
+    ApplyWin32ExplorerControlTheme(ACheck.Handle, ATheme);
 {$ENDIF}
   ACheck.Invalidate;
+end;
+
+procedure ConfigureThemedRadioButton(ARadio: TRadioButton; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  Bg: TColor;
+begin
+  if not Assigned(ARadio) then Exit;
+  P := ThemePalette(ATheme);
+  ApplyWin32ToggleCaptionOpaqueStyle(ARadio);
+  ARadio.ParentFont := False;
+  ARadio.Font.Name := 'Segoe UI';
+  ARadio.Font.Color := P.Text;
+  ARadio.ParentColor := False;
+  if Assigned(ARadio.Parent) then
+    Bg := TControl(ARadio.Parent).Color
+  else
+    Bg := P.Surface;
+  ARadio.Color := Bg;
+{$IFDEF WINDOWS}
+  if ARadio.HandleAllocated then
+    ApplyWin32ExplorerControlTheme(ARadio.Handle, ATheme);
+{$ENDIF}
+  ARadio.Invalidate;
+end;
+
+procedure StyleThemedToggleCaptionLabel(ALabel: TLabel; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(ALabel) then Exit;
+  P := ThemePalette(ATheme);
+  ALabel.ParentFont := False;
+  ALabel.Font.Name := 'Segoe UI';
+  ALabel.Font.Color := P.Text;
+  if ALabel.Cursor <> crHandPoint then
+    ALabel.Cursor := crHandPoint;
+end;
+
+procedure StyleThemedSectionLabel(ALabel: TLabel; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+begin
+  if not Assigned(ALabel) then Exit;
+  P := ThemePalette(ATheme);
+  ALabel.ParentFont := False;
+  ALabel.Font.Name := 'Segoe UI';
+  ALabel.Font.Color := P.Text;
+  ALabel.Font.Style := [fsBold];
+end;
+
+procedure ConfigureThemedGroupBox(AGroup: TCustomGroupBox; ATheme: TThemeKind);
+var
+  P: TThemePalette;
+  Bg: TColor;
+begin
+  if not Assigned(AGroup) then Exit;
+  P := ThemePalette(ATheme);
+  if AGroup is TGroupBox then begin
+    TGroupBox(AGroup).ParentFont := False;
+    TGroupBox(AGroup).ParentColor := False;
+  end;
+  AGroup.Font.Name := 'Segoe UI';
+  AGroup.Font.Color := P.Text;
+  if Assigned(AGroup.Parent) then
+    Bg := AGroup.Parent.Color
+  else
+    Bg := P.Surface;
+  AGroup.Color := Bg;
+{$IFDEF WINDOWS}
+  if AGroup.HandleAllocated then
+    ApplyWin32ExplorerControlTheme(AGroup.Handle, ATheme);
+{$ENDIF}
+  AGroup.Invalidate;
 end;
 
 procedure ConfigureThemedMemo(AMemo: TCustomMemo; ATheme: TThemeKind;
@@ -1808,21 +1910,16 @@ begin
 end;
 
 procedure ApplyWin32ScrollableTheme(AControl: TWinControl; ATheme: TThemeKind);
-{$IFDEF WINDOWS}
-var
-  ThemeId: PWideChar;
-{$ENDIF}
 begin
   if not Assigned(AControl) then Exit;
   if not AControl.HandleAllocated then Exit;
 {$IFDEF WINDOWS}
-  if (AControl is TComboBox) or (AControl is TEdit) then begin
-    if ATheme = tkDark then
-      ThemeId := 'DarkMode_Explorer'
-    else
-      ThemeId := 'Explorer';
-    SetWindowTheme(AControl.Handle, ThemeId, nil);
-  end;
+  if (AControl is TComboBox) or (AControl is TEdit) then
+    ApplyWin32ExplorerControlTheme(AControl.Handle, ATheme)
+  else if AControl is TCheckBox then
+    ConfigureThemedCheckBox(TCheckBox(AControl), ATheme)
+  else if AControl is TRadioButton then
+    ConfigureThemedRadioButton(TRadioButton(AControl), ATheme);
 {$ENDIF}
   AControl.Invalidate;
 end;
@@ -2076,6 +2173,10 @@ begin
       TStatusBar(C).Font.Color := P.TextMuted;
     end else if C is TCheckBox then
       ConfigureThemedCheckBox(TCheckBox(C), ATheme)
+    else if C is TRadioButton then
+      ConfigureThemedRadioButton(TRadioButton(C), ATheme)
+    else if C is TCustomGroupBox then
+      ConfigureThemedGroupBox(TCustomGroupBox(C), ATheme)
     else if C is TSpeedButton then begin
       TSpeedButton(C).Font.Color := P.TextMuted;
       TSpeedButton(C).Color := P.RailBg;

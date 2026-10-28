@@ -11,7 +11,8 @@ implementation
 uses
   Classes, SysUtils, Controls, Terminal.View.LCL, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
   LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaMarkdownView, LcaTerminalPanel,
-  LcaThemedMenuBar, LcaThemedTitleBar, LcaScrollHost, LcaThemedControl;
+  LcaThemedMenuBar, LcaThemedTitleBar, LcaScrollHost, LcaThemedControl,
+  LcaThemedGroupBox;
 
 type
   TLcaThemeHookRegistry = class
@@ -66,6 +67,10 @@ begin
   end;
   if AControl is TLcaScrollHost then begin
     TLcaScrollHost(AControl).ApplyTheme(ATheme);
+    Exit(True);
+  end;
+  if AControl is TLcaThemedGroupBox then begin
+    TLcaThemedGroupBox(AControl).ApplyTheme(ATheme);
     Exit(True);
   end;
   if AControl is TLcaThemedControl then begin

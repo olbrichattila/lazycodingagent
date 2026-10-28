@@ -142,11 +142,6 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
-        <Filename Value="fraPromptCacheSettings.pas"/>
-        <IsPartOfProject Value="True"/>
-        <HasResources Value="True"/>
-      </Unit>
-      <Unit>
         <Filename Value="uSslRuntime.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -285,11 +280,6 @@
       <Unit>
         <Filename Value="uWebSearchManager.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="fraWebSearchSettings.pas"/>
-        <IsPartOfProject Value="True"/>
-        <HasResources Value="True"/>
       </Unit>
       <Unit>
         <Filename Value="frmWebSearchConnection.pas"/>
@@ -670,8 +660,8 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="third_party\fpc-openssl3\src;data;data\sqlite"/>
       <Libraries Value="packages\LazySqliteStatic\src"/>
+      <OtherUnitFiles Value="third_party\fpc-openssl3\src;data;data\sqlite"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

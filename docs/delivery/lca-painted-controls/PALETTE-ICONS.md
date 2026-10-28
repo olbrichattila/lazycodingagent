@@ -23,7 +23,7 @@ PNG sources  →  lazres  →  .res resource  →  LcaDesignSystemDesign  →  I
 ```
 
 1. Place PNGs under `packages/LcaDesignSystem/res/glyphs/`.
-2. Build a resource file with Lazarus `lazres`, e.g. `lca_design_glyphs.res`, with resource names matching class names (same as PNG basename).
+2. Build a resource file with Lazarus `lazres`, e.g. `lca_design_glyphs.res`, with resource names matching class names (same as PNG basename). Always rebuild from **all** PNGs in `res/glyphs/` (run `scripts/build-lca-glyphs.sh` / `.bat`); do not run `lazres` on a single new PNG only, or existing palette icons disappear from the `.res`.
 3. Link the resource from the **design-time** package only:
    - [`LcaDesignSystemDesign.lpk`](../../../packages/LcaDesignSystem/LcaDesignSystemDesign.lpk) (include the `.res` in package files), and/or
    - `{$R lca_design_glyphs.res}` in [`LcaDesignReg.pas`](../../../packages/LcaDesignSystem/design/LcaDesignReg.pas) implementation.

@@ -127,6 +127,16 @@ lazbuild_cmd --add-package-link "$LpkRuntime"
 lazbuild_cmd "$LpkRuntime" --build-all
 
 if [[ "$LINK_ONLY" -eq 0 ]]; then
+  GLYPH_SCRIPT="$INSTALL_SCRIPT_DIR/build-lca-glyphs.sh"
+  OUT_RES="$ROOT/packages/LcaDesignSystem/res/lca_design_glyphs.res"
+  if [[ -x "$GLYPH_SCRIPT" ]]; then
+    "$GLYPH_SCRIPT"
+  elif [[ ! -f "$OUT_RES" ]]; then
+    echo "Missing LCA palette glyphs: $OUT_RES (build-lca-glyphs.sh not runnable)" >&2
+    exit 1
+  else
+    echo "Skipping glyph rebuild; using existing $OUT_RES" >&2
+  fi
   lazbuild_cmd --add-package "$LpkDesign"
   lazbuild_cmd "$LpkDesign" --build-all
   if ! system_lazarus_units_writable; then

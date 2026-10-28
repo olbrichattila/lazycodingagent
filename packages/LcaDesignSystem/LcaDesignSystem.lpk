@@ -52,6 +52,10 @@
         <UnitName Value="LcaThemeWin32Combo"/>
       </Item>
       <Item>
+        <Filename Value="src\LcaThemedGroupBox.pas"/>
+        <UnitName Value="LcaThemedGroupBox"/>
+      </Item>
+      <Item>
         <Filename Value="src\LcaThemedPageTabBar.pas"/>
         <UnitName Value="LcaThemedPageTabBar"/>
       </Item>

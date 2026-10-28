@@ -15,7 +15,8 @@ uses
   TypInfo, PropEdits, LcaTheme, LcaThemedPageTabBar, LcaThemedButton,
   LcaThemedComboBox, LcaNavRailButton, LcaSurfacePanel, LcaPaintSurface, LcaPaintButton, LcaPaintNavRailButton, LcaPaintComboBox, LcaScrollHost, LcaPaintNavList,
   LcaMarkdownView,
-  LcaTerminalPanel, LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedTitleBar;
+  LcaTerminalPanel, LcaThemedMainMenu, LcaThemedMenuBar, LcaThemedTitleBar,
+  LcaThemedGroupBox;
 
 {$R ../res/lca_design_glyphs.res}
 
@@ -37,7 +38,8 @@ begin
     TLcaTerminalPanel,
     TLcaThemedMainMenu,
     TLcaThemedMenuBar,
-    TLcaThemedTitleBar
+    TLcaThemedTitleBar,
+    TLcaThemedGroupBox
   ]);
   RegisterPropertyEditor(TypeInfo(TThemeKind), nil, '', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemedButtonRole), nil, '', TEnumPropertyEditor);
@@ -58,6 +60,7 @@ begin
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaTerminalPanel, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaThemedMenuBar, 'ThemeKind', TEnumPropertyEditor);
   RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaThemedTitleBar, 'ThemeKind', TEnumPropertyEditor);
+  RegisterPropertyEditor(TypeInfo(TThemeKind), TLcaThemedGroupBox, 'ThemeKind', TEnumPropertyEditor);
 end;
 
 end.
