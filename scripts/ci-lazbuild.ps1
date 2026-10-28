@@ -30,18 +30,40 @@ function Get-ShortPathName {
     return $fso.GetFolder($LongPath).ShortPath
 }
 
-function Add-MsvcEmbedLinkOpts {
+function Add-WinSqliteEmbedLinkOpts {
     param([ref]$PrefixArgs, [string[]]$LpiArgs)
 
-    $buildingMain = $LpiArgs | Where-Object { $_ -match 'lazycodingagent\.lpi$' }
-    if (-not $buildingMain) {
+    $buildingEmbed = $LpiArgs | Where-Object { $_ -match 'lazycodingagent\.lpi|test_app_database\.lpi' }
+    if (-not $buildingEmbed) {
+        return
+    }
+    if ($env:LCA_SQLITE_USE_WINSQLITE3 -eq '1') {
+        Write-Host 'ci-lazbuild: LCA_SQLITE_USE_WINSQLITE3=1 — winsqlite3.dll (no embed link opts)'
         return
     }
     $embedObj = Join-Path $Root 'packages\LazySqliteStatic\src\sqlite3_embed.o'
     if (-not (Test-Path -LiteralPath $embedObj -PathType Leaf)) {
         return
     }
-    Write-Host 'ci-lazbuild: MSVC sqlite3_embed.o — internal linker + uSqliteWinEmbedBridge'
+    $resolve = Join-Path $ScriptDir 'resolve-mingw-win64.ps1'
+    if (-not (Test-Path -LiteralPath $resolve)) {
+        Write-Host 'ci-lazbuild: resolve-mingw-win64.ps1 missing; embed link libs skipped'
+        return
+    }
+    try {
+        $mingwLib = & $resolve -What Lib
+    } catch {
+        Write-Host "ci-lazbuild: MinGW lib dir not found ($($_.Exception.Message)); embed link libs skipped"
+        return
+    }
+    Write-Host 'ci-lazbuild: MinGW sqlite3_embed.o — internal linker + bridge + MinGW import libs'
+    foreach ($lib in @('libmsvcrt.a', 'libkernel32.a', 'libadvapi32.a', 'libuser32.a', 'libmingwex.a', 'libgcc.a', 'libm.a')) {
+        $path = Join-Path $mingwLib $lib
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $short = Get-ShortPathName -LongPath $path
+            $PrefixArgs.Value += "--opt=-k$short"
+        }
+    }
     if ($env:LCA_WIN_LINK_XE -eq '1') {
         $PrefixArgs.Value += '--opt=-Xe'
         Write-Host 'ci-lazbuild: LCA_WIN_LINK_XE=1 — using link.exe for final PE link'
@@ -84,7 +106,7 @@ if (-not [string]::IsNullOrWhiteSpace($env:LCL_WIDGETSET)) {
     $prefixArgs += "--widgetset=$($env:LCL_WIDGETSET)"
 }
 
-Add-MsvcEmbedLinkOpts -PrefixArgs ([ref]$prefixArgs) -LpiArgs $LpiArgs
+Add-WinSqliteEmbedLinkOpts -PrefixArgs ([ref]$prefixArgs) -LpiArgs $LpiArgs
 
 $allArgs = $prefixArgs + $LpiArgs
 Write-Host "ci-lazbuild: $LazBuild $($allArgs -join ' ')"

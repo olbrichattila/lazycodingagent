@@ -1,6 +1,6 @@
 ﻿# Compile third_party/sqlite/sqlite3.c to a COFF object for LazySqliteStatic (Windows).
-# FPC's internal PE linker requires an MSVC (cl.exe) object — MinGW gcc .o files use
-# __imp_* imports that FPC cannot resolve (50+ undefined Win32 API symbols at link time).
+# Windows default: MinGW-w64 gcc object + FPC internal linker, MinGW import .a via ci-lazbuild -k.
+# Optional SQLITE_CC=msvc|clang for experimental MSVC COFF objects (see third_party/sqlite/README.md).
 param(
   [ValidateSet('win32', 'win64')]
   [string]$Arch = 'win64'
@@ -105,6 +105,31 @@ function Test-MsvcClInPath {
     return ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $testO -PathType Leaf))
   } finally {
     Remove-Item -LiteralPath $testC, $testO -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Invoke-SqliteCompileMingw {
+  param(
+    [string]$OutObj,
+    [string]$SourceC
+  )
+
+  if (Test-Path -LiteralPath $OutObj -PathType Leaf) {
+    Remove-Item -LiteralPath $OutObj -Force
+  }
+
+  $resolve = Join-Path $PSScriptRoot 'resolve-mingw-win64.ps1'
+  $gcc = & $resolve -What Gcc
+  $defines = '-DSQLITE_ENABLE_FTS5=1 -DSQLITE_THREADSAFE=1 -DSQLITE_ENABLE_JSON1=1'
+  $flags = '-c -O2 -Wno-discarded-qualifiers'
+  $line = "`"$gcc`" $flags $defines -o `"$OutObj`" `"$SourceC`""
+  Write-Host "build-sqlite-static: $line"
+  cmd /c $line
+  if ($LASTEXITCODE -ne 0) {
+    throw "build-sqlite-static: MinGW gcc failed compiling sqlite3.c (exit $LASTEXITCODE)"
+  }
+  if (-not (Test-Path -LiteralPath $OutObj -PathType Leaf)) {
+    throw "build-sqlite-static: MinGW gcc did not produce $OutObj"
   }
 }
 
@@ -238,9 +263,23 @@ Or use "x64 Native Tools Command Prompt for VS". Optional: SQLITE_MSVC_VCVARS=pa
 }
 
 $vcvars = Resolve-VcVarsBatch -TargetArch $Arch
-$useClang = ($env:SQLITE_CC -eq 'clang')
+$ccMode = if ($env:SQLITE_CC) { $env:SQLITE_CC.ToLowerInvariant() } else { '' }
 
-if ($useClang) {
+function Test-MingwGccAvailable {
+  try {
+    $resolve = Join-Path $PSScriptRoot 'resolve-mingw-win64.ps1'
+    if (-not (Test-Path -LiteralPath $resolve)) { return $false }
+    $null = & $resolve -What Gcc 2>$null
+    return $true
+  } catch {
+    return $false
+  }
+}
+
+if ($ccMode -eq 'mingw' -or (($ccMode -eq '') -and (Test-MingwGccAvailable))) {
+  Write-Host 'build-sqlite-static: MinGW-w64 gcc (Windows static embed)'
+  Invoke-SqliteCompileMingw -OutObj $Out -SourceC $Src
+} elseif ($ccMode -eq 'clang') {
   Write-Host 'build-sqlite-static: SQLITE_CC=clang (MSVC ABI via LLVM)'
   Invoke-SqliteCompileClangMsvc -OutObj $Out -SourceC $Src
 } elseif ($vcvars) {
@@ -249,8 +288,10 @@ if ($useClang) {
 } elseif (Test-MsvcClInPath) {
   Write-Host 'build-sqlite-static: using cl.exe from PATH (Developer Command Prompt environment)'
   Invoke-SqliteCompileMsvc -OutObj $Out -SourceC $Src
-} else {
+} elseif ($ccMode -eq 'msvc' -or $ccMode -eq 'cl') {
   Throw-MsvcNotFound
+} else {
+  throw "build-sqlite-static: unknown SQLITE_CC=$($env:SQLITE_CC) (use mingw, msvc, or clang)"
 }
 
 $SrcObj = Join-Path $Root 'packages\LazySqliteStatic\src\sqlite3_embed.o'

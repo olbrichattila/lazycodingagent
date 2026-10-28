@@ -134,6 +134,26 @@ begin
   Result := Windows.CreateFileMappingW(hFile, lpFileMappingAttributes, flProtect,
     dwMaximumSizeHigh, dwMaximumSizeLow, lpName);
 end;
+function Lca_CreateFileMappingA(hFile: THandle; lpFileMappingAttributes: Pointer;
+  flProtect: DWORD; dwMaximumSizeHigh, dwMaximumSizeLow: DWORD;
+  lpName: PAnsiChar): THandle; stdcall; public name 'CreateFileMappingA';
+begin
+  Result := Windows.CreateFileMappingA(hFile, lpFileMappingAttributes, flProtect,
+    dwMaximumSizeHigh, dwMaximumSizeLow, lpName);
+end;
+function Lca_GetVersionExA(var lpVersionInformation: TOSVersionInfoA): BOOL; stdcall;
+  public name 'GetVersionExA';
+begin Result := Windows.GetVersionExA(lpVersionInformation); end;
+function Lca_GetVersionExW(var lpVersionInformation: TOSVersionInfoW): BOOL; stdcall;
+  public name 'GetVersionExW';
+begin Result := Windows.GetVersionExW(lpVersionInformation); end;
+function ucrt_strlen(s: PAnsiChar): size_t; cdecl; external 'ucrtbase.dll' name 'strlen';
+function ucrt_localtime64(time64: PInt64; tm: Pointer): PAnsiChar; cdecl;
+  external 'ucrtbase.dll' name '_localtime64';
+function Lca_strlen(s: PAnsiChar): size_t; cdecl; public name 'strlen';
+begin Result := ucrt_strlen(s); end;
+function Lca__localtime64(time64: PInt64; tm: Pointer): PAnsiChar; cdecl; public name '_localtime64';
+begin Result := ucrt_localtime64(time64, tm); end;
 function Lca_CreateFileW(lpFileName: PWideChar; dwDesiredAccess, dwShareMode: DWORD;
   lpSecurity: Pointer; dwCreationDisposition, dwFlagsAndAttributes: DWORD;
   hTemplateFile: THandle): THandle; stdcall; public name 'CreateFileW';
@@ -356,6 +376,19 @@ begin Windows.RaiseException(dwExceptionCode, dwExceptionFlags, nNumberOfArgumen
 
 { MSVC __chkstk — FPC internal linker cannot ingest MSVC chkstk.obj (reloctype $000A). }
 procedure Lca___chkstk; assembler; nostackframe; public name '__chkstk';
+{$ASMMODE intel}
+asm
+  push rcx
+  push rax
+  lea rax, qword ptr [rsp + 16]
+  sub rsp, rax
+  and rsp, 0FFFFFFFFFFFFF000h
+  sub rsp, rax
+  pop rax
+  pop rcx
+end;
+
+procedure Lca____chkstk_ms; assembler; nostackframe; public name '___chkstk_ms';
 {$ASMMODE intel}
 asm
   push rcx

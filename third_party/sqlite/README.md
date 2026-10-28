@@ -4,11 +4,25 @@ Official amalgamation from [sqlite.org](https://www.sqlite.org/download.html). V
 
 ## Build flags (via `scripts/build-sqlite-static.sh` / `.ps1`)
 
-- **Windows (default):** The app links **`winsqlite3.dll`** (shipped with Windows 10+) via [`uSqlite3Embed.pas`](../../packages/LazySqliteStatic/src/uSqlite3Embed.pas). MSVC **`sqlite3_embed.o` + FPC 3.2.x internal linker** still links with [`uSqliteWinEmbedBridge.pas`](../../packages/LazySqliteStatic/src/uSqliteWinEmbedBridge.pas) but **faults in `sqlite3_initialize` at runtime**; define **`LCA_SQLITE_EMBED_WIN`** on the project to try that experimental static path (CI embed build remains for future fixes / non-Windows parity).
-- **Windows embed build:** `build-sqlite-static.ps1` compiles with **MSVC `cl.exe`** by default (COFF for FPC). Set **`SQLITE_CC=clang`** to use **LLVM Clang** with `-target x86_64-pc-windows-msvc` instead (no Build Tools required if Windows SDK + Clang are on PATH). **`cl` must use `/Gy-`** plus `/GS-`, `/guard:cf-`, and `/Zl` so FPC 3.2.x avoids COMDAT `.pdata`/`.xdata` errors; the script sets these for MSVC. After compile, **MinGW `objcopy -R .drectve`** strips MSVC linker directives. **Linking** uses FPC’s **internal linker** and the bridge unit (`public name` forwarders for Win32/CRT symbols from the embed object). MinGW **`gcc`** objects are not supported. **Linux/macOS:** GCC/Clang with `-Wno-discarded-qualifiers` (or `-Wno-ignored-qualifiers` on Darwin) — silences a known warning in the upstream amalgamation (`sqlite3ShadowTableName`); we do not patch vendored `sqlite3.c` for that.
+### Linux / macOS / Raspberry Pi
+
+- **`build-sqlite-static.sh`:** GCC/Clang, `-fPIC`, same `SQLITE_*` defines.
+- Link: `{$L sqlite3_embed.o}` + `{$linklib c}` / `m` in [`uSqlite3Embed.pas`](../../packages/LazySqliteStatic/src/uSqlite3Embed.pas).
+
+### Windows (default: static MinGW embed)
+
+- **`build-sqlite-static.ps1`** compiles with **MinGW-w64 `x86_64-w64-mingw32-gcc`** when WinLibs/MSYS2 is on PATH (see [`scripts/resolve-mingw-win64.ps1`](../../scripts/resolve-mingw-win64.ps1)). CI installs WinLibs via winget.
+- **Link:** FPC internal linker + [`uSqliteWinEmbedBridge.pas`](../../packages/LazySqliteStatic/src/uSqliteWinEmbedBridge.pas) (Win32 `public name` forwarders and a few MinGW-only symbols) + MinGW import archives passed as `-k…/lib*.a` from [`scripts/ci-lazbuild.ps1`](../../scripts/ci-lazbuild.ps1).
+- **Fallback:** define **`LCA_SQLITE_USE_WINSQLITE3`** on the project to use OS `winsqlite3.dll` (no static embed).
+- **Experimental MSVC object:** `SQLITE_CC=msvc` or `clang` — `/Gy-`, bridge, still **unreliable at runtime** with `LCA_SQLITE_EMBED_WIN`; see [`docs/sqlite-windows-static-review.md`](../../docs/sqlite-windows-static-review.md).
+
+Shared defines:
+
 - `SQLITE_ENABLE_FTS5` — keyword search for future workspace knowledge base
 - `SQLITE_THREADSAFE=1`
 - `SQLITE_ENABLE_JSON1`
+
+Unix only: `-Wno-discarded-qualifiers` (or `-Wno-ignored-qualifiers` on Darwin) for upstream amalgamation noise.
 
 Runtime: WAL mode is enabled in `uAppDatabase` when opening databases.
 

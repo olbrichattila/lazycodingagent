@@ -3,9 +3,31 @@
   <Package Version="5">
     <Name Value="LazySqliteStatic"/>
     <Type Value="RunTimeOnly"/>
+    <BuildModes>
+      <Item1 Name="Default" Default="True"/>
+      <Item2 Name="MingwStaticEmbed">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <OtherDefines Count="1">
+            <Item1 Value="LCA_SQLITE_MINGW_EMBED"/>
+          </OtherDefines>
+        </CompilerOptions>
+      </Item2>
+      <Item3 Name="MsvcStaticEmbed">
+        <CompilerOptions>
+          <Version Value="11"/>
+          <OtherDefines Count="1">
+            <Item1 Value="LCA_SQLITE_EMBED_WIN"/>
+          </OtherDefines>
+        </CompilerOptions>
+      </Item3>
+    </BuildModes>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
+      <OtherDefines Count="1">
+        <Item1 Value="LCA_SQLITE_MINGW_EMBED"/>
+      </OtherDefines>
       <SearchPaths>
         <OtherUnitFiles Value="src"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>

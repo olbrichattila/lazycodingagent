@@ -125,6 +125,15 @@ jobs:
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
 
+      - name: Install MinGW-w64 (WinLibs) for SQLite embed
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath "$env:LOCALAPPDATA/Microsoft/WinGet/Packages")) {
+            New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA/Microsoft/WinGet/Packages" | Out-Null
+          }
+          winget install --id BrechtSanders.WinLibs.POSIX.UCRT --accept-package-agreements --accept-source-agreements --disable-interactivity 2>&1 | Out-String
+          if ($LASTEXITCODE -gt 1) { throw "winget WinLibs failed with exit $LASTEXITCODE" }
+
       - name: Build and link static SQLite
         shell: pwsh
         run: ./scripts/install-lazarus-sqlite.ps1
