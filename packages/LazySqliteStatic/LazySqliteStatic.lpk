@@ -25,9 +25,6 @@
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
-      <OtherDefines Count="1">
-        <Item1 Value="LCA_SQLITE_MINGW_EMBED"/>
-      </OtherDefines>
       <SearchPaths>
         <OtherUnitFiles Value="src"/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
@@ -35,7 +32,7 @@
     </CompilerOptions>
     <Description Value="Static embedded SQLite amalgamation for LazyCodingAgent"/>
     <Version Major="0" Minor="1" Release="0"/>
-    <Files Count="3">
+    <Files Count="2">
       <Item1>
         <Filename Value="src\LazySqliteStatic.pas"/>
         <UnitName Value="LazySqliteStatic"/>
@@ -44,10 +41,6 @@
         <Filename Value="src\uSqlite3Embed.pas"/>
         <UnitName Value="uSqlite3Embed"/>
       </Item2>
-      <Item3>
-        <Filename Value="src\uSqliteWinEmbedBridge.pas"/>
-        <UnitName Value="uSqliteWinEmbedBridge"/>
-      </Item3>
     </Files>
     <RequiredPkgs Count="1">
       <Item1>
