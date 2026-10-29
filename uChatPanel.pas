@@ -785,6 +785,8 @@ begin
       begin
         RoleLabel := 'Agent';
         Body := AMsg.Content;
+        if (Trim(Body) = '') and (Length(AMsg.ToolCalls) > 0) then
+          Exit;
       end;
     crTool:
       begin

@@ -43,12 +43,45 @@ type
     tsAgent: TTabSheet;
     scrAgentTab: TScrollBox;
     pnlTabAgent: TPanel;
+    pnlAgentCoreEdits: TPanel;
+    pnlAgentLlmNetwork: TPanel;
+    pnlAgentToolCalling: TPanel;
+    pnlAgentNativeBlock: TPanel;
+    pnlAgentNativeRow: TPanel;
+    pnlAgentTextToolBlock: TPanel;
+    pnlAgentTextToolRow: TPanel;
+    pnlAgentStreamingBlock: TPanel;
+    pnlAgentStreamingRow: TPanel;
+    pnlAgentRunBehavior: TPanel;
+    pnlAgentDebuggingBlock: TPanel;
+    pnlAgentDebuggingRow: TPanel;
+    pnlAgentLearnBlock: TPanel;
+    pnlAgentLearnRow: TPanel;
+    pnlAgentAutoSumBlock: TPanel;
+    pnlAgentAutoSumRow: TPanel;
+    pnlAgentContext: TPanel;
+    pnlAgentBrowser: TPanel;
     lblTemp: TLabel;
     edtTemp: TEdit;
     lblMaxTokens: TLabel;
     edtMaxTokens: TEdit;
     lblMaxSteps: TLabel;
     edtMaxSteps: TEdit;
+    lblLlmConnectTimeout: TLabel;
+    edtLlmConnectTimeoutSec: TEdit;
+    lblLlmReadTimeout: TLabel;
+    edtLlmReadTimeoutSec: TEdit;
+    lblLlmHttpRetries: TLabel;
+    edtLlmHttpRetries: TEdit;
+    chkLlmNativeToolCalling: TCheckBox;
+    lblLlmNativeToolCalling: TLabel;
+    lblLlmNativeToolHint: TLabel;
+    chkLlmTextToolCompat: TCheckBox;
+    lblLlmTextToolCompat: TLabel;
+    lblLlmTextToolHint: TLabel;
+    chkLlmStreamingEnabled: TCheckBox;
+    lblLlmStreamingEnabled: TLabel;
+    lblLlmStreamingHint: TLabel;
     chkDebuggingMode: TCheckBox;
     lblDebuggingMode: TLabel;
     lblDebuggingHint: TLabel;
@@ -176,6 +209,10 @@ type
     procedure SaveToState;
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure UpdateMaxTokensHint;
+    procedure ReadLlmTimeoutFieldsFromForm(out AConnectMs, AReadMs: Integer);
+    procedure WriteLlmTimeoutFieldsToForm(AConnectMs, AReadMs: Integer);
+    function ReadLlmHttpRetryField: Integer;
+    procedure WriteLlmHttpRetryField(AValue: Integer);
     procedure FlushCredentialsToState(AProv: TLlmProvider);
     procedure LoadProviderTab(AProv: TLlmProvider);
     procedure RefreshProviderComboItem;
@@ -283,6 +320,70 @@ begin
     scrAgentTab.Color := P.Surface;
     scrAgentTab.ParentColor := False;
   end;
+  if Assigned(pnlTabAgent) then begin
+    pnlTabAgent.Color := P.Surface;
+    pnlTabAgent.ParentColor := False;
+    if Assigned(pnlAgentCoreEdits) then begin
+      pnlAgentCoreEdits.Color := P.Surface;
+      pnlAgentCoreEdits.ParentColor := False;
+    end;
+    if Assigned(pnlAgentLlmNetwork) then begin
+      pnlAgentLlmNetwork.Color := P.Surface;
+      pnlAgentLlmNetwork.ParentColor := False;
+    end;
+    if Assigned(pnlAgentToolCalling) then begin
+      pnlAgentToolCalling.Color := P.Surface;
+      pnlAgentToolCalling.ParentColor := False;
+    end;
+    if Assigned(pnlAgentNativeBlock) then begin
+      pnlAgentNativeBlock.Color := P.Surface;
+      pnlAgentNativeBlock.ParentColor := False;
+      pnlAgentNativeRow.Color := P.Surface;
+      pnlAgentNativeRow.ParentColor := False;
+    end;
+    if Assigned(pnlAgentTextToolBlock) then begin
+      pnlAgentTextToolBlock.Color := P.Surface;
+      pnlAgentTextToolBlock.ParentColor := False;
+      pnlAgentTextToolRow.Color := P.Surface;
+      pnlAgentTextToolRow.ParentColor := False;
+    end;
+    if Assigned(pnlAgentStreamingBlock) then begin
+      pnlAgentStreamingBlock.Color := P.Surface;
+      pnlAgentStreamingBlock.ParentColor := False;
+      pnlAgentStreamingRow.Color := P.Surface;
+      pnlAgentStreamingRow.ParentColor := False;
+    end;
+    if Assigned(pnlAgentRunBehavior) then begin
+      pnlAgentRunBehavior.Color := P.Surface;
+      pnlAgentRunBehavior.ParentColor := False;
+    end;
+    if Assigned(pnlAgentDebuggingBlock) then begin
+      pnlAgentDebuggingBlock.Color := P.Surface;
+      pnlAgentDebuggingBlock.ParentColor := False;
+      pnlAgentDebuggingRow.Color := P.Surface;
+      pnlAgentDebuggingRow.ParentColor := False;
+    end;
+    if Assigned(pnlAgentLearnBlock) then begin
+      pnlAgentLearnBlock.Color := P.Surface;
+      pnlAgentLearnBlock.ParentColor := False;
+      pnlAgentLearnRow.Color := P.Surface;
+      pnlAgentLearnRow.ParentColor := False;
+    end;
+    if Assigned(pnlAgentAutoSumBlock) then begin
+      pnlAgentAutoSumBlock.Color := P.Surface;
+      pnlAgentAutoSumBlock.ParentColor := False;
+      pnlAgentAutoSumRow.Color := P.Surface;
+      pnlAgentAutoSumRow.ParentColor := False;
+    end;
+    if Assigned(pnlAgentContext) then begin
+      pnlAgentContext.Color := P.Surface;
+      pnlAgentContext.ParentColor := False;
+    end;
+    if Assigned(pnlAgentBrowser) then begin
+      pnlAgentBrowser.Color := P.Surface;
+      pnlAgentBrowser.ParentColor := False;
+    end;
+  end;
   if Assigned(scrToolsTab) then begin
     scrToolsTab.Color := P.Background;
     scrToolsTab.ParentColor := False;
@@ -337,6 +438,12 @@ begin
   edtMaxTokens.Font.Color := P.Text;
   edtMaxSteps.Color := P.SurfaceAlt;
   edtMaxSteps.Font.Color := P.Text;
+  edtLlmConnectTimeoutSec.Color := P.SurfaceAlt;
+  edtLlmConnectTimeoutSec.Font.Color := P.Text;
+  edtLlmReadTimeoutSec.Color := P.SurfaceAlt;
+  edtLlmReadTimeoutSec.Font.Color := P.Text;
+  edtLlmHttpRetries.Color := P.SurfaceAlt;
+  edtLlmHttpRetries.Font.Color := P.Text;
   edtContextWindow.Color := P.SurfaceAlt;
   edtContextWindow.Font.Color := P.Text;
   edtSummarizeThreshold.Color := P.SurfaceAlt;
@@ -360,6 +467,15 @@ begin
   StyleThemedToggleCaptionLabel(lblDebuggingMode, ATheme);
   StyleThemedToggleCaptionLabel(lblLearnMode, ATheme);
   StyleThemedToggleCaptionLabel(lblAutoSummarizeContext, ATheme);
+  StyleThemedToggleCaptionLabel(lblLlmNativeToolCalling, ATheme);
+  StyleThemedToggleCaptionLabel(lblLlmTextToolCompat, ATheme);
+  StyleThemedToggleCaptionLabel(lblLlmStreamingEnabled, ATheme);
+  if Assigned(lblLlmNativeToolHint) then
+    lblLlmNativeToolHint.Font.Color := P.TextMuted;
+  if Assigned(lblLlmTextToolHint) then
+    lblLlmTextToolHint.Font.Color := P.TextMuted;
+  if Assigned(lblLlmStreamingHint) then
+    lblLlmStreamingHint.Font.Color := P.TextMuted;
 
   StyleThemedToggleCaptionLabel(wsLblWebSearchEnabled, ATheme);
   StyleThemedToggleCaptionLabel(wsLblAutoFallback, ATheme);
@@ -384,7 +500,13 @@ begin
   else if Sender = lblLearnMode then
     chkLearnMode.Checked := not chkLearnMode.Checked
   else if Sender = lblAutoSummarizeContext then
-    chkAutoSummarizeContext.Checked := not chkAutoSummarizeContext.Checked;
+    chkAutoSummarizeContext.Checked := not chkAutoSummarizeContext.Checked
+  else if Sender = lblLlmNativeToolCalling then
+    chkLlmNativeToolCalling.Checked := not chkLlmNativeToolCalling.Checked
+  else if Sender = lblLlmTextToolCompat then
+    chkLlmTextToolCompat.Checked := not chkLlmTextToolCompat.Checked
+  else if Sender = lblLlmStreamingEnabled then
+    chkLlmStreamingEnabled.Checked := not chkLlmStreamingEnabled.Checked;
 end;
 
 procedure TSettingsForm.pnlSettingsTabsHostClick(Sender: TObject);
@@ -403,6 +525,35 @@ begin
       'Values below 2048 may truncate tool-call JSON and break agent steps.'
   else
     lblMaxTokensHint.Caption := '';
+end;
+
+procedure TSettingsForm.ReadLlmTimeoutFieldsFromForm(out AConnectMs, AReadMs: Integer);
+var
+  ConnectSec, ReadSec: Integer;
+begin
+  ConnectSec := StrToIntDef(Trim(edtLlmConnectTimeoutSec.Text),
+    DEFAULT_LLM_CONNECT_TIMEOUT_MS div 1000);
+  ReadSec := StrToIntDef(Trim(edtLlmReadTimeoutSec.Text),
+    DEFAULT_LLM_READ_TIMEOUT_MS div 1000);
+  AConnectMs := ClampLlmConnectTimeoutMs(ConnectSec * 1000);
+  AReadMs := ClampLlmReadTimeoutMs(ReadSec * 1000);
+end;
+
+procedure TSettingsForm.WriteLlmTimeoutFieldsToForm(AConnectMs, AReadMs: Integer);
+begin
+  edtLlmConnectTimeoutSec.Text := IntToStr(ClampLlmConnectTimeoutMs(AConnectMs) div 1000);
+  edtLlmReadTimeoutSec.Text := IntToStr(ClampLlmReadTimeoutMs(AReadMs) div 1000);
+end;
+
+procedure TSettingsForm.WriteLlmHttpRetryField(AValue: Integer);
+begin
+  edtLlmHttpRetries.Text := IntToStr(ClampLlmHttpRetryCount(AValue));
+end;
+
+function TSettingsForm.ReadLlmHttpRetryField: Integer;
+begin
+  Result := ClampLlmHttpRetryCount(StrToIntDef(Trim(edtLlmHttpRetries.Text),
+    DEFAULT_LLM_HTTP_RETRY_COUNT));
 end;
 
 procedure TSettingsForm.FlushCredentialsToState(AProv: TLlmProvider);
@@ -512,6 +663,11 @@ begin
   edtTemp.Text := FloatToStr(FState.Temperature);
   edtMaxTokens.Text := IntToStr(FState.MaxTokens);
   edtMaxSteps.Text := IntToStr(FState.MaxSteps);
+  WriteLlmTimeoutFieldsToForm(FState.LlmConnectTimeoutMs, FState.LlmReadTimeoutMs);
+  WriteLlmHttpRetryField(FState.LlmHttpRetryCount);
+  chkLlmNativeToolCalling.Checked := FState.LlmNativeToolCalling;
+  chkLlmTextToolCompat.Checked := FState.LlmTextToolCompat;
+  chkLlmStreamingEnabled.Checked := FState.LlmStreamingEnabled;
   chkDebuggingMode.Checked := FState.DebuggingMode;
   chkLearnMode.Checked := FState.LearnMode;
   chkAutoSummarizeContext.Checked := FState.AutoSummarizeContext;
@@ -534,6 +690,7 @@ end;
 procedure TSettingsForm.SaveToState;
 var
   Prov: TLlmProvider;
+  ConnectMs, ReadMs: Integer;
 begin
   if not Assigned(FState) then Exit;
 
@@ -549,6 +706,15 @@ begin
   FState.MaxTokens := ClampMaxOutputTokens(StrToIntDef(edtMaxTokens.Text, DEFAULT_MAX_OUTPUT_TOKENS));
   edtMaxTokens.Text := IntToStr(FState.MaxTokens);
   FState.MaxSteps := StrToIntDef(edtMaxSteps.Text, DEFAULT_MAX_AGENT_STEPS);
+  ReadLlmTimeoutFieldsFromForm(ConnectMs, ReadMs);
+  FState.LlmConnectTimeoutMs := ConnectMs;
+  FState.LlmReadTimeoutMs := ReadMs;
+  WriteLlmTimeoutFieldsToForm(FState.LlmConnectTimeoutMs, FState.LlmReadTimeoutMs);
+  FState.LlmHttpRetryCount := ReadLlmHttpRetryField;
+  WriteLlmHttpRetryField(FState.LlmHttpRetryCount);
+  FState.LlmNativeToolCalling := chkLlmNativeToolCalling.Checked;
+  FState.LlmTextToolCompat := chkLlmTextToolCompat.Checked;
+  FState.LlmStreamingEnabled := chkLlmStreamingEnabled.Checked;
   FState.DebuggingMode := chkDebuggingMode.Checked;
   FState.LearnMode := chkLearnMode.Checked;
   FState.AutoSummarizeContext := chkAutoSummarizeContext.Checked;
@@ -619,6 +785,7 @@ var
   Client: TLlmClient;
   ListResult: TLlmModelListResult;
   OldCursor: TCursor;
+  ConnectMs, ReadMs: Integer;
 begin
   if not Assigned(FState) then Exit;
 
@@ -629,6 +796,10 @@ begin
     Client.Provider := CurrentDialogProvider;
     Client.ApiKey := Trim(edtApiKey.Text);
     Client.BaseUrl := Trim(edtBaseUrl.Text);
+    ReadLlmTimeoutFieldsFromForm(ConnectMs, ReadMs);
+    Client.ConnectTimeoutMs := ConnectMs;
+    Client.ReadTimeoutMs := ReadMs;
+    Client.HttpRetryCount := ReadLlmHttpRetryField;
 
     OldCursor := Screen.Cursor;
     Screen.Cursor := crHourGlass;

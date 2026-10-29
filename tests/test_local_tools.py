@@ -21,6 +21,28 @@ BROWSER_AUTOMATION_TOOLS = frozenset({
 })
 
 
+def assert_no_cross_tool_recency_enum(declarations):
+    ws = None
+    for decl in declarations:
+        if decl['function']['name'] == 'web_search':
+            ws = decl['function']['parameters'].get('properties', {}).get('recency', {})
+            break
+    if not ws:
+        return
+    recency_enum = ws.get('enum')
+    assert recency_enum, 'web_search recency should have enum when advertised'
+    for decl in declarations:
+        if decl['function']['name'] == 'web_search':
+            continue
+        for param_name, param_def in (decl['function']['parameters'].get('properties') or {}).items():
+            if param_def.get('enum') == recency_enum:
+                raise AssertionError(
+                    f'{decl["function"]["name"]}.{param_name} shares web_search recency enum')
+            if param_name in ('timeout_ms', 'value', 'selector') and 'enum' in param_def:
+                raise AssertionError(
+                    (decl['function']['name'], param_name, param_def.get('enum')))
+
+
 def assert_tool_parameter_schemas(declarations):
     for decl in declarations:
         name = decl['function']['name']
@@ -28,6 +50,7 @@ def assert_tool_parameter_schemas(declarations):
         for param_name, param_def in props.items():
             param_type = param_def.get('type')
             assert param_type in ALLOWED_TOOL_PARAM_TYPES, (name, param_name, param_def)
+    assert_no_cross_tool_recency_enum(declarations)
 
 
 def run(driver):

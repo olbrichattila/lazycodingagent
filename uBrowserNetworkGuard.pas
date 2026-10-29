@@ -12,11 +12,13 @@ type
   private
     FConnection: TCdpConnection;
     FAllowLocalhost: Boolean;
+    FWorkspaceRoot: string;
     FRequestIds: TStringList;
     function FailRequest(const RequestId, ErrorReason: string): Boolean;
     function ContinueRequest(const RequestId: string): Boolean;
   public
-    constructor Create(AConnection: TCdpConnection; AllowLocalhost: Boolean);
+    constructor Create(AConnection: TCdpConnection; AllowLocalhost: Boolean;
+      const WorkspaceRoot: string);
     destructor Destroy; override;
     procedure HandleEvent(const Method, ParamsJson: AnsiString);
     function Enable(CancelCheck: TBrowserReadCancelCheck): Boolean;
@@ -27,11 +29,13 @@ implementation
 uses
   uBrowserReadUrl;
 
-constructor TBrowserNetworkGuard.Create(AConnection: TCdpConnection; AllowLocalhost: Boolean);
+constructor TBrowserNetworkGuard.Create(AConnection: TCdpConnection; AllowLocalhost: Boolean;
+  const WorkspaceRoot: string);
 begin
   inherited Create;
   FConnection := AConnection;
   FAllowLocalhost := AllowLocalhost;
+  FWorkspaceRoot := WorkspaceRoot;
   FRequestIds := TStringList.Create;
 end;
 
@@ -86,7 +90,8 @@ begin
     else
       Url := '';
     if RequestId = '' then Exit;
-    if not ValidateBrowserReadRequestUrl(Url, FAllowLocalhost, ErrKind, ErrMsg) then
+    if not ValidateBrowserReadRequestUrl(Url, FAllowLocalhost, FWorkspaceRoot, ErrKind,
+      ErrMsg) then
       FailRequest(RequestId, 'BlockedByClient')
     else
       ContinueRequest(RequestId);

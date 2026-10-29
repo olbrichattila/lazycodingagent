@@ -27,12 +27,12 @@ var
 begin
   S.Touch;
   Deadline := GetTickCount64 + QWord(TimeoutMs);
-  if not ValidateBrowserReadUrl(Url, S.AllowLocalhost, ErrKind, ErrMsg) then
+  if not ValidateBrowserReadUrl(Url, S.AllowLocalhost, S.WorkspaceRoot, ErrKind, ErrMsg) then
     Exit(False);
   if not S.Navigator.Navigate(Url, Strategy, WaitSelector, Deadline, CancelCheck,
     FinalUrl, ErrKind, ErrMsg) then
     Exit(False);
-  if not ValidateBrowserReadUrl(FinalUrl, S.AllowLocalhost, ErrKind, ErrMsg) then
+  if not ValidateBrowserReadUrl(FinalUrl, S.AllowLocalhost, S.WorkspaceRoot, ErrKind, ErrMsg) then
   begin
     ErrKind := brekAccessDenied;
     ErrMsg := 'Final URL not allowed: ' + ErrMsg;

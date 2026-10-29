@@ -22,6 +22,21 @@ const
   CONTEXT_KEEP_RECENT_MESSAGES = 6;
   TRUNCATION_RETRY_CAP_TOKENS = 16384;
 
+  DEFAULT_LLM_CONNECT_TIMEOUT_MS = 60000;
+  DEFAULT_LLM_READ_TIMEOUT_MS = 600000;
+  MIN_LLM_CONNECT_TIMEOUT_MS = 60000;
+  MIN_LLM_READ_TIMEOUT_MS = 60000;
+
+  DEFAULT_LLM_HTTP_RETRY_COUNT = 3;
+  MAX_LLM_HTTP_RETRY_COUNT = 10;
+  DEFAULT_LLM_HTTP_RETRY_BASE_MS = 1000;
+
+function ClampLlmConnectTimeoutMs(AMs: Integer): Integer;
+function ClampLlmReadTimeoutMs(AMs: Integer): Integer;
+function ClampLlmHttpRetryCount(AValue: Integer): Integer;
+function LlmHttpRetryDelayMs(ARetryAttempt: Integer): Integer;
+function LlmHttpStatusRetriable(AStatusCode: Integer): Boolean;
+
 type
   { Role in a conversation }
   TChatRole = (crSystem, crUser, crAssistant, crTool);
@@ -221,6 +236,51 @@ begin
     Result := cakImage
   else
     Result := cakImage;
+end;
+
+function ClampLlmConnectTimeoutMs(AMs: Integer): Integer;
+begin
+  Result := AMs;
+  if Result < MIN_LLM_CONNECT_TIMEOUT_MS then
+    Result := MIN_LLM_CONNECT_TIMEOUT_MS;
+end;
+
+function ClampLlmReadTimeoutMs(AMs: Integer): Integer;
+begin
+  Result := AMs;
+  if Result < MIN_LLM_READ_TIMEOUT_MS then
+    Result := MIN_LLM_READ_TIMEOUT_MS;
+end;
+
+function ClampLlmHttpRetryCount(AValue: Integer): Integer;
+begin
+  Result := AValue;
+  if Result < 0 then
+    Result := 0;
+  if Result > MAX_LLM_HTTP_RETRY_COUNT then
+    Result := MAX_LLM_HTTP_RETRY_COUNT;
+end;
+
+function LlmHttpRetryDelayMs(ARetryAttempt: Integer): Integer;
+var
+  Shift: Integer;
+begin
+  if ARetryAttempt < 1 then
+    Exit(DEFAULT_LLM_HTTP_RETRY_BASE_MS);
+  Shift := ARetryAttempt - 1;
+  if Shift > 16 then
+    Shift := 16;
+  Result := DEFAULT_LLM_HTTP_RETRY_BASE_MS * (1 shl Shift);
+end;
+
+function LlmHttpStatusRetriable(AStatusCode: Integer): Boolean;
+begin
+  case AStatusCode of
+    0, 429, 502, 503, 504:
+      Result := True;
+  else
+    Result := False;
+  end;
 end;
 
 end.

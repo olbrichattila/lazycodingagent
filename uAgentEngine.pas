@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, SyncObjs, uAppTypes, uAgentTypes, uLlmClient, uAgentTools, uAgentRules,
   uAgentExecutionLog, uAgentToolErrorLog, uChatContextManager, uLlmPromptCacheTypes,
-  uLlmPromptSegments;
+  uLlmPromptSegments, uLlmToolCalling, uLlmCacheCapabilities;
 
 type
   { Event types for UI notification }
@@ -64,9 +64,15 @@ type
     FRunSnapModel: string;
     FRunSnapTemperature: Double;
     FRunSnapMaxTokens: Integer;
-    FRunSnapTimeoutMs: Integer;
+    FRunSnapConnectTimeoutMs: Integer;
+    FRunSnapReadTimeoutMs: Integer;
+    FRunSnapHttpRetryCount: Integer;
     FRunSnapPromptCacheSettings: TPromptCacheSettings;
+    FRunSnapToolCallingCaps: TLlmToolCallingCapabilities;
+    FRunSnapLearnWireLogging: Boolean;
 
+    FToolCallingCapabilities: TLlmToolCallingCapabilities;
+    FLearnWireLogging: Boolean;
     FAutoSummarizeContext: Boolean;
     FPromptCacheSettings: TPromptCacheSettings;
     FContextWindowTokens: Integer;
@@ -79,7 +85,10 @@ type
 
     function TryCompactConversationHistory(out ANote: string): Boolean;
     function SendCompletionWithTruncationRetry(const AMessages: array of TChatMessage;
-      const AToolDefs: array of TToolDef; out AResp: TLlmResponse): Boolean;
+      const AToolDefs: array of TToolDef; AStep: Integer; out AResp: TLlmResponse): Boolean;
+    function ToolDefinitionsSentInApiPayload: Boolean;
+    procedure ApplyTextToolCompatIfNeeded(var AResp: TLlmResponse;
+      const AToolDefs: array of TToolDef; AStep: Integer);
     procedure AppendTruncationNoticeIfNeeded(var AContent: string;
       const AFinishReason: string; ATruncationRetriesExhausted: Boolean);
 
@@ -134,6 +143,9 @@ type
     property SummarizeThreshold: Double read FSummarizeThreshold write FSummarizeThreshold;
     property PromptCacheSettings: TPromptCacheSettings read FPromptCacheSettings
       write FPromptCacheSettings;
+    property ToolCallingCapabilities: TLlmToolCallingCapabilities read FToolCallingCapabilities
+      write FToolCallingCapabilities;
+    property LearnWireLogging: Boolean read FLearnWireLogging write FLearnWireLogging;
 
     property OnStateChange: TAgentStateChangeEvent read FOnStateChange write FOnStateChange;
     property OnMessageAdded: TAgentMessageEvent read FOnMessageAdded write FOnMessageAdded;
@@ -182,6 +194,8 @@ begin
   FClient := TLlmClient.Create;
   FPromptCacheSettings := DefaultPromptCacheSettings;
   FClient.PromptCacheSettings := FPromptCacheSettings;
+  FToolCallingCapabilities := DefaultLlmToolCallingCapabilities;
+  FLearnWireLogging := False;
   FContext := TAgentToolContext.Create(AWorkspaceRoot);
   FContext.SetCancelFlag(@FCancelRequested);
   FContext.SetCancelDeadline(0);
@@ -228,8 +242,12 @@ begin
   FRunSnapModel := FClient.Model;
   FRunSnapTemperature := FClient.Temperature;
   FRunSnapMaxTokens := FClient.MaxTokens;
-  FRunSnapTimeoutMs := FClient.TimeoutMs;
+  FRunSnapConnectTimeoutMs := FClient.ConnectTimeoutMs;
+  FRunSnapReadTimeoutMs := FClient.ReadTimeoutMs;
+  FRunSnapHttpRetryCount := FClient.HttpRetryCount;
   FRunSnapPromptCacheSettings := FPromptCacheSettings;
+  FRunSnapToolCallingCaps := FToolCallingCapabilities;
+  FRunSnapLearnWireLogging := FLearnWireLogging;
 end;
 
 procedure TAgentEngine.ApplyClientSnapshot;
@@ -240,8 +258,14 @@ begin
   FClient.Model := FRunSnapModel;
   FClient.Temperature := FRunSnapTemperature;
   FClient.MaxTokens := FRunSnapMaxTokens;
-  FClient.TimeoutMs := FRunSnapTimeoutMs;
+  FClient.ConnectTimeoutMs := FRunSnapConnectTimeoutMs;
+  FClient.ReadTimeoutMs := FRunSnapReadTimeoutMs;
+  FClient.HttpRetryCount := FRunSnapHttpRetryCount;
   FClient.PromptCacheSettings := FRunSnapPromptCacheSettings;
+  FClient.ToolCallingCapabilities := FRunSnapToolCallingCaps;
+  FClient.LearnWireLogging := FRunSnapLearnWireLogging;
+  FToolCallingCapabilities := FRunSnapToolCallingCaps;
+  FLearnWireLogging := FRunSnapLearnWireLogging;
 end;
 
 procedure TAgentEngine.SyncStateChange;
@@ -401,7 +425,10 @@ begin
   Input.Mode := AMode;
   Input.WorkspaceRoot := FContext.WorkspaceRoot;
   Input.AllowModifyOutsideWorkspace := FContext.AllowModifyOutsideWorkspace;
-  Input.ToolsGuidance := FTools.ToolGuidance(AMode);
+  if ToolDefinitionsSentInApiPayload then
+    Input.ToolsGuidance := ''
+  else
+    Input.ToolsGuidance := FTools.ToolGuidance(AMode, True);
   Input.WebSearchLine := WebSearchInstructionLineForPrompt;
   Result := BuildSystemPromptParts(Input, Parts);
   FLastPromptSegments := BuildSystemPromptSegments(Input, FPromptCacheSettings);
@@ -616,10 +643,44 @@ begin
   Result := True;
 end;
 
+function TAgentEngine.ToolDefinitionsSentInApiPayload: Boolean;
+var
+  Wire: TLlmWireFormat;
+begin
+  if not FToolCallingCapabilities.NativeToolCalling then
+    Exit(False);
+  Wire := ResolveLlmWireFormat(FClient.Provider, FClient.BaseUrl, FClient.Model);
+  Result := Wire in [lwfOpenAiChat, lwfAnthropicMessages];
+end;
+
+procedure TAgentEngine.ApplyTextToolCompatIfNeeded(var AResp: TLlmResponse;
+  const AToolDefs: array of TToolDef; AStep: Integer);
+var
+  Parsed: TToolCallArray;
+  Err: string;
+  IdPrefix: string;
+begin
+  if (Length(AResp.ToolCalls) > 0) or (not FToolCallingCapabilities.TextToolCompat) then
+    Exit;
+  IdPrefix := Format('text_call_%d_', [AStep]);
+  if not TryParseStrictTextToolCalls(AResp.Content, AToolDefs, IdPrefix, Parsed, Err) then
+  begin
+    if Err <> '' then
+    begin
+      SetLength(AResp.ParseFailures, Length(AResp.ParseFailures) + 1);
+      AResp.ParseFailures[High(AResp.ParseFailures)] := 'Text tool compat: ' + Err;
+    end;
+    Exit;
+  end;
+  AResp.ToolCalls := Parsed;
+  AResp.Content := AssistantDisplayContent(AResp.Content, AResp.ToolCalls);
+end;
+
 function TAgentEngine.SendCompletionWithTruncationRetry(const AMessages: array of TChatMessage;
-  const AToolDefs: array of TToolDef; out AResp: TLlmResponse): Boolean;
+  const AToolDefs: array of TToolDef; AStep: Integer; out AResp: TLlmResponse): Boolean;
 var
   SavedMax, Attempt, UserMax: Integer;
+  LogIdx: Integer;
 begin
   Result := False;
   UserMax := FClient.MaxTokens;
@@ -629,6 +690,12 @@ begin
     FClient.PromptSegments := BuildPromptSegmentsFromSystemAndHistory(
       FLastPromptSegments, AMessages, FClient.PromptCacheSettings);
     AResp := FClient.SendChatCompletion(AMessages, AToolDefs);
+    ApplyTextToolCompatIfNeeded(AResp, AToolDefs, AStep);
+    if FLearnWireLogging and Assigned(FExecutionLog) then begin
+      LogIdx := FExecutionLog.AddLlmWire(FClient.LastWireRequestRedacted,
+        FClient.LastWireResponseRedacted, AResp.ToolCalls, AResp.ParseFailures, AStep, FMaxSteps);
+      NotifyExecutionLogAdded(LogIdx);
+    end;
     if not AResp.Success then begin
       FClient.MaxTokens := SavedMax;
       Exit;
@@ -730,7 +797,7 @@ begin
         UserLogText := UserLogText + FormatAttachmentsSummary(AAttachments);
       end;
       NotifyExecutionLogAdded(FExecutionLog.AddUserPrompt(UserLogText,
-        FormatMessagesForDisplay(MessagesCopy, ToolDefs)));
+        FormatMessagesForDisplay(MessagesCopy, ToolDefs, ToolDefinitionsSentInApiPayload)));
     end;
 
     while (StepCount < FMaxSteps) and not GetCancelRequested do begin
@@ -769,9 +836,10 @@ begin
           end;
         end;
 
-        RequestContext := FormatMessagesForDisplay(MessagesCopy, ToolDefs);
+        RequestContext := FormatMessagesForDisplay(MessagesCopy, ToolDefs,
+          ToolDefinitionsSentInApiPayload);
 
-        if not SendCompletionWithTruncationRetry(MessagesCopy, ToolDefs, Resp) then begin
+        if not SendCompletionWithTruncationRetry(MessagesCopy, ToolDefs, StepCount, Resp) then begin
           if GetCancelRequested then begin
             SetState(asIdle);
             Exit;
@@ -798,7 +866,7 @@ begin
       TruncationExhausted := FinishReasonIndicatesTruncation(Resp.FinishReason);
 
       AssistantMsg := StringToChatRole('assistant');
-      AssistantMsg.Content := Resp.Content;
+      AssistantMsg.Content := AssistantDisplayContent(Resp.Content, Resp.ToolCalls);
       AppendTruncationNoticeIfNeeded(AssistantMsg.Content, Resp.FinishReason,
         TruncationExhausted);
       AssistantMsg.ToolCalls := Resp.ToolCalls;

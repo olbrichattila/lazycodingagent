@@ -5,11 +5,13 @@ unit uWindowsHTTP;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, uAgentTypes;
 
 { Uses the Windows HTTP stack (native Schannel TLS). }
 procedure WindowsHTTPRequest(const AMethod, AURL: string; AHeaders: TStrings;
-  const ABody: RawByteString; AResponse: TStream; out AStatusCode: Integer);
+  const ABody: RawByteString; AResponse: TStream; out AStatusCode: Integer;
+  AConnectTimeoutMs: Integer = DEFAULT_LLM_CONNECT_TIMEOUT_MS;
+  AReadTimeoutMs: Integer = DEFAULT_LLM_READ_TIMEOUT_MS);
 
 implementation
 
@@ -111,7 +113,8 @@ begin
 end;
 
 procedure WindowsHTTPRequest(const AMethod, AURL: string; AHeaders: TStrings;
-  const ABody: RawByteString; AResponse: TStream; out AStatusCode: Integer);
+  const ABody: RawByteString; AResponse: TStream; out AStatusCode: Integer;
+  AConnectTimeoutMs: Integer; AReadTimeoutMs: Integer);
 var
   Host, Path, HeaderText: string;
   HostW, PathW, MethodW, HeaderW, AgentW: UnicodeString;
@@ -122,8 +125,11 @@ var
   BytesRead, BufferLength, HeaderIndex: DWORD;
   Buffer: array[0..16383] of Byte;
   BodyPtr: Pointer;
+  ConnectMs, ReadMs: Integer;
 begin
   AStatusCode := 0;
+  ConnectMs := ClampLlmConnectTimeoutMs(AConnectTimeoutMs);
+  ReadMs := ClampLlmReadTimeoutMs(AReadTimeoutMs);
   Session := nil;
   Connection := nil;
   Request := nil;
@@ -142,7 +148,7 @@ begin
     Session := WinHttpOpen(PWideChar(AgentW), WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
       nil, nil, 0);
     if Session = nil then RaiseLastOSError;
-    if not WinHttpSetTimeouts(Session, 30000, 30000, 120000, 120000) then
+    if not WinHttpSetTimeouts(Session, ConnectMs, ConnectMs, ConnectMs, ReadMs) then
       RaiseLastOSError;
     Connection := WinHttpConnect(Session, PWideChar(HostW), Port, 0);
     if Connection = nil then RaiseLastOSError;
@@ -185,7 +191,8 @@ end;
 {$ELSE}
 
 procedure WindowsHTTPRequest(const AMethod, AURL: string; AHeaders: TStrings;
-  const ABody: RawByteString; AResponse: TStream; out AStatusCode: Integer);
+  const ABody: RawByteString; AResponse: TStream; out AStatusCode: Integer;
+  AConnectTimeoutMs: Integer; AReadTimeoutMs: Integer);
 begin
   AStatusCode := 0;
   raise Exception.Create('Windows HTTP transport is available only on Windows');

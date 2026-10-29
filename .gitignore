@@ -36,6 +36,9 @@ packagefiles.xml
 # Local agent sidecars (chat image attachments, etc.)
 .lca/
 
+# Local presentation exports and media
+/presentation/
+
 # Python (scripts/write_bmp_ico.py, branding helpers)
 __pycache__/
 *.py[cod]

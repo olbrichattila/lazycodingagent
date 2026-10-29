@@ -34,7 +34,7 @@ You → system + history → (optional summarize) → LLM → (optional tools) �
 
 - **Workspace mode** (Ask / Plan / Agent) — controls which tools are advertised.
 - **Workspace root** — all file paths are resolved relative to this folder.
-- **Tool guidance** — short descriptions and JSON parameter shapes for allowed tools.
+- **Tool guidance** — when **Native tool calling** is on and the provider API accepts a native `tools` array, tool **schemas are not repeated** in the system message (only in the HTTP `tools` field). If native tool calling is off, the system prompt includes full parameter JSON for each allowed tool.
 - **Project rules** — combined text from `<workspace>/.rules/*.md`.
 
 The model only sees tools that are **allowed in the current mode**.
@@ -60,7 +60,17 @@ Plan and Ask still use read/search/git tools to understand the tree.
 - **Step limit** — if the loop uses all allowed steps and the model still wanted tools, the assistant posts a short note that the step limit was reached (configure **Max steps** in Settings).
 - **Tool Errors** — failed tools for the session, plus a shared `tool-errors.log` file under your user config folder.
 
-With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & Logs**, opens the **utility panel** on **Execution Detail**, and follows each step so you can watch the enriched prompt and tool I/O during a demo or learning session. The inspector shows that content as readable plain text in the themed Markdown view.
+With **Learn mode** enabled in Settings, sending a prompt switches to **Tools & Logs**, opens the **utility panel** on **Execution Detail**, and follows each step so you can watch the enriched prompt and tool I/O during a demo or learning session. The inspector shows that content as readable plain text in the themed Markdown view. Learn mode also records **LLM wire** rows: redacted outgoing request JSON, incoming response JSON, parsed tool calls, and parse notes (API keys are not logged).
+
+## LLM tool calling (Settings → Agent)
+
+| Setting | Default | Purpose |
+|---------|---------|---------|
+| **Native tool calling** | On | Sends OpenAI-compatible `tools` + `tool_choice: auto` on `/chat/completions`. |
+| **Text tool-call compatibility** | Off | Treats a **single** strict `{ "name", "arguments" }` JSON object in assistant **text** as one tool call (for some local models). Never parses JSON inside prose or examples. |
+| **Streaming completions** | Off | Experimental SSE streaming for OpenAI-compatible APIs; tool-call fragments are accumulated before execution. |
+
+For **Ollama** and similar hosts, enable text compatibility if the model prints tool JSON in chat instead of native `tool_calls`.
 
 ## Safety and sandboxing
 

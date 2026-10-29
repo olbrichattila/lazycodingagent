@@ -5,7 +5,7 @@ unit uLlmClient;
 interface
 
 uses
-  Classes, SysUtils, fpjson, jsonparser, uAgentTypes, uLlmPromptCacheTypes;
+  Classes, SysUtils, fpjson, jsonparser, uAgentTypes, uLlmPromptCacheTypes, uLlmToolCalling;
 
 type
   { Completion Response struct }
@@ -19,6 +19,7 @@ type
     CompletionTokens: Integer;
     TotalTokens: Integer;
     CacheUsage: TPromptCacheUsage;
+    ParseFailures: array of string;
   end;
 
   { Callback types for async LLM interactions }
@@ -44,17 +45,30 @@ type
     FModel: string;
     FTemperature: Double;
     FMaxTokens: Integer;
-    FTimeoutMs: Integer;
+    FConnectTimeoutMs: Integer;
+    FReadTimeoutMs: Integer;
+    FHttpRetryCount: Integer;
     FPromptCacheSettings: TPromptCacheSettings;
     FPromptSegments: TPromptSegmentArray;
-    function BuildOpenAiPayload(const AMessages: array of TChatMessage; const ATools: array of TToolDef): string;
+    FToolCallingCaps: TLlmToolCallingCapabilities;
+    FLearnWireLogging: Boolean;
+    FLastWireRequestRedacted: string;
+    FLastWireResponseRedacted: string;
+    function BuildOpenAiPayload(const AMessages: array of TChatMessage;
+      const ATools: array of TToolDef; AStream: Boolean): string;
     function ChatCompletionsUrl: string;
     function ParseOpenAiResponse(const AJsonStr: string): TLlmResponse;
     function ParseModelsResponse(const AJsonStr: string): TLlmModelListResult;
-    function BuildRequestHeaders(AIncludeJsonContentType: Boolean): TStringList;
+    function BuildRequestHeaders(AIncludeJsonContentType, AStreamSse: Boolean): TStringList;
     function ModelsListUrl: string;
-    function SendHttpPost(const AUrl, APayload: string; out AResponse: string): Boolean;
+    function SendHttpPost(const AUrl, APayload: string; out AResponse: string;
+      AStreamResponse: Boolean): Boolean;
     function SendHttpGet(const AUrl: string; out AResponse: string): Boolean;
+    function SendHttpGetOnce(const AUrl: string; out AResponse: string; out AStatusCode: Integer): Boolean;
+    function SendHttpPostOnce(const AUrl, APayload: string; out AResponse: string;
+      out AStatusCode: Integer; AStreamResponse: Boolean): Boolean;
+    function ShouldRetryLlmHttp(AAttempt, AMaxAttempts: Integer; ASuccess: Boolean;
+      AStatusCode: Integer; const AResponse: string): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -66,16 +80,25 @@ type
 
     function ListModels: TLlmModelListResult;
 
+    function ParseOpenAiResponsePublic(const AJsonStr: string): TLlmResponse;
+
     property Provider: TLlmProvider read FProvider write FProvider;
     property ApiKey: string read FApiKey write FApiKey;
     property BaseUrl: string read FBaseUrl write FBaseUrl;
     property Model: string read FModel write FModel;
     property Temperature: Double read FTemperature write FTemperature;
     property MaxTokens: Integer read FMaxTokens write FMaxTokens;
-    property TimeoutMs: Integer read FTimeoutMs write FTimeoutMs;
+    property ConnectTimeoutMs: Integer read FConnectTimeoutMs write FConnectTimeoutMs;
+    property ReadTimeoutMs: Integer read FReadTimeoutMs write FReadTimeoutMs;
+    property HttpRetryCount: Integer read FHttpRetryCount write FHttpRetryCount;
     property PromptCacheSettings: TPromptCacheSettings read FPromptCacheSettings
       write FPromptCacheSettings;
     property PromptSegments: TPromptSegmentArray read FPromptSegments write FPromptSegments;
+    property ToolCallingCapabilities: TLlmToolCallingCapabilities read FToolCallingCaps
+      write FToolCallingCaps;
+    property LearnWireLogging: Boolean read FLearnWireLogging write FLearnWireLogging;
+    property LastWireRequestRedacted: string read FLastWireRequestRedacted;
+    property LastWireResponseRedacted: string read FLastWireResponseRedacted;
   end;
 
 implementation
@@ -90,6 +113,47 @@ uses
   , uWindowsHTTP
   {$ENDIF}
   ;
+
+procedure CopyOpenAiParseToResponse(const AParsed: TOpenAiParseResult;
+  const ARootJson: string; var AResult: TLlmResponse);
+var
+  Data: TJSONData;
+  RootObj, UsageObj: TJSONObject;
+begin
+  AResult.Success := AParsed.Success;
+  AResult.ErrorMessage := AParsed.ErrorMessage;
+  AResult.Content := AParsed.Content;
+  AResult.ToolCalls := AParsed.ToolCalls;
+  AResult.FinishReason := AParsed.FinishReason;
+  AResult.PromptTokens := AParsed.PromptTokens;
+  AResult.CompletionTokens := AParsed.CompletionTokens;
+  AResult.TotalTokens := AParsed.TotalTokens;
+  AResult.ParseFailures := AParsed.ParseFailures;
+  ClearPromptCacheUsage(AResult.CacheUsage);
+  if Trim(ARootJson) = '' then Exit;
+  try
+    Data := GetJSON(ARootJson);
+    try
+      if not (Data is TJSONObject) then Exit;
+      RootObj := TJSONObject(Data);
+      if RootObj.IndexOfName('usage') < 0 then Exit;
+      UsageObj := RootObj.Objects['usage'];
+      if UsageObj.IndexOfName('prompt_tokens_details') >= 0 then begin
+        if UsageObj.Objects['prompt_tokens_details'].IndexOfName('cached_tokens') >= 0 then
+          AResult.CacheUsage := NormalizeOpenAiCacheUsage(AResult.PromptTokens,
+            AResult.CompletionTokens, AResult.TotalTokens,
+            UsageObj.Objects['prompt_tokens_details'].Get('cached_tokens', 0), True);
+      end else if UsageObj.IndexOfName('cache_read_input_tokens') >= 0 then begin
+        AResult.CacheUsage := NormalizeAnthropicCacheUsage(AResult.PromptTokens,
+          AResult.CompletionTokens, UsageObj.Get('cache_creation_input_tokens', 0),
+          UsageObj.Get('cache_read_input_tokens', 0), True);
+      end;
+    finally
+      Data.Free;
+    end;
+  except
+  end;
+end;
 
 procedure AddUserContentToMessageObject(AMsgObj: TJSONObject; const AMsg: TChatMessage);
 var
@@ -121,22 +185,6 @@ begin
     Parts.Add(ImgPart);
   end;
   AMsgObj.Add('content', Parts);
-end;
-
-function ExtractFunctionArgumentsJson(AFuncObj: TJSONObject): string;
-var
-  Node: TJSONData;
-begin
-  Result := '{}';
-  if not Assigned(AFuncObj) then Exit;
-  Node := AFuncObj.Find('arguments');
-  if Node = nil then Exit;
-  case Node.JSONType of
-    jtString: Result := Node.AsString;
-    jtObject, jtArray: Result := Node.AsJSON;
-  else
-    Result := '{}';
-  end;
 end;
 
 function SanitizeToolArgumentsForPayload(const AArgumentsJson: string): string;
@@ -175,13 +223,11 @@ begin
 end;
 
 {$IFNDEF MSWINDOWS}
-procedure ConfigureHttpClientTimeouts(AClient: TFPHTTPClient; ATimeoutMs: Integer);
+procedure ConfigureHttpClientTimeouts(AClient: TFPHTTPClient; AConnectTimeoutMs,
+  AReadTimeoutMs: Integer);
 begin
-  AClient.IOTimeout := ATimeoutMs;
-  if ATimeoutMs < 30000 then
-    AClient.ConnectTimeout := ATimeoutMs
-  else
-    AClient.ConnectTimeout := 30000;
+  AClient.ConnectTimeout := ClampLlmConnectTimeoutMs(AConnectTimeoutMs);
+  AClient.IOTimeout := ClampLlmReadTimeoutMs(AReadTimeoutMs);
 end;
 
 procedure ApplyHeadersToHttpClient(AClient: TFPHTTPClient; AHeaders: TStrings);
@@ -210,8 +256,14 @@ begin
   FModel := 'anthropic/claude-3.7-sonnet';
   FTemperature := 0.2;
   FMaxTokens := DEFAULT_MAX_OUTPUT_TOKENS;
-  FTimeoutMs := 60000;
+  FConnectTimeoutMs := DEFAULT_LLM_CONNECT_TIMEOUT_MS;
+  FReadTimeoutMs := DEFAULT_LLM_READ_TIMEOUT_MS;
+  FHttpRetryCount := DEFAULT_LLM_HTTP_RETRY_COUNT;
   FPromptCacheSettings := DefaultPromptCacheSettings;
+  FToolCallingCaps := DefaultLlmToolCallingCapabilities;
+  FLearnWireLogging := False;
+  FLastWireRequestRedacted := '';
+  FLastWireResponseRedacted := '';
   SetLength(FPromptSegments, 0);
 end;
 
@@ -236,12 +288,12 @@ end;
 
 function TLlmClient.BuildOpenAiPayload(
   const AMessages: array of TChatMessage;
-  const ATools: array of TToolDef
+  const ATools: array of TToolDef;
+  AStream: Boolean
 ): string;
 var
   RootObj, MsgObj, ToolCallObj, FuncObj, ToolObj, ParamObj: TJSONObject;
   MsgArray, ToolCallsArray, ToolsArray: TJSONArray;
-  ParamData: TJSONData;
   I, J: Integer;
   Msg: TChatMessage;
   SortedTools: array of TToolDef;
@@ -293,7 +345,7 @@ begin
     RootObj.Add('messages', MsgArray);
 
     // Tools definition
-    if Length(SortedTools) > 0 then begin
+    if FToolCallingCaps.NativeToolCalling and (Length(SortedTools) > 0) then begin
       ToolsArray := TJSONArray.Create;
       for I := Low(SortedTools) to High(SortedTools) do begin
         ToolObj := TJSONObject.Create;
@@ -303,11 +355,10 @@ begin
         FuncObj.Add('name', SortedTools[I].Name);
         FuncObj.Add('description', SortedTools[I].Description);
 
-        ParamData := GetJSON(ToolDefToParametersJson(SortedTools[I]));
-        if ParamData is TJSONObject then
-          FuncObj.Add('parameters', TJSONObject(ParamData))
+        ParamObj := CloneToolParametersJson(ToolDefToParametersJson(SortedTools[I]));
+        if Assigned(ParamObj) then
+          FuncObj.Add('parameters', ParamObj)
         else begin
-          ParamData.Free;
           ParamObj := TJSONObject.Create;
           ParamObj.Add('type', 'object');
           ParamObj.Add('properties', TJSONObject.Create);
@@ -319,7 +370,11 @@ begin
         ToolsArray.Add(ToolObj);
       end;
       RootObj.Add('tools', ToolsArray);
+      RootObj.Add('tool_choice', 'auto');
     end;
+
+    if AStream then
+      RootObj.Add('stream', True);
 
     Result := RootObj.AsJSON;
   finally
@@ -330,18 +385,12 @@ end;
 function TLlmClient.ParseOpenAiResponse(const AJsonStr: string): TLlmResponse;
 var
   Data: TJSONData;
-  RootObj, ChoiceObj, MsgObj, ToolCallObj, FuncObj, UsageObj: TJSONObject;
-  ChoicesArray, ToolCallsArray: TJSONArray;
-  I: Integer;
+  RootObj: TJSONObject;
+  Failures: array of string;
+  Parsed: TOpenAiParseResult;
 begin
-  Result.Success := False;
-  Result.ErrorMessage := '';
-  Result.Content := '';
-  SetLength(Result.ToolCalls, 0);
-  Result.FinishReason := '';
-  Result.PromptTokens := 0;
-  Result.CompletionTokens := 0;
-  Result.TotalTokens := 0;
+  FillChar(Result, SizeOf(Result), 0);
+  SetLength(Result.ParseFailures, 0);
   ClearPromptCacheUsage(Result.CacheUsage);
 
   try
@@ -351,63 +400,12 @@ begin
         Result.ErrorMessage := 'Invalid JSON response from LLM endpoint.';
         Exit;
       end;
-
       RootObj := TJSONObject(Data);
-
-      // Check for API errors
-      if RootObj.IndexOfName('error') >= 0 then begin
-        if RootObj.Types['error'] = jtObject then
-          Result.ErrorMessage := RootObj.Objects['error'].Get('message', 'Unknown API Error')
-        else
-          Result.ErrorMessage := RootObj.Get('error', 'Unknown API Error');
+      if not ApplyOpenAiCompletionJson(Parsed, RootObj, Failures) then begin
+        Result.ErrorMessage := Parsed.ErrorMessage;
         Exit;
       end;
-
-      if RootObj.IndexOfName('choices') >= 0 then begin
-        ChoicesArray := RootObj.Arrays['choices'];
-        if ChoicesArray.Count > 0 then begin
-          ChoiceObj := ChoicesArray.Objects[0];
-          Result.FinishReason := ChoiceObj.Get('finish_reason', '');
-          if ChoiceObj.IndexOfName('message') >= 0 then begin
-            MsgObj := ChoiceObj.Objects['message'];
-            Result.Content := MsgObj.Get('content', '');
-
-            // Parse tool_calls if present
-            if MsgObj.IndexOfName('tool_calls') >= 0 then begin
-              ToolCallsArray := MsgObj.Arrays['tool_calls'];
-              SetLength(Result.ToolCalls, ToolCallsArray.Count);
-              for I := 0 to ToolCallsArray.Count - 1 do begin
-                ToolCallObj := ToolCallsArray.Objects[I];
-                Result.ToolCalls[I].Id := ToolCallObj.Get('id', Format('call_%d', [I]));
-                if ToolCallObj.IndexOfName('function') >= 0 then begin
-                  FuncObj := ToolCallObj.Objects['function'];
-                  Result.ToolCalls[I].Name := FuncObj.Get('name', '');
-                  Result.ToolCalls[I].ArgumentsJson := ExtractFunctionArgumentsJson(FuncObj);
-                end;
-              end;
-            end;
-          end;
-        end;
-      end;
-
-      if RootObj.IndexOfName('usage') >= 0 then begin
-        UsageObj := RootObj.Objects['usage'];
-        Result.PromptTokens := UsageObj.Get('prompt_tokens', 0);
-        Result.CompletionTokens := UsageObj.Get('completion_tokens', 0);
-        Result.TotalTokens := UsageObj.Get('total_tokens', 0);
-        if UsageObj.IndexOfName('prompt_tokens_details') >= 0 then begin
-          if UsageObj.Objects['prompt_tokens_details'].IndexOfName('cached_tokens') >= 0 then
-            Result.CacheUsage := NormalizeOpenAiCacheUsage(Result.PromptTokens,
-              Result.CompletionTokens, Result.TotalTokens,
-              UsageObj.Objects['prompt_tokens_details'].Get('cached_tokens', 0), True);
-        end else if UsageObj.IndexOfName('cache_read_input_tokens') >= 0 then begin
-          Result.CacheUsage := NormalizeAnthropicCacheUsage(Result.PromptTokens,
-            Result.CompletionTokens, UsageObj.Get('cache_creation_input_tokens', 0),
-            UsageObj.Get('cache_read_input_tokens', 0), True);
-        end;
-      end;
-
-      Result.Success := True;
+      CopyOpenAiParseToResponse(Parsed, AJsonStr, Result);
     finally
       Data.Free;
     end;
@@ -419,12 +417,20 @@ begin
   end;
 end;
 
-function TLlmClient.BuildRequestHeaders(AIncludeJsonContentType: Boolean): TStringList;
+function TLlmClient.ParseOpenAiResponsePublic(const AJsonStr: string): TLlmResponse;
+begin
+  Result := ParseOpenAiResponse(AJsonStr);
+end;
+
+function TLlmClient.BuildRequestHeaders(AIncludeJsonContentType, AStreamSse: Boolean): TStringList;
 begin
   Result := TStringList.Create;
   if AIncludeJsonContentType then
     Result.Add('Content-Type: application/json');
-  Result.Add('Accept: application/json');
+  if AStreamSse then
+    Result.Add('Accept: text/event-stream')
+  else
+    Result.Add('Accept: application/json');
   Result.Add('User-Agent: LazyCodingAgent/1.0');
   if Trim(FApiKey) <> '' then begin
     if ResolveLlmWireFormat(FProvider, FBaseUrl, FModel) = lwfAnthropicMessages then begin
@@ -520,29 +526,42 @@ begin
   end;
 end;
 
-function TLlmClient.SendHttpGet(const AUrl: string; out AResponse: string): Boolean;
+function TLlmClient.ShouldRetryLlmHttp(AAttempt, AMaxAttempts: Integer; ASuccess: Boolean;
+  AStatusCode: Integer; const AResponse: string): Boolean;
+begin
+  if ASuccess then
+    Exit(False);
+  if AAttempt >= AMaxAttempts then
+    Exit(False);
+  if AResponse = OpenSslUnavailableUserMessage then
+    Exit(False);
+  Result := LlmHttpStatusRetriable(AStatusCode);
+end;
+
+function TLlmClient.SendHttpGetOnce(const AUrl: string; out AResponse: string;
+  out AStatusCode: Integer): Boolean;
 var
   {$IFNDEF MSWINDOWS}
   Client: TFPHTTPClient;
   {$ENDIF}
   Headers: TStringList;
   RespStream: TStringStream;
-  StatusCode: Integer;
 begin
   Result := False;
   AResponse := '';
-  Headers := BuildRequestHeaders(False);
+  AStatusCode := 0;
+  Headers := BuildRequestHeaders(False, False);
   RespStream := TStringStream.Create('', TEncoding.UTF8);
   try
     try
       {$IFDEF MSWINDOWS}
-      StatusCode := 0;
-      WindowsHTTPRequest('GET', AUrl, Headers, '', RespStream, StatusCode);
+      WindowsHTTPRequest('GET', AUrl, Headers, '', RespStream, AStatusCode,
+        FConnectTimeoutMs, FReadTimeoutMs);
       AResponse := RespStream.DataString;
-      Result := (StatusCode >= 200) and (StatusCode < 300);
+      Result := (AStatusCode >= 200) and (AStatusCode < 300);
       if not Result then begin
         if Trim(AResponse) = '' then
-          AResponse := HttpFailureMessage(StatusCode, '');
+          AResponse := HttpFailureMessage(AStatusCode, '');
       end;
       {$ELSE}
       if not EnsureOpenSslAvailable then begin
@@ -552,15 +571,16 @@ begin
       Client := TFPHTTPClient.Create(nil);
       try
         ApplyHeadersToHttpClient(Client, Headers);
-        ConfigureHttpClientTimeouts(Client, FTimeoutMs);
+        ConfigureHttpClientTimeouts(Client, FConnectTimeoutMs, FReadTimeoutMs);
         Client.AllowRedirect := True;
         Client.MaxRedirects := 5;
         Client.Get(AUrl, RespStream);
+        AStatusCode := Client.ResponseStatusCode;
         AResponse := RespStream.DataString;
-        Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
+        Result := (AStatusCode >= 200) and (AStatusCode < 300);
         if not Result then begin
           if Trim(AResponse) = '' then
-            AResponse := HttpFailureMessage(Client.ResponseStatusCode, Client.ResponseStatusText);
+            AResponse := HttpFailureMessage(AStatusCode, Client.ResponseStatusText);
         end;
       finally
         Client.Free;
@@ -568,6 +588,7 @@ begin
       {$ENDIF}
     except
       on E: Exception do begin
+        AStatusCode := 0;
         AResponse := HttpConnectionErrorMessage(E);
         Result := False;
       end;
@@ -578,7 +599,21 @@ begin
   end;
 end;
 
-function TLlmClient.SendHttpPost(const AUrl, APayload: string; out AResponse: string): Boolean;
+function TLlmClient.SendHttpGet(const AUrl: string; out AResponse: string): Boolean;
+var
+  Attempt, MaxAttempts, StatusCode: Integer;
+begin
+  MaxAttempts := 1 + ClampLlmHttpRetryCount(FHttpRetryCount);
+  for Attempt := 1 to MaxAttempts do begin
+    Result := SendHttpGetOnce(AUrl, AResponse, StatusCode);
+    if not ShouldRetryLlmHttp(Attempt, MaxAttempts, Result, StatusCode, AResponse) then
+      Exit;
+    Sleep(LlmHttpRetryDelayMs(Attempt));
+  end;
+end;
+
+function TLlmClient.SendHttpPostOnce(const AUrl, APayload: string; out AResponse: string;
+  out AStatusCode: Integer; AStreamResponse: Boolean): Boolean;
 var
   {$IFNDEF MSWINDOWS}
   Client: TFPHTTPClient;
@@ -586,24 +621,24 @@ var
   {$ENDIF}
   Headers: TStringList;
   RespStream: TStringStream;
-  StatusCode: Integer;
   Body: RawByteString;
 begin
   Result := False;
   AResponse := '';
-  Headers := BuildRequestHeaders(True);
+  AStatusCode := 0;
+  Headers := BuildRequestHeaders(True, AStreamResponse);
   RespStream := TStringStream.Create('', TEncoding.UTF8);
   Body := RawByteString(APayload);
   try
     try
       {$IFDEF MSWINDOWS}
-      StatusCode := 0;
-      WindowsHTTPRequest('POST', AUrl, Headers, Body, RespStream, StatusCode);
+      WindowsHTTPRequest('POST', AUrl, Headers, Body, RespStream, AStatusCode,
+        FConnectTimeoutMs, FReadTimeoutMs);
       AResponse := RespStream.DataString;
-      Result := (StatusCode >= 200) and (StatusCode < 300);
+      Result := (AStatusCode >= 200) and (AStatusCode < 300);
       if not Result then begin
         if Trim(AResponse) = '' then
-          AResponse := HttpFailureMessage(StatusCode, '');
+          AResponse := HttpFailureMessage(AStatusCode, '');
       end;
       {$ELSE}
       if not EnsureOpenSslAvailable then begin
@@ -614,16 +649,17 @@ begin
       ReqStream := TStringStream.Create(APayload, TEncoding.UTF8);
       try
         ApplyHeadersToHttpClient(Client, Headers);
-        ConfigureHttpClientTimeouts(Client, FTimeoutMs);
+        ConfigureHttpClientTimeouts(Client, FConnectTimeoutMs, FReadTimeoutMs);
         Client.AllowRedirect := True;
         Client.MaxRedirects := 5;
         Client.RequestBody := ReqStream;
         Client.Post(AUrl, RespStream);
+        AStatusCode := Client.ResponseStatusCode;
         AResponse := RespStream.DataString;
-        Result := (Client.ResponseStatusCode >= 200) and (Client.ResponseStatusCode < 300);
+        Result := (AStatusCode >= 200) and (AStatusCode < 300);
         if not Result then begin
           if Trim(AResponse) = '' then
-            AResponse := HttpFailureMessage(Client.ResponseStatusCode, Client.ResponseStatusText);
+            AResponse := HttpFailureMessage(AStatusCode, Client.ResponseStatusText);
         end;
       finally
         ReqStream.Free;
@@ -632,6 +668,7 @@ begin
       {$ENDIF}
     except
       on E: Exception do begin
+        AStatusCode := 0;
         AResponse := HttpConnectionErrorMessage(E);
         Result := False;
       end;
@@ -639,6 +676,20 @@ begin
   finally
     RespStream.Free;
     Headers.Free;
+  end;
+end;
+
+function TLlmClient.SendHttpPost(const AUrl, APayload: string; out AResponse: string;
+  AStreamResponse: Boolean): Boolean;
+var
+  Attempt, MaxAttempts, StatusCode: Integer;
+begin
+  MaxAttempts := 1 + ClampLlmHttpRetryCount(FHttpRetryCount);
+  for Attempt := 1 to MaxAttempts do begin
+    Result := SendHttpPostOnce(AUrl, APayload, AResponse, StatusCode, AStreamResponse);
+    if not ShouldRetryLlmHttp(Attempt, MaxAttempts, Result, StatusCode, AResponse) then
+      Exit;
+    Sleep(LlmHttpRetryDelayMs(Attempt));
   end;
 end;
 
@@ -801,7 +852,13 @@ var
   Wire: TLlmWireFormat;
   CacheSettings: TPromptCacheSettings;
   CacheCapabilities: TPromptCacheCapabilities;
+  StreamOpenAi: Boolean;
+  SseFailures: array of string;
+  Parsed: TOpenAiParseResult;
 begin
+  FLastWireRequestRedacted := '';
+  FLastWireResponseRedacted := '';
+  SetLength(Result.ParseFailures, 0);
   if Trim(FBaseUrl) = '' then begin
     Result.Success := False;
     Result.ErrorMessage := 'Set Base API Endpoint in Settings.';
@@ -813,6 +870,8 @@ begin
   if CacheSettings.Mode = pcmDisabled then
     CacheCapabilities.SupportsExplicitCaching := False;
 
+  StreamOpenAi := (Wire = lwfOpenAiChat) and FToolCallingCaps.StreamingEnabled;
+
   if Wire = lwfAnthropicMessages then begin
     Url := AnthropicMessagesUrl(FBaseUrl);
     Payload := BuildAnthropicMessagesPayload(FModel, FTemperature, FMaxTokens,
@@ -822,19 +881,30 @@ begin
     Payload := BuildGeminiGeneratePayload(FModel, FTemperature, FMaxTokens, AMessages, ATools);
   end else begin
     Url := ChatCompletionsUrl;
-    Payload := BuildOpenAiPayload(AMessages, ATools);
+    Payload := BuildOpenAiPayload(AMessages, ATools, StreamOpenAi);
   end;
 
-  if SendHttpPost(Url, Payload, RespStr) then begin
+  if FLearnWireLogging then
+    FLastWireRequestRedacted := RedactLlmPayloadForLog(Payload);
+
+  if SendHttpPost(Url, Payload, RespStr, StreamOpenAi) then begin
+    if FLearnWireLogging then
+      FLastWireResponseRedacted := RedactLlmPayloadForLog(RespStr);
     if Wire = lwfAnthropicMessages then
       Result := ParseAnthropicMessagesResponse(RespStr)
     else if Wire = lwfGemini then
       Result := ParseGeminiGenerateResponse(RespStr)
-    else
+    else if StreamOpenAi then begin
+      Parsed := ParseOpenAiSseBody(RespStr, SseFailures);
+      CopyOpenAiParseToResponse(Parsed, '', Result);
+      Result.ParseFailures := SseFailures;
+    end else
       Result := ParseOpenAiResponse(RespStr);
     if Result.Success and Result.CacheUsage.CacheMetricsAvailable then
       GlobalPromptCacheStats.RecordUsage(Result.CacheUsage);
   end else begin
+    if FLearnWireLogging then
+      FLastWireResponseRedacted := RedactLlmPayloadForLog(RespStr);
     // Try to parse error JSON if available
     RespStr := Trim(RespStr);
     if (RespStr <> '') and ((RespStr[1] = '{') or (RespStr[1] = '[')) then begin
@@ -842,7 +912,10 @@ begin
         Result := ParseAnthropicMessagesResponse(RespStr)
       else if Wire = lwfGemini then
         Result := ParseGeminiGenerateResponse(RespStr)
-      else
+      else if StreamOpenAi then begin
+        Parsed := ParseOpenAiSseBody(RespStr, SseFailures);
+        CopyOpenAiParseToResponse(Parsed, '', Result);
+      end else
         Result := ParseOpenAiResponse(RespStr);
       if Result.ErrorMessage = '' then
         Result.ErrorMessage := RespStr;

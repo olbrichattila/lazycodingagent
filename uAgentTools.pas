@@ -46,7 +46,7 @@ type
     function ExecuteTool(const AName, AArgumentsJson: string; AMode: TWorkspaceMode): TToolExecutionResult; overload;
     function ToolCount: Integer;
     function GetTool(AIndex: Integer): TAgentTool;
-    function ToolGuidance(AMode: TWorkspaceMode): string;
+    function ToolGuidance(AMode: TWorkspaceMode; AIncludeFullSchemas: Boolean = True): string;
 
     property Context: TAgentToolContext read FContext;
   end;
@@ -155,7 +155,8 @@ begin
       end;
 end;
 
-function TAgentToolRegistry.ToolGuidance(AMode: TWorkspaceMode): string;
+function TAgentToolRegistry.ToolGuidance(AMode: TWorkspaceMode;
+  AIncludeFullSchemas: Boolean): string;
 var
   I: Integer;
   Def: TToolDef;
@@ -166,9 +167,12 @@ begin
   Result := 'Available tools (JSON arguments):' + LineEnding;
   for I := Low(Defs) to High(Defs) do begin
     Def := Defs[I];
-    Schema := ToolDefToParametersJson(Def);
-    Result := Result + '- ' + Def.Name + ': ' + Def.Description +
-      ' Parameters: ' + Schema + LineEnding;
+    if AIncludeFullSchemas then begin
+      Schema := ToolDefToParametersJson(Def);
+      Result := Result + '- ' + Def.Name + ': ' + Def.Description +
+        ' Parameters: ' + Schema + LineEnding;
+    end else
+      Result := Result + '- ' + Def.Name + ': ' + Def.Description + LineEnding;
   end;
 end;
 

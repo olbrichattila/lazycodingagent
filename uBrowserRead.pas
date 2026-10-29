@@ -9,8 +9,8 @@ uses
 
 function BrowserReadContent(const Url: string; const Format: string;
   Strategy: TBrowserReadWaitStrategy; const WaitSelector: string;
-  TimeoutMs, MaxLength: Integer; const Config: TBrowserReadConfig;
-  CancelCheck: TBrowserReadCancelCheck): TBrowserReadResult;
+  TimeoutMs, MaxLength: Integer; const WorkspaceRoot: string;
+  const Config: TBrowserReadConfig; CancelCheck: TBrowserReadCancelCheck): TBrowserReadResult;
 
 function BrowserReadResultToJson(const R: TBrowserReadResult): string;
 
@@ -77,8 +77,8 @@ end;
 
 function BrowserReadContent(const Url: string; const Format: string;
   Strategy: TBrowserReadWaitStrategy; const WaitSelector: string;
-  TimeoutMs, MaxLength: Integer; const Config: TBrowserReadConfig;
-  CancelCheck: TBrowserReadCancelCheck): TBrowserReadResult;
+  TimeoutMs, MaxLength: Integer; const WorkspaceRoot: string;
+  const Config: TBrowserReadConfig; CancelCheck: TBrowserReadCancelCheck): TBrowserReadResult;
 var
   Start: QWord;
   Executable, WsUrl, Host, Path, FinalUrl, Content: string;
@@ -103,7 +103,8 @@ begin
   Start := GetTickCount64;
   Deadline := Start + QWord(TimeoutMs);
 
-  if not ValidateBrowserReadUrl(Url, Config.AllowLocalhost, ErrKind, ErrMsg) then
+  if not ValidateBrowserReadUrl(Url, Config.AllowLocalhost, WorkspaceRoot, ErrKind,
+    ErrMsg) then
   begin
     Result.ErrorKind := ErrKind;
     Result.ErrorMessage := ErrMsg;
@@ -178,7 +179,7 @@ begin
 
     Transport := TCdpWebSocketTransport.Create(Socket);
     Connection := TCdpConnection.Create(Transport);
-    Guard := TBrowserNetworkGuard.Create(Connection, Config.AllowLocalhost);
+    Guard := TBrowserNetworkGuard.Create(Connection, Config.AllowLocalhost, WorkspaceRoot);
     Navigator := TBrowserNavigator.Create(Connection);
     Ctx := TReadContext.Create;
     Ctx.NetGuard := Guard;
@@ -209,7 +210,8 @@ begin
       Exit;
     end;
 
-    if not ValidateBrowserReadUrl(FinalUrl, Config.AllowLocalhost, ErrKind, ErrMsg) then
+    if not ValidateBrowserReadUrl(FinalUrl, Config.AllowLocalhost, WorkspaceRoot, ErrKind,
+      ErrMsg) then
     begin
       Result.ErrorKind := brekAccessDenied;
       Result.ErrorMessage := 'Final URL is not allowed: ' + ErrMsg;

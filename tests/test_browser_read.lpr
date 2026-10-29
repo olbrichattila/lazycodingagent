@@ -5,7 +5,7 @@ program test_browser_read;
 uses
   {$IFDEF UNIX}cthreads,{$ENDIF}
   Classes, SysUtils, fpjson, jsonparser,
-  uBrowserReadTypes, uBrowserReadUrl, uBrowserReadConfig,
+  uBrowserReadTypes, uBrowserReadUrl,
   uCdpConnection;
 
 procedure Fail(const Msg: string);
@@ -110,19 +110,49 @@ procedure TestUrlGuards;
 var
   K: TBrowserReadErrorKind;
   Msg: string;
-  Cfg: TBrowserReadConfig;
+  WsRoot, NestedDir, NestedFile, OutsideDir, OutsideFile, FileUrl, OutsideUrl: string;
+  Sl: TStringList;
 begin
-  Cfg := DefaultBrowserReadConfig;
-  Cfg.AllowLocalhost := False;
-  if ValidateBrowserReadUrl('http://127.0.0.1/', False, K, Msg) then
+  if ValidateBrowserReadUrl('http://127.0.0.1/', False, '', K, Msg) then
     Fail('expected block for loopback');
   if K <> brekAccessDenied then
     Fail('wrong error kind for loopback');
-  if ValidateBrowserReadUrl('ftp://example.com/', False, K, Msg) then
+  if ValidateBrowserReadUrl('ftp://example.com/', False, '', K, Msg) then
     Fail('expected block for ftp');
-  Cfg.AllowLocalhost := True;
-  if not ValidateBrowserReadUrl('http://127.0.0.1/', True, K, Msg) then
+  if not ValidateBrowserReadUrl('http://127.0.0.1/', True, '', K, Msg) then
     Fail('expected localhost allowed in test mode');
+
+  WsRoot := ExpandFileName(IncludeTrailingPathDelimiter(GetCurrentDir) +
+    '.lca_test_browser_url_' + IntToStr(GetProcessID));
+  NestedDir := IncludeTrailingPathDelimiter(WsRoot) + 'subdir';
+  NestedFile := IncludeTrailingPathDelimiter(NestedDir) + 'page.html';
+  OutsideDir := ExpandFileName(IncludeTrailingPathDelimiter(GetTempDir) +
+    'lca_browser_url_out_' + IntToStr(GetProcessID));
+  OutsideFile := IncludeTrailingPathDelimiter(OutsideDir) + 'outside.html';
+  ForceDirectories(NestedDir);
+  ForceDirectories(OutsideDir);
+  Sl := TStringList.Create;
+  try
+    Sl.Text := '<html></html>';
+    Sl.SaveToFile(NestedFile);
+    Sl.SaveToFile(OutsideFile);
+  finally
+    Sl.Free;
+  end;
+  try
+    FileUrl := 'file://' + StringReplace(NestedFile, '\', '/', [rfReplaceAll]);
+    if not ValidateBrowserReadUrl(FileUrl, False, WsRoot, K, Msg) then
+      Fail('expected nested workspace file allowed: ' + Msg);
+    OutsideUrl := 'file://' + StringReplace(OutsideFile, '\', '/', [rfReplaceAll]);
+    if ValidateBrowserReadUrl(OutsideUrl, False, WsRoot, K, Msg) then
+      Fail('expected file outside workspace blocked');
+  finally
+    DeleteFile(NestedFile);
+    DeleteFile(OutsideFile);
+    RemoveDir(NestedDir);
+    RemoveDir(WsRoot);
+    RemoveDir(OutsideDir);
+  end;
 end;
 
 procedure TestTypes;

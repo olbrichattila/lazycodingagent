@@ -52,6 +52,12 @@ type
     FContextWindowTokens: Integer;
     FSummarizeThreshold: Double;
     FPromptCacheSettings: TPromptCacheSettings;
+    FLlmConnectTimeoutMs: Integer;
+    FLlmReadTimeoutMs: Integer;
+    FLlmHttpRetryCount: Integer;
+    FLlmNativeToolCalling: Boolean;
+    FLlmTextToolCompat: Boolean;
+    FLlmStreamingEnabled: Boolean;
 
     FProviderCreds: array[TLlmProvider] of TProviderCredentials;
     FProviderModels: array[TLlmProvider] of array of TSavedModel;
@@ -120,6 +126,12 @@ type
     property SummarizeThreshold: Double read FSummarizeThreshold write FSummarizeThreshold;
     property PromptCacheSettings: TPromptCacheSettings read FPromptCacheSettings
       write FPromptCacheSettings;
+    property LlmConnectTimeoutMs: Integer read FLlmConnectTimeoutMs write FLlmConnectTimeoutMs;
+    property LlmReadTimeoutMs: Integer read FLlmReadTimeoutMs write FLlmReadTimeoutMs;
+    property LlmHttpRetryCount: Integer read FLlmHttpRetryCount write FLlmHttpRetryCount;
+    property LlmNativeToolCalling: Boolean read FLlmNativeToolCalling write FLlmNativeToolCalling;
+    property LlmTextToolCompat: Boolean read FLlmTextToolCompat write FLlmTextToolCompat;
+    property LlmStreamingEnabled: Boolean read FLlmStreamingEnabled write FLlmStreamingEnabled;
 
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
@@ -186,6 +198,12 @@ begin
   FContextWindowTokens := DEFAULT_CONTEXT_WINDOW_TOKENS;
   FSummarizeThreshold := DEFAULT_SUMMARIZE_THRESHOLD;
   FPromptCacheSettings := DefaultPromptCacheSettings;
+  FLlmConnectTimeoutMs := DEFAULT_LLM_CONNECT_TIMEOUT_MS;
+  FLlmReadTimeoutMs := DEFAULT_LLM_READ_TIMEOUT_MS;
+  FLlmHttpRetryCount := DEFAULT_LLM_HTTP_RETRY_COUNT;
+  FLlmNativeToolCalling := True;
+  FLlmTextToolCompat := False;
+  FLlmStreamingEnabled := False;
 
   InitProviderDefaults;
   ResetLayout;
@@ -534,6 +552,15 @@ begin
   FAutoSummarizeContext := SettingsTryGetBool(Settings, KEY_GENERAL_AUTO_SUMMARIZE, FAutoSummarizeContext);
   FContextWindowTokens := SettingsTryGetInt(Settings, KEY_LLM_CONTEXT_WINDOW, FContextWindowTokens);
   FSummarizeThreshold := SettingsTryGetFloat(Settings, KEY_LLM_SUMMARIZE_THRESHOLD, FSummarizeThreshold);
+  FLlmConnectTimeoutMs := ClampLlmConnectTimeoutMs(SettingsTryGetInt(Settings,
+    KEY_LLM_CONNECT_TIMEOUT_MS, DEFAULT_LLM_CONNECT_TIMEOUT_MS));
+  FLlmReadTimeoutMs := ClampLlmReadTimeoutMs(SettingsTryGetInt(Settings,
+    KEY_LLM_READ_TIMEOUT_MS, DEFAULT_LLM_READ_TIMEOUT_MS));
+  FLlmHttpRetryCount := ClampLlmHttpRetryCount(SettingsTryGetInt(Settings,
+    KEY_LLM_HTTP_RETRY_COUNT, DEFAULT_LLM_HTTP_RETRY_COUNT));
+  FLlmNativeToolCalling := SettingsTryGetBool(Settings, KEY_LLM_NATIVE_TOOL_CALLING, True);
+  FLlmTextToolCompat := SettingsTryGetBool(Settings, KEY_LLM_TEXT_TOOL_COMPAT, False);
+  FLlmStreamingEnabled := SettingsTryGetBool(Settings, KEY_LLM_STREAMING_ENABLED, False);
 
   FPromptCacheSettings.Mode := TPromptCacheMode(SettingsTryGetInt(Settings, KEY_PROMPT_CACHE_MODE,
     Ord(FPromptCacheSettings.Mode)));
@@ -626,6 +653,12 @@ begin
   SettingsSetBool(Settings, KEY_GENERAL_AUTO_SUMMARIZE, FAutoSummarizeContext);
   SettingsSetInt(Settings, KEY_LLM_CONTEXT_WINDOW, FContextWindowTokens);
   SettingsSetFloat(Settings, KEY_LLM_SUMMARIZE_THRESHOLD, FSummarizeThreshold);
+  SettingsSetInt(Settings, KEY_LLM_CONNECT_TIMEOUT_MS, ClampLlmConnectTimeoutMs(FLlmConnectTimeoutMs));
+  SettingsSetInt(Settings, KEY_LLM_READ_TIMEOUT_MS, ClampLlmReadTimeoutMs(FLlmReadTimeoutMs));
+  SettingsSetInt(Settings, KEY_LLM_HTTP_RETRY_COUNT, ClampLlmHttpRetryCount(FLlmHttpRetryCount));
+  SettingsSetBool(Settings, KEY_LLM_NATIVE_TOOL_CALLING, FLlmNativeToolCalling);
+  SettingsSetBool(Settings, KEY_LLM_TEXT_TOOL_COMPAT, FLlmTextToolCompat);
+  SettingsSetBool(Settings, KEY_LLM_STREAMING_ENABLED, FLlmStreamingEnabled);
 
   SettingsSetInt(Settings, KEY_PROMPT_CACHE_MODE, Ord(FPromptCacheSettings.Mode));
   SettingsSetInt(Settings, KEY_PROMPT_CACHE_RETENTION, Ord(FPromptCacheSettings.Retention));

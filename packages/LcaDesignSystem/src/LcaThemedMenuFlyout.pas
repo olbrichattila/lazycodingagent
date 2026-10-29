@@ -19,6 +19,8 @@ type
     FHoverRow: Integer;
     FRowHeight: Integer;
     FSubFlyout: TLcaThemedMenuFlyout;
+    FOwnerFlyout: TLcaThemedMenuFlyout;
+    procedure DetachFromOwnerFlyout;
     procedure RebuildRows;
     procedure LayoutFlyoutSize;
     function RowAt(X, Y: Integer): Integer;
@@ -54,20 +56,36 @@ var
   GMenuFlyoutDismissSuppressUntil: QWord = 0;
   GMenuFlyoutHookHelper: TMenuFlyoutHookHelper;
 
+function FlyoutRectOnScreen(AFlyout: TLcaThemedMenuFlyout): TRect;
+var
+  TL, BR: TPoint;
+begin
+  TL := AFlyout.ClientToScreen(Point(0, 0));
+  BR := AFlyout.ClientToScreen(Point(AFlyout.Width, AFlyout.Height));
+  Result := Rect(TL.X, TL.Y, BR.X, BR.Y);
+end;
+
+function FlyoutAtScreenPosInTree(AFlyout: TLcaThemedMenuFlyout;
+  const P: TPoint): TLcaThemedMenuFlyout;
+begin
+  Result := nil;
+  if not Assigned(AFlyout) or not AFlyout.Visible then Exit;
+  if Assigned(AFlyout.FSubFlyout) then begin
+    Result := FlyoutAtScreenPosInTree(AFlyout.FSubFlyout, P);
+    if Result <> nil then Exit;
+  end;
+  if PtInRect(FlyoutRectOnScreen(AFlyout), P) then
+    Result := AFlyout;
+end;
+
 function FlyoutAtScreenPos(const P: TPoint): TLcaThemedMenuFlyout;
 var
   I: Integer;
-  R: TRect;
-  TL, BR: TPoint;
 begin
   Result := nil;
   for I := 0 to High(GMenuFlyouts) do begin
-    if not GMenuFlyouts[I].Visible then Continue;
-    TL := GMenuFlyouts[I].ClientToScreen(Point(0, 0));
-    BR := GMenuFlyouts[I].ClientToScreen(Point(GMenuFlyouts[I].Width, GMenuFlyouts[I].Height));
-    R := Rect(TL.X, TL.Y, BR.X, BR.Y);
-    if PtInRect(R, P) then
-      Exit(GMenuFlyouts[I]);
+    Result := FlyoutAtScreenPosInTree(GMenuFlyouts[I], P);
+    if Result <> nil then Exit;
   end;
 end;
 
@@ -151,16 +169,31 @@ begin
   inherited Destroy;
 end;
 
-procedure TLcaThemedMenuFlyout.CloseSubFlyout;
+procedure TLcaThemedMenuFlyout.DetachFromOwnerFlyout;
 begin
-  if Assigned(FSubFlyout) then begin
-    FSubFlyout.HideFlyout;
-    FreeAndNil(FSubFlyout);
+  if Assigned(FOwnerFlyout) and (FOwnerFlyout.FSubFlyout = Self) then
+    FOwnerFlyout.FSubFlyout := nil;
+  FOwnerFlyout := nil;
+end;
+
+procedure TLcaThemedMenuFlyout.CloseSubFlyout;
+var
+  Sub: TLcaThemedMenuFlyout;
+begin
+  if not Assigned(FSubFlyout) then Exit;
+  if FSubFlyout.FOwnerFlyout <> Self then begin
+    FSubFlyout := nil;
+    Exit;
   end;
+  Sub := FSubFlyout;
+  FSubFlyout := nil;
+  Sub.HideFlyout;
+  Sub.Free;
 end;
 
 procedure TLcaThemedMenuFlyout.HideFlyout;
 begin
+  DetachFromOwnerFlyout;
   CloseSubFlyout;
   if Visible then begin
     Visible := False;
@@ -173,16 +206,9 @@ begin
 end;
 
 class procedure TLcaThemedMenuFlyout.CloseAllFlyouts;
-var
-  Copy: array of TLcaThemedMenuFlyout;
-  I: Integer;
 begin
-  SetLength(Copy, Length(GMenuFlyouts));
-  for I := 0 to High(GMenuFlyouts) do
-    Copy[I] := GMenuFlyouts[I];
-  for I := 0 to High(Copy) do
-    if Assigned(Copy[I]) then
-      Copy[I].HideFlyout;
+  while Length(GMenuFlyouts) > 0 do
+    GMenuFlyouts[High(GMenuFlyouts)].HideFlyout;
   UninstallFlyoutHooksIfIdle;
 end;
 
@@ -273,6 +299,7 @@ begin
 
   CloseSubFlyout;
   FSubFlyout := TLcaThemedMenuFlyout.Create(FHostForm);
+  FSubFlyout.FOwnerFlyout := Self;
   R := Rect(0, ARowIndex * FRowHeight, Width, (ARowIndex + 1) * FRowHeight);
   P := ClientToScreen(Point(R.Right, R.Top));
   FSubFlyout.ShowForMenuItem(Src, P, FTheme, FHostForm);
@@ -394,8 +421,8 @@ begin
     OpenSubMenuForRow(Row);
     Exit;
   end;
-  ExecuteSourceItem(Src);
   CloseAllFlyouts;
+  ExecuteSourceItem(Src);
 end;
 
 procedure TLcaThemedMenuFlyout.MouseLeave;

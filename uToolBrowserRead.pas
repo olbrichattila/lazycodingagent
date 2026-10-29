@@ -57,7 +57,8 @@ begin
   SetLength(Result.Params, 6);
   Result.Params[0].Name := 'url';
   Result.Params[0].ParamType := 'string';
-  Result.Params[0].Description := 'The HTTP or HTTPS URL to open.';
+  Result.Params[0].Description :=
+    'HTTP or HTTPS URL, or file:/// path to a file inside the active workspace (any subfolder).';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'format';
   Result.Params[1].ParamType := 'string';
@@ -132,8 +133,8 @@ begin
 
   CancelAdapter := TBrowserReadCancelAdapter.Create(FContext);
   try
-    ReadRes := BrowserReadContent(Url, Fmt, Strategy, WaitSelector, TimeoutMs, MaxLen, Config,
-      @CancelAdapter.Check);
+    ReadRes := BrowserReadContent(Url, Fmt, Strategy, WaitSelector, TimeoutMs, MaxLen,
+      FContext.WorkspaceRoot, Config, @CancelAdapter.Check);
     Result := ToolResultFromJson(BrowserReadResultToJson(ReadRes));
   finally
     CancelAdapter.Free;

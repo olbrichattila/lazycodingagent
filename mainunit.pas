@@ -407,8 +407,16 @@ uses
   frmSettings, frmNewWorkspace, frmWorkspaceRules, frmSyntaxSchemes, uBrowserManager,
   frmMultiAgentWorkspace, frmExecutionPlansConfig, frmKnowledgeBaseConfig, frmTheBrainConfig,
   uBrowserPermissions, frmBrowserConfirm,
-  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, uGlobalConfigBootstrap, uAppDatabase
+  frmOpenMarkdown, frmHelp, frmPlanBuildConfirm, uGlobalConfigBootstrap, uAppDatabase,
+  uLlmToolCalling
   {$IFDEF WINDOWS}, Windows{$ENDIF};
+
+function ToolCallingCapsFromState(const AState: TWorkspaceState): TLlmToolCallingCapabilities;
+begin
+  Result.NativeToolCalling := AState.LlmNativeToolCalling;
+  Result.TextToolCompat := AState.LlmTextToolCompat;
+  Result.StreamingEnabled := AState.LlmStreamingEnabled;
+end;
 
 {$R *.lfm}
 
@@ -455,7 +463,9 @@ begin
   if not Assigned(AHub) then Exit;
   AHub.ApplyClientSettings(FState.Provider, FState.ApiKey, FState.BaseUrl, FState.Model,
     FState.Temperature, FState.MaxTokens, FState.MaxSteps, FState.AutoSummarizeContext,
-    FState.ContextWindowTokens, FState.SummarizeThreshold, FState.PromptCacheSettings);
+    FState.ContextWindowTokens, FState.SummarizeThreshold,
+    FState.LlmConnectTimeoutMs, FState.LlmReadTimeoutMs, FState.LlmHttpRetryCount,
+    FState.PromptCacheSettings, ToolCallingCapsFromState(FState), FState.LearnMode);
 end;
 
 procedure TLazyCodingAgentForm.ApplyAllowModifyOutsideToSession(const ASessionId: string;

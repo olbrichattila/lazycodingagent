@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, Contnrs, uAppTypes, uAgentTypes;
 
 type
-  TExecutionLogKind = (elUserPrompt, elToolExecution, elAssistantResponse);
+  TExecutionLogKind = (elUserPrompt, elToolExecution, elAssistantResponse, elLlmWire);
 
   TExecutionLogEntry = class
   public
@@ -22,6 +22,10 @@ type
     ToolOutputJson: string;
     ToolSuccess: Boolean;
     AssistantToolCalls: TToolCallArray;
+    RawRequestJson: string;
+    RawResponseJson: string;
+    ParsedToolCallsJson: string;
+    ParseFailuresText: string;
     function BuildInspectorMarkdown: string;
     destructor Destroy; override;
   end;
@@ -41,6 +45,9 @@ type
       ASuccess: Boolean; AStep, AMaxSteps: Integer): Integer;
     function AddAssistant(const AContent, ALlmContext: string;
       const AToolCalls: TToolCallArray; AStep, AMaxSteps: Integer): Integer;
+    function AddLlmWire(const ARawRequest, ARawResponse: string;
+      const AToolCalls: TToolCallArray; const AParseFailures: array of string;
+      AStep, AMaxSteps: Integer): Integer;
   end;
 
 function PrettyJsonString(const S: string): string;
@@ -48,7 +55,7 @@ function TruncateLogCaption(const S: string; AMaxLen: Integer = 72): string;
 function FormatToolCallActivityDetail(const AToolName, AArgsJson: string): string;
 function FormatToolCallActivityLine(const AToolName, AArgsJson: string): string;
 function FormatMessagesForDisplay(const AMessages: array of TChatMessage;
-  const ATools: array of TToolDef): string;
+  const ATools: array of TToolDef; AToolSchemasInApiPayload: Boolean = False): string;
 function FormatMessageBodyForLog(const AMsg: TChatMessage): string;
 
 implementation
@@ -337,11 +344,11 @@ begin
 end;
 
 function FormatMessagesForDisplay(const AMessages: array of TChatMessage;
-  const ATools: array of TToolDef): string;
+  const ATools: array of TToolDef; AToolSchemasInApiPayload: Boolean): string;
 var
   I, J: Integer;
   SB: TStringBuilder;
-  SysText: string;
+  SysText, NamesLine: string;
 begin
   SB := TStringBuilder.Create;
   try
@@ -371,7 +378,15 @@ begin
     SB.AppendLine('--- Tools available (this step) ---');
     if Length(ATools) = 0 then
       SB.AppendLine('(none)')
-    else
+    else if AToolSchemasInApiPayload then begin
+      NamesLine := '';
+      for J := Low(ATools) to High(ATools) do begin
+        if NamesLine <> '' then
+          NamesLine := NamesLine + ', ';
+        NamesLine := NamesLine + ATools[J].Name;
+      end;
+      SB.AppendLine('(schemas in API tools[]; names: ' + NamesLine + ')');
+    end else
       for J := Low(ATools) to High(ATools) do
         SB.AppendLine(Format('- %s: %s', [ATools[J].Name, ATools[J].Description]));
 
@@ -432,6 +447,21 @@ begin
           SB.AppendLine;
           AppendDetailSectionHeader(SB, 'Request context');
           AppendDetailProseBlock(SB, ContextText);
+        end;
+      elLlmWire:
+        begin
+          AppendDetailSectionHeader(SB, 'Outgoing API request (redacted)');
+          AppendDetailJsonBlock(SB, RawRequestJson);
+          AppendDetailSectionHeader(SB, 'Incoming API response (redacted)');
+          AppendDetailJsonBlock(SB, RawResponseJson);
+          if Trim(ParsedToolCallsJson) <> '' then begin
+            AppendDetailSectionHeader(SB, 'Parsed native tool calls');
+            AppendDetailJsonBlock(SB, ParsedToolCallsJson);
+          end;
+          if Trim(ParseFailuresText) <> '' then begin
+            AppendDetailSectionHeader(SB, 'Parse / validation notes');
+            AppendDetailProseBlock(SB, ParseFailuresText);
+          end;
         end;
     end;
     Result := SB.ToString;
@@ -540,6 +570,63 @@ begin
     Cap := TruncateLogCaption(AContent);
     E.Caption := StepCaptionPrefix(AStep, AMaxSteps) + 'Model: ' + Cap;
   end;
+  Result := FEntries.Count - 1;
+end;
+
+function ToolCallsToJsonArray(const AToolCalls: TToolCallArray): string;
+var
+  Arr: TJSONArray;
+  I: Integer;
+  Item, Fn: TJSONObject;
+begin
+  Arr := TJSONArray.Create;
+  try
+    for I := Low(AToolCalls) to High(AToolCalls) do begin
+      Item := TJSONObject.Create;
+      Item.Add('id', AToolCalls[I].Id);
+      Fn := TJSONObject.Create;
+      Fn.Add('name', AToolCalls[I].Name);
+      Fn.Add('arguments', AToolCalls[I].ArgumentsJson);
+      Item.Add('function', Fn);
+      Arr.Add(Item);
+    end;
+    Result := Arr.AsJSON;
+  finally
+    Arr.Free;
+  end;
+end;
+
+function ParseFailuresToText(const AFailures: array of string): string;
+var
+  I: Integer;
+  SB: TStringBuilder;
+begin
+  if Length(AFailures) = 0 then Exit('');
+  SB := TStringBuilder.Create;
+  try
+    for I := Low(AFailures) to High(AFailures) do begin
+      if I > 0 then SB.AppendLine;
+      SB.Append(AFailures[I]);
+    end;
+    Result := SB.ToString;
+  finally
+    SB.Free;
+  end;
+end;
+
+function TAgentExecutionLog.AddLlmWire(const ARawRequest, ARawResponse: string;
+  const AToolCalls: TToolCallArray; const AParseFailures: array of string;
+  AStep, AMaxSteps: Integer): Integer;
+var
+  E: TExecutionLogEntry;
+begin
+  E := NewEntry;
+  E.Kind := elLlmWire;
+  E.RawRequestJson := ARawRequest;
+  E.RawResponseJson := ARawResponse;
+  E.ParsedToolCallsJson := ToolCallsToJsonArray(AToolCalls);
+  E.ParseFailuresText := ParseFailuresToText(AParseFailures);
+  E.Caption := StepCaptionPrefix(AStep, AMaxSteps) + 'LLM wire';
   Result := FEntries.Count - 1;
 end;
 

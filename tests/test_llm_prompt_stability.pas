@@ -77,9 +77,35 @@ begin
     raise Exception.Create('Rules change must change project context segment hash');
 end;
 
+procedure TestEmptyToolsGuidanceOmitsToolList;
+var
+  Input: TSystemPromptBuildInput;
+  Parts: TStringArray;
+  Full: string;
+  Seg: TPromptSegmentArray;
+  Settings: TPromptCacheSettings;
+begin
+  Settings := DefaultPromptCacheSettings;
+  Input.Mode := wmAgent;
+  Input.WorkspaceRoot := '/tmp/project';
+  Input.AllowModifyOutsideWorkspace := False;
+  Input.ToolsGuidance := '';
+  Input.RulesText := '';
+  Input.WebSearchLine := '';
+  Full := BuildSystemPromptParts(Input, Parts);
+  if Pos('Available tools (JSON arguments):', Full) > 0 then
+    raise Exception.Create('Empty ToolsGuidance must omit tool list header');
+  if Pos('Parameters:', Full) > 0 then
+    raise Exception.Create('Empty ToolsGuidance must not embed parameter schemas');
+  Seg := BuildSystemPromptSegments(Input, Settings);
+  if (Length(Seg) < 2) or (Trim(Seg[1].Content) <> '') then
+    raise Exception.Create('Tool definition segment should be empty when ToolsGuidance is empty');
+end;
+
 begin
   TestStableSystemPromptHash;
   TestToolDefinitionSortOrder;
   TestSegmentHashChangesWithRules;
+  TestEmptyToolsGuidanceOmitsToolList;
   WriteLn('LLM prompt stability tests passed.');
 end.

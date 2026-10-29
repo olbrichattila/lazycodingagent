@@ -110,6 +110,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uLlmToolCalling.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uLlmPromptCacheTypes.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

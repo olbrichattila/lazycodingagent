@@ -133,16 +133,11 @@ def run(driver):
                         assert prompt.index('First project rule.') < prompt.index('Second project rule.')
                         assert 'Project Rules (from .rules/*.md):' in prompt
                         functions = {t['function']['name']: t['function'] for t in request['tools']}
-                        guidance = {}
-                        for line in prompt.splitlines():
-                            if line.startswith('- ') and ' Parameters: ' in line:
-                                description, schema = line[2:].split(' Parameters: ', 1)
-                                name, description = description.split(': ', 1)
-                                guidance[name] = (description, json.loads(schema))
-                        assert set(guidance) == set(functions) == expected
-                        for name, (description, schema) in guidance.items():
-                            assert description == functions[name]['description']
-                            assert schema == functions[name]['parameters']
+                        assert set(functions) == expected
+                        assert 'Available tools (JSON arguments):' not in prompt
+                        for name in expected:
+                            assert functions[name]['description']
+                            assert functions[name]['parameters']
                         if mode == 'Plan':
                             assert f'Only create .md files inside {root / ".plan"}{os.sep}, using create_plan_file.' in prompt
                             assert 'Do not modify other project files.' in prompt

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, uAppTypes, uAgentTypes, uAgentTools, uAgentEngine, uChatSessionStore,
-  uAgentExecutionLog, uAgentToolErrorLog, uLlmPromptCacheTypes;
+  uAgentExecutionLog, uAgentToolErrorLog, uLlmPromptCacheTypes, uLlmToolCalling;
 
 type
   THubStateChangeEvent = procedure(Sender: TObject; const ASessionId: string;
@@ -64,7 +64,9 @@ type
     procedure ApplyClientSettings(AProvider: TLlmProvider; const AApiKey, ABaseUrl, AModel: string;
       ATemperature: Double; AMaxTokens, AMaxSteps: Integer; AAutoSummarizeContext: Boolean;
       AContextWindowTokens: Integer; ASummarizeThreshold: Double;
-      const APromptCacheSettings: TPromptCacheSettings);
+      AConnectTimeoutMs, AReadTimeoutMs, AHttpRetryCount: Integer;
+      const APromptCacheSettings: TPromptCacheSettings;
+      const AToolCallingCaps: TLlmToolCallingCapabilities; ALearnWireLogging: Boolean);
 
     function EngineFor(const ASessionId: string): TAgentEngine;
     function ExecutionLogFor(const ASessionId: string): TAgentExecutionLog;
@@ -307,7 +309,9 @@ end;
 procedure TChatSessionHub.ApplyClientSettings(AProvider: TLlmProvider; const AApiKey, ABaseUrl, AModel: string;
   ATemperature: Double; AMaxTokens, AMaxSteps: Integer; AAutoSummarizeContext: Boolean;
   AContextWindowTokens: Integer; ASummarizeThreshold: Double;
-  const APromptCacheSettings: TPromptCacheSettings);
+  AConnectTimeoutMs, AReadTimeoutMs, AHttpRetryCount: Integer;
+  const APromptCacheSettings: TPromptCacheSettings;
+  const AToolCallingCaps: TLlmToolCallingCapabilities; ALearnWireLogging: Boolean);
 var
   I: Integer;
   E: TAgentEngine;
@@ -320,6 +324,13 @@ begin
     E.Client.Model := AModel;
     E.Client.Temperature := ATemperature;
     E.Client.MaxTokens := ClampMaxOutputTokens(AMaxTokens);
+    E.Client.ConnectTimeoutMs := AConnectTimeoutMs;
+    E.Client.ReadTimeoutMs := AReadTimeoutMs;
+    E.Client.HttpRetryCount := AHttpRetryCount;
+    E.Client.ToolCallingCapabilities := AToolCallingCaps;
+    E.Client.LearnWireLogging := ALearnWireLogging;
+    E.ToolCallingCapabilities := AToolCallingCaps;
+    E.LearnWireLogging := ALearnWireLogging;
     E.MaxSteps := AMaxSteps;
     E.AutoSummarizeContext := AAutoSummarizeContext;
     E.ContextWindowTokens := AContextWindowTokens;

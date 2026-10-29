@@ -47,6 +47,8 @@ The **model** combo lists models you configured in Settings. The choice is kept 
 
 **Custom** is a single profile: set a **display name**, endpoint URL, API key, and saved models like any other provider. Per-provider API keys and URLs are stored separately so you can switch providers without retyping.
 
+On the same **Agent** tab, **Native tool calling**, **Text tool-call compatibility**, and **Streaming completions** control how tool schemas and responses are exchanged with OpenAI-compatible APIs (see **How the agent works**).
+
 ## Debugging mode vs live trace
 
 In **Settings → Agent Behavior**, enable **Debugging mode** to show **full tool results** in the chat transcript. When disabled, successful tool JSON stays out of chat; **errors** still appear.
@@ -78,6 +80,17 @@ When **Learn mode** is on, sending a prompt:
 ## Max output tokens and truncation
 
 **Max Output Tokens** in **Settings → Agent Behavior** limits how much the model can generate in one completion (default **8192** for new installs). Agent runs that emit large tool-call JSON or long replies need enough headroom; values below about **2048** often truncate tool arguments and break the loop.
+
+## LLM HTTP timeouts
+
+Each chat completion, model list fetch, and context summarization call uses one HTTPS request. On **Settings → Agent Behavior** you can set:
+
+- **LLM connect timeout (sec)** — DNS, TCP, and TLS handshake (default **60**; minimum **60**)
+- **LLM response read timeout (sec)** — waiting for the provider to return the response body (default **600**; minimum **60**)
+
+These apply on Windows, Linux, and macOS. They do not limit total agent run time—only a single HTTP round-trip. Tool HTTP (web search, web fetch, browser) uses separate timeouts.
+
+**LLM HTTP retries on failure** (default **3**) controls how many **extra** attempts follow a failed request (timeouts, connection errors, HTTP 429/502/503/504). Set **0** to disable retries. Waits between attempts increase exponentially starting at **1 second** (1s, 2s, 4s, …). Client errors such as 401 are not retried.
 
 When a completion is cut off (`finish_reason` length), the agent **retries once or twice** with a temporarily higher output budget (up to 16384) before accepting the result. Final assistant text may include a short note if output was still incomplete.
 

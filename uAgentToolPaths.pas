@@ -5,7 +5,7 @@ unit uAgentToolPaths;
 interface
 
 uses
-  Classes, SysUtils, fpjson, uAgentToolBase;
+  Classes, SysUtils, fpjson;
 
 type
   TPathAccess = (paRead, paWrite);
@@ -13,6 +13,7 @@ type
 function ResolveProjectPath(const Path: string; AAccess: TPathAccess = paWrite): string;
 function ResolveProjectPathInWorkspace(const Path: string): string;
 function CanonicalFilePath(const Path: string): string;
+function PathIsInsideWorkspace(const WorkspaceFolder, Candidate: string): Boolean;
 function CanonicalWorkspaceRoot: string;
 function ReadTextBytes(const Path: string): RawByteString;
 procedure WriteBytes(const Path: string; const Content: RawByteString);
@@ -25,7 +26,7 @@ function SuccessFile(const Path: string; Bytes: Int64): string;
 implementation
 
 uses
-  {$IFDEF UNIX}BaseUnix{$ELSE}Windows{$ENDIF};
+  {$IFDEF UNIX}BaseUnix{$ELSE}Windows{$ENDIF}, uAgentToolBase;
 
 const
   TextFileMaxBytes = 16 * 1024 * 1024;
@@ -190,6 +191,20 @@ end;
 function CanonicalFilePath(const Path: string): string;
 begin
   Result := CanonicalPath(Path, 0);
+end;
+
+function PathIsInsideWorkspace(const WorkspaceFolder, Candidate: string): Boolean;
+var
+  Root, Can, Prefix: string;
+begin
+  Result := False;
+  Root := Trim(WorkspaceFolder);
+  if Root = '' then Exit;
+  if Trim(Candidate) = '' then Exit;
+  Root := ExcludeTrailingPathDelimiter(CanonicalFilePath(ExpandFileName(Root)));
+  Can := ExcludeTrailingPathDelimiter(CanonicalFilePath(Candidate));
+  Prefix := IncludeTrailingPathDelimiter(Root);
+  Result := PathJailPrefixMatches(Root, Prefix, Can);
 end;
 
 function CanonicalWorkspaceRoot: string;

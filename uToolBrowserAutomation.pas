@@ -225,7 +225,8 @@ begin
   SetLength(Result.Params, 6);
   Result.Params[0].Name := 'url';
   Result.Params[0].ParamType := 'string';
-  Result.Params[0].Description := 'HTTP or HTTPS URL to open.';
+  Result.Params[0].Description :=
+    'HTTP or HTTPS URL, or file:/// path to a file or folder inside the active workspace.';
   Result.Params[0].Required := True;
   Result.Params[1].Name := 'session_id';
   Result.Params[1].ParamType := 'string';
@@ -283,7 +284,7 @@ begin
     if Sid = '' then
     begin
       if not ValidateBrowserReadUrl(Url, Cfg.AllowLocalhost or FContext.AllowBrowserLocalhost,
-        ErrKind, ErrMsg) then
+        FContext.WorkspaceRoot, ErrKind, ErrMsg) then
         Exit(JsonErr(BrowserReadErrorKindToCode(ErrKind), ErrMsg));
       if (Pos('127.0.0.1', LowerCase(Url)) > 0) or (Pos('localhost', LowerCase(Url)) > 0) then
         if not FContext.AllowBrowserLocalhost and not Cfg.AllowLocalhost then

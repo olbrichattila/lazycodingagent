@@ -20,6 +20,12 @@ const
   KEY_LLM_MAX_STEPS = 'llm.max_steps';
   KEY_LLM_CONTEXT_WINDOW = 'llm.context_window_tokens';
   KEY_LLM_SUMMARIZE_THRESHOLD = 'llm.summarize_threshold';
+  KEY_LLM_CONNECT_TIMEOUT_MS = 'llm.connect_timeout_ms';
+  KEY_LLM_READ_TIMEOUT_MS = 'llm.read_timeout_ms';
+  KEY_LLM_HTTP_RETRY_COUNT = 'llm.http_retry_count';
+  KEY_LLM_NATIVE_TOOL_CALLING = 'llm.native_tool_calling';
+  KEY_LLM_TEXT_TOOL_COMPAT = 'llm.text_tool_compat';
+  KEY_LLM_STREAMING_ENABLED = 'llm.streaming_enabled';
 
   KEY_GENERAL_DEBUGGING = 'general.debugging_mode';
   KEY_GENERAL_LEARN = 'general.learn_mode';

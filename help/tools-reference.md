@@ -133,7 +133,7 @@ See **Help → Web Search** for Brave, SearXNG, Tavily setup, and local Docker S
 
 ### browser_read
 
-Open a **public** `http` or `https` URL in a headless Chromium-compatible browser (Chrome, Chromium, or Edge), wait for rendering, and extract readable content. Use when `web_fetch` returns an empty or incomplete JavaScript application shell.
+Open a **public** `http` or `https` URL in a headless Chromium-compatible browser (Chrome, Chromium, or Edge), wait for rendering, and extract readable content. You can also pass a **`file:///`** URL to an existing file or folder **anywhere under the active workspace** (not outside the project). Use when `web_fetch` returns an empty or incomplete JavaScript application shell.
 
 **Parameters:** `url` (required); `format` — `markdown` (default), `text`, or `html`; `wait_strategy` — `domcontentloaded` (default), `load`, or `selector`; `wait_selector` — required when `wait_strategy` is `selector`; `timeout_ms` (default 30000); `max_length` (default 20000).
 
@@ -143,7 +143,7 @@ For heavy SPAs, prefer `wait_strategy: selector` with a stable root (for example
 
 **Requirements:** A Chromium-compatible browser installed on the system, or a custom path set under **Settings → Agent → Chromium executable**.
 
-**Security:** Same public-destination rules as `web_fetch` (no loopback, private networks, or embedded credentials). Subresource requests are filtered during browsing. Page content is **untrusted**.
+**Security:** Public-destination rules match `web_fetch` for `http`/`https` (no loopback or private networks unless localhost is allowed for sessions). **`file:///`** URLs must resolve to a path inside the active workspace. Subresource requests are filtered during browsing. Page content is **untrusted**.
 
 **Limits:** One ephemeral browser per call (no `session_id`). For multi-step testing, use the `browser_*` session tools below.
 
@@ -155,7 +155,7 @@ Persistent **browser sessions** for interactive testing (Chromium via CDP). Typi
 
 | Tool | Purpose |
 |------|---------|
-| `browser_navigate` | Open URL; creates `session_id` when omitted. Optional `visible: true` opens a headed window (new sessions only) |
+| `browser_navigate` | Open URL (`http`, `https`, or workspace `file:///`); creates `session_id` when omitted. Optional `visible: true` opens a headed window (new sessions only) |
 | `browser_inspect` | Page summary, links, forms, element refs |
 | `browser_click` | Pointer click (CDP input events) |
 | `browser_fill` | Type into inputs (passwords not logged) |
@@ -179,7 +179,7 @@ If `browser_navigate` creates a session (no `session_id`) but navigation fails, 
 
 **AUTOMATION_PAUSED** — Interactive tool called on a visible session before `browser_resume_automation`.
 
-**Security:** Public URL policy matches `web_fetch`; localhost is opt-in per chat session. Treat all page content as untrusted. A visible window may show private data (logins, account pages).
+**Security:** Public URL policy matches `web_fetch` for remote URLs; **`file:///`** is limited to paths inside the active workspace (including subfolders). Localhost is opt-in per chat session. Treat all page content as untrusted. A visible window may show private data (logins, account pages).
 
 ## Educational note
 

@@ -411,7 +411,8 @@ begin
 
     Transport := TCdpWebSocketTransport.Create(Session.Socket);
     Session.Connection := TCdpConnection.Create(Transport);
-    Session.Guard := TBrowserNetworkGuard.Create(Session.Connection, AllowLocalhost);
+    Session.Guard := TBrowserNetworkGuard.Create(Session.Connection, AllowLocalhost,
+      Session.WorkspaceRoot);
     Session.Navigator := TBrowserNavigator.Create(Session.Connection);
     Session.ConsoleLog := TBrowserConsoleCollector.Create;
     Session.NetworkLog := TBrowserNetworkCollector.Create;

@@ -15,7 +15,7 @@
     "id": "chat-and-modes",
     "title": "Chat, sessions, and modes",
     "file": "chat-and-modes.md",
-    "keywords": ["session", "new session", "archive", "delete session", "permanently delete", "right-click", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment", "sandbox", "outside", "working directory", "allow modify", "base url", "base api endpoint", "provider", "nous research", "openrouter", "endpoint"]
+    "keywords": ["session", "new session", "archive", "delete session", "permanently delete", "right-click", "ask", "plan", "agent", "model", "dropdown", "menu", "debugging", "learn mode", "tools and logs", "execution detail", "follow", "tab strip", "+", "calling", "activity", "step limit", "max steps", "max output tokens", "truncation", "summarize", "context window", "image", "screenshot", "vision", "attach", "attachment", "sandbox", "outside", "working directory", "allow modify", "base url", "base api endpoint", "provider", "nous research", "openrouter", "endpoint", "timeout", "http timeout", "connect timeout", "retry", "retries"]
   },
   {
     "id": "project-rules",
