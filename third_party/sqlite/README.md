@@ -7,6 +7,7 @@ Official amalgamation from [sqlite.org](https://www.sqlite.org/download.html). V
 ### Linux / macOS / Raspberry Pi
 
 - **`build-sqlite-static.sh`:** GCC/Clang, `-fPIC`, same `SQLITE_*` defines.
+- **macOS:** `-mmacosx-version-min` (default **11.0** via `MACOS_DEPLOYMENT_TARGET`) so `sqlite3_embed.o` matches FPC’s default Darwin link minimum; required on newer Xcode / GitHub `macos-15` runners.
 - Link: `{$L sqlite3_embed.o}` + `{$linklib c}` / `m` in [`uSqlite3Embed.pas`](../../packages/LazySqliteStatic/src/uSqlite3Embed.pas).
 
 ### Windows (default: static MinGW embed)
@@ -22,7 +23,7 @@ Shared defines:
 - `SQLITE_THREADSAFE=1`
 - `SQLITE_ENABLE_JSON1`
 
-Unix only: `-Wno-discarded-qualifiers` (or `-Wno-ignored-qualifiers` on Darwin) for upstream amalgamation noise.
+Unix only: `-Wno-discarded-qualifiers` (or `-Wno-ignored-qualifiers` on Darwin) for upstream amalgamation noise. On Darwin, override the deployment target with `MACOS_DEPLOYMENT_TARGET=12.0 ./scripts/build-sqlite-static.sh` if you change the app’s minimum macOS in the Lazarus project.
 
 Runtime: WAL mode is enabled in `uAppDatabase` when opening databases.
 

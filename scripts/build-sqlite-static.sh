@@ -47,7 +47,9 @@ CFLAGS=(
   -DSQLITE_ENABLE_JSON1
 )
 if [[ "$TARGET_OS" == darwin ]]; then
-  CFLAGS+=( -Wno-ignored-qualifiers )
+  MACOS_DEPLOYMENT_TARGET="${MACOS_DEPLOYMENT_TARGET:-11.0}"
+  echo "build-sqlite-static: Darwin MACOS_DEPLOYMENT_TARGET=$MACOS_DEPLOYMENT_TARGET"
+  CFLAGS+=( -Wno-ignored-qualifiers -mmacosx-version-min="$MACOS_DEPLOYMENT_TARGET" )
 else
   CFLAGS+=( -Wno-discarded-qualifiers )
 fi

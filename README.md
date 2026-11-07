@@ -175,6 +175,8 @@ chmod +x scripts/install-lazarus-sqlite.sh
 ./scripts/install-lazarus-sqlite.sh
 ```
 
+On **macOS**, [`build-sqlite-static.sh`](scripts/build-sqlite-static.sh) passes **`-mmacosx-version-min=11.0`** (override with `MACOS_DEPLOYMENT_TARGET`) so the embed object matches FPC’s link minimum on CI and local builds.
+
 **Windows:** compile the amalgamation with **MinGW-w64** (WinLibs or MSYS2 on PATH; CI installs WinLibs via winget). Run `scripts\install-lazarus-sqlite.bat`. Linking uses FPC’s internal linker, **`uSqliteWinEmbedBridge`** (Win32 forwarders), and MinGW import libs from [`ci-lazbuild.ps1`](scripts/ci-lazbuild.ps1). Optional **`SQLITE_CC=msvc`** or **`clang`** for experimental MSVC objects; **`LCA_SQLITE_USE_WINSQLITE3`** falls back to OS `winsqlite3.dll`. See [`docs/sqlite-windows-static-review.md`](docs/sqlite-windows-static-review.md).
 
 ```bat
