@@ -36,8 +36,15 @@ type
     FSelCaret: Integer;
     FSelActive: Boolean;
     FTextSelDrag: Boolean;
+    FParseInFence: Boolean;
+    FParseInList: Boolean;
+    FEphemeralThinkingVisible: Boolean;
+    FEphemeralThinkingBlock: TObject;
     procedure SetAutoScrollToEnd(AValue: Boolean);
     procedure RebuildBlocksFromSource;
+    procedure ParseAppendToBlocks(const ALines: TStrings; AStartLineIndex: Integer);
+    procedure RelayoutDocumentFrom(AStartBlockIndex: Integer);
+    procedure RelayoutEphemeralTail;
     procedure RelayoutDocument;
     function ContentPad: Integer;
     function ScrollbarThickness: Integer;
@@ -87,9 +94,13 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure AppendChunk(const AText: string);
+    procedure AppendMarkdownTail(const ADelta: string; AScrollToEndAfter: Boolean = False);
+    procedure SetEphemeralThinkingVisible(AVisible: Boolean);
+    function EphemeralThinkingVisible: Boolean;
     procedure SetMarkdownText(const AText: string);
     procedure Clear;
     procedure SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean = False);
+    procedure ScrollToEndIfAutoScroll;
     procedure RequestRender;
   published
     property AutoScrollToEnd: Boolean read FAutoScrollToEnd write SetAutoScrollToEnd default True;
@@ -123,6 +134,7 @@ const
   LCA_MD_EMPTY_BLOCK_BASE = 6;
   LCA_MD_HRULE_BLOCK_BASE = 16;
   LCA_MD_SCROLL_BOTTOM_EPS = 4;
+  LCA_EPHEMERAL_THINKING_TEXT = 'Thinking...';
 
 type
   TMarkdownBlockKind = (
@@ -272,14 +284,99 @@ begin
   ABlocks.Add(B);
 end;
 
+procedure ParseMarkdownLines(const ALines: TStrings; AStartLineIndex: Integer;
+  var AInFence, AInList: Boolean; ABlocks: TObjectList);
+var
+  I, Level: Integer;
+  Line, Trimmed, Body: string;
+  B: TMarkdownBlockObj;
+begin
+  for I := AStartLineIndex to ALines.Count - 1 do begin
+    Line := ALines[I];
+    Trimmed := Trim(Line);
+    if AInFence then begin
+      if Trimmed = '```' then begin
+        AInFence := False;
+      end else if ABlocks.Count > 0 then begin
+        B := TMarkdownBlockObj(ABlocks[ABlocks.Count - 1]);
+        if B.CodeText <> '' then
+          B.CodeText := B.CodeText + LineEnding;
+        B.CodeText := B.CodeText + Line;
+      end else begin
+        B := TMarkdownBlockObj.Create;
+        B.Kind := mbkCode;
+        B.CodeText := Line;
+        ABlocks.Add(B);
+      end;
+      Continue;
+    end;
+    if (Length(Trimmed) >= 3) and (Copy(Trimmed, 1, 3) = '```') then begin
+      if AInList then
+        AInList := False;
+      B := TMarkdownBlockObj.Create;
+      B.Kind := mbkCode;
+      B.CodeText := '';
+      ABlocks.Add(B);
+      AInFence := True;
+      Continue;
+    end;
+    if Trimmed = '' then begin
+      if AInList then
+        AInList := False;
+      B := TMarkdownBlockObj.Create;
+      B.Kind := mbkEmpty;
+      ABlocks.Add(B);
+      Continue;
+    end;
+    if IsHorizontalRuleLine(Trimmed) then begin
+      if AInList then
+        AInList := False;
+      B := TMarkdownBlockObj.Create;
+      B.Kind := mbkHRule;
+      ABlocks.Add(B);
+      Continue;
+    end;
+    if (Length(Trimmed) > 0) and (Trimmed[1] = '#') then begin
+      if AInList then
+        AInList := False;
+      Level := 0;
+      while (Level < Length(Trimmed)) and (Trimmed[Level + 1] = '#') do
+        Inc(Level);
+      if (Level >= 1) and (Level <= 6) and
+         ((Level = Length(Trimmed)) or (Trimmed[Level + 1] = ' ')) then begin
+        Body := Trim(Copy(Trimmed, Level + 1, MaxInt));
+        AddBlockParagraph(ABlocks, mbkHeading, Body, Level);
+        Continue;
+      end;
+    end;
+    if (Length(Trimmed) >= 2) and ((Copy(Trimmed, 1, 2) = '- ') or (Copy(Trimmed, 1, 2) = '* ')) then begin
+      Body := Trim(Copy(Trimmed, 3, MaxInt));
+      AddBlockParagraph(ABlocks, mbkBullet, Body);
+      AInList := True;
+      Continue;
+    end;
+    if AInList then
+      AInList := False;
+    if (Length(Trimmed) > Length('@think ')) and
+       (Copy(Trimmed, 1, Length('@think ')) = '@think ') then begin
+      Body := Trim(Copy(Trimmed, Length('@think ') + 1, MaxInt));
+      AddBlockParagraph(ABlocks, mbkThinking, Body);
+      Continue;
+    end;
+    if (Length(Trimmed) > Length('@tool ')) and
+       (Copy(Trimmed, 1, Length('@tool ')) = '@tool ') then begin
+      Body := Trim(Copy(Trimmed, Length('@tool ') + 1, MaxInt));
+      AddBlockParagraph(ABlocks, mbkTool, '- ' + Body);
+      Continue;
+    end;
+    AddBlockParagraph(ABlocks, mbkParagraph, Trimmed);
+  end;
+end;
+
 procedure ParseMarkdownSource(const AMarkdown: string; ABlocks: TObjectList);
 var
   Lines: TStringList;
-  I, Level: Integer;
-  Line, Trimmed, Body: string;
-  InFence: Boolean;
-  InList: Boolean;
-  B: TMarkdownBlockObj;
+  InFence, InList: Boolean;
 begin
   ABlocks.Clear;
   Lines := TStringList.Create;
@@ -287,88 +384,7 @@ begin
     Lines.Text := AMarkdown;
     InFence := False;
     InList := False;
-    for I := 0 to Lines.Count - 1 do begin
-      Line := Lines[I];
-      Trimmed := Trim(Line);
-      if InFence then begin
-        if Trimmed = '```' then begin
-          InFence := False;
-        end else if ABlocks.Count > 0 then begin
-          B := TMarkdownBlockObj(ABlocks[ABlocks.Count - 1]);
-          if B.CodeText <> '' then
-            B.CodeText := B.CodeText + LineEnding;
-          B.CodeText := B.CodeText + Line;
-        end else begin
-          B := TMarkdownBlockObj.Create;
-          B.Kind := mbkCode;
-          B.CodeText := Line;
-          ABlocks.Add(B);
-        end;
-        Continue;
-      end;
-      if (Length(Trimmed) >= 3) and (Copy(Trimmed, 1, 3) = '```') then begin
-        if InList then
-          InList := False;
-        B := TMarkdownBlockObj.Create;
-        B.Kind := mbkCode;
-        B.CodeText := '';
-        ABlocks.Add(B);
-        InFence := True;
-        Continue;
-      end;
-      if Trimmed = '' then begin
-        if InList then
-          InList := False;
-        B := TMarkdownBlockObj.Create;
-        B.Kind := mbkEmpty;
-        ABlocks.Add(B);
-        Continue;
-      end;
-      if IsHorizontalRuleLine(Trimmed) then begin
-        if InList then
-          InList := False;
-        B := TMarkdownBlockObj.Create;
-        B.Kind := mbkHRule;
-        ABlocks.Add(B);
-        Continue;
-      end;
-      if (Length(Trimmed) > 0) and (Trimmed[1] = '#') then begin
-        if InList then
-          InList := False;
-        Level := 0;
-        while (Level < Length(Trimmed)) and (Trimmed[Level + 1] = '#') do
-          Inc(Level);
-        if (Level >= 1) and (Level <= 6) and
-           ((Level = Length(Trimmed)) or (Trimmed[Level + 1] = ' ')) then begin
-          Body := Trim(Copy(Trimmed, Level + 1, MaxInt));
-          AddBlockParagraph(ABlocks, mbkHeading, Body, Level);
-          Continue;
-        end;
-      end;
-      if (Length(Trimmed) >= 2) and ((Copy(Trimmed, 1, 2) = '- ') or (Copy(Trimmed, 1, 2) = '* ')) then begin
-        Body := Trim(Copy(Trimmed, 3, MaxInt));
-        AddBlockParagraph(ABlocks, mbkBullet, Body);
-        InList := True;
-        Continue;
-      end;
-      if InList then
-        InList := False;
-      if (Length(Trimmed) > Length('@think ')) and
-         (Copy(Trimmed, 1, Length('@think ')) = '@think ') then begin
-        Body := Trim(Copy(Trimmed, Length('@think ') + 1, MaxInt));
-        AddBlockParagraph(ABlocks, mbkThinking, Body);
-        Continue;
-      end;
-      if (Length(Trimmed) > Length('@tool ')) and
-         (Copy(Trimmed, 1, Length('@tool ')) = '@tool ') then begin
-        Body := Trim(Copy(Trimmed, Length('@tool ') + 1, MaxInt));
-        AddBlockParagraph(ABlocks, mbkTool, '- ' + Body);
-        Continue;
-      end;
-      AddBlockParagraph(ABlocks, mbkParagraph, Trimmed);
-    end;
-    if InFence and (ABlocks.Count > 0) then
-      ; // leave open fence as code block
+    ParseMarkdownLines(Lines, 0, InFence, InList, ABlocks);
   finally
     Lines.Free;
   end;
@@ -835,10 +851,15 @@ begin
   FSelCaret := 0;
   FSelActive := False;
   FTextSelDrag := False;
+  FParseInFence := False;
+  FParseInList := False;
+  FEphemeralThinkingVisible := False;
+  FEphemeralThinkingBlock := nil;
 end;
 
 destructor TLcaMarkdownView.Destroy;
 begin
+  FreeAndNil(FEphemeralThinkingBlock);
   FreeAndNil(FBlocks);
   inherited Destroy;
 end;
@@ -922,73 +943,156 @@ begin
   ParseMarkdownSource(FSource, NewBlocks);
   FreeAndNil(FBlocks);
   FBlocks := NewBlocks;
+  FParseInFence := False;
+  FParseInList := False;
+end;
+
+procedure TLcaMarkdownView.ParseAppendToBlocks(const ALines: TStrings; AStartLineIndex: Integer);
+begin
+  ParseMarkdownLines(ALines, AStartLineIndex, FParseInFence, FParseInList, FBlocks);
+end;
+
+function TLcaMarkdownView.EphemeralThinkingVisible: Boolean;
+begin
+  Result := FEphemeralThinkingVisible;
+end;
+
+procedure TLcaMarkdownView.SetEphemeralThinkingVisible(AVisible: Boolean);
+var
+  Blk: TMarkdownBlockObj;
+begin
+  if FEphemeralThinkingVisible = AVisible then Exit;
+  FEphemeralThinkingVisible := AVisible;
+  if AVisible then begin
+    if FEphemeralThinkingBlock = nil then begin
+      Blk := TMarkdownBlockObj.Create;
+      Blk.Kind := mbkThinking;
+      Blk.ChatLabelRole := clrThinking;
+      ParseInlineMarkdown(LCA_EPHEMERAL_THINKING_TEXT, Blk.Runs);
+      FEphemeralThinkingBlock := Blk;
+    end;
+  end;
+  ClearTextSelection;
+  RelayoutEphemeralTail;
+  if FAutoScrollToEnd and FStickToBottom then
+    ScrollToEnd;
+  Invalidate;
+end;
+
+procedure TLcaMarkdownView.AppendMarkdownTail(const ADelta: string; AScrollToEndAfter: Boolean);
+var
+  Lines: TStringList;
+  OldCount: Integer;
+begin
+  if ADelta = '' then Exit;
+  ClearTextSelection;
+  FSource := FSource + ADelta;
+  OldCount := FBlocks.Count;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := ADelta;
+    ParseAppendToBlocks(Lines, 0);
+  finally
+    Lines.Free;
+  end;
+  RelayoutDocumentFrom(OldCount);
+  ApplyScrollPolicy(AScrollToEndAfter);
+  Invalidate;
+  LcaUiProfileRecordMarkdownRender;
 end;
 
 procedure TLcaMarkdownView.RelayoutDocument;
+begin
+  RelayoutDocumentFrom(0);
+end;
+
+procedure TLcaMarkdownView.RelayoutDocumentFrom(AStartBlockIndex: Integer);
 var
   Pass, Y, BodySize, LineH, CodePad, W, BulletInd: Integer;
   OldScroll: Integer;
+  Blk: TMarkdownBlockObj;
+  BlockLineH: Integer;
 
-  procedure MeasureAllBlockHeights;
+  procedure MeasureOneBlock(ABlk: TMarkdownBlockObj);
+  begin
+    if ABlk = nil then Exit;
+    case ABlk.Kind of
+      mbkEmpty:
+        ABlk.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_EMPTY_BLOCK_BASE);
+      mbkHRule:
+        ABlk.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_HRULE_BLOCK_BASE);
+      mbkCode:
+        begin
+          ConfigureMonoFont(Canvas, Self, BodySize);
+          ABlk.CalculatedHeight := MeasureCodeBlockHeight(Canvas, ABlk.CodeText, W - 2 * CodePad,
+            CodePad, LineHeightForCanvas(Canvas, Self));
+          ConfigureBodyFont(Canvas, Self, BodySize);
+        end;
+      mbkHeading:
+        begin
+          Canvas.Font.Style := [fsBold];
+          Canvas.Font.Size := BodySize + Max(0, 4 - ABlk.HeadingLevel);
+          ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W,
+            LineHeightForCanvas(Canvas, Self), False);
+          ConfigureBodyFont(Canvas, Self, BodySize);
+        end;
+      mbkBullet:
+        ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs,
+          W - BulletInd, LineH, False);
+      mbkThinking:
+        begin
+          Canvas.Font.Style := [fsItalic];
+          ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W, LineH, False);
+          ConfigureBodyFont(Canvas, Self, BodySize);
+        end;
+      mbkTool:
+        begin
+          Canvas.Font.Size := Max(8, BodySize - 1);
+          BlockLineH := LineHeightForCanvas(Canvas, Self);
+          ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W,
+            BlockLineH, False);
+          ConfigureBodyFont(Canvas, Self, BodySize);
+        end;
+      mbkParagraph:
+        ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W, LineH, False);
+    end;
+  end;
+
+  procedure MeasureBlocksFrom(AFromIndex: Integer);
   var
-    Idx: Integer;
-    Blk: TMarkdownBlockObj;
-    BlockLineH: Integer;
+    BlockIdx: Integer;
+    EphBlk: TMarkdownBlockObj;
   begin
     ConfigureBodyFont(Canvas, Self, BodySize);
     LineH := LineHeightForCanvas(Canvas, Self);
-    Y := ContentPad;
-    for Idx := 0 to FBlocks.Count - 1 do begin
-      Blk := TMarkdownBlockObj(FBlocks[Idx]);
-      if Blk = nil then Continue;
-      case Blk.Kind of
-        mbkEmpty:
-          Blk.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_EMPTY_BLOCK_BASE);
-        mbkHRule:
-          Blk.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_HRULE_BLOCK_BASE);
-        mbkCode:
-          begin
-            ConfigureMonoFont(Canvas, Self, BodySize);
-            Blk.CalculatedHeight := MeasureCodeBlockHeight(Canvas, Blk.CodeText, W - 2 * CodePad,
-              CodePad, LineHeightForCanvas(Canvas, Self));
-            ConfigureBodyFont(Canvas, Self, BodySize);
-          end;
-        mbkHeading:
-          begin
-            Canvas.Font.Style := [fsBold];
-            Canvas.Font.Size := BodySize + Max(0, 4 - Blk.HeadingLevel);
-            Blk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, Blk.Runs, W,
-              LineHeightForCanvas(Canvas, Self), False);
-            ConfigureBodyFont(Canvas, Self, BodySize);
-          end;
-        mbkBullet:
-          Blk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, Blk.Runs,
-            W - BulletInd, LineH, False);
-        mbkThinking:
-          begin
-            Canvas.Font.Style := [fsItalic];
-            Blk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, Blk.Runs, W, LineH, False);
-            ConfigureBodyFont(Canvas, Self, BodySize);
-          end;
-        mbkTool:
-          begin
-            Canvas.Font.Size := Max(8, BodySize - 1);
-            BlockLineH := LineHeightForCanvas(Canvas, Self);
-            Blk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, Blk.Runs, W,
-              BlockLineH, False);
-            ConfigureBodyFont(Canvas, Self, BodySize);
-          end;
-        mbkParagraph:
-          Blk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, Blk.Runs, W, LineH, False);
-      end;
+    if (AFromIndex > 0) and (AFromIndex <= FBlocks.Count) then begin
+      Blk := TMarkdownBlockObj(FBlocks[AFromIndex - 1]);
+      Y := Blk.LayoutTop + Blk.CalculatedHeight +
+        ScaledLayoutMetric(Self, LCA_MD_LINE_EXTRA_BASE);
+    end else
+      Y := ContentPad;
+    for BlockIdx := AFromIndex to FBlocks.Count - 1 do begin
+      Blk := TMarkdownBlockObj(FBlocks[BlockIdx]);
+      MeasureOneBlock(Blk);
       Blk.LayoutTop := Y;
       Y := Y + Blk.CalculatedHeight + ScaledLayoutMetric(Self, LCA_MD_LINE_EXTRA_BASE);
+    end;
+    if FEphemeralThinkingVisible and Assigned(FEphemeralThinkingBlock) then begin
+      EphBlk := TMarkdownBlockObj(FEphemeralThinkingBlock);
+      MeasureOneBlock(EphBlk);
+      EphBlk.LayoutTop := Y;
+      Y := Y + EphBlk.CalculatedHeight +
+        ScaledLayoutMetric(Self, LCA_MD_LINE_EXTRA_BASE);
     end;
     FContentHeight := Y + ContentPad;
   end;
 
 begin
   if not Assigned(FBlocks) or FLayoutGuard then Exit;
+  if AStartBlockIndex < 0 then
+    AStartBlockIndex := 0;
+  if AStartBlockIndex > FBlocks.Count then
+    AStartBlockIndex := FBlocks.Count;
   if not HandleAllocated then begin
     FNeedsLayout := True;
     Exit;
@@ -1004,7 +1108,7 @@ begin
   for Pass := 0 to 1 do begin
     W := TextAreaWidth;
     FLayoutTextWidth := W;
-    MeasureAllBlockHeights;
+    MeasureBlocksFrom(AStartBlockIndex);
     if FContentHeight <= ClientHeight then begin
       FShowVBar := False;
       Break;
@@ -1019,6 +1123,17 @@ begin
   UpdateStickToBottomFromScroll;
   BuildSelectionLayout;
   FLayoutGuard := False;
+end;
+
+procedure TLcaMarkdownView.RelayoutEphemeralTail;
+var
+  FromIdx: Integer;
+begin
+  if (FBlocks.Count > 0) and FEphemeralThinkingVisible then
+    FromIdx := FBlocks.Count - 1
+  else
+    FromIdx := FBlocks.Count;
+  RelayoutDocumentFrom(FromIdx);
 end;
 
 procedure TLcaMarkdownView.ClearTextSelection;
@@ -1099,6 +1214,14 @@ begin
           LayoutAppendNewline(L);
         end;
     end;
+  end;
+  if FEphemeralThinkingVisible and Assigned(FEphemeralThinkingBlock) then begin
+    B := TMarkdownBlockObj(FEphemeralThinkingBlock);
+    Y := B.LayoutTop;
+    Canvas.Font.Style := [fsItalic];
+    LayoutWrappedRuns(Canvas, L, B.Runs, X, Y, W, LineH, False);
+    ConfigureBodyFont(Canvas, Self, BodySize);
+    LayoutAppendNewline(L);
   end;
   FPlainText := L.Plain;
   FSelectFrags := L.Frags;
@@ -1272,6 +1395,9 @@ var
   Empty: TObjectList;
 begin
   FSource := '';
+  FParseInFence := False;
+  FParseInList := False;
+  FEphemeralThinkingVisible := False;
   Empty := TObjectList.Create(True);
   FreeAndNil(FBlocks);
   FBlocks := Empty;
@@ -1286,6 +1412,7 @@ end;
 procedure TLcaMarkdownView.SetMarkdownText(const AText: string);
 begin
   ClearTextSelection;
+  FEphemeralThinkingVisible := False;
   FSource := AText;
   RebuildBlocksFromSource;
   RelayoutDocument;
@@ -1296,14 +1423,7 @@ end;
 
 procedure TLcaMarkdownView.AppendChunk(const AText: string);
 begin
-  if AText = '' then Exit;
-  ClearTextSelection;
-  FSource := FSource + AText;
-  RebuildBlocksFromSource;
-  RelayoutDocument;
-  ApplyScrollPolicy(False);
-  Invalidate;
-  LcaUiProfileRecordMarkdownRender;
+  AppendMarkdownTail(AText, False);
 end;
 
 procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean);
@@ -1311,6 +1431,12 @@ begin
   SetMarkdownText(AMarkdown);
   if AScrollToEndAfterRender then
     ApplyScrollPolicy(True);
+end;
+
+procedure TLcaMarkdownView.ScrollToEndIfAutoScroll;
+begin
+  ApplyScrollPolicy(True);
+  Invalidate;
 end;
 
 procedure TLcaMarkdownView.RequestRender;
@@ -1537,6 +1663,17 @@ begin
           ACanvas.Font.Color := TextColor;
           DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
         end;
+    end;
+  end;
+  if FEphemeralThinkingVisible and Assigned(FEphemeralThinkingBlock) then begin
+    B := TMarkdownBlockObj(FEphemeralThinkingBlock);
+    if not ((B.LayoutTop + B.CalculatedHeight < ViewTop) or (B.LayoutTop > ViewBottom)) then begin
+      Y := B.LayoutTop - FScrollY;
+      TextColor := ChatLabelTextColor(P, B.ChatLabelRole);
+      ACanvas.Font.Style := [fsItalic];
+      ACanvas.Font.Color := TextColor;
+      DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+      ConfigureBodyFont(ACanvas, Self, BodySize);
     end;
   end;
   ACanvas.ClipRect := SavedClip;

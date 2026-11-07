@@ -12,7 +12,7 @@ uses
   LcaMarkdownView;
 
 const
-  CHAT_HISTORY_REFRESH_MIN_MS = 120;
+  CHAT_HISTORY_REFRESH_MIN_MS = 200;
 
 type
   TPromptEvent = procedure(Sender: TObject; const APrompt: string;
@@ -38,6 +38,7 @@ type
     FLastAppendWasTrace: Boolean;
     FEphemeralThinkingActive: Boolean;
     FBatchHistoryReload: Boolean;
+    FHistoryViewSyncedLen: Integer;
 
     FOnPrompt: TPromptEvent;
     FOnModeChange: TModeChangeEvent;
@@ -189,6 +190,7 @@ begin
   FOpenImageDialog.Filter :=
     'Images|*.png;*.jpg;*.jpeg;*.webp;*.gif|PNG (*.png)|*.png|JPEG (*.jpg)|*.jpg;*.jpeg';
   FOpenImageDialog.Options := [ofFileMustExist, ofHideReadOnly];
+  FHistoryViewSyncedLen := 0;
   InitWelcomeText;
 end;
 
@@ -487,10 +489,24 @@ begin
 end;
 
 procedure TChatPanel.ApplyHistoryViewNow(AScrollToEnd: Boolean);
+var
+  Delta: string;
 begin
   EnsureHistoryView;
-  if Assigned(FHistoryView) then
+  if not Assigned(FHistoryView) then Exit;
+  if (FHistoryViewSyncedLen <= 0) or (FHistoryViewSyncedLen > Length(FHistoryText)) then begin
     FHistoryView.SetMarkdown(FHistoryText, AScrollToEnd);
+    FHistoryViewSyncedLen := Length(FHistoryText);
+    if FEphemeralThinkingActive then
+      FHistoryView.SetEphemeralThinkingVisible(True);
+  end else if FHistoryViewSyncedLen < Length(FHistoryText) then begin
+    Delta := Copy(FHistoryText, FHistoryViewSyncedLen + 1, MaxInt);
+    FHistoryView.AppendMarkdownTail(Delta, AScrollToEnd);
+    FHistoryViewSyncedLen := Length(FHistoryText);
+    if FEphemeralThinkingActive then
+      FHistoryView.SetEphemeralThinkingVisible(True);
+  end else if AScrollToEnd then
+    FHistoryView.ScrollToEndIfAutoScroll;
   FHistoryRefreshDueTick := GetTickCount64 + CHAT_HISTORY_REFRESH_MIN_MS;
 end;
 
@@ -559,6 +575,10 @@ var
   Marker: string;
 begin
   if not FEphemeralThinkingActive then Exit;
+  EnsureHistoryView;
+  if Assigned(FHistoryView) then
+    FHistoryView.SetEphemeralThinkingVisible(False);
+  FEphemeralThinkingActive := False;
   Marker := ChatTracePrefixThinking + ChatThinkingTraceText;
   if (Length(FHistoryText) >= Length(Marker)) and
      (Copy(FHistoryText, Length(FHistoryText) - Length(Marker) + 1, Length(Marker)) = Marker) then begin
@@ -566,8 +586,8 @@ begin
     if (Length(FHistoryText) >= Length(LineEnding)) and
        (Copy(FHistoryText, Length(FHistoryText) - Length(LineEnding) + 1, Length(LineEnding)) = LineEnding) then
       SetLength(FHistoryText, Length(FHistoryText) - Length(LineEnding));
+    FHistoryViewSyncedLen := 0;
   end;
-  FEphemeralThinkingActive := False;
 end;
 
 procedure TChatPanel.AppendTraceLineWithPrefix(const APrefix, AText: string);
@@ -632,8 +652,11 @@ begin
   if Assigned(FSessionLabel) then
     FSessionLabel.Font.Color := P.TextMuted;
   EnsureHistoryView;
-  if Assigned(FHistoryView) then
+  if Assigned(FHistoryView) then begin
     FHistoryView.ApplyTheme(ATheme);
+    FHistoryViewSyncedLen := 0;
+    ApplyHistoryViewNow(False);
+  end;
   if Assigned(FHistoryHost) then
     FHistoryHost.Color := P.Surface;
   if Assigned(FWorkspaceTag) then
@@ -735,6 +758,7 @@ end;
 procedure TChatPanel.ClearHistory;
 begin
   FHistoryText := '';
+  FHistoryViewSyncedLen := 0;
   FLastAppendWasTrace := False;
   FEphemeralThinkingActive := False;
   InitWelcomeText;
@@ -819,13 +843,14 @@ end;
 
 procedure TChatPanel.SetAgentThinkingInChat(AVisible: Boolean);
 begin
+  EnsureHistoryView;
+  if not Assigned(FHistoryView) then Exit;
   if AVisible then begin
-    RemoveEphemeralThinkingLine;
-    AppendTraceLineWithPrefix(ChatTracePrefixThinking, ChatThinkingTraceText);
+    if FEphemeralThinkingActive then Exit;
     FEphemeralThinkingActive := True;
+    FHistoryView.SetEphemeralThinkingVisible(True);
   end else
     RemoveEphemeralThinkingLine;
-  RefreshHistoryView;
 end;
 
 procedure TChatPanel.AppendText(const AText: string);
@@ -905,6 +930,7 @@ var
   I: Integer;
 begin
   FHistoryText := '';
+  FHistoryViewSyncedLen := 0;
   FLastAppendWasTrace := False;
   FEphemeralThinkingActive := False;
   FBatchHistoryReload := True;

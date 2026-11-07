@@ -98,7 +98,7 @@ If it still hangs with **Coding Agent Chat** restored on the desktop, set that I
 
 ## UI paint profiling (Windows / Linux)
 
-Optional counters for scroll, markdown, and themed control paint cost. Add custom define **`LCA_UI_PAINT_PROFILE`** to the app or **`LcaDesignSystem`** package (Lazarus: **Compiler Options → Custom options → `-dLCA_UI_PAINT_PROFILE`**), rebuild, run the app, and read **View → Debug Output** (once per second while the app runs).
+Optional counters for scroll, markdown, and themed control paint cost. Add custom define **`LCA_UI_PAINT_PROFILE`** to the app or **`LcaDesignSystem`** package (Lazarus: **Compiler Options → Custom options → `-dLCA_UI_PAINT_PROFILE`**), rebuild, run the app, and read **View → Debug Output** (once per second while the app runs). On Linux Qt5: **`scripts/build-with-ui-paint-profile.sh`** (`LCL_WIDGETSET=qt5` by default).
 
 Compare idle, chat scroll, and live resize. To force double-buffered scroll hosts on Windows (default is off for large surfaces), add **`-dLCA_SCROLL_HOST_FORCE_DOUBLEBUFFER`**.
 

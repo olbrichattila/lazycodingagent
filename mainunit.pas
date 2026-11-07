@@ -247,6 +247,9 @@ type
     FExecutionLogFollowLive: Boolean;
     FStatusRunStep: Integer;
     FStatusRunMaxSteps: Integer;
+    FExecDetailRefreshQueued: Boolean;
+    FExecDetailPendingIndex: Integer;
+    FExecDetailPendingSource: TExecDetailSource;
 
     FRegistry: TWorkspaceRegistry;
     FCurrentSessionId: string;
@@ -376,6 +379,10 @@ type
     procedure DetachNavSessionLogs;
     procedure ShowExecutionLogDetail(AIndex: Integer);
     procedure ShowToolErrorDetail(AIndex: Integer);
+    procedure ScheduleExecDetailLiveRefresh(AIndex: Integer; ASource: TExecDetailSource);
+    procedure DeferredExecDetailRefresh(Data: PtrInt);
+    procedure ApplyExecDetailAtIndex(AIndex: Integer; ASource: TExecDetailSource;
+      AOpenTabIfNeeded: Boolean);
     procedure ClearExecDetailView;
     procedure RefreshExecDetailView;
     procedure OpenUtilityExecutionDetailTab;
@@ -701,6 +708,9 @@ begin
   FExecDetailView := nil;
   FExecDetailSource := edsNone;
   FExecDetailIndex := -1;
+  FExecDetailRefreshQueued := False;
+  FExecDetailPendingIndex := -1;
+  FExecDetailPendingSource := edsNone;
 
   FSyntaxSchemes := TSyntaxSchemeRegistry.Create;
   FSyntaxSchemes.Load;
@@ -1757,15 +1767,75 @@ begin
   if Assigned(FNavContent) then
     FNavContent.AppendExecutionLogEntry(AEntryIndex, FExecutionLogFollowLive);
   if FExecutionLogFollowLive then
-    ShowExecutionLogDetail(AEntryIndex);
+    ScheduleExecDetailLiveRefresh(AEntryIndex, edsExecLog);
+end;
+
+procedure TLazyCodingAgentForm.ScheduleExecDetailLiveRefresh(AIndex: Integer;
+  ASource: TExecDetailSource);
+begin
+  if csDestroying in ComponentState then Exit;
+  FExecDetailPendingIndex := AIndex;
+  FExecDetailPendingSource := ASource;
+  if FExecDetailRefreshQueued then Exit;
+  FExecDetailRefreshQueued := True;
+  Application.QueueAsyncCall(@DeferredExecDetailRefresh, PtrInt(Self));
+end;
+
+procedure TLazyCodingAgentForm.DeferredExecDetailRefresh(Data: PtrInt);
+begin
+  FExecDetailRefreshQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  if FExecDetailPendingIndex < 0 then Exit;
+  ApplyExecDetailAtIndex(FExecDetailPendingIndex, FExecDetailPendingSource, True);
+end;
+
+procedure TLazyCodingAgentForm.ApplyExecDetailAtIndex(AIndex: Integer; ASource: TExecDetailSource;
+  AOpenTabIfNeeded: Boolean);
+var
+  Log: TAgentExecutionLog;
+  ErrLog: TAgentToolErrorLog;
+  Entry: TExecutionLogEntry;
+  ErrEntry: TToolErrorLogEntry;
+begin
+  if ASource = edsExecLog then begin
+    Log := nil;
+    if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+      Log := FActiveHub.ExecutionLogFor(FCurrentSessionId);
+    if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
+    Entry := Log.Entry(AIndex);
+    FExecDetailSource := edsExecLog;
+    FExecDetailIndex := AIndex;
+    if Assigned(FExecDetailView) then
+      FExecDetailView.SetMarkdown(Entry.BuildInspectorMarkdown);
+  end else if ASource = edsToolError then begin
+    ErrLog := nil;
+    if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
+      ErrLog := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
+    if (ErrLog = nil) or (AIndex < 0) or (AIndex >= ErrLog.Count) then Exit;
+    ErrEntry := ErrLog.Entry(AIndex);
+    FExecDetailSource := edsToolError;
+    FExecDetailIndex := AIndex;
+    if Assigned(FExecDetailView) then
+      FExecDetailView.SetMarkdown(ErrEntry.BuildInspectorMarkdown);
+  end else
+    Exit;
+  if AOpenTabIfNeeded then
+    OpenUtilityExecutionDetailTab;
 end;
 
 procedure TLazyCodingAgentForm.OpenUtilityExecutionDetailTab;
+var
+  NeedDockLayout: Boolean;
 begin
+  NeedDockLayout := not FState.IsPanelVisible(piUtility);
   FState.SetPanelVisible(piUtility, True);
-  ApplyDockPanelsLayout;
-  if Assigned(pgcUtility) then
+  if Assigned(pgcUtility) and (pgcUtility.ActivePage <> tsUtilityExecDetail) then begin
     pgcUtility.ActivePage := tsUtilityExecDetail;
+    NeedDockLayout := True;
+  end;
+  if NeedDockLayout then
+    ApplyDockPanelsLayout;
 end;
 
 function TLazyCodingAgentForm.FormatSessionStatusLabel(AState: TAgentState): string;
@@ -1801,37 +1871,13 @@ begin
 end;
 
 procedure TLazyCodingAgentForm.ShowExecutionLogDetail(AIndex: Integer);
-var
-  Log: TAgentExecutionLog;
-  Entry: TExecutionLogEntry;
 begin
-  Log := nil;
-  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
-    Log := FActiveHub.ExecutionLogFor(FCurrentSessionId);
-  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
-  Entry := Log.Entry(AIndex);
-  FExecDetailSource := edsExecLog;
-  FExecDetailIndex := AIndex;
-  if Assigned(FExecDetailView) then
-    FExecDetailView.SetMarkdown(Entry.BuildInspectorMarkdown);
-  OpenUtilityExecutionDetailTab;
+  ApplyExecDetailAtIndex(AIndex, edsExecLog, True);
 end;
 
 procedure TLazyCodingAgentForm.ShowToolErrorDetail(AIndex: Integer);
-var
-  Log: TAgentToolErrorLog;
-  Entry: TToolErrorLogEntry;
 begin
-  Log := nil;
-  if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
-    Log := FActiveHub.ToolErrorLogFor(FCurrentSessionId);
-  if (Log = nil) or (AIndex < 0) or (AIndex >= Log.Count) then Exit;
-  Entry := Log.Entry(AIndex);
-  FExecDetailSource := edsToolError;
-  FExecDetailIndex := AIndex;
-  if Assigned(FExecDetailView) then
-    FExecDetailView.SetMarkdown(Entry.BuildInspectorMarkdown);
-  OpenUtilityExecutionDetailTab;
+  ApplyExecDetailAtIndex(AIndex, edsToolError, True);
 end;
 
 procedure TLazyCodingAgentForm.NavLogEntrySelected(Sender: TObject; AIndex: Integer);
