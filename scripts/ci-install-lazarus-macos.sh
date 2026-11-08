@@ -56,6 +56,41 @@ download() {
   curl -fL --retry 3 --retry-delay 5 -o "$dest" "$url"
 }
 
+ci_append_darwin_fpc_cfg() {
+  if [[ "$(uname -s)" != Darwin ]]; then
+    return 0
+  fi
+  if ! command -v fpc >/dev/null 2>&1; then
+    echo "ci-install-lazarus-macos: skip fpc.cfg patch (no fpc on PATH)" >&2
+    return 0
+  fi
+  local sdk fpc_cfg marker block
+  sdk="$(xcrun --show-sdk-path 2>/dev/null || true)"
+  if [[ -z "$sdk" ]]; then
+    echo "ci-install-lazarus-macos: skip fpc.cfg patch (no SDK)" >&2
+    return 0
+  fi
+  fpc_cfg="$(fpc -iD 2>/dev/null || true)"
+  fpc_cfg="${fpc_cfg%/}/etc/fpc.cfg"
+  if [[ ! -f "$fpc_cfg" ]]; then
+    echo "ci-install-lazarus-macos: skip fpc.cfg patch (missing $fpc_cfg)" >&2
+    return 0
+  fi
+  marker="ci-darwin-linker-ld_classic"
+  if grep -q "$marker" "$fpc_cfg" 2>/dev/null; then
+    echo "ci-install-lazarus-macos: $fpc_cfg already has Darwin linker stanza"
+    return 0
+  fi
+  block="# ${marker}
+#ifdef darwin
+-XR${sdk}
+-k-ld_classic
+#endif
+"
+  printf '%s' "$block" | sudo tee -a "$fpc_cfg" >/dev/null
+  echo "ci-install-lazarus-macos: appended Darwin linker flags to $fpc_cfg"
+}
+
 install_fpc_from_dmg() {
   if fpc_matches_ci_arch; then
     echo "ci-install-lazarus-macos: fpc on PATH matches CI_MACOS_ARCH=$CI_MACOS_ARCH ($(fpc -iV 2>/dev/null || true)), skipping FPC DMG"
@@ -101,6 +136,7 @@ install_lazarus_tree() {
 }
 
 install_fpc_from_dmg
+ci_append_darwin_fpc_cfg
 install_lazarus_tree
 
 LAZBUILD_BIN="$(find "$LAZARUS_INSTALL" -name lazbuild -type f -print -quit)"

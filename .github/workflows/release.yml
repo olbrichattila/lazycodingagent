@@ -256,6 +256,10 @@ jobs:
           chmod +x scripts/*.sh
           CI_MACOS_ARCH=aarch64 ./scripts/ci-install-lazarus-macos.sh
 
+      - name: Verify lazbuild --opt
+        run: |
+          "$LAZBUILD" --help | grep -F -- '--opt='
+
       - name: macOS release build
         run: ./scripts/ci-macos-release-build.sh
 

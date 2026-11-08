@@ -190,6 +190,10 @@ jobs:
           chmod +x scripts/*.sh
           CI_MACOS_ARCH=aarch64 ./scripts/ci-install-lazarus-macos.sh
 
+      - name: Verify lazbuild --opt
+        run: |
+          "$LAZBUILD" --help | grep -F -- '--opt='
+
       - name: Prepare SynEdit
         run: ./scripts/ci-prepare-lazarus-deps.sh
 
@@ -198,6 +202,9 @@ jobs:
 
       - name: Build and link static SQLite
         run: ./scripts/install-lazarus-sqlite.sh
+
+      - name: Darwin linker smoke test
+        run: ./scripts/ci-lazbuild.sh tests/test_app_database.lpi
 
       - name: lazbuild
         run: ./scripts/ci-lazbuild.sh lazycodingagent.lpi

@@ -3,12 +3,12 @@
 set -euo pipefail
 
 # shellcheck disable=SC2329
-ci_darwin_apply_fpc_linker_env() {
+ci_darwin_linker_flags() {
   if [[ "$(uname -s)" != Darwin ]]; then
     return 0
   fi
-  if [[ "${FPCOPT:-}" == *"-k-ld_classic"* ]]; then
-    echo "ci-lazbuild: FPCOPT already set (${FPCOPT})"
+  if [[ -n "${CI_DARWIN_LINKER_FLAGS_READY:-}" ]]; then
+    echo "ci-lazbuild: Darwin linker flags already set (FPCOPT=${FPCOPT:-})"
     return 0
   fi
   local sdk extra
@@ -23,7 +23,15 @@ ci_darwin_apply_fpc_linker_env() {
   else
     export FPCOPT="$extra"
   fi
+  export CI_DARWIN_LAZBUILD_OPT_XR="-XR${sdk}"
+  export CI_DARWIN_LAZBUILD_OPT_K="-k-ld_classic"
+  export CI_DARWIN_LINKER_FLAGS_READY=1
   echo "ci-lazbuild: FPCOPT=${FPCOPT}"
+  echo "ci-lazbuild: will pass lazbuild --opt=${CI_DARWIN_LAZBUILD_OPT_XR} --opt=${CI_DARWIN_LAZBUILD_OPT_K}"
+}
+
+ci_darwin_apply_fpc_linker_env() {
+  ci_darwin_linker_flags
 }
 
 LAZBUILD="${LAZBUILD:-lazbuild}"
@@ -38,6 +46,9 @@ if [[ -n "${LCL_WIDGETSET:-}" ]]; then
 fi
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  ci_darwin_apply_fpc_linker_env
+  ci_darwin_linker_flags
+  if [[ -n "${CI_DARWIN_LAZBUILD_OPT_XR:-}" ]]; then
+    args+=(--opt="$CI_DARWIN_LAZBUILD_OPT_XR" --opt="$CI_DARWIN_LAZBUILD_OPT_K")
+  fi
   exec "$LAZBUILD" "${args[@]}" "$@"
 fi
