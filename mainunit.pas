@@ -14,7 +14,7 @@ uses
   uAgentEngine,
   uAgentExecutionLog, uAgentToolErrorLog,
   uSyntaxSchemeRegistry,
-  LcaMarkdownView, LcaPaintNavList, uPanelDetach, uThemeHooks,
+  LcaPaintNavList, uPanelDetach, uThemeHooks, uMarkdownMemoStub,
   LcaThemedMessageBox,
   fpjson, jsonparser;
 
@@ -71,7 +71,7 @@ type
     lblPlanPath: TLabel;
     btnPlanBuild: TLcaPaintButton;
     cboPlanModel: TLcaPaintComboBox;
-    lcaPlanBody: TLcaMarkdownView;
+    lcaPlanBody: TMemo;
     splUtility: TSplitter;
     pnlReservedHost: TPanel;
     pnlReservedChrome: TPanel;
@@ -117,7 +117,7 @@ type
     chkChatAllowModifyOutside: TCheckBox;
     lblChatAllowModifyOutside: TLabel;
     pnlChatHistoryHost: TPanel;
-    lcaChatHistory: TLcaMarkdownView;
+    lcaChatHistory: TMemo;
     tsEditor: TTabSheet;
     synEditor: TSynEdit;
     tsMarkdown: TTabSheet;
@@ -236,8 +236,8 @@ type
 
     FFileEditor: TMainFileEditor;
     FPlanView: TPlanView;
-    FMarkdownPreview: TLcaMarkdownView;
-    FExecDetailView: TLcaMarkdownView;
+    FMarkdownPreview: TMemo;
+    FExecDetailView: TMemo;
     FExecDetailSource: TExecDetailSource;
     FExecDetailIndex: Integer;
     FPanelDetach: TPanelDetachManager;
@@ -1123,7 +1123,7 @@ begin
   end else if TabSheet = tsMarkdown then begin
     FMarkdownPath := '';
     if Assigned(FMarkdownPreview) then
-      FMarkdownPreview.SetMarkdown('');
+      MarkdownMemoClear(FMarkdownPreview);
     TLcaThemedPageTabBar.SetTabHidden(tsMarkdown, True);
     AllowClose := True;
     ShowChatCenterTab;
@@ -1174,7 +1174,7 @@ begin
     mnuSessionDeletePermanent);
 
   if not Assigned(lcaChatHistory) then begin
-    lcaChatHistory := TLcaMarkdownView.Create(Self);
+    lcaChatHistory := TMemo.Create(Self);
     lcaChatHistory.Name := 'lcaChatHistory';
     lcaChatHistory.Parent := pnlChatHistoryHost;
     lcaChatHistory.Align := alClient;
@@ -1182,7 +1182,7 @@ begin
     lcaChatHistory.Parent := pnlChatHistoryHost;
     lcaChatHistory.Align := alClient;
   end;
-  lcaChatHistory.ApplyTheme(FState.Theme);
+  ConfigureMarkdownMemo(lcaChatHistory, FState.Theme);
 
   FChatPanel := TChatPanel.Create(Self);
   FChatPanel.Bind(lblChatHeading, lblChatSub, lblChatSession, pnlChatHistoryHost, memChatPrompt,
@@ -1208,17 +1208,17 @@ begin
   lcaTerminalPanel.ApplyTheme(FState.Theme);
 
   if not Assigned(FExecDetailView) then begin
-    FExecDetailView := TLcaMarkdownView.Create(Self);
+    FExecDetailView := TMemo.Create(Self);
     FExecDetailView.Parent := pnlUtilityExecDetailHost;
     FExecDetailView.Align := alClient;
   end;
-  FExecDetailView.ApplyTheme(FState.Theme);
+  ConfigureMarkdownMemo(FExecDetailView, FState.Theme);
   if not Assigned(FMarkdownPreview) then begin
-    FMarkdownPreview := TLcaMarkdownView.Create(Self);
+    FMarkdownPreview := TMemo.Create(Self);
     FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
     FMarkdownPreview.Align := alClient;
   end;
-  FMarkdownPreview.ApplyTheme(FState.Theme);
+  ConfigureMarkdownMemo(FMarkdownPreview, FState.Theme);
 
   FTerminalRetryTimer := TTimer.Create(Self);
   FTerminalRetryTimer.Enabled := False;
@@ -1552,16 +1552,16 @@ begin
   if Assigned(lcaUtilityTabBar) then lcaUtilityTabBar.ApplyTheme(FState.Theme);
   if Assigned(lcaTitleBar) then lcaTitleBar.ApplyTheme(FState.Theme);
   if not Assigned(FMarkdownPreview) then begin
-    FMarkdownPreview := TLcaMarkdownView.Create(Self);
+    FMarkdownPreview := TMemo.Create(Self);
     FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
     FMarkdownPreview.Align := alClient;
   end;
-  FMarkdownPreview.ApplyTheme(FState.Theme);
+  ConfigureMarkdownMemo(FMarkdownPreview, FState.Theme);
   ApplyEditorTheme;
 
   if Assigned(FExecDetailView) then begin
     RefreshExecDetailView;
-    FExecDetailView.ApplyTheme(FState.Theme);
+    ConfigureMarkdownMemo(FExecDetailView, FState.Theme);
   end;
 
   UpdateNavRailSelection;
@@ -1807,7 +1807,7 @@ begin
     FExecDetailSource := edsExecLog;
     FExecDetailIndex := AIndex;
     if Assigned(FExecDetailView) then
-      FExecDetailView.SetMarkdown(Entry.BuildInspectorMarkdown);
+      MarkdownMemoSetText(FExecDetailView, Entry.BuildInspectorMarkdown, False);
   end else if ASource = edsToolError then begin
     ErrLog := nil;
     if Assigned(FActiveHub) and (FCurrentSessionId <> '') then
@@ -1817,7 +1817,7 @@ begin
     FExecDetailSource := edsToolError;
     FExecDetailIndex := AIndex;
     if Assigned(FExecDetailView) then
-      FExecDetailView.SetMarkdown(ErrEntry.BuildInspectorMarkdown);
+      MarkdownMemoSetText(FExecDetailView, ErrEntry.BuildInspectorMarkdown, False);
   end else
     Exit;
   if AOpenTabIfNeeded then
@@ -1848,7 +1848,7 @@ begin
   FExecDetailSource := edsNone;
   FExecDetailIndex := -1;
   if Assigned(FExecDetailView) then
-    FExecDetailView.Clear;
+    MarkdownMemoClear(FExecDetailView);
 end;
 
 procedure TLazyCodingAgentForm.RefreshExecDetailView;
@@ -2799,14 +2799,15 @@ begin
   if Assigned(lcaCenterTabBar) then
     lcaCenterTabBar.RefreshFromPageControl;
   if not Assigned(FMarkdownPreview) then begin
-    FMarkdownPreview := TLcaMarkdownView.Create(Self);
+    FMarkdownPreview := TMemo.Create(Self);
     FMarkdownPreview.Parent := pnlMarkdownPreviewHost;
     FMarkdownPreview.Align := alClient;
+    ConfigureMarkdownMemo(FMarkdownPreview, FState.Theme);
   end;
   Lines := TStringList.Create;
   try
     Lines.LoadFromFile(Path);
-    FMarkdownPreview.SetMarkdown(Lines.Text);
+    MarkdownMemoSetText(FMarkdownPreview, Lines.Text, False);
   finally
     Lines.Free;
   end;

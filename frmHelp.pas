@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, StdCtrls, ExtCtrls, LCLType, LcaPaintButton, LcaPaintComboBox,
-  LcaTheme, uHelpContent, LcaMarkdownView;
+  LcaTheme, uHelpContent, uMarkdownMemoStub;
 
 type
   { THelpForm }
@@ -30,7 +30,7 @@ type
   private
     FTheme: TThemeKind;
     FCatalog: THelpCatalog;
-    FPreview: TLcaMarkdownView;
+    FPreview: TMemo;
     FFilteredIndices: THelpTopicIndexArray;
     procedure EnsurePreview;
     procedure ApplyTheme(ATheme: TThemeKind);
@@ -73,9 +73,10 @@ procedure THelpForm.EnsurePreview;
 begin
   if Assigned(FPreview) then Exit;
   if not Assigned(pnlPreviewHost) then Exit;
-  FPreview := TLcaMarkdownView.Create(Self);
+  FPreview := TMemo.Create(Self);
   FPreview.Parent := pnlPreviewHost;
   FPreview.Align := alClient;
+  ConfigureMarkdownMemo(FPreview, FTheme);
 end;
 
 procedure THelpForm.FormCreate(Sender: TObject);
@@ -119,7 +120,7 @@ begin
   lstTopics.OnDrawItem := @lstTopicsDrawItem;
   EnsurePreview;
   if Assigned(FPreview) then
-    FPreview.ApplyTheme(ATheme);
+    ConfigureMarkdownMemo(FPreview, ATheme);
   lstTopics.Invalidate;
 end;
 
@@ -144,8 +145,8 @@ begin
     end else begin
       EnsurePreview;
       if Assigned(FPreview) then
-        FPreview.SetMarkdown('# No matching topics' + LineEnding + LineEnding +
-          'Try a different search term.');
+        MarkdownMemoSetText(FPreview, '# No matching topics' + LineEnding + LineEnding +
+          'Try a different search term.', False);
     end;
   finally
     lstTopics.Items.EndUpdate;
@@ -163,7 +164,7 @@ begin
   Topic := FCatalog.GetTopic(TopicIdx);
   EnsurePreview;
   if Assigned(FPreview) then
-    FPreview.SetMarkdown(Topic.Body);
+    MarkdownMemoSetText(FPreview, Topic.Body, False);
 end;
 
 procedure THelpForm.edtSearchChange(Sender: TObject);

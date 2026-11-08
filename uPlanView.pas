@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, Graphics, LcaTheme, LcaPaintButton,
-  LcaPaintComboBox, LcaMarkdownView, uWorkspaceState;
+  LcaPaintComboBox, uWorkspaceState, uMarkdownMemoStub;
 
 type
   TPlanBuildEvent = procedure(Sender: TObject; const APlanPath, APlanContent, AModelId: string) of object;
@@ -19,7 +19,7 @@ type
     FModelIds: TStringList;
     FModel: string;
     FBuildBtn: TLcaPaintButton;
-    FBodyMarkdown: TLcaMarkdownView;
+    FBodyMarkdown: TMemo;
     FPlanPath: string;
     FPlanContent: string;
     FOnBuild: TPlanBuildEvent;
@@ -29,7 +29,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Bind(ALblPath: TLabel; AModelCombo: TLcaPaintComboBox; ABuildBtn: TLcaPaintButton;
-      ABody: TLcaMarkdownView);
+      ABody: TMemo);
     procedure LoadPlan(const APath, AContent: string);
     procedure ApplyTheme(ATheme: TThemeKind);
     procedure SetAvailableModels(const AModels: array of TSavedModel);
@@ -65,7 +65,7 @@ begin
 end;
 
 procedure TPlanView.Bind(ALblPath: TLabel; AModelCombo: TLcaPaintComboBox; ABuildBtn: TLcaPaintButton;
-  ABody: TLcaMarkdownView);
+  ABody: TMemo);
 begin
   FLblPath := ALblPath;
   FModelCombo := AModelCombo;
@@ -87,7 +87,7 @@ begin
     FLblPath.ShowHint := False;
   end;
   if Assigned(FBodyMarkdown) then
-    FBodyMarkdown.SetMarkdown('');
+    MarkdownMemoClear(FBodyMarkdown);
 end;
 
 procedure TPlanView.LoadPlan(const APath, AContent: string);
@@ -100,7 +100,7 @@ begin
     FLblPath.ShowHint := True;
   end;
   if Assigned(FBodyMarkdown) then
-    FBodyMarkdown.SetMarkdown(AContent);
+    MarkdownMemoSetText(FBodyMarkdown, AContent, False);
 end;
 
 procedure TPlanView.SetAvailableModels(const AModels: array of TSavedModel);
@@ -180,7 +180,7 @@ begin
   if Assigned(FBuildBtn) then
     FBuildBtn.ApplyTheme(ATheme);
   if Assigned(FBodyMarkdown) then
-    FBodyMarkdown.ApplyTheme(ATheme);
+    ConfigureMarkdownMemo(FBodyMarkdown, ATheme);
 end;
 
 procedure TPlanView.BuildClick(Sender: TObject);

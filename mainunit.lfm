@@ -566,14 +566,16 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
                 TabOrder = 1
               end
             end
-            object lcaPlanBody: TLcaMarkdownView
+            object lcaPlanBody: TMemo
               Left = 0
               Height = 9
               Top = 234
               Width = 144
               Align = alClient
+              ReadOnly = True
+              ScrollBars = ssVertical
               TabOrder = 2
-              TabStop = True
+              WordWrap = True
             end
           end
         end
@@ -1126,14 +1128,16 @@ object LazyCodingAgentForm: TLazyCodingAgentForm
               ClientWidth = 828
               ParentBackground = False
               TabOrder = 3
-              object lcaChatHistory: TLcaMarkdownView
+              object lcaChatHistory: TMemo
                 Left = 0
                 Height = 244
                 Top = 0
                 Width = 828
                 Align = alClient
+                ReadOnly = True
+                ScrollBars = ssVertical
                 TabOrder = 0
-                TabStop = True
+                WordWrap = True
               end
             end
           end

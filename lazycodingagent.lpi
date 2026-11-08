@@ -626,6 +626,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uMarkdownMemoStub.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uMainFileEditor.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

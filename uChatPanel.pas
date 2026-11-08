@@ -9,7 +9,7 @@ uses
   LCLType, Clipbrd, fpjson, jsonparser,
   uAppTypes, LcaTheme, LcaPaintButton, LcaPaintComboBox, LcaThemedMessageBox, uAgentTypes,
   uWorkspaceState,
-  LcaMarkdownView;
+  uMarkdownMemoStub;
 
 const
   CHAT_HISTORY_REFRESH_MIN_MS = 200;
@@ -22,7 +22,7 @@ type
   TModelChangeEvent = procedure(Sender: TObject; const AModel: string) of object;
   TCancelEvent = procedure(Sender: TObject) of object;
 
-  { Binds designer-placed chat controls; Markdown subset in TLcaMarkdownView on host panel. }
+  { Binds designer-placed chat controls; history in read-only TMemo (markdown perf experiment). }
   TChatPanel = class(TComponent)
   private
     FWorkspaceName: string;
@@ -49,7 +49,7 @@ type
     FSubHeading: TLabel;
     FSessionLabel: TLabel;
     FHistoryHost: TPanel;
-    FHistoryView: TLcaMarkdownView;
+    FHistoryView: TMemo;
     FWorkspaceTag: TLabel;
     FPromptMemo: TMemo;
     FModeCombo: TLcaPaintComboBox;
@@ -214,8 +214,8 @@ begin
   if not Assigned(FHistoryHost) then Exit;
   for I := 0 to FHistoryHost.ControlCount - 1 do begin
     C := FHistoryHost.Controls[I];
-    if C is TLcaMarkdownView then begin
-      FHistoryView := TLcaMarkdownView(C);
+    if C is TMemo then begin
+      FHistoryView := TMemo(C);
       Exit;
     end;
   end;
@@ -223,10 +223,10 @@ begin
     OwnerComp := TComponent(FHistoryHost.Owner)
   else
     OwnerComp := Self;
-  FHistoryView := TLcaMarkdownView.Create(OwnerComp);
+  FHistoryView := TMemo.Create(OwnerComp);
   FHistoryView.Parent := FHistoryHost;
   FHistoryView.Align := alClient;
-  FHistoryView.ApplyTheme(FTheme);
+  ConfigureMarkdownMemo(FHistoryView, FTheme);
 end;
 
 procedure TChatPanel.Bind(AHeading, ASubHeading, ASessionLabel: TLabel; AHistoryHost: TPanel;
@@ -495,18 +495,14 @@ begin
   EnsureHistoryView;
   if not Assigned(FHistoryView) then Exit;
   if (FHistoryViewSyncedLen <= 0) or (FHistoryViewSyncedLen > Length(FHistoryText)) then begin
-    FHistoryView.SetMarkdown(FHistoryText, AScrollToEnd);
+    MarkdownMemoSetText(FHistoryView, FHistoryText, AScrollToEnd);
     FHistoryViewSyncedLen := Length(FHistoryText);
-    if FEphemeralThinkingActive then
-      FHistoryView.SetEphemeralThinkingVisible(True);
   end else if FHistoryViewSyncedLen < Length(FHistoryText) then begin
     Delta := Copy(FHistoryText, FHistoryViewSyncedLen + 1, MaxInt);
-    FHistoryView.AppendMarkdownTail(Delta, AScrollToEnd);
+    MarkdownMemoAppendTail(FHistoryView, Delta, AScrollToEnd);
     FHistoryViewSyncedLen := Length(FHistoryText);
-    if FEphemeralThinkingActive then
-      FHistoryView.SetEphemeralThinkingVisible(True);
   end else if AScrollToEnd then
-    FHistoryView.ScrollToEndIfAutoScroll;
+    MarkdownMemoScrollToEnd(FHistoryView);
   FHistoryRefreshDueTick := GetTickCount64 + CHAT_HISTORY_REFRESH_MIN_MS;
 end;
 
@@ -576,8 +572,6 @@ var
 begin
   if not FEphemeralThinkingActive then Exit;
   EnsureHistoryView;
-  if Assigned(FHistoryView) then
-    FHistoryView.SetEphemeralThinkingVisible(False);
   FEphemeralThinkingActive := False;
   Marker := ChatTracePrefixThinking + ChatThinkingTraceText;
   if (Length(FHistoryText) >= Length(Marker)) and
@@ -653,7 +647,7 @@ begin
     FSessionLabel.Font.Color := P.TextMuted;
   EnsureHistoryView;
   if Assigned(FHistoryView) then begin
-    FHistoryView.ApplyTheme(ATheme);
+    ConfigureMarkdownMemo(FHistoryView, ATheme);
     FHistoryViewSyncedLen := 0;
     ApplyHistoryViewNow(False);
   end;
@@ -848,7 +842,6 @@ begin
   if AVisible then begin
     if FEphemeralThinkingActive then Exit;
     FEphemeralThinkingActive := True;
-    FHistoryView.SetEphemeralThinkingVisible(True);
   end else
     RemoveEphemeralThinkingLine;
 end;
