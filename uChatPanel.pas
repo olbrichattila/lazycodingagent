@@ -22,7 +22,7 @@ type
   TModelChangeEvent = procedure(Sender: TObject; const AModel: string) of object;
   TCancelEvent = procedure(Sender: TObject) of object;
 
-  { Binds designer-placed chat controls; history in read-only TMemo (markdown perf experiment). }
+  { Binds designer-placed chat controls; history in read-only TMemo. }
   TChatPanel = class(TComponent)
   private
     FWorkspaceName: string;
@@ -490,7 +490,7 @@ end;
 
 procedure TChatPanel.ApplyHistoryViewNow(AScrollToEnd: Boolean);
 var
-  Delta: string;
+  Delta, DisplayFull, DisplayPrev: string;
 begin
   EnsureHistoryView;
   if not Assigned(FHistoryView) then Exit;
@@ -498,7 +498,9 @@ begin
     MarkdownMemoSetText(FHistoryView, FHistoryText, AScrollToEnd);
     FHistoryViewSyncedLen := Length(FHistoryText);
   end else if FHistoryViewSyncedLen < Length(FHistoryText) then begin
-    Delta := Copy(FHistoryText, FHistoryViewSyncedLen + 1, MaxInt);
+    DisplayFull := MarkdownMemoDisplayText(FHistoryText);
+    DisplayPrev := MarkdownMemoDisplayText(Copy(FHistoryText, 1, FHistoryViewSyncedLen));
+    Delta := Copy(DisplayFull, Length(DisplayPrev) + 1, MaxInt);
     MarkdownMemoAppendTail(FHistoryView, Delta, AScrollToEnd);
     FHistoryViewSyncedLen := Length(FHistoryText);
   end else if AScrollToEnd then
@@ -571,7 +573,6 @@ var
   Marker: string;
 begin
   if not FEphemeralThinkingActive then Exit;
-  EnsureHistoryView;
   FEphemeralThinkingActive := False;
   Marker := ChatTracePrefixThinking + ChatThinkingTraceText;
   if (Length(FHistoryText) >= Length(Marker)) and
@@ -837,8 +838,6 @@ end;
 
 procedure TChatPanel.SetAgentThinkingInChat(AVisible: Boolean);
 begin
-  EnsureHistoryView;
-  if not Assigned(FHistoryView) then Exit;
   if AVisible then begin
     if FEphemeralThinkingActive then Exit;
     FEphemeralThinkingActive := True;

@@ -107,7 +107,7 @@ When summarization runs, chat shows a brief assistant note: *Context summarized 
 
 ## Copying text from chat
 
-Click and drag in the **conversation history** to select rendered text (what you see on screen, not raw Markdown markers). **Double-click** selects a word. **Ctrl+C** copies the selection; **Ctrl+A** selects the full history. Selection clears when new content is appended during a streaming reply. The same selection and shortcuts work in **plan**, **help**, and **Markdown preview** panes that use the canvas Markdown view.
+Click and drag in the **conversation history** to select text in the read-only memo (standard `TMemo` selection). **Double-click** selects a word. **Ctrl+C** copies the selection; **Ctrl+A** selects the full history. Selection may move when new content is appended during a streaming reply. The same selection and shortcuts work in **plan**, **Help**, and **Markdown preview** memos.
 
 ## Cancel and exit
 

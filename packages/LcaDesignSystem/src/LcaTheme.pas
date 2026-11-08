@@ -39,7 +39,11 @@ type
     CardBg: TColor;          // Cards and message pill background
   end;
 
+  TChatLabelRole = (clrNone, clrUser, clrAgent, clrTool, clrThinking);
+
 function ThemePalette(ATheme: TThemeKind): TThemePalette;
+function ClassifyChatHeadingRole(const ABody: string): TChatLabelRole;
+function ChatLabelTextColor(const P: TThemePalette; ARole: TChatLabelRole): TColor;
 { True when the control or an owner is on a form open in the Lazarus designer. }
 function LcaComponentOrOwnerDesigning(AComponent: TComponent): Boolean;
 { Form designer, IDE-hosted preview, or JIT .lfm load before csDesigning is set. }
@@ -129,6 +133,7 @@ function ScaledEditorFontSize(AControl: TControl): Integer;
 function ThemedMonospaceFontName: string;
 function ThemedUiFontName: string;
 procedure ApplyThemedMonospaceFont(AFont: TFont; AMetricsControl: TControl);
+procedure ApplyThemedMarkdownSynEditFont(AFont: TFont; AMetricsControl: TControl);
 function ThemedComboCornerRadius(AControl: TControl): Integer;
 function ThemedComboChevronGutter(AControl: TControl): Integer;
 
@@ -442,6 +447,16 @@ begin
   AFont.Name := ThemedMonospaceFontName;
   AFont.Pitch := fpFixed;
   AFont.Size := ThemedEditorFontSize(AMetricsControl);
+end;
+
+procedure ApplyThemedMarkdownSynEditFont(AFont: TFont; AMetricsControl: TControl);
+begin
+  if not Assigned(AFont) then Exit;
+  { SynEdit lays out in fixed cells — proportional UI fonts show wide gaps on Qt. }
+  AFont.Name := ThemedMonospaceFontName;
+  AFont.Pitch := fpFixed;
+  AFont.Size := ThemedMarkdownBodyFontSize(AMetricsControl);
+  AFont.Style := [];
 end;
 
 function ThemedComboCornerRadius(AControl: TControl): Integer;
@@ -818,6 +833,32 @@ begin
     Result.AccentText     := clWhite;
     Result.SplitterColor  := RGBToColor(230, 230, 230);
     Result.CardBg         := RGBToColor(250, 250, 250);   // #FAFAFA
+  end;
+end;
+
+function ClassifyChatHeadingRole(const ABody: string): TChatLabelRole;
+var
+  T: string;
+begin
+  T := Trim(ABody);
+  if SameText(T, 'You') then
+    Exit(clrUser);
+  if SameText(T, 'Agent') then
+    Exit(clrAgent);
+  if (Length(T) >= 4) and SameText(Copy(T, 1, 4), 'Tool') then
+    Exit(clrTool);
+  Result := clrNone;
+end;
+
+function ChatLabelTextColor(const P: TThemePalette; ARole: TChatLabelRole): TColor;
+begin
+  case ARole of
+    clrUser: Result := P.ChatLabelUser;
+    clrAgent: Result := P.ChatLabelAgent;
+    clrTool: Result := P.ChatLabelTool;
+    clrThinking: Result := P.ChatLabelThinking;
+  else
+    Result := P.Text;
   end;
 end;
 

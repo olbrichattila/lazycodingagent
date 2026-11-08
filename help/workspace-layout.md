@@ -52,16 +52,16 @@ Failures are also appended to `tool-errors.log` under the same user config folde
 
 The center header tab strip switches three **PageControl** pages (no **+** on this strip):
 
-- **Chat** — a **session tab strip** under the page header lists every non-archived chat (**+** for new session, **✕** to archive). Below that: conversation history rendered as **Markdown** (headings, bold, code, lists — subset, not full GFM), current session label, composer, mode and model combos, Stop and Run.
+- **Chat** — a **session tab strip** under the page header lists every non-archived chat (**+** for new session, **✕** to archive). Below that: conversation history as a **read-only memo** showing markdown source (including `###` labels and fenced blocks as plain text — not color-rendered), current session label, composer, mode and model combos, Stop and Run.
 - **Editor** — one `SynEdit` buffer for the file you opened from Projects (prompted to save if dirty before replacing). Font size scales with display DPI. Use normal mouse selection and **Ctrl+C** / **Ctrl+A** (and other standard SynEdit shortcuts) to copy code.
-- **Markdown** — formatted preview when you open a `.md` file and choose **Preview** (same HTML renderer as chat). Choose **Source** to edit in the Editor tab.
+- **Markdown** — read-only memo preview when you open a `.md` file and choose **Preview** (same plain-text view as chat). Choose **Source** to edit in the Editor tab.
 
 There are **no** per-file editor tabs. Switch sessions from the Chat session tabs or **Sessions** in the nav rail; open another file from **Projects**.
 
 ## Right and utility panels
 
 - **Guidelines / instructions** — workspace context on the right when enabled.
-- **Utility panel** — `PageControl` with **Execution Detail** and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** shows the selected log step as Markdown (section headings, fenced JSON, and prose blocks) in the same canvas Markdown view used elsewhere. **Plan** lists each open plan file as a **closable tab** (filename); switch tabs to change which plan is shown. The header shows the active plan path, a model picker, and **Build** (implements that plan in a new Agent session); the body renders the active plan as markdown.
+- **Utility panel** — `PageControl` with **Execution Detail** and **Plan**. Toggle via **Window → Panels → Utility Panel**. **Execution Detail** shows the selected log step as markdown source in a read-only memo (section headings, fenced JSON, and prose as plain text). **Plan** lists each open plan file as a **closable tab** (filename); switch tabs to change which plan is shown. The header shows the active plan path, a model picker, and **Build** (implements that plan in a new Agent session); the body shows the active plan file as plain markdown text.
 
 ## Panel visibility and detach
 

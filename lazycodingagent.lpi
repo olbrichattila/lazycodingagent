@@ -90,6 +90,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="uMarkdownMemoStub.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="uNavFuturePlaceholder.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
@@ -623,10 +627,6 @@
       </Unit>
       <Unit>
         <Filename Value="uChatPanel.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit>
-      <Unit>
-        <Filename Value="uMarkdownMemoStub.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>

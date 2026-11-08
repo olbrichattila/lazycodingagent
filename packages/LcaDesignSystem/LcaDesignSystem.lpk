@@ -104,10 +104,6 @@
         <UnitName Value="LcaPaintNavList"/>
       </Item>
       <Item>
-        <Filename Value="src\LcaMarkdownView.pas"/>
-        <UnitName Value="LcaMarkdownView"/>
-      </Item>
-      <Item>
         <Filename Value="src\LcaTerminalPanel.pas"/>
         <UnitName Value="LcaTerminalPanel"/>
       </Item>
@@ -156,6 +152,9 @@
       </Item>
       <Item>
         <PackageName Value="ViewLCL"/>
+      </Item>
+      <Item>
+        <PackageName Value="SynEdit"/>
       </Item>
     </RequiredPkgs>
     <UsageOptions>
