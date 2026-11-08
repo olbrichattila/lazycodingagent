@@ -32,7 +32,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/lazarus-ci-win64
-          key: windows-lazarus-4.8-installer-v2-${{ hashFiles('scripts/ci-install-lazarus-windows.ps1') }}
+          key: windows-lazarus-4.8-v3-${{ hashFiles('scripts/lazarus-ci-artifacts.json', 'scripts/ci-install-lazarus-windows.ps1', 'scripts/ci-resolve-lazarus-artifact.ps1') }}
+          restore-keys: |
+            windows-lazarus-4.8-v3-
+            windows-lazarus-4.8-
 
       - name: Install Free Pascal and Lazarus (SourceForge 4.8)
         shell: pwsh
@@ -40,22 +43,17 @@ jobs:
 
       - name: Prepare SynEdit
         shell: pwsh
-        env:
-          LAZBUILD: C:\lazarus\lazbuild.exe
-          LAZARUS_DIR: C:\lazarus
         run: |
-          if (-not (Test-Path -LiteralPath $env:LAZBUILD)) {
-            $env:LAZBUILD = (Get-Command lazbuild).Source
+          if (-not $env:LAZBUILD) {
+            $env:LAZBUILD = (Get-Command lazbuild -ErrorAction SilentlyContinue).Source
           }
           ./scripts/ci-prepare-lazarus-deps.ps1 -LazBuild $env:LAZBUILD
 
       - name: Link LCA and terminal packages
         shell: pwsh
-        env:
-          LAZBUILD: C:\lazarus\lazbuild.exe
         run: |
-          if (-not (Test-Path -LiteralPath $env:LAZBUILD)) {
-            $env:LAZBUILD = (Get-Command lazbuild).Source
+          if (-not $env:LAZBUILD) {
+            $env:LAZBUILD = (Get-Command lazbuild -ErrorAction SilentlyContinue).Source
           }
           & $env:LAZBUILD --version
           ./scripts/install-lca-lazarus.ps1 -LinkOnly
@@ -86,8 +84,6 @@ jobs:
 
       - name: lazbuild
         shell: pwsh
-        env:
-          LAZBUILD: C:\lazarus\lazbuild.exe
         run: ./scripts/ci-lazbuild.ps1
 
       - name: Post-build deploy
@@ -241,7 +237,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/lazarus-ci-aarch64
-          key: macos-lazarus-4.8-aarch64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh', 'scripts/ci-lazbuild.sh') }}
+          key: macos-lazarus-4.8-aarch64-v3-${{ hashFiles('scripts/lazarus-ci-artifacts.json', 'scripts/ci-install-lazarus-macos.sh', 'scripts/ci-resolve-lazarus-artifact.sh', 'scripts/ci-lazbuild.sh') }}
+          restore-keys: |
+            macos-lazarus-4.8-aarch64-v3-
+            macos-lazarus-4.8-
 
       - name: Xcode / SDK (linker diagnostics)
         run: |
@@ -300,7 +299,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/lazarus-ci-x86_64
-          key: macos-lazarus-4.8-x86_64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+          key: macos-lazarus-4.8-x86_64-v3-${{ hashFiles('scripts/lazarus-ci-artifacts.json', 'scripts/ci-install-lazarus-macos.sh', 'scripts/ci-resolve-lazarus-artifact.sh') }}
+          restore-keys: |
+            macos-lazarus-4.8-x86_64-v3-
+            macos-lazarus-4.8-
 
       - name: Install Free Pascal and Lazarus (SourceForge)
         run: |

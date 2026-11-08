@@ -53,6 +53,11 @@ tmp*/
 /backup/*
 !/backup/README.txt
 
+# Optional local CI Lazarus/FPC downloads (see tools/lazarus-artifacts/README.md)
+/tools/lazarus-artifacts/*
+!/tools/lazarus-artifacts/README.md
+!/tools/lazarus-artifacts/.gitkeep
+
 # Operating system files
 .DS_Store
 Thumbs.db

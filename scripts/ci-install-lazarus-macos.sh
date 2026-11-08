@@ -4,15 +4,14 @@ set -euo pipefail
 
 # Pinned to Lazarus macOS 4.8 on SourceForge (aarch64 or x86_64 via CI_MACOS_ARCH).
 CI_MACOS_ARCH="${CI_MACOS_ARCH:-aarch64}"
-FPC_DMG="fpc-3.2.4rc1a.intelarm64-macosx.dmg"
 
 case "$CI_MACOS_ARCH" in
   aarch64)
-    SF_BASE="https://downloads.sourceforge.net/project/lazarus/Lazarus%20macOS%20aarch64/Lazarus%204.8"
+    TARGET_ID="macos-aarch64"
     LAZARUS_ZIP="lazarus-darwin-aarch64-4.8.zip"
     ;;
   x86_64)
-    SF_BASE="https://downloads.sourceforge.net/project/lazarus/Lazarus%20macOS%20x86-64/Lazarus%204.8"
+    TARGET_ID="macos-x86_64"
     LAZARUS_ZIP="lazarus-darwin-x86_64-4.8.zip"
     ;;
   *)
@@ -20,6 +19,8 @@ case "$CI_MACOS_ARCH" in
     exit 1
     ;;
 esac
+
+FPC_DMG="fpc-3.2.4rc1a.intelarm64-macosx.dmg"
 
 WORKDIR="${CI_LAZARUS_WORKDIR:-${RUNNER_TEMP:-/tmp}/lazarus-ci-${CI_MACOS_ARCH}}"
 LAZARUS_INSTALL="${CI_LAZARUS_ROOT:-$WORKDIR/lazarus-tree}"
@@ -29,6 +30,11 @@ mkdir -p "$WORKDIR"
 
 # shellcheck disable=SC1091
 source "$SCRIPT_DIR/ci-lazbuild.sh"
+
+resolve_artifact() {
+  local filename="$1" dest="$2"
+  "$SCRIPT_DIR/ci-resolve-lazarus-artifact.sh" "$TARGET_ID" "$filename" "$dest"
+}
 
 expected_fpc_cpu_for_ci() {
   case "$CI_MACOS_ARCH" in
@@ -46,14 +52,6 @@ fpc_matches_ci_arch() {
   expected="$(expected_fpc_cpu_for_ci)"
   actual="$(fpc -iPA 2>/dev/null || true)"
   [[ "$actual" == "$expected" ]]
-}
-
-download() {
-  local url="$1" dest="$2"
-  if [[ -f "$dest" ]]; then
-    return 0
-  fi
-  curl -fL --retry 3 --retry-delay 5 -o "$dest" "$url"
 }
 
 ci_append_darwin_fpc_cfg() {
@@ -102,7 +100,7 @@ install_fpc_from_dmg() {
 
   echo "ci-install-lazarus-macos: installing FPC from $FPC_DMG"
   local fpc_path="$WORKDIR/$FPC_DMG"
-  download "$SF_BASE/$FPC_DMG" "$fpc_path"
+  resolve_artifact "$FPC_DMG" "$fpc_path"
 
   local fpc_mount="$WORKDIR/fpc-mount"
   mkdir -p "$fpc_mount"
@@ -128,7 +126,7 @@ install_lazarus_tree() {
 
   echo "ci-install-lazarus-macos: installing Lazarus from $LAZARUS_ZIP"
   zip_path="$WORKDIR/$LAZARUS_ZIP"
-  download "$SF_BASE/$LAZARUS_ZIP" "$zip_path"
+  resolve_artifact "$LAZARUS_ZIP" "$zip_path"
   xattr -cr "$zip_path"
   rm -rf "$LAZARUS_INSTALL"
   mkdir -p "$LAZARUS_INSTALL"
