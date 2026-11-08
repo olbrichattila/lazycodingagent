@@ -148,6 +148,7 @@ begin
   LastRow := (ScrollY + Height + RowH - 1) div RowH;
   if LastRow >= Count then LastRow := Count - 1;
   for I := FirstRow to LastRow do begin
+    if I >= FList.Items.Count then Break;
     R := Rect(0, I * RowH, Width, (I + 1) * RowH);
     State := [];
     if I = FList.ItemIndex then

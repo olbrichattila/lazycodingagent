@@ -29,7 +29,12 @@ type
     FWheelAccumY: Integer;
     FWheelFlushQueued: Boolean;
     FLayoutGuard: Boolean;
+    FPainting: Boolean;
     FNeedsLayout: Boolean;
+    FRelayoutQueued: Boolean;
+    FPendingRebuild: Boolean;
+    FPendingScrollToEnd: Boolean;
+    FSelectLayoutValid: Boolean;
     FPlainText: string;
     FSelectFrags: array of TSelectFragRec;
     FSelAnchor: Integer;
@@ -46,6 +51,10 @@ type
     procedure RelayoutDocumentFrom(AStartBlockIndex: Integer);
     procedure RelayoutEphemeralTail;
     procedure RelayoutDocument;
+    function ContentBusy: Boolean;
+    procedure ScheduleDeferredRelayout;
+    procedure DeferredRelayout(Data: PtrInt);
+    procedure ApplyDeferredContent;
     function ContentPad: Integer;
     function ScrollbarThickness: Integer;
     function TextAreaWidth: Integer;
@@ -61,13 +70,14 @@ type
     procedure ScrollByDelta(ADeltaY: Integer);
     procedure ScheduleWheelFlush;
     procedure WheelFlush(Data: PtrInt);
+    function FirstVisibleBlockIndex(AViewTop: Integer): Integer;
     procedure PaintDocument(ACanvas: TCanvas; const P: TThemePalette);
-    procedure PaintCodeBlockLines(ACanvas: TCanvas; const ABlockRect: TRect; APad, ABodySize: Integer;
-      const P: TThemePalette; const ACode: string);
     procedure PaintScrollbar(const P: TThemePalette);
     procedure PaintScrollbarTrack(ACanvas: TCanvas; const ARect: TRect; const P: TThemePalette);
     procedure PaintScrollbarThumb(ACanvas: TCanvas; const ARect: TRect; const P: TThemePalette);
     procedure ClearTextSelection;
+    procedure InvalidateSelectionLayout;
+    procedure EnsureSelectionLayout;
     procedure BuildSelectionLayout;
     function SelectionBounds(out ALo, AHi: Integer): Boolean;
     function SelectedPlainText: string;
@@ -117,7 +127,7 @@ type
 implementation
 
 uses
-  Math, LCLIntf, StrUtils, Forms, Clipbrd, LcaUiPaintProfile, LcaPaintPrimitives;
+  Math, LCLIntf, Forms, Clipbrd, LcaUiPaintProfile, LcaPaintPrimitives;
 
 type
   TSelectLayoutState = record
@@ -135,6 +145,7 @@ const
   LCA_MD_HRULE_BLOCK_BASE = 16;
   LCA_MD_SCROLL_BOTTOM_EPS = 4;
   LCA_EPHEMERAL_THINKING_TEXT = 'Thinking...';
+  LCA_MD_BULLET = #$E2#$80#$A2;
 
 type
   TMarkdownBlockKind = (
@@ -152,6 +163,21 @@ type
 
   TInlineRunArray = array of TInlineRun;
 
+  TLayoutFrag = record
+    X: Integer;
+    Width: Integer;
+    Text: string;
+    Style: TInlineStyle;
+  end;
+
+  TLayoutLine = record
+    Y: Integer;
+    Height: Integer;
+    Frags: array of TLayoutFrag;
+  end;
+
+  TLayoutLineArray = array of TLayoutLine;
+
   TMarkdownBlockObj = class
   public
     Kind: TMarkdownBlockKind;
@@ -161,6 +187,11 @@ type
     CodeText: string;
     CalculatedHeight: Integer;
     LayoutTop: Integer;
+    LineHeight: Integer;
+    Lines: TLayoutLineArray;
+    PrefixText: string;
+    PrefixWidth: Integer;
+    PrefixX: Integer;
   end;
 
 procedure AppendInlineRun(var ARuns: TInlineRunArray; const AText: string;
@@ -420,30 +451,6 @@ begin
     ScaledLayoutMetric(AControl, LCA_MD_LINE_LEADING_BASE);
 end;
 
-type
-  TCanvasFontSnapshot = record
-    Name: string;
-    Pitch: TFontPitch;
-    Size: Integer;
-    Style: TFontStyles;
-  end;
-
-procedure SaveCanvasFont(ACanvas: TCanvas; out ASnap: TCanvasFontSnapshot);
-begin
-  ASnap.Name := ACanvas.Font.Name;
-  ASnap.Pitch := ACanvas.Font.Pitch;
-  ASnap.Size := ACanvas.Font.Size;
-  ASnap.Style := ACanvas.Font.Style;
-end;
-
-procedure RestoreCanvasFont(ACanvas: TCanvas; const ASnap: TCanvasFontSnapshot);
-begin
-  ACanvas.Font.Name := ASnap.Name;
-  ACanvas.Font.Pitch := ASnap.Pitch;
-  ACanvas.Font.Size := ASnap.Size;
-  ACanvas.Font.Style := ASnap.Style;
-end;
-
 procedure ApplyInlineRunFont(ACanvas: TCanvas; AStyle: TInlineStyle;
   const ABaseStyle: TFontStyles);
 begin
@@ -457,235 +464,141 @@ begin
   end;
 end;
 
-function MeasureRunSegmentWidth(ACanvas: TCanvas; const AText: string;
-  AStyle: TInlineStyle): Integer;
+procedure AppendLayoutFrag(var ALine: TLayoutLine; AX, AWidth: Integer;
+  const AText: string; AStyle: TInlineStyle);
 var
-  Saved: TCanvasFontSnapshot;
+  N: Integer;
 begin
-  SaveCanvasFont(ACanvas, Saved);
-  ApplyInlineRunFont(ACanvas, AStyle, Saved.Style);
-  Result := ACanvas.TextWidth(AText);
-  RestoreCanvasFont(ACanvas, Saved);
+  if AText = '' then Exit;
+  N := Length(ALine.Frags);
+  SetLength(ALine.Frags, N + 1);
+  ALine.Frags[N].X := AX;
+  ALine.Frags[N].Width := AWidth;
+  ALine.Frags[N].Text := AText;
+  ALine.Frags[N].Style := AStyle;
 end;
 
-type
-  TWrapMeasureState = record
-    LineW: Integer;
-    TotalHeight: Integer;
-    MaxWidth: Integer;
-    LineHeight: Integer;
-  end;
-
-  TWrapDrawState = record
-    CurX, CurY, LineW: Integer;
-    OriginX: Integer;
-    MaxWidth, LineHeight: Integer;
-  end;
-
-procedure WrapMeasureFinishLine(var S: TWrapMeasureState);
-begin
-  if S.TotalHeight = 0 then
-    S.TotalHeight := S.LineHeight
-  else
-    S.TotalHeight := S.TotalHeight + S.LineHeight;
-  S.LineW := 0;
-end;
-
-procedure WrapMeasureEmitWord(ACanvas: TCanvas; var S: TWrapMeasureState;
-  const AW: string; AStyle: TInlineStyle);
+procedure PushLayoutLine(var ALines: TLayoutLineArray; var ALine: TLayoutLine;
+  var ACurX, ALineW, AY: Integer; AOriginX, ALineHeight: Integer);
 var
-  WW, I, W: Integer;
+  N: Integer;
 begin
-  if AW = '' then Exit;
-  WW := MeasureRunSegmentWidth(ACanvas, AW, AStyle);
-  if (S.LineW > 0) and (S.LineW + WW > S.MaxWidth) then
-    WrapMeasureFinishLine(S);
-  if WW > S.MaxWidth then begin
-    for I := 1 to Length(AW) do begin
-      W := MeasureRunSegmentWidth(ACanvas, AW[I], AStyle);
-      if (S.LineW > 0) and (S.LineW + W > S.MaxWidth) then
-        WrapMeasureFinishLine(S);
-      S.LineW := S.LineW + W;
-    end;
-  end else
-    S.LineW := S.LineW + WW;
+  ALine.Y := AY;
+  ALine.Height := ALineHeight;
+  N := Length(ALines);
+  SetLength(ALines, N + 1);
+  ALines[N] := ALine;
+  AY := AY + ALineHeight;
+  ACurX := AOriginX;
+  ALineW := 0;
+  SetLength(ALine.Frags, 0);
 end;
 
-procedure WrapDrawFinishLine(var S: TWrapDrawState);
-begin
-  S.CurX := S.OriginX;
-  S.CurY := S.CurY + S.LineHeight;
-  S.LineW := 0;
-end;
-
-procedure WrapDrawWord(ACanvas: TCanvas; var S: TWrapDrawState; const AW: string;
-  AStyle: TInlineStyle; ATextColor, ACodeBg: TColor);
+procedure LayoutWrapRuns(ACanvas: TCanvas; var ALines: TLayoutLineArray;
+  const ARuns: TInlineRunArray; AOriginX, AMaxWidth, ALineHeight: Integer;
+  const ABaseStyle: TFontStyles; out AHeight: Integer);
 var
-  WW, J, W: Integer;
-  Saved: TCanvasFontSnapshot;
-  SavedColor: TColor;
-  TR: TRect;
-begin
-  if AW = '' then Exit;
-  SaveCanvasFont(ACanvas, Saved);
-  SavedColor := ACanvas.Font.Color;
-  ApplyInlineRunFont(ACanvas, AStyle, Saved.Style);
-  WW := ACanvas.TextWidth(AW);
-  if (S.LineW > 0) and (S.CurX + WW - S.OriginX > S.MaxWidth) then
-    WrapDrawFinishLine(S);
-  if WW > S.MaxWidth then begin
-    for J := 1 to Length(AW) do begin
-      W := ACanvas.TextWidth(AW[J]);
-      if (S.CurX > S.OriginX) and (S.CurX + W - S.OriginX > S.MaxWidth) then
-        WrapDrawFinishLine(S);
-      if AStyle = isCode then begin
-        TR := Rect(S.CurX, S.CurY, S.CurX + W, S.CurY + S.LineHeight);
-        ACanvas.Brush.Color := ACodeBg;
-        ACanvas.FillRect(TR);
-      end;
-      ACanvas.Font.Color := ATextColor;
-      ACanvas.TextOut(S.CurX, S.CurY, AW[J]);
-      S.CurX := S.CurX + W;
-      S.LineW := S.CurX - S.OriginX;
-    end;
-  end else begin
-    if AStyle = isCode then begin
-      TR := Rect(S.CurX, S.CurY, S.CurX + WW, S.CurY + S.LineHeight);
-      ACanvas.Brush.Color := ACodeBg;
-      ACanvas.FillRect(TR);
-    end;
-    ACanvas.Font.Color := ATextColor;
-    ACanvas.TextOut(S.CurX, S.CurY, AW);
-    S.CurX := S.CurX + WW;
-    S.LineW := S.CurX - S.OriginX;
-  end;
-  RestoreCanvasFont(ACanvas, Saved);
-  ACanvas.Font.Color := SavedColor;
-end;
-
-function MeasureWrappedRunsHeight(ACanvas: TCanvas; const ARuns: TInlineRunArray;
-  AMaxWidth, ALineHeight: Integer; AMono: Boolean): Integer;
-var
-  R, I, W: Integer;
-  Word: string;
-  Ch: Char;
+  R, I, CurX, LineW, AY, WordStart: Integer;
   Style: TInlineStyle;
-  SavedName: string;
-  MS: TWrapMeasureState;
+  SpaceW: Integer;
+  CurLine: TLayoutLine;
+  Ch: Char;
+
+  procedure EmitWord(const AW: string);
+  var
+    WW, J, CW: Integer;
+  begin
+    if AW = '' then Exit;
+    WW := ACanvas.TextWidth(AW);
+    if (LineW > 0) and (LineW + WW > AMaxWidth) then
+      PushLayoutLine(ALines, CurLine, CurX, LineW, AY, AOriginX, ALineHeight);
+    if WW > AMaxWidth then begin
+      for J := 1 to Length(AW) do begin
+        CW := ACanvas.TextWidth(AW[J]);
+        if (LineW > 0) and (LineW + CW > AMaxWidth) then
+          PushLayoutLine(ALines, CurLine, CurX, LineW, AY, AOriginX, ALineHeight);
+        AppendLayoutFrag(CurLine, CurX, CW, AW[J], Style);
+        CurX := CurX + CW;
+        LineW := LineW + CW;
+      end;
+    end else begin
+      AppendLayoutFrag(CurLine, CurX, WW, AW, Style);
+      CurX := CurX + WW;
+      LineW := LineW + WW;
+    end;
+  end;
+
 begin
-  if AMaxWidth <= 0 then Exit(ALineHeight);
-  SavedName := ACanvas.Font.Name;
-  if AMono then
-    ConfigureMonoFont(ACanvas, nil, ACanvas.Font.Size)
-  else
-    ACanvas.Font.Name := ThemedUiFontName;
-  MS.LineW := 0;
-  MS.TotalHeight := 0;
-  MS.MaxWidth := AMaxWidth;
-  MS.LineHeight := ALineHeight;
+  SetLength(ALines, 0);
+  if AMaxWidth <= 0 then begin
+    AHeight := ALineHeight;
+    Exit;
+  end;
+  SetLength(CurLine.Frags, 0);
+  CurX := AOriginX;
+  LineW := 0;
+  AY := 0;
   for R := 0 to High(ARuns) do begin
-    Word := '';
     Style := ARuns[R].Style;
+    ApplyInlineRunFont(ACanvas, Style, ABaseStyle);
+    SpaceW := ACanvas.TextWidth(' ');
+    WordStart := 0;
     for I := 1 to Length(ARuns[R].Text) do begin
       Ch := ARuns[R].Text[I];
       if Ch <= ' ' then begin
-        WrapMeasureEmitWord(ACanvas, MS, Word, Style);
-        Word := '';
-        if (Ch = ' ') and (MS.LineW > 0) then begin
-          W := MeasureRunSegmentWidth(ACanvas, ' ', Style);
-          if MS.LineW + W > MS.MaxWidth then
-            WrapMeasureFinishLine(MS)
-          else
-            MS.LineW := MS.LineW + W;
+        if WordStart > 0 then begin
+          EmitWord(Copy(ARuns[R].Text, WordStart, I - WordStart));
+          WordStart := 0;
         end;
-      end else
-        Word := Word + Ch;
+        if (Ch = ' ') and (LineW > 0) then begin
+          if LineW + SpaceW > AMaxWidth then
+            PushLayoutLine(ALines, CurLine, CurX, LineW, AY, AOriginX, ALineHeight)
+          else begin
+            AppendLayoutFrag(CurLine, CurX, SpaceW, ' ', Style);
+            CurX := CurX + SpaceW;
+            LineW := LineW + SpaceW;
+          end;
+        end;
+      end else if WordStart = 0 then
+        WordStart := I;
     end;
-    WrapMeasureEmitWord(ACanvas, MS, Word, Style);
+    if WordStart > 0 then
+      EmitWord(Copy(ARuns[R].Text, WordStart, MaxInt));
   end;
-  if (MS.LineW > 0) or (MS.TotalHeight = 0) then
-    WrapMeasureFinishLine(MS);
-  Result := MS.TotalHeight;
-  ACanvas.Font.Name := SavedName;
+  if (LineW > 0) or (Length(ALines) = 0) then
+    PushLayoutLine(ALines, CurLine, CurX, LineW, AY, AOriginX, ALineHeight);
+  AHeight := AY;
 end;
 
-function MeasureCodeBlockHeight(ACanvas: TCanvas; const ACode: string; AMaxWidth: Integer;
-  APad, ALineHeight: Integer): Integer;
+procedure LayoutCodeBlockLines(const ACode: string; ALeft, APad, ALineHeight: Integer;
+  out ALines: TLayoutLineArray; out AHeight: Integer);
 var
   Lines: TStringList;
-  I, LineW, MaxLineW: Integer;
+  I, N: Integer;
 begin
+  ALines := nil;
+  SetLength(ALines, 0);
   Lines := TStringList.Create;
   try
     if ACode = '' then
       Lines.Add('')
     else
       Lines.Text := ACode;
-    MaxLineW := 0;
+    N := Max(1, Lines.Count);
+    SetLength(ALines, Lines.Count);
     for I := 0 to Lines.Count - 1 do begin
-      LineW := ACanvas.TextWidth(Lines[I]);
-      if LineW > MaxLineW then
-        MaxLineW := LineW;
+      ALines[I].Y := APad + I * ALineHeight;
+      ALines[I].Height := ALineHeight;
+      SetLength(ALines[I].Frags, 1);
+      ALines[I].Frags[0].X := ALeft + APad;
+      ALines[I].Frags[0].Width := 0;
+      ALines[I].Frags[0].Text := Lines[I];
+      ALines[I].Frags[0].Style := isCode;
     end;
-    if MaxLineW > AMaxWidth then
-      Result := ALineHeight * Lines.Count
-    else
-      Result := ALineHeight * Max(1, Lines.Count);
-    Result := Result + 2 * APad;
+    AHeight := 2 * APad + N * ALineHeight;
   finally
     Lines.Free;
   end;
-end;
-
-procedure DrawWrappedRuns(ACanvas: TCanvas; const ARuns: TInlineRunArray;
-  X, Y, AMaxWidth, ALineHeight: Integer; ATextColor, ACodeBg: TColor; AMono: Boolean);
-var
-  R, I, W: Integer;
-  Word: string;
-  Ch: Char;
-  Style: TInlineStyle;
-  Saved: TCanvasFontSnapshot;
-  SpaceSnap: TCanvasFontSnapshot;
-  DS: TWrapDrawState;
-begin
-  SaveCanvasFont(ACanvas, Saved);
-  if AMono then
-    ConfigureMonoFont(ACanvas, nil, ACanvas.Font.Size)
-  else
-    ACanvas.Font.Name := ThemedUiFontName;
-  DS.OriginX := X;
-  DS.MaxWidth := AMaxWidth;
-  DS.LineHeight := ALineHeight;
-  DS.CurX := X;
-  DS.CurY := Y;
-  DS.LineW := 0;
-  for R := 0 to High(ARuns) do begin
-    Word := '';
-    Style := ARuns[R].Style;
-    for I := 1 to Length(ARuns[R].Text) do begin
-      Ch := ARuns[R].Text[I];
-      if Ch <= ' ' then begin
-        WrapDrawWord(ACanvas, DS, Word, Style, ATextColor, ACodeBg);
-        Word := '';
-        if (Ch = ' ') and (DS.LineW > 0) then begin
-          W := MeasureRunSegmentWidth(ACanvas, ' ', Style);
-          if DS.CurX + W - X > AMaxWidth then
-            WrapDrawFinishLine(DS)
-          else begin
-            SaveCanvasFont(ACanvas, SpaceSnap);
-            ApplyInlineRunFont(ACanvas, Style, SpaceSnap.Style);
-            ACanvas.Font.Color := ATextColor;
-            ACanvas.TextOut(DS.CurX, DS.CurY, ' ');
-            RestoreCanvasFont(ACanvas, SpaceSnap);
-            DS.CurX := DS.CurX + W;
-          end;
-        end;
-      end else
-        Word := Word + Ch;
-    end;
-    WrapDrawWord(ACanvas, DS, Word, Style, ATextColor, ACodeBg);
-  end;
-  RestoreCanvasFont(ACanvas, Saved);
 end;
 
 procedure LayoutAppendFragment(var L: TSelectLayoutState; const ARect: TRect;
@@ -708,120 +621,82 @@ begin
     L.Plain := L.Plain + LineEnding;
 end;
 
-procedure LayoutWrapFinishLine(var S: TWrapDrawState);
-begin
-  S.CurX := S.OriginX;
-  S.CurY := S.CurY + S.LineHeight;
-  S.LineW := 0;
-end;
-
-procedure LayoutWrapWord(ACanvas: TCanvas; var L: TSelectLayoutState; var S: TWrapDrawState;
-  const AW: string; AStyle: TInlineStyle);
+procedure AppendBlockToSelection(ACanvas: TCanvas; var L: TSelectLayoutState;
+  ABlk: TMarkdownBlockObj);
 var
-  WW, J, W: Integer;
-  Saved: TCanvasFontSnapshot;
+  Li, Fi, W, DocY: Integer;
+  Line: TLayoutLine;
+  Frag: TLayoutFrag;
   R: TRect;
 begin
-  if AW = '' then Exit;
-  SaveCanvasFont(ACanvas, Saved);
-  ApplyInlineRunFont(ACanvas, AStyle, Saved.Style);
-  WW := ACanvas.TextWidth(AW);
-  if (S.LineW > 0) and (S.CurX + WW - S.OriginX > S.MaxWidth) then
-    LayoutWrapFinishLine(S);
-  if WW > S.MaxWidth then begin
-    for J := 1 to Length(AW) do begin
-      W := ACanvas.TextWidth(AW[J]);
-      if (S.CurX > S.OriginX) and (S.CurX + W - S.OriginX > S.MaxWidth) then
-        LayoutWrapFinishLine(S);
-      R := Rect(S.CurX, S.CurY, S.CurX + W, S.CurY + S.LineHeight);
-      LayoutAppendFragment(L, R, AW[J]);
-      S.CurX := S.CurX + W;
-      S.LineW := S.CurX - S.OriginX;
-    end;
-  end else begin
-    R := Rect(S.CurX, S.CurY, S.CurX + WW, S.CurY + S.LineHeight);
-    LayoutAppendFragment(L, R, AW);
-    S.CurX := S.CurX + WW;
-    S.LineW := S.CurX - S.OriginX;
+  if ABlk = nil then Exit;
+  if ABlk.Kind in [mbkEmpty, mbkHRule] then Exit;
+  if (ABlk.Kind = mbkBullet) and (ABlk.PrefixText <> '') then begin
+    R := Rect(ABlk.PrefixX, ABlk.LayoutTop,
+      ABlk.PrefixX + Max(1, ABlk.PrefixWidth),
+      ABlk.LayoutTop + Max(1, ABlk.LineHeight));
+    LayoutAppendFragment(L, R, ABlk.PrefixText);
   end;
-  RestoreCanvasFont(ACanvas, Saved);
+  for Li := 0 to High(ABlk.Lines) do begin
+    Line := ABlk.Lines[Li];
+    DocY := ABlk.LayoutTop + Line.Y;
+    for Fi := 0 to High(Line.Frags) do begin
+      Frag := Line.Frags[Fi];
+      W := Frag.Width;
+      if W <= 0 then begin
+        ApplyInlineRunFont(ACanvas, Frag.Style, []);
+        W := ACanvas.TextWidth(Frag.Text);
+        if W = 0 then
+          W := ACanvas.TextWidth(' ');
+      end;
+      R := Rect(Frag.X, DocY, Frag.X + W, DocY + Line.Height);
+      LayoutAppendFragment(L, R, Frag.Text);
+    end;
+  end;
+  LayoutAppendNewline(L);
 end;
 
-procedure LayoutWrappedRuns(ACanvas: TCanvas; var L: TSelectLayoutState;
-  const ARuns: TInlineRunArray; X, Y, AMaxWidth, ALineHeight: Integer; AMono: Boolean);
+procedure PaintLayoutLines(ACanvas: TCanvas; const ALines: TLayoutLineArray;
+  ABlockTop, AScrollY, AViewTop, AViewBottom: Integer;
+  ATextColor, ACodeBg: TColor; AFillInlineCode: Boolean;
+  const ABaseStyle: TFontStyles);
 var
-  RunIdx, I, W: Integer;
-  Word: string;
-  Ch: Char;
-  Style: TInlineStyle;
-  Saved: TCanvasFontSnapshot;
-  DS: TWrapDrawState;
-  FragR: TRect;
+  Li, Fi, ScreenY, DocY: Integer;
+  Held: TLayoutLineArray;
+  Line: TLayoutLine;
+  Frag: TLayoutFrag;
+  LastStyle: TInlineStyle;
+  FontSet: Boolean;
+  TR: TRect;
 begin
-  SaveCanvasFont(ACanvas, Saved);
-  if AMono then
-    ConfigureMonoFont(ACanvas, nil, ACanvas.Font.Size)
-  else
-    ACanvas.Font.Name := ThemedUiFontName;
-  DS.OriginX := X;
-  DS.MaxWidth := AMaxWidth;
-  DS.LineHeight := ALineHeight;
-  DS.CurX := X;
-  DS.CurY := Y;
-  DS.LineW := 0;
-  for RunIdx := 0 to High(ARuns) do begin
-    Word := '';
-    Style := ARuns[RunIdx].Style;
-    for I := 1 to Length(ARuns[RunIdx].Text) do begin
-      Ch := ARuns[RunIdx].Text[I];
-      if Ch <= ' ' then begin
-        LayoutWrapWord(ACanvas, L, DS, Word, Style);
-        Word := '';
-        if (Ch = ' ') and (DS.LineW > 0) then begin
-          W := MeasureRunSegmentWidth(ACanvas, ' ', Style);
-          if DS.CurX + W - X > AMaxWidth then
-            LayoutWrapFinishLine(DS)
-          else begin
-            FragR := Rect(DS.CurX, DS.CurY, DS.CurX + W, DS.CurY + DS.LineHeight);
-            LayoutAppendFragment(L, FragR, ' ');
-            DS.CurX := DS.CurX + W;
-          end;
-        end;
-      end else
-        Word := Word + Ch;
+  Held := ALines;
+  FontSet := False;
+  LastStyle := isNormal;
+  ACanvas.Font.Color := ATextColor;
+  for Li := 0 to High(Held) do begin
+    Line := Held[Li];
+    DocY := ABlockTop + Line.Y;
+    if DocY + Line.Height < AViewTop then Continue;
+    if DocY > AViewBottom then Break;
+    ScreenY := DocY - AScrollY;
+    for Fi := 0 to High(Line.Frags) do begin
+      Frag := Line.Frags[Fi];
+      if Frag.Text = '' then Continue;
+      if (not FontSet) or (Frag.Style <> LastStyle) then begin
+        ApplyInlineRunFont(ACanvas, Frag.Style, ABaseStyle);
+        ACanvas.Font.Color := ATextColor;
+        FontSet := True;
+        LastStyle := Frag.Style;
+      end;
+      if AFillInlineCode and (Frag.Style = isCode) then begin
+        TR := Rect(Frag.X, ScreenY, Frag.X + Frag.Width, ScreenY + Line.Height);
+        ACanvas.Brush.Style := bsSolid;
+        ACanvas.Brush.Color := ACodeBg;
+        ACanvas.FillRect(TR);
+      end;
+      ACanvas.Brush.Style := bsClear;
+      ACanvas.TextOut(Frag.X, ScreenY, Frag.Text);
     end;
-    LayoutWrapWord(ACanvas, L, DS, Word, Style);
-  end;
-  RestoreCanvasFont(ACanvas, Saved);
-end;
-
-procedure LayoutCodeBlockLines(ACanvas: TCanvas; var L: TSelectLayoutState;
-  const ABlockRect: TRect; APad, ABodySize: Integer; const ACode: string);
-var
-  Lines: TStringList;
-  I, LineH, LineY, LineW: Integer;
-  R: TRect;
-begin
-  ConfigureMonoFont(ACanvas, nil, ABodySize);
-  LineH := LineHeightForCanvas(ACanvas, nil);
-  Lines := TStringList.Create;
-  try
-    if ACode = '' then
-      Lines.Add('')
-    else
-      Lines.Text := ACode;
-    LineY := ABlockRect.Top + APad;
-    for I := 0 to Lines.Count - 1 do begin
-      LineW := ACanvas.TextWidth(Lines[I]);
-      if LineW = 0 then
-        LineW := ACanvas.TextWidth(' ');
-      R := Rect(ABlockRect.Left + APad, LineY, ABlockRect.Left + APad + LineW,
-        LineY + LineH);
-      LayoutAppendFragment(L, R, Lines[I]);
-      LineY := LineY + LineH;
-    end;
-  finally
-    Lines.Free;
   end;
 end;
 
@@ -851,14 +726,21 @@ begin
   FSelCaret := 0;
   FSelActive := False;
   FTextSelDrag := False;
+  FSelectLayoutValid := False;
   FParseInFence := False;
   FParseInList := False;
   FEphemeralThinkingVisible := False;
   FEphemeralThinkingBlock := nil;
+  FPainting := False;
+  FRelayoutQueued := False;
+  FPendingRebuild := False;
+  FPendingScrollToEnd := False;
 end;
 
 destructor TLcaMarkdownView.Destroy;
 begin
+  FRelayoutQueued := False;
+  Application.RemoveAsyncCalls(Self);
   FreeAndNil(FEphemeralThinkingBlock);
   FreeAndNil(FBlocks);
   inherited Destroy;
@@ -935,16 +817,56 @@ begin
     ScrollToEnd;
 end;
 
+function TLcaMarkdownView.ContentBusy: Boolean;
+begin
+  Result := FPainting or FLayoutGuard or (csDestroying in ComponentState);
+end;
+
+procedure TLcaMarkdownView.ScheduleDeferredRelayout;
+begin
+  if FRelayoutQueued then Exit;
+  if csDestroying in ComponentState then Exit;
+  FRelayoutQueued := True;
+  Application.QueueAsyncCall(@DeferredRelayout, PtrInt(Self));
+end;
+
+procedure TLcaMarkdownView.ApplyDeferredContent;
+begin
+  if not FPendingRebuild then Exit;
+  FPendingRebuild := False;
+  RebuildBlocksFromSource;
+end;
+
+procedure TLcaMarkdownView.DeferredRelayout(Data: PtrInt);
+begin
+  FRelayoutQueued := False;
+  if PtrInt(Self) <> Data then Exit;
+  if csDestroying in ComponentState then Exit;
+  if FPainting or FLayoutGuard then begin
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
+  ApplyDeferredContent;
+  RelayoutDocument;
+  if FPendingScrollToEnd then begin
+    FPendingScrollToEnd := False;
+    ApplyScrollPolicy(True);
+  end;
+  Invalidate;
+end;
+
 procedure TLcaMarkdownView.RebuildBlocksFromSource;
 var
-  NewBlocks: TObjectList;
+  NewBlocks, OldBlocks: TObjectList;
 begin
   NewBlocks := TObjectList.Create(True);
   ParseMarkdownSource(FSource, NewBlocks);
-  FreeAndNil(FBlocks);
+  OldBlocks := FBlocks;
   FBlocks := NewBlocks;
+  OldBlocks.Free;
   FParseInFence := False;
   FParseInList := False;
+  InvalidateSelectionLayout;
 end;
 
 procedure TLcaMarkdownView.ParseAppendToBlocks(const ALines: TStrings; AStartLineIndex: Integer);
@@ -973,6 +895,11 @@ begin
     end;
   end;
   ClearTextSelection;
+  if ContentBusy then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
   RelayoutEphemeralTail;
   if FAutoScrollToEnd and FStickToBottom then
     ScrollToEnd;
@@ -982,12 +909,23 @@ end;
 procedure TLcaMarkdownView.AppendMarkdownTail(const ADelta: string; AScrollToEndAfter: Boolean);
 var
   Lines: TStringList;
-  OldCount: Integer;
+  StartIdx: Integer;
 begin
   if ADelta = '' then Exit;
   ClearTextSelection;
   FSource := FSource + ADelta;
-  OldCount := FBlocks.Count;
+  if AScrollToEndAfter then
+    FPendingScrollToEnd := True;
+  if ContentBusy then begin
+    FPendingRebuild := True;
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    LcaUiProfileRecordMarkdownRender;
+    Exit;
+  end;
+  StartIdx := FBlocks.Count;
+  if StartIdx > 0 then
+    Dec(StartIdx);
   Lines := TStringList.Create;
   try
     Lines.Text := ADelta;
@@ -995,8 +933,10 @@ begin
   finally
     Lines.Free;
   end;
-  RelayoutDocumentFrom(OldCount);
+  RelayoutDocumentFrom(StartIdx);
   ApplyScrollPolicy(AScrollToEndAfter);
+  if AScrollToEndAfter then
+    FPendingScrollToEnd := False;
   Invalidate;
   LcaUiProfileRecordMarkdownRender;
 end;
@@ -1008,14 +948,23 @@ end;
 
 procedure TLcaMarkdownView.RelayoutDocumentFrom(AStartBlockIndex: Integer);
 var
-  Pass, Y, BodySize, LineH, CodePad, W, BulletInd: Integer;
+  Pass, Y, BodySize, LineH, CodePad, W, BulletInd, Pad, FromIdx: Integer;
   OldScroll: Integer;
   Blk: TMarkdownBlockObj;
   BlockLineH: Integer;
 
   procedure MeasureOneBlock(ABlk: TMarkdownBlockObj);
+  var
+    H: Integer;
+    NewLines: TLayoutLineArray;
   begin
     if ABlk = nil then Exit;
+    NewLines := nil;
+    SetLength(NewLines, 0);
+    ABlk.PrefixText := '';
+    ABlk.PrefixWidth := 0;
+    ABlk.PrefixX := Pad;
+    ABlk.LineHeight := LineH;
     case ABlk.Kind of
       mbkEmpty:
         ABlk.CalculatedHeight := ScaledLayoutMetric(Self, LCA_MD_EMPTY_BLOCK_BASE);
@@ -1024,38 +973,52 @@ var
       mbkCode:
         begin
           ConfigureMonoFont(Canvas, Self, BodySize);
-          ABlk.CalculatedHeight := MeasureCodeBlockHeight(Canvas, ABlk.CodeText, W - 2 * CodePad,
-            CodePad, LineHeightForCanvas(Canvas, Self));
+          ABlk.LineHeight := LineHeightForCanvas(Canvas, Self);
+          LayoutCodeBlockLines(ABlk.CodeText, Pad, CodePad, ABlk.LineHeight, NewLines, H);
+          ABlk.CalculatedHeight := H;
           ConfigureBodyFont(Canvas, Self, BodySize);
         end;
       mbkHeading:
         begin
           Canvas.Font.Style := [fsBold];
           Canvas.Font.Size := BodySize + Max(0, 4 - ABlk.HeadingLevel);
-          ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W,
-            LineHeightForCanvas(Canvas, Self), False);
+          ABlk.LineHeight := LineHeightForCanvas(Canvas, Self);
+          LayoutWrapRuns(Canvas, NewLines, ABlk.Runs, Pad, W,
+            ABlk.LineHeight, [fsBold], H);
+          ABlk.CalculatedHeight := H;
           ConfigureBodyFont(Canvas, Self, BodySize);
         end;
       mbkBullet:
-        ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs,
-          W - BulletInd, LineH, False);
+        begin
+          ABlk.PrefixText := LCA_MD_BULLET;
+          ABlk.PrefixWidth := Canvas.TextWidth(LCA_MD_BULLET);
+          LayoutWrapRuns(Canvas, NewLines, ABlk.Runs, Pad + BulletInd,
+            W - BulletInd, LineH, [], H);
+          ABlk.CalculatedHeight := H;
+        end;
       mbkThinking:
         begin
           Canvas.Font.Style := [fsItalic];
-          ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W, LineH, False);
+          LayoutWrapRuns(Canvas, NewLines, ABlk.Runs, Pad, W, LineH, [fsItalic], H);
+          ABlk.CalculatedHeight := H;
           ConfigureBodyFont(Canvas, Self, BodySize);
         end;
       mbkTool:
         begin
           Canvas.Font.Size := Max(8, BodySize - 1);
           BlockLineH := LineHeightForCanvas(Canvas, Self);
-          ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W,
-            BlockLineH, False);
+          ABlk.LineHeight := BlockLineH;
+          LayoutWrapRuns(Canvas, NewLines, ABlk.Runs, Pad, W, BlockLineH, [], H);
+          ABlk.CalculatedHeight := H;
           ConfigureBodyFont(Canvas, Self, BodySize);
         end;
       mbkParagraph:
-        ABlk.CalculatedHeight := MeasureWrappedRunsHeight(Canvas, ABlk.Runs, W, LineH, False);
+        begin
+          LayoutWrapRuns(Canvas, NewLines, ABlk.Runs, Pad, W, LineH, [], H);
+          ABlk.CalculatedHeight := H;
+        end;
     end;
+    ABlk.Lines := NewLines;
   end;
 
   procedure MeasureBlocksFrom(AFromIndex: Integer);
@@ -1070,7 +1033,7 @@ var
       Y := Blk.LayoutTop + Blk.CalculatedHeight +
         ScaledLayoutMetric(Self, LCA_MD_LINE_EXTRA_BASE);
     end else
-      Y := ContentPad;
+      Y := Pad;
     for BlockIdx := AFromIndex to FBlocks.Count - 1 do begin
       Blk := TMarkdownBlockObj(FBlocks[BlockIdx]);
       MeasureOneBlock(Blk);
@@ -1084,11 +1047,16 @@ var
       Y := Y + EphBlk.CalculatedHeight +
         ScaledLayoutMetric(Self, LCA_MD_LINE_EXTRA_BASE);
     end;
-    FContentHeight := Y + ContentPad;
+    FContentHeight := Y + Pad;
   end;
 
 begin
   if not Assigned(FBlocks) or FLayoutGuard then Exit;
+  if FPainting then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
   if AStartBlockIndex < 0 then
     AStartBlockIndex := 0;
   if AStartBlockIndex > FBlocks.Count then
@@ -1104,24 +1072,28 @@ begin
   BodySize := ThemedMarkdownBodyFontSize(Self);
   CodePad := ScaledLayoutMetric(Self, LCA_MD_CODE_PAD_BASE);
   BulletInd := ScaledLayoutMetric(Self, LCA_MD_BULLET_INDENT_BASE);
-  FShowVBar := False;
+  Pad := ContentPad;
+  FromIdx := AStartBlockIndex;
+  if FromIdx = 0 then
+    FShowVBar := False;
   for Pass := 0 to 1 do begin
     W := TextAreaWidth;
     FLayoutTextWidth := W;
-    MeasureBlocksFrom(AStartBlockIndex);
+    MeasureBlocksFrom(FromIdx);
     if FContentHeight <= ClientHeight then begin
       FShowVBar := False;
       Break;
     end;
-    FShowVBar := True;
-    if Pass = 1 then
+    if FShowVBar then
       Break;
+    FShowVBar := True;
+    FromIdx := 0;
   end;
   ClampScroll;
   if (OldScroll <> FScrollY) and not (FAutoScrollToEnd and FStickToBottom) then
     ; // keep user scroll
   UpdateStickToBottomFromScroll;
-  BuildSelectionLayout;
+  InvalidateSelectionLayout;
   FLayoutGuard := False;
 end;
 
@@ -1129,6 +1101,7 @@ procedure TLcaMarkdownView.RelayoutEphemeralTail;
 var
   FromIdx: Integer;
 begin
+  if not Assigned(FBlocks) then Exit;
   if (FBlocks.Count > 0) and FEphemeralThinkingVisible then
     FromIdx := FBlocks.Count - 1
   else
@@ -1144,13 +1117,24 @@ begin
   FTextSelDrag := False;
 end;
 
+procedure TLcaMarkdownView.InvalidateSelectionLayout;
+begin
+  FSelectLayoutValid := False;
+end;
+
+procedure TLcaMarkdownView.EnsureSelectionLayout;
+begin
+  if FSelectLayoutValid then Exit;
+  BuildSelectionLayout;
+  FSelectLayoutValid := True;
+end;
+
 procedure TLcaMarkdownView.BuildSelectionLayout;
 var
   L: TSelectLayoutState;
-  I, X, Y, W, BodySize, LineH, CodePad, BulletInd: Integer;
+  I: Integer;
   B: TMarkdownBlockObj;
-  BlockRect: TRect;
-  BulletR: TRect;
+  BodySize: Integer;
 begin
   L.Plain := '';
   SetLength(L.Frags, 0);
@@ -1161,67 +1145,28 @@ begin
   end;
   BodySize := ThemedMarkdownBodyFontSize(Self);
   ConfigureBodyFont(Canvas, Self, BodySize);
-  LineH := LineHeightForCanvas(Canvas, Self);
-  CodePad := ScaledLayoutMetric(Self, LCA_MD_CODE_PAD_BASE);
-  BulletInd := ScaledLayoutMetric(Self, LCA_MD_BULLET_INDENT_BASE);
-  W := TextAreaWidth;
-  X := ContentPad;
   for I := 0 to FBlocks.Count - 1 do begin
     B := TMarkdownBlockObj(FBlocks[I]);
     if B = nil then Continue;
-    Y := B.LayoutTop;
-    case B.Kind of
-      mbkEmpty, mbkHRule:
-        Continue;
-      mbkCode:
-        begin
-          BlockRect := Rect(X, Y, X + W, Y + B.CalculatedHeight);
-          LayoutCodeBlockLines(Canvas, L, BlockRect, CodePad, BodySize, B.CodeText);
-          LayoutAppendNewline(L);
-        end;
-      mbkHeading:
-        begin
-          Canvas.Font.Style := [fsBold];
-          Canvas.Font.Size := BodySize + Max(0, 4 - B.HeadingLevel);
-          LayoutWrappedRuns(Canvas, L, B.Runs, X, Y, W, LineHeightForCanvas(Canvas, Self), False);
-          ConfigureBodyFont(Canvas, Self, BodySize);
-          LayoutAppendNewline(L);
-        end;
-      mbkBullet:
-        begin
-          BulletR := Rect(X, Y, X + Canvas.TextWidth(#8226), Y + LineH);
-          LayoutAppendFragment(L, BulletR, #8226);
-          LayoutWrappedRuns(Canvas, L, B.Runs, X + BulletInd, Y, W - BulletInd, LineH, False);
-          LayoutAppendNewline(L);
-        end;
-      mbkThinking:
-        begin
-          Canvas.Font.Style := [fsItalic];
-          LayoutWrappedRuns(Canvas, L, B.Runs, X, Y, W, LineH, False);
-          ConfigureBodyFont(Canvas, Self, BodySize);
-          LayoutAppendNewline(L);
-        end;
-      mbkTool:
-        begin
-          Canvas.Font.Size := Max(8, BodySize - 1);
-          LayoutWrappedRuns(Canvas, L, B.Runs, X, Y, W, LineH, False);
-          ConfigureBodyFont(Canvas, Self, BodySize);
-          LayoutAppendNewline(L);
-        end;
-      mbkParagraph:
-        begin
-          LayoutWrappedRuns(Canvas, L, B.Runs, X, Y, W, LineH, False);
-          LayoutAppendNewline(L);
-        end;
-    end;
+    if B.Kind = mbkCode then
+      ConfigureMonoFont(Canvas, Self, BodySize)
+    else if B.Kind = mbkHeading then begin
+      Canvas.Font.Style := [fsBold];
+      Canvas.Font.Size := BodySize + Max(0, 4 - B.HeadingLevel);
+    end else if B.Kind = mbkThinking then
+      Canvas.Font.Style := [fsItalic]
+    else if B.Kind = mbkTool then
+      Canvas.Font.Size := Max(8, BodySize - 1)
+    else
+      ConfigureBodyFont(Canvas, Self, BodySize);
+    AppendBlockToSelection(Canvas, L, B);
+    ConfigureBodyFont(Canvas, Self, BodySize);
   end;
   if FEphemeralThinkingVisible and Assigned(FEphemeralThinkingBlock) then begin
     B := TMarkdownBlockObj(FEphemeralThinkingBlock);
-    Y := B.LayoutTop;
     Canvas.Font.Style := [fsItalic];
-    LayoutWrappedRuns(Canvas, L, B.Runs, X, Y, W, LineH, False);
+    AppendBlockToSelection(Canvas, L, B);
     ConfigureBodyFont(Canvas, Self, BodySize);
-    LayoutAppendNewline(L);
   end;
   FPlainText := L.Plain;
   FSelectFrags := L.Frags;
@@ -1250,6 +1195,7 @@ function TLcaMarkdownView.SelectedPlainText: string;
 var
   Lo, Hi: Integer;
 begin
+  EnsureSelectionLayout;
   if not SelectionBounds(Lo, Hi) or (Lo >= Hi) then
     Exit('');
   Result := Copy(FPlainText, Lo + 1, Hi - Lo);
@@ -1262,6 +1208,7 @@ var
   BestDist, Dist, DY: Integer;
   BestIdx: Integer;
 begin
+  EnsureSelectionLayout;
   if Length(FSelectFrags) = 0 then
     Exit(0);
   DocX := AX;
@@ -1312,12 +1259,18 @@ var
   Lo, Hi, I, SelStartInFrag, SelEndInFrag, LeftW, RightW: Integer;
   F: TSelectFragRec;
   R: TRect;
+  ViewTop, ViewBottom: Integer;
 begin
   if not SelectionBounds(Lo, Hi) or (Lo >= Hi) then Exit;
+  EnsureSelectionLayout;
+  ViewTop := FScrollY;
+  ViewBottom := FScrollY + ClientHeight;
+  ACanvas.Brush.Style := bsSolid;
   ACanvas.Brush.Color := P.AccentActive;
   ACanvas.Pen.Style := psClear;
   for I := 0 to High(FSelectFrags) do begin
     F := FSelectFrags[I];
+    if (F.DocRect.Bottom < ViewTop) or (F.DocRect.Top > ViewBottom) then Continue;
     if (F.StartIdx + Length(F.Text) <= Lo) or (F.StartIdx >= Hi) then Continue;
     SelStartInFrag := Max(0, Lo - F.StartIdx);
     SelEndInFrag := Min(Length(F.Text), Hi - F.StartIdx);
@@ -1334,6 +1287,7 @@ begin
     ACanvas.FillRect(R);
   end;
   ACanvas.Pen.Style := psSolid;
+  ACanvas.Brush.Style := bsClear;
 end;
 
 procedure TLcaMarkdownView.CopySelectionToClipboard;
@@ -1347,6 +1301,7 @@ end;
 
 procedure TLcaMarkdownView.SelectAllText;
 begin
+  EnsureSelectionLayout;
   FSelAnchor := 0;
   FSelCaret := Length(FPlainText);
   FSelActive := FSelCaret > 0;
@@ -1357,6 +1312,7 @@ procedure TLcaMarkdownView.SelectWordAt(AIndex: Integer);
 var
   Lo, Hi: Integer;
 begin
+  EnsureSelectionLayout;
   if FPlainText = '' then Exit;
   if AIndex < 0 then AIndex := 0;
   if AIndex > Length(FPlainText) then AIndex := Length(FPlainText);
@@ -1392,20 +1348,29 @@ end;
 
 procedure TLcaMarkdownView.Clear;
 var
-  Empty: TObjectList;
+  Empty, OldBlocks: TObjectList;
 begin
   FSource := '';
   FParseInFence := False;
   FParseInList := False;
   FEphemeralThinkingVisible := False;
+  FPendingRebuild := True;
+  ClearTextSelection;
+  if ContentBusy then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
+  FPendingRebuild := False;
   Empty := TObjectList.Create(True);
-  FreeAndNil(FBlocks);
+  OldBlocks := FBlocks;
   FBlocks := Empty;
+  OldBlocks.Free;
   FContentHeight := ContentPad * 2;
   FScrollY := 0;
   FStickToBottom := True;
   FNeedsLayout := False;
-  ClearTextSelection;
+  InvalidateSelectionLayout;
   Invalidate;
 end;
 
@@ -1414,6 +1379,14 @@ begin
   ClearTextSelection;
   FEphemeralThinkingVisible := False;
   FSource := AText;
+  FPendingRebuild := True;
+  if ContentBusy then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    LcaUiProfileRecordMarkdownRender;
+    Exit;
+  end;
+  FPendingRebuild := False;
   RebuildBlocksFromSource;
   RelayoutDocument;
   ApplyScrollPolicy(False);
@@ -1428,9 +1401,15 @@ end;
 
 procedure TLcaMarkdownView.SetMarkdown(const AMarkdown: string; AScrollToEndAfterRender: Boolean);
 begin
-  SetMarkdownText(AMarkdown);
   if AScrollToEndAfterRender then
+    FPendingScrollToEnd := True;
+  SetMarkdownText(AMarkdown);
+  if AScrollToEndAfterRender then begin
+    if ContentBusy then
+      Exit;
+    FPendingScrollToEnd := False;
     ApplyScrollPolicy(True);
+  end;
 end;
 
 procedure TLcaMarkdownView.ScrollToEndIfAutoScroll;
@@ -1441,6 +1420,11 @@ end;
 
 procedure TLcaMarkdownView.RequestRender;
 begin
+  if ContentBusy then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
   RelayoutDocument;
   Invalidate;
 end;
@@ -1541,67 +1525,58 @@ begin
     PaintScrollbarThumb(Canvas, ThumbR, P);
 end;
 
-procedure TLcaMarkdownView.PaintCodeBlockLines(ACanvas: TCanvas; const ABlockRect: TRect;
-  APad, ABodySize: Integer; const P: TThemePalette; const ACode: string);
+function TLcaMarkdownView.FirstVisibleBlockIndex(AViewTop: Integer): Integer;
 var
-  Lines: TStringList;
-  I, LineY, LineH: Integer;
-  ClipR: TRect;
-  SavedClip: TRect;
+  Lo, Hi, Mid: Integer;
+  B: TMarkdownBlockObj;
 begin
-  ConfigureMonoFont(ACanvas, Self, ABodySize);
-  ACanvas.Font.Color := P.Text;
-  LineH := LineHeightForCanvas(ACanvas, Self);
-  ClipR := Rect(ABlockRect.Left + APad, ABlockRect.Top + APad,
-    ABlockRect.Right - APad, ABlockRect.Bottom - APad);
-  SavedClip := ACanvas.ClipRect;
-  ACanvas.ClipRect := ClipR;
-  Lines := TStringList.Create;
-  try
-    if ACode = '' then
-      Lines.Add('')
-    else
-      Lines.Text := ACode;
-    LineY := ClipR.Top;
-    for I := 0 to Lines.Count - 1 do begin
-      if LineY + LineH > ClipR.Bottom then
-        Break;
-      ACanvas.TextOut(ClipR.Left, LineY, Lines[I]);
-      LineY := LineY + LineH;
+  Result := 0;
+  if not Assigned(FBlocks) then Exit;
+  Result := FBlocks.Count;
+  if FBlocks.Count = 0 then Exit;
+  Lo := 0;
+  Hi := FBlocks.Count - 1;
+  while Lo <= Hi do begin
+    Mid := (Lo + Hi) div 2;
+    B := TMarkdownBlockObj(FBlocks[Mid]);
+    if (B <> nil) and (B.LayoutTop + B.CalculatedHeight < AViewTop) then
+      Lo := Mid + 1
+    else begin
+      Result := Mid;
+      Hi := Mid - 1;
     end;
-  finally
-    Lines.Free;
-    ACanvas.ClipRect := SavedClip;
   end;
 end;
 
 procedure TLcaMarkdownView.PaintDocument(ACanvas: TCanvas; const P: TThemePalette);
 var
-  I, X, Y, W, BodySize, LineH, CodePad, BulletInd: Integer;
+  I, X, Y, W, BodySize, LineH: Integer;
   B: TMarkdownBlockObj;
   ViewTop, ViewBottom: Integer;
-  BlockRect: TRect;
+  BlockRect, VisRect: TRect;
   TextColor: TColor;
   SavedClip: TRect;
+  SavedBrush: TBrushStyle;
 begin
   if not Assigned(FBlocks) then Exit;
   BodySize := ThemedMarkdownBodyFontSize(Self);
   ConfigureBodyFont(ACanvas, Self, BodySize);
   LineH := LineHeightForCanvas(ACanvas, Self);
-  CodePad := ScaledLayoutMetric(Self, LCA_MD_CODE_PAD_BASE);
-  BulletInd := ScaledLayoutMetric(Self, LCA_MD_BULLET_INDENT_BASE);
   W := TextAreaWidth;
   X := ContentPad;
-  ViewTop := FScrollY;
+  ViewTop := FScrollY - LineH;
   ViewBottom := FScrollY + ClientHeight;
   SavedClip := ACanvas.ClipRect;
+  SavedBrush := ACanvas.Brush.Style;
   ACanvas.ClipRect := ClientRect;
   PaintTextSelection(ACanvas, P);
-  for I := 0 to FBlocks.Count - 1 do begin
+  I := FirstVisibleBlockIndex(FScrollY);
+  while I < FBlocks.Count do begin
     B := TMarkdownBlockObj(FBlocks[I]);
+    Inc(I);
     if B = nil then Continue;
-    if (B.LayoutTop + B.CalculatedHeight < ViewTop) or (B.LayoutTop > ViewBottom) then
-      Continue;
+    if B.LayoutTop > ViewBottom then Break;
+    if B.LayoutTop + B.CalculatedHeight < ViewTop then Continue;
     Y := B.LayoutTop - FScrollY;
     case B.Kind of
       mbkEmpty:
@@ -1617,11 +1592,18 @@ begin
       mbkCode:
         begin
           BlockRect := Rect(X, Y, X + W, Y + B.CalculatedHeight);
-          ACanvas.Brush.Color := P.SurfaceAlt;
-          ACanvas.FillRect(BlockRect);
-          ACanvas.Pen.Color := P.Border;
-          ACanvas.Rectangle(BlockRect);
-          PaintCodeBlockLines(ACanvas, BlockRect, CodePad, BodySize, P, B.CodeText);
+          VisRect := Rect(0, 0, 0, 0);
+          if IntersectRect(VisRect, BlockRect, ClientRect) then begin
+            ACanvas.Brush.Style := bsSolid;
+            ACanvas.Brush.Color := P.SurfaceAlt;
+            ACanvas.FillRect(VisRect);
+            ACanvas.Pen.Color := P.Border;
+            ACanvas.Rectangle(BlockRect);
+          end;
+          ConfigureMonoFont(ACanvas, Self, BodySize);
+          PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+            P.Text, P.SurfaceAlt, False, []);
+          ConfigureBodyFont(ACanvas, Self, BodySize);
         end;
       mbkHeading:
         begin
@@ -1629,24 +1611,26 @@ begin
           ACanvas.Font.Style := [fsBold];
           ACanvas.Font.Size := BodySize + Max(0, 4 - B.HeadingLevel);
           ACanvas.Font.Color := TextColor;
-          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineHeightForCanvas(ACanvas, Self), TextColor,
-            P.SurfaceAlt, False);
+          PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+            TextColor, P.SurfaceAlt, True, [fsBold]);
           ConfigureBodyFont(ACanvas, Self, BodySize);
         end;
       mbkBullet:
         begin
           TextColor := P.Text;
           ACanvas.Font.Color := TextColor;
-          ACanvas.TextOut(X, Y, #8226);
-          DrawWrappedRuns(ACanvas, B.Runs, X + BulletInd, Y, W - BulletInd, LineH,
-            TextColor, P.SurfaceAlt, False);
+          ACanvas.Brush.Style := bsClear;
+          ACanvas.TextOut(B.PrefixX, Y, B.PrefixText);
+          PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+            TextColor, P.SurfaceAlt, True, []);
         end;
       mbkThinking:
         begin
           TextColor := ChatLabelTextColor(P, B.ChatLabelRole);
           ACanvas.Font.Style := [fsItalic];
           ACanvas.Font.Color := TextColor;
-          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+          PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+            TextColor, P.SurfaceAlt, True, [fsItalic]);
           ConfigureBodyFont(ACanvas, Self, BodySize);
         end;
       mbkTool:
@@ -1654,28 +1638,31 @@ begin
           TextColor := ChatLabelTextColor(P, B.ChatLabelRole);
           ACanvas.Font.Size := Max(8, BodySize - 1);
           ACanvas.Font.Color := TextColor;
-          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+          PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+            TextColor, P.SurfaceAlt, True, []);
           ConfigureBodyFont(ACanvas, Self, BodySize);
         end;
       mbkParagraph:
         begin
           TextColor := P.Text;
           ACanvas.Font.Color := TextColor;
-          DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+          PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+            TextColor, P.SurfaceAlt, True, []);
         end;
     end;
   end;
   if FEphemeralThinkingVisible and Assigned(FEphemeralThinkingBlock) then begin
     B := TMarkdownBlockObj(FEphemeralThinkingBlock);
     if not ((B.LayoutTop + B.CalculatedHeight < ViewTop) or (B.LayoutTop > ViewBottom)) then begin
-      Y := B.LayoutTop - FScrollY;
       TextColor := ChatLabelTextColor(P, B.ChatLabelRole);
       ACanvas.Font.Style := [fsItalic];
       ACanvas.Font.Color := TextColor;
-      DrawWrappedRuns(ACanvas, B.Runs, X, Y, W, LineH, TextColor, P.SurfaceAlt, False);
+      PaintLayoutLines(ACanvas, B.Lines, B.LayoutTop, FScrollY, ViewTop, ViewBottom,
+        TextColor, P.SurfaceAlt, True, [fsItalic]);
       ConfigureBodyFont(ACanvas, Self, BodySize);
     end;
   end;
+  ACanvas.Brush.Style := SavedBrush;
   ACanvas.ClipRect := SavedClip;
 end;
 
@@ -1702,18 +1689,22 @@ var
 begin
   T0 := GetTickCount64;
   P := EffectivePalette;
-  PaintThemedClient(ClientRect, P);
-  if LcaInDesignContext(Self) and (csDesigning in ComponentState) then begin
-    Canvas.Font.Color := P.TextMuted;
-    Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(4, 4, ClassName);
-  end else begin
-    if Assigned(FBlocks) and (FBlocks.Count > 0) and not FLayoutGuard then
-      if FNeedsLayout or (FContentHeight <= ContentPad * 2) then
-        RelayoutDocument;
-    PaintDocument(Canvas, P);
-    PaintScrollbar(P);
+  FPainting := True;
+  try
+    PaintThemedClient(ClientRect, P);
+    if LcaInDesignContext(Self) and (csDesigning in ComponentState) then begin
+      Canvas.Font.Color := P.TextMuted;
+      Canvas.Brush.Style := bsClear;
+      Canvas.TextOut(4, 4, ClassName);
+    end else if not FLayoutGuard then begin
+      PaintDocument(Canvas, P);
+      PaintScrollbar(P);
+    end;
+  finally
+    FPainting := False;
   end;
+  if FNeedsLayout then
+    ScheduleDeferredRelayout;
   Elapsed := GetTickCount64 - T0;
   LcaUiProfileRecordThemedPaint(Elapsed);
 end;
@@ -1721,6 +1712,11 @@ end;
 procedure TLcaMarkdownView.Resize;
 begin
   inherited Resize;
+  if ContentBusy then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
   RelayoutDocument;
   Invalidate;
 end;
@@ -1728,6 +1724,11 @@ end;
 procedure TLcaMarkdownView.ChangeScale(M, D: Integer);
 begin
   inherited ChangeScale(M, D);
+  if ContentBusy then begin
+    FNeedsLayout := True;
+    ScheduleDeferredRelayout;
+    Exit;
+  end;
   RelayoutDocument;
 end;
 
@@ -1779,7 +1780,7 @@ end;
 
 procedure TLcaMarkdownView.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
-  TrackR, ThumbR: TRect;
+  TrackR: TRect;
   MaxS, ThumbH, NewTop: Integer;
 begin
   inherited MouseMove(Shift, X, Y);
