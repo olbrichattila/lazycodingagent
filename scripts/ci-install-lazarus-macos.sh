@@ -27,6 +27,27 @@ PRIMARY_CONFIG="$WORKDIR/primary-config"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$WORKDIR"
 
+# shellcheck disable=SC1091
+source "$SCRIPT_DIR/ci-lazbuild.sh"
+
+expected_fpc_cpu_for_ci() {
+  case "$CI_MACOS_ARCH" in
+    aarch64) echo aarch64 ;;
+    x86_64) echo x86_64 ;;
+    *) echo "$CI_MACOS_ARCH" ;;
+  esac
+}
+
+fpc_matches_ci_arch() {
+  if ! command -v fpc >/dev/null 2>&1; then
+    return 1
+  fi
+  local expected actual
+  expected="$(expected_fpc_cpu_for_ci)"
+  actual="$(fpc -iPA 2>/dev/null || true)"
+  [[ "$actual" == "$expected" ]]
+}
+
 download() {
   local url="$1" dest="$2"
   if [[ -f "$dest" ]]; then
@@ -36,9 +57,12 @@ download() {
 }
 
 install_fpc_from_dmg() {
-  if command -v fpc >/dev/null 2>&1; then
-    echo "ci-install-lazarus-macos: fpc already on PATH ($(fpc -iV 2>/dev/null || true)), skipping FPC DMG"
+  if fpc_matches_ci_arch; then
+    echo "ci-install-lazarus-macos: fpc on PATH matches CI_MACOS_ARCH=$CI_MACOS_ARCH ($(fpc -iV 2>/dev/null || true)), skipping FPC DMG"
     return 0
+  fi
+  if command -v fpc >/dev/null 2>&1; then
+    echo "ci-install-lazarus-macos: fpc CPU $(fpc -iPA 2>/dev/null || true) does not match CI_MACOS_ARCH=$CI_MACOS_ARCH, installing from DMG"
   fi
 
   echo "ci-install-lazarus-macos: installing FPC from $FPC_DMG"
@@ -98,6 +122,8 @@ export LAZARUS_PRIMARY_CONFIG="$PRIMARY_CONFIG"
 export LCL_WIDGETSET=cocoa
 export PATH="$LAZARUS_ROOT:/usr/local/bin:${PATH}"
 
+ci_darwin_apply_fpc_linker_env
+
 "$SCRIPT_DIR/ci-lazbuild.sh" --version
 
 if [[ -n "${GITHUB_ENV:-}" ]]; then
@@ -107,6 +133,9 @@ if [[ -n "${GITHUB_ENV:-}" ]]; then
     echo "LAZARUS_PRIMARY_CONFIG=$PRIMARY_CONFIG"
     echo "LCL_WIDGETSET=cocoa"
     echo "PATH=$LAZARUS_ROOT:/usr/local/bin:${PATH}"
+    if [[ -n "${FPCOPT:-}" ]]; then
+      echo "FPCOPT=$FPCOPT"
+    fi
   } >>"$GITHUB_ENV"
 fi
 

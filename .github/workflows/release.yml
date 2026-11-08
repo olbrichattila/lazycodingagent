@@ -241,7 +241,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/lazarus-ci-aarch64
-          key: macos-lazarus-4.8-aarch64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh') }}
+          key: macos-lazarus-4.8-aarch64-${{ hashFiles('scripts/ci-install-lazarus-macos.sh', 'scripts/ci-lazbuild.sh') }}
+
+      - name: Xcode / SDK (linker diagnostics)
+        run: |
+          xcodebuild -version
+          xcrun --show-sdk-path
+          if [[ -d /Applications/Xcode.app/Contents/Developer ]]; then
+            sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          fi
 
       - name: Install Free Pascal and Lazarus (SourceForge)
         run: |
