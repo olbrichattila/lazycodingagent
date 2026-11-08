@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Download CI Lazarus/FPC artifacts into tools/lazarus-artifacts/.
+# Portable Bash (3.2+ on macOS CI); avoid Bash 4-only builtins such as mapfile.
 # Usage: prefetch-lazarus-ci-artifacts.sh [target-id ...]
 set -euo pipefail
 
@@ -12,7 +13,10 @@ mkdir -p "$OUT_DIR"
 
 TARGETS=("$@")
 if [[ ${#TARGETS[@]} -eq 0 ]]; then
-  mapfile -t TARGETS < <(python3 - "$MANIFEST" <<'PY'
+  TARGETS=()
+  while IFS= read -r line; do
+    TARGETS+=("$line")
+  done < <(python3 - "$MANIFEST" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as f:
     data = json.load(f)
@@ -23,7 +27,10 @@ PY
 fi
 
 for tid in "${TARGETS[@]}"; do
-  mapfile -t FILES < <(python3 - "$MANIFEST" "$tid" <<'PY'
+  FILES=()
+  while IFS= read -r line; do
+    FILES+=("$line")
+  done < <(python3 - "$MANIFEST" "$tid" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as f:
     data = json.load(f)

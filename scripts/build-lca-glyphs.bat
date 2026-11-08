@@ -6,7 +6,9 @@ set "OUT_RES=%ROOT%\packages\LcaDesignSystem\res\lca_design_glyphs.res"
 
 set "LAZRES="
 if defined LAZRES goto :have_lazres
-if exist "C:\lazarus\tools\lazres.exe" set "LAZRES=C:\lazarus\tools\lazres.exe"
+if defined LAZARUS_DIR if exist "%LAZARUS_DIR%\tools\lazres.exe" set "LAZRES=%LAZARUS_DIR%\tools\lazres.exe"
+if not defined LAZRES if defined LAZBUILD for %%I in ("%LAZBUILD%") do if exist "%%~dpItools\lazres.exe" set "LAZRES=%%~dpItools\lazres.exe"
+if not defined LAZRES if exist "C:\lazarus\tools\lazres.exe" set "LAZRES=C:\lazarus\tools\lazres.exe"
 if not defined LAZRES if exist "C:\Program Files\Lazarus\tools\lazres.exe" set "LAZRES=C:\Program Files\Lazarus\tools\lazres.exe"
 :have_lazres
 if not defined LAZRES (

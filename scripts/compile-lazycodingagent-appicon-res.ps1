@@ -48,6 +48,23 @@ function Find-FpcWindres {
             return $p
         }
     }
+    $globs = @()
+    if ($env:LAZARUS_DIR) {
+        $globs += Join-Path $env:LAZARUS_DIR 'fpc\*\bin\x86_64-win64\windres.exe'
+    }
+    if ($env:LAZBUILD) {
+        $lazRoot = Split-Path -Parent $env:LAZBUILD
+        $globs += Join-Path $lazRoot 'fpc\*\bin\x86_64-win64\windres.exe'
+    }
+    $globs += 'C:\lazarus\fpc\*\bin\x86_64-win64\windres.exe'
+    foreach ($pattern in $globs) {
+        $found = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue |
+            Sort-Object { $_.FullName } -Descending |
+            Select-Object -First 1
+        if ($found) {
+            return $found.FullName
+        }
+    }
     return $null
 }
 

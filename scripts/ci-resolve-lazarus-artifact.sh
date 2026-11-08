@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Resolve a CI Lazarus/FPC blob: optional repo cache -> workdir -> SourceForge.
+# Portable Bash (3.2+ on macOS CI); avoid Bash 4-only builtins such as mapfile.
 # Usage: ci-resolve-lazarus-artifact.sh <target-id> <filename> <dest-path>
 set -euo pipefail
 
@@ -38,10 +39,14 @@ PY
 }
 
 export MANIFEST
-mapfile -t _meta < <(read_manifest)
-SF_BASE="${LAZARUS_SF_MIRROR:-${_meta[0]}}"
-MIN_BYTES="${_meta[1]:-0}"
-VALIDATE_MZ="${_meta[2]:-0}"
+{
+  IFS= read -r SF_BASE
+  IFS= read -r MIN_BYTES
+  IFS= read -r VALIDATE_MZ
+} < <(read_manifest)
+SF_BASE="${LAZARUS_SF_MIRROR:-$SF_BASE}"
+MIN_BYTES="${MIN_BYTES:-0}"
+VALIDATE_MZ="${VALIDATE_MZ:-0}"
 
 WORKDIR="${CI_LAZARUS_WORKDIR:-${RUNNER_TEMP:-/tmp}/lazarus-ci-unknown}"
 case "$TARGET_ID" in

@@ -13,7 +13,9 @@ python "%~dp0write_bmp_ico.py" "%PNG%" "%BMP%" 128
 if errorlevel 1 exit /b 1
 
 set "LAZRES="
-if exist "C:\lazarus\tools\lazres.exe" set "LAZRES=C:\lazarus\tools\lazres.exe"
+if not defined LAZRES if defined LAZARUS_DIR if exist "%LAZARUS_DIR%\tools\lazres.exe" set "LAZRES=%LAZARUS_DIR%\tools\lazres.exe"
+if not defined LAZRES if defined LAZBUILD for %%I in ("%LAZBUILD%") do if exist "%%~dpItools\lazres.exe" set "LAZRES=%%~dpItools\lazres.exe"
+if not defined LAZRES if exist "C:\lazarus\tools\lazres.exe" set "LAZRES=C:\lazarus\tools\lazres.exe"
 if not defined LAZRES if exist "C:\Program Files\Lazarus\tools\lazres.exe" set "LAZRES=C:\Program Files\Lazarus\tools\lazres.exe"
 if not defined LAZRES (
   echo lazres not found
